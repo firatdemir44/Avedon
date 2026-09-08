@@ -1,10 +1,10 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { TextField } from '../../components/TextField';
 import { detectGarmentComponents, type DetectedComponent, type GarmentImageInput } from '../../api/client';
+import { pickCompressedImage } from '../../features/imagePicker';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { colors, radius, spacing } from '../../theme';
 
@@ -19,15 +19,10 @@ interface CostRow extends DetectedComponent {
 
 const MAX_IMAGES = 4;
 
-function detectMediaType(mimeType: string | undefined): GarmentImageInput['mediaType'] {
-  if (mimeType === 'image/png') return 'image/png';
-  if (mimeType === 'image/webp') return 'image/webp';
-  return 'image/jpeg';
-}
-
 export function GarmentVisualCostScreen() {
   const [images, setImages] = useState<PickedImage[]>([]);
   const [rows, setRows] = useState<CostRow[]>([]);
+  const [addingImage, setAddingImage] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,28 +34,24 @@ export function GarmentVisualCostScreen() {
 
   const addImage = async () => {
     if (images.length >= MAX_IMAGES) return;
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Galeriye erişim izni verilmedi.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
-      quality: 0.7,
-    });
-    if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    if (!asset.base64) return;
-
-    setImages((prev) => [
-      ...prev,
-      { uri: asset.uri, imageBase64: asset.base64!, mediaType: detectMediaType(asset.mimeType) },
-    ]);
-    setRows([]);
+    setAddingImage(true);
     setError(null);
-    setNotConfigured(false);
+    try {
+      const picked = await pickCompressedImage();
+      if (!picked) return;
+      const base64 = picked.dataUrl.split(',')[1] ?? '';
+      setImages((prev) => [...prev, { uri: picked.uri, imageBase64: base64, mediaType: 'image/jpeg' }]);
+      setRows([]);
+      setNotConfigured(false);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    } finally {
+      setAddingImage(false);
+    }
   };
 
   const removeImage = (index: number) => {
@@ -117,8 +108,15 @@ export function GarmentVisualCostScreen() {
 
         {images.length < MAX_IMAGES ? (
           <PrimaryButton
-            label={images.length === 0 ? 'Fotoğraf Seç' : `Fotoğraf Ekle (${images.length}/${MAX_IMAGES})`}
+            label={
+              addingImage
+                ? 'İşleniyor...'
+                : images.length === 0
+                  ? 'Fotoğraf Seç'
+                  : `Fotoğraf Ekle (${images.length}/${MAX_IMAGES})`
+            }
             onPress={addImage}
+            disabled={addingImage}
             variant="secondary"
           />
         ) : null}

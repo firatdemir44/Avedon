@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import { createProduct } from '../../api/client';
+import { pickCompressedImage } from '../../features/imagePicker';
 import { colors, radius, spacing } from '../../theme';
 import type { ProductType } from '../../types';
 
@@ -31,27 +31,27 @@ export function AddProductScreen({ navigation }: Props) {
   const [useArea, setUseArea] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [pickingImage, setPickingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setError('Galeriye erişim izni verilmedi.');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
-      quality: 0.6,
-    });
-    if (result.canceled || !result.assets[0] || !result.assets[0].base64) return;
-
-    const asset = result.assets[0];
-    const mimeType = asset.mimeType ?? 'image/jpeg';
-    setImageUri(asset.uri);
-    setImageDataUrl(`data:${mimeType};base64,${asset.base64}`);
+    setPickingImage(true);
     setError(null);
+    try {
+      const picked = await pickCompressedImage();
+      if (!picked) return;
+      setImageUri(picked.uri);
+      setImageDataUrl(picked.dataUrl);
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    } finally {
+      setPickingImage(false);
+    }
   };
 
   const canSubmit =
@@ -101,11 +101,13 @@ export function AddProductScreen({ navigation }: Props) {
           </View>
         )}
         <PrimaryButton
-          label={imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Seç'}
+          label={pickingImage ? 'İşleniyor...' : imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Seç'}
           onPress={pickImage}
+          disabled={pickingImage}
           variant="secondary"
           style={{ marginBottom: spacing.lg }}
         />
+        {pickingImage ? <ActivityIndicator color={colors.primary} style={{ marginBottom: spacing.md }} /> : null}
 
         <Text style={styles.label}>Kumaş Tipi</Text>
         <View style={styles.typeRow}>

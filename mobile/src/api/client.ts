@@ -14,11 +14,28 @@ const API_BASE_URL =
     default: 'http://localhost:4000/api',
   });
 
+const REQUEST_TIMEOUT_MS = 30000;
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      ...options,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('İstek zaman aşımına uğradı, lütfen tekrar deneyin.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(body?.error ?? `İstek başarısız (${res.status})`);
