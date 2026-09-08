@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -6,8 +6,9 @@ import type { RootStackParamList } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
-import { createProduct } from '../../api/client';
+import { createProduct, updateProduct, deleteProduct, fetchProduct } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
+import { parseNumber } from '../../features/calculators/parse';
 import { colors, radius, spacing } from '../../theme';
 import type { ProductType } from '../../types';
 
@@ -20,8 +21,11 @@ const TYPE_OPTIONS: { value: ProductType; label: string }[] = [
   { value: 'diger', label: 'Diğer' },
 ];
 
-export function AddProductScreen({ navigation }: Props) {
+export function AddProductScreen({ navigation, route }: Props) {
   const { user } = useSession();
+  const productId = route.params?.productId ?? null;
+  const isEditing = !!productId;
+
   const [type, setType] = useState<ProductType>('orme');
   const [code, setCode] = useState('');
   const [stock, setStock] = useState('');
@@ -33,7 +37,39 @@ export function AddProductScreen({ navigation }: Props) {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [loading, setLoading] = useState(isEditing);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    fetchProduct(productId)
+      .then(({ product }) => {
+        if (cancelled) return;
+        setType(product.type);
+        setCode(product.code);
+        setStock(String(product.stock));
+        setWeightGsm(String(product.weightGsm));
+        setWidthCm(String(product.widthCm));
+        setContent(product.content);
+        setUseArea(product.useArea);
+        if (product.imageUrl) {
+          setImageUri(product.imageUrl);
+          setImageDataUrl(product.imageUrl);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Ürün yüklenemedi');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   const pickImage = async () => {
     setPickingImage(true);
@@ -54,43 +90,80 @@ export function AddProductScreen({ navigation }: Props) {
     }
   };
 
+  const stockNum = parseNumber(stock);
+  const weightGsmNum = parseNumber(weightGsm);
+  const widthCmNum = parseNumber(widthCm);
+
   const canSubmit =
     !!user?.companyId &&
     code.trim().length > 0 &&
     content.trim().length > 0 &&
     useArea.trim().length > 0 &&
-    Number(stock) >= 0 &&
-    Number(weightGsm) > 0 &&
-    Number(widthCm) > 0;
+    stock.trim().length > 0 &&
+    stockNum >= 0 &&
+    weightGsm.trim().length > 0 &&
+    weightGsmNum > 0 &&
+    widthCm.trim().length > 0 &&
+    widthCmNum > 0;
 
   const handleSubmit = async () => {
     if (!user?.companyId) return;
     setSubmitting(true);
     setError(null);
     try {
-      await createProduct({
-        companyId: user.companyId,
+      const payload = {
         code: code.trim(),
         type,
-        stock: Number(stock),
-        weightGsm: Number(weightGsm),
-        widthCm: Number(widthCm),
+        stock: stockNum,
+        weightGsm: weightGsmNum,
+        widthCm: widthCmNum,
         content: content.trim(),
         useArea: useArea.trim(),
         imageUrl: imageDataUrl ?? undefined,
-      });
+      };
+      if (isEditing && productId) {
+        await updateProduct(productId, payload);
+      } else {
+        await createProduct({ companyId: user.companyId, ...payload });
+      }
       navigation.goBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ürün eklenemedi');
+      setError(err instanceof Error ? err.message : 'Ürün kaydedilemedi');
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!productId) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      await deleteProduct(productId);
+      navigation.goBack();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Ürün silinemedi');
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Yeni Ürün / Kumaş Kartı</Text>
+        <Text style={styles.title}>{isEditing ? 'Ürünü Düzenle' : 'Yeni Ürün / Kumaş Kartı'}</Text>
 
         <Text style={styles.label}>Ürün Fotoğrafı</Text>
         {imageUri ? (
@@ -139,10 +212,27 @@ export function AddProductScreen({ navigation }: Props) {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton
-          label={submitting ? 'Kaydediliyor...' : 'Ürünü Kaydet'}
+          label={submitting ? 'Kaydediliyor...' : isEditing ? 'Değişiklikleri Kaydet' : 'Ürünü Kaydet'}
           disabled={!canSubmit || submitting}
           onPress={handleSubmit}
         />
+
+        {isEditing ? (
+          <PrimaryButton
+            label={deleting ? 'Siliniyor...' : confirmingDelete ? 'Emin misiniz? Yine bas, sil' : 'Ürünü Sil'}
+            onPress={handleDelete}
+            disabled={deleting}
+            style={styles.deleteButton}
+          />
+        ) : null}
+        {confirmingDelete ? (
+          <PrimaryButton
+            label="Vazgeç"
+            variant="secondary"
+            onPress={() => setConfirmingDelete(false)}
+            style={{ marginTop: spacing.sm }}
+          />
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -221,5 +311,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.danger,
     marginBottom: spacing.md,
+  },
+  deleteButton: {
+    marginTop: spacing.md,
+    backgroundColor: colors.danger,
   },
 });

@@ -82,6 +82,23 @@ export function createProduct(payload: NewProductInput) {
   });
 }
 
+export function fetchProduct(id: string) {
+  return request<{ product: Product }>(`/products/${id}`);
+}
+
+export type UpdateProductInput = Partial<Omit<NewProductInput, 'companyId'>>;
+
+export function updateProduct(id: string, payload: UpdateProductInput) {
+  return request<{ product: Product }>(`/products/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteProduct(id: string) {
+  return request<void>(`/products/${id}`, { method: 'DELETE' });
+}
+
 export interface AdvisorMessage {
   role: 'user' | 'assistant';
   content: string;

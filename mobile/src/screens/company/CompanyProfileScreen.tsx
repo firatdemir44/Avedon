@@ -117,7 +117,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         }
         ListEmptyComponent={<Text style={styles.emptyText}>Henüz ürün eklenmemiş.</Text>}
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Pressable
+            style={styles.card}
+            disabled={!isOwnCompany}
+            onPress={() => navigation.navigate('AddProduct', { productId: item.id })}
+          >
             <ProductThumbnail imageUrl={item.imageUrl} />
             <View style={styles.cardBody}>
               <View style={styles.cardHeaderRow}>
@@ -128,6 +132,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               <Text style={styles.meta}>
                 {item.weightGsm} gr/m² · {item.widthCm} cm en · {item.stock} m stok
               </Text>
+              {isOwnCompany ? <Text style={styles.editHint}>Düzenlemek için dokunun</Text> : null}
               {!isOwnCompany && user ? (
                 <Pressable
                   style={styles.sampleButton}
@@ -137,7 +142,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 </Pressable>
               ) : null}
             </View>
-          </View>
+          </Pressable>
         )}
       />
     </SafeAreaView>
@@ -264,5 +269,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.primary,
+  },
+  editHint: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: 2,
   },
 });

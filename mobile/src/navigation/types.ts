@@ -9,7 +9,7 @@ export type RootStackParamList = {
   CompanyCode: undefined;
   ProductList: undefined;
   CompanyProfile: { companyId?: string } | undefined;
-  AddProduct: undefined;
+  AddProduct: { productId?: string } | undefined;
   Advisor: undefined;
   CalculatorsList: undefined;
   FabricCostCalculator: undefined;

@@ -25,3 +25,14 @@ export const createProductSchema = z.object({
   useArea: z.string().min(1),
   imageUrl: z.string().url().optional(),
 });
+
+export const updateProductSchema = z.object({
+  code: z.string().min(1).optional(),
+  type: productTypeSchema.optional(),
+  stock: z.number().nonnegative().optional(),
+  weightGsm: z.number().positive().optional(),
+  widthCm: z.number().positive().optional(),
+  content: z.string().min(1).optional(),
+  useArea: z.string().min(1).optional(),
+  imageUrl: z.string().url().nullable().optional(),
+});
