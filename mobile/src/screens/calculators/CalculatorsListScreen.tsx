@@ -21,7 +21,7 @@ export function CalculatorsListScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hint}>
-          Tüm hesaplar sabit formüllerle yapılır — fiyat, fire ve verimlilik gibi değişken verileri siz girersiniz, sistem tahmin üretmez.
+          Tüm hesaplar sabit formüllerle yapılır — fiyat, fire ve verimlilik gibi değişken verileri siz girersiniz, sistem tahmin üretmez. Girdiğiniz değerler bu cihazda hatırlanır, bir dahaki sefere yeniden girmenize gerek kalmaz — değişiklik olduğunda üzerine yazmanız yeterli.
         </Text>
         {ITEMS.map((item) => (
           <Pressable key={item.route} style={styles.card} onPress={() => navigation.navigate(item.route as never)}>

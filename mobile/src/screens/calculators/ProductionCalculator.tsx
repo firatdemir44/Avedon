@@ -1,17 +1,25 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from '../../components/TextField';
 import { ResultCard } from '../../components/ResultCard';
 import { calculateDailyProduction } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
+import { usePersistedFields } from '../../features/calculators/usePersistedFields';
 import { colors, spacing } from '../../theme';
 
+interface Fields {
+  speed: string;
+  shiftHours: string;
+  shiftsPerDay: string;
+  efficiency: string;
+}
+
+const INITIAL: Fields = { speed: '', shiftHours: '8', shiftsPerDay: '1', efficiency: '85' };
+
 export function ProductionCalculator() {
-  const [speed, setSpeed] = useState('');
-  const [shiftHours, setShiftHours] = useState('8');
-  const [shiftsPerDay, setShiftsPerDay] = useState('1');
-  const [efficiency, setEfficiency] = useState('85');
+  const [fields, update] = usePersistedFields('production', INITIAL);
+  const { speed, shiftHours, shiftsPerDay, efficiency } = fields;
 
   const result = useMemo(() => {
     if (!speed) return null;
@@ -27,10 +35,10 @@ export function ProductionCalculator() {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hint}>Makine hızını hangi birimde girerseniz (m/dk, kg/dk vb.), sonuç da o birimde günlük toplam olarak hesaplanır.</Text>
-        <TextField label="Makine Hızı (birim/dakika)" keyboardType="numeric" value={speed} onChangeText={setSpeed} placeholder="Örn. 25" />
-        <TextField label="Vardiya Süresi (saat)" keyboardType="numeric" value={shiftHours} onChangeText={setShiftHours} placeholder="Örn. 8" />
-        <TextField label="Günlük Vardiya Sayısı" keyboardType="numeric" value={shiftsPerDay} onChangeText={setShiftsPerDay} placeholder="Örn. 2" />
-        <TextField label="Verimlilik (%)" keyboardType="numeric" value={efficiency} onChangeText={setEfficiency} placeholder="Örn. 85" />
+        <TextField label="Makine Hızı (birim/dakika)" keyboardType="numeric" value={speed} onChangeText={(v) => update({ speed: v })} placeholder="Örn. 25" />
+        <TextField label="Vardiya Süresi (saat)" keyboardType="numeric" value={shiftHours} onChangeText={(v) => update({ shiftHours: v })} placeholder="Örn. 8" />
+        <TextField label="Günlük Vardiya Sayısı" keyboardType="numeric" value={shiftsPerDay} onChangeText={(v) => update({ shiftsPerDay: v })} placeholder="Örn. 2" />
+        <TextField label="Verimlilik (%)" keyboardType="numeric" value={efficiency} onChangeText={(v) => update({ efficiency: v })} placeholder="Örn. 85" />
 
         {result !== null ? (
           <ResultCard rows={[{ label: 'Günlük Üretim Kapasitesi', value: formatNumber(result) }]} />
