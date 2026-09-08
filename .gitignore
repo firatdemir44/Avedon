@@ -1,0 +1,40 @@
+# local tooling config
+.claude/
+mobile/.claude/
+
+# dependencies
+node_modules/
+
+# Expo (mobile/)
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+mobile/.claude/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+mobile/.metro-health-check*
+mobile/ios/
+mobile/android/
+
+# Backend (backend/)
+backend/dist/
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/*.log
+
+# env files (secrets)
+.env
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.pem
+*.tsbuildinfo
+npm-debug.*
+yarn-debug.*
+yarn-error.*

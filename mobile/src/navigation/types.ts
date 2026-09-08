@@ -1,0 +1,25 @@
+export type RootStackParamList = {
+  RoleSelection: undefined;
+  Login: undefined;
+  Admin: undefined;
+  Position: undefined;
+  PersonalInfo: undefined;
+  CompanyInfo: undefined;
+  PhoneVerification: undefined;
+  CompanyCode: undefined;
+  ProductList: undefined;
+  CompanyProfile: { companyId?: string } | undefined;
+  AddProduct: undefined;
+  Advisor: undefined;
+  CalculatorsList: undefined;
+  FabricCostCalculator: undefined;
+  GarmentCostCalculator: undefined;
+  YarnCountCalculator: undefined;
+  YarnUsageCalculator: undefined;
+  FabricWeightCalculator: undefined;
+  ProductionCalculator: undefined;
+  SampleRequestForm: { productId: string; productCode: string };
+  MySampleRequests: undefined;
+  IncomingSampleRequests: undefined;
+  GarmentVisualCost: undefined;
+};

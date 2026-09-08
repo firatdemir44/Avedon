@@ -1,0 +1,48 @@
+import type { Product } from '../types';
+
+export const mockProducts: Product[] = [
+  {
+    id: 'p1',
+    companyId: 'c1',
+    code: 'RSC-2201',
+    type: 'raschel',
+    stock: 1200,
+    weightGsm: 220,
+    widthCm: 150,
+    content: '%100 Polyester',
+    useArea: 'Dış Giyim / Astar',
+  },
+  {
+    id: 'p2',
+    companyId: 'c2',
+    code: 'ORM-0587',
+    type: 'orme',
+    stock: 850,
+    weightGsm: 180,
+    widthCm: 170,
+    content: '%95 Pamuk %5 Elastan',
+    useArea: 'Spor Giyim',
+  },
+  {
+    id: 'p3',
+    companyId: 'c1',
+    code: 'DKM-1190',
+    type: 'dokuma',
+    stock: 3000,
+    weightGsm: 140,
+    widthCm: 150,
+    content: '%100 Pamuk',
+    useArea: 'Gömlek',
+  },
+  {
+    id: 'p4',
+    companyId: 'c3',
+    code: 'ORM-0723',
+    type: 'orme',
+    stock: 60,
+    weightGsm: 260,
+    widthCm: 180,
+    content: '%80 Pamuk %20 Polyester',
+    useArea: 'Sweatshirt / Şardonlu',
+  },
+];

@@ -1,0 +1,54 @@
+import React, { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { TextField } from '../../components/TextField';
+import { ResultCard } from '../../components/ResultCard';
+import { calculateFabricCost } from '../../features/calculators/formulas';
+import { parseNumber, formatNumber } from '../../features/calculators/parse';
+import { colors, spacing } from '../../theme';
+
+export function FabricCostCalculator() {
+  const [yarnPrice, setYarnPrice] = useState('');
+  const [weightGsm, setWeightGsm] = useState('');
+  const [widthCm, setWidthCm] = useState('');
+  const [wastage, setWastage] = useState('0');
+  const [finishingCost, setFinishingCost] = useState('0');
+
+  const result = useMemo(() => {
+    if (!yarnPrice || !weightGsm || !widthCm) return null;
+    return calculateFabricCost({
+      yarnPricePerKg: parseNumber(yarnPrice),
+      weightGsm: parseNumber(weightGsm),
+      widthCm: parseNumber(widthCm),
+      wastagePercent: parseNumber(wastage),
+      finishingCostPerKg: parseNumber(finishingCost),
+    });
+  }, [yarnPrice, weightGsm, widthCm, wastage, finishingCost]);
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <TextField label="İplik / Hammadde Fiyatı (₺/kg)" keyboardType="numeric" value={yarnPrice} onChangeText={setYarnPrice} placeholder="Örn. 180" />
+        <TextField label="Kumaş Gramajı (gr/m²)" keyboardType="numeric" value={weightGsm} onChangeText={setWeightGsm} placeholder="Örn. 200" />
+        <TextField label="En (cm)" keyboardType="numeric" value={widthCm} onChangeText={setWidthCm} placeholder="Örn. 160" />
+        <TextField label="Fire Oranı (%)" keyboardType="numeric" value={wastage} onChangeText={setWastage} placeholder="Örn. 5" />
+        <TextField label="Boyama / Terbiye Maliyeti (₺/kg)" keyboardType="numeric" value={finishingCost} onChangeText={setFinishingCost} placeholder="Örn. 20" />
+
+        {result ? (
+          <ResultCard
+            rows={[
+              { label: '1 Metre Kumaş Ağırlığı', value: `${formatNumber(result.weightPerMeterKg, 3)} kg` },
+              { label: 'Maliyet (₺/metre)', value: `${formatNumber(result.costPerMeter)} ₺` },
+              { label: 'Maliyet (₺/kg)', value: `${formatNumber(result.costPerKg)} ₺` },
+            ]}
+          />
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  content: { padding: spacing.lg },
+});

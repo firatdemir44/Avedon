@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// accountType: "konfeksiyon" | "uretici" | "bireysel"
+// verification: "dogrulanmamis" | "inceleniyor" | "dogrulanmis"
+// product.type: "raschel" | "orme" | "dokuma" | "diger"
+// sampleRequest.status: "talep_edildi" | "onaylandi" | "hazirlandi" | "teslim_edildi"
+// Enums are modeled as plain strings because the sqlite connector has no native enum type;
+// valid values are enforced at the API layer with zod.
+
+model Company {
+  id                String    @id @default(cuid())
+  name              String
+  taxId             String
+  about             String    @default("")
+  contactEmail      String    @default("")
+  contactPhone      String    @default("")
+  productCategories String    @default("")
+  verification      String    @default("dogrulanmamis")
+  companyCode       String    @unique
+  createdAt         DateTime  @default(now())
+  users             User[]
+  products          Product[]
+}
+
+model User {
+  id             String          @id @default(cuid())
+  accountType    String
+  position       String
+  firstName      String
+  lastName       String
+  phone          String          @unique
+  phoneVerified  Boolean         @default(false)
+  isAdmin        Boolean         @default(false)
+  companyId      String?
+  company        Company?        @relation(fields: [companyId], references: [id])
+  sampleRequests SampleRequest[]
+  createdAt      DateTime        @default(now())
+}
+
+model Product {
+  id             String          @id @default(cuid())
+  companyId      String
+  company        Company         @relation(fields: [companyId], references: [id])
+  code           String
+  type           String
+  stock          Int
+  weightGsm      Int
+  widthCm        Int
+  content        String
+  useArea        String
+  imageUrl       String?
+  sampleRequests SampleRequest[]
+  createdAt      DateTime        @default(now())
+}
+
+model SampleRequest {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id])
+  requesterId        String
+  requester          User     @relation(fields: [requesterId], references: [id])
+  deliveryPreference String
+  status             String   @default("talep_edildi")
+  createdAt          DateTime @default(now())
+}
