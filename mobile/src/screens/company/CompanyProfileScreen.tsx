@@ -7,6 +7,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { fetchCompany } from '../../api/client';
 import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { colors, radius, spacing } from '../../theme';
 import type { Company, Product, VerificationStatus } from '../../types';
 
@@ -117,22 +118,25 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         ListEmptyComponent={<Text style={styles.emptyText}>Henüz ürün eklenmemiş.</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.code}>{item.code}</Text>
-              <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
+            <ProductThumbnail imageUrl={item.imageUrl} />
+            <View style={styles.cardBody}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.code}>{item.code}</Text>
+                <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
+              </View>
+              <Text style={styles.content}>{item.content}</Text>
+              <Text style={styles.meta}>
+                {item.weightGsm} gr/m² · {item.widthCm} cm en · {item.stock} m stok
+              </Text>
+              {!isOwnCompany && user ? (
+                <Pressable
+                  style={styles.sampleButton}
+                  onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
+                >
+                  <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
+                </Pressable>
+              ) : null}
             </View>
-            <Text style={styles.content}>{item.content}</Text>
-            <Text style={styles.meta}>
-              {item.weightGsm} gr/m² · {item.widthCm} cm en · {item.stock} m stok
-            </Text>
-            {!isOwnCompany && user ? (
-              <Pressable
-                style={styles.sampleButton}
-                onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
-              >
-                <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
-              </Pressable>
-            ) : null}
           </View>
         )}
       />
@@ -203,12 +207,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   card: {
+    flexDirection: 'row',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  cardBody: {
+    flex: 1,
+    minWidth: 0,
   },
   cardHeaderRow: {
     flexDirection: 'row',

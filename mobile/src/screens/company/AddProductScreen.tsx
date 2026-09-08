@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
@@ -28,8 +29,30 @@ export function AddProductScreen({ navigation }: Props) {
   const [widthCm, setWidthCm] = useState('');
   const [content, setContent] = useState('');
   const [useArea, setUseArea] = useState('');
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setError('Galeriye erişim izni verilmedi.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      base64: true,
+      quality: 0.6,
+    });
+    if (result.canceled || !result.assets[0] || !result.assets[0].base64) return;
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    setImageUri(asset.uri);
+    setImageDataUrl(`data:${mimeType};base64,${asset.base64}`);
+    setError(null);
+  };
 
   const canSubmit =
     !!user?.companyId &&
@@ -54,6 +77,7 @@ export function AddProductScreen({ navigation }: Props) {
         widthCm: Number(widthCm),
         content: content.trim(),
         useArea: useArea.trim(),
+        imageUrl: imageDataUrl ?? undefined,
       });
       navigation.goBack();
     } catch (err) {
@@ -67,6 +91,21 @@ export function AddProductScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Yeni Ürün / Kumaş Kartı</Text>
+
+        <Text style={styles.label}>Ürün Fotoğrafı</Text>
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.preview} />
+        ) : (
+          <View style={styles.previewPlaceholder}>
+            <Text style={styles.previewPlaceholderText}>Fotoğraf yok</Text>
+          </View>
+        )}
+        <PrimaryButton
+          label={imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Seç'}
+          onPress={pickImage}
+          variant="secondary"
+          style={{ marginBottom: spacing.lg }}
+        />
 
         <Text style={styles.label}>Kumaş Tipi</Text>
         <View style={styles.typeRow}>
@@ -126,6 +165,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
     marginBottom: spacing.xs,
+  },
+  preview: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  previewPlaceholder: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    borderRadius: radius.md,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewPlaceholderText: {
+    fontSize: 13,
+    color: colors.textMuted,
   },
   typeRow: {
     flexDirection: 'row',

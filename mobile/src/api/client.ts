@@ -55,6 +55,7 @@ export interface NewProductInput {
   widthCm: number;
   content: string;
   useArea: string;
+  imageUrl?: string;
 }
 
 export function createProduct(payload: NewProductInput) {

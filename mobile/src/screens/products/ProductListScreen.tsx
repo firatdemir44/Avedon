@@ -7,6 +7,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { fetchProducts, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import type { Company, Product } from '../../types';
 import { colors, radius, spacing } from '../../theme';
 
@@ -164,25 +165,28 @@ export function ProductListScreen({ navigation }: Props) {
         ListEmptyComponent={<Text style={styles.empty}>Sonuç bulunamadı</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.code}>{item.code}</Text>
-              <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
+            <ProductThumbnail imageUrl={item.imageUrl} />
+            <View style={styles.cardBody}>
+              <View style={styles.cardHeaderRow}>
+                <Text style={styles.code}>{item.code}</Text>
+                <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
+              </View>
+              <Text style={styles.content}>{item.content}</Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>{item.weightGsm} gr/m²</Text>
+                <Text style={styles.meta}>{item.widthCm} cm en</Text>
+                <Text style={styles.meta}>{item.stock} m stok</Text>
+              </View>
+              <Text style={styles.useArea}>{item.useArea}</Text>
+              {user ? (
+                <Pressable
+                  style={styles.sampleButton}
+                  onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
+                >
+                  <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
+                </Pressable>
+              ) : null}
             </View>
-            <Text style={styles.content}>{item.content}</Text>
-            <View style={styles.metaRow}>
-              <Text style={styles.meta}>{item.weightGsm} gr/m²</Text>
-              <Text style={styles.meta}>{item.widthCm} cm en</Text>
-              <Text style={styles.meta}>{item.stock} m stok</Text>
-            </View>
-            <Text style={styles.useArea}>{item.useArea}</Text>
-            {user ? (
-              <Pressable
-                style={styles.sampleButton}
-                onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
-              >
-                <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
-              </Pressable>
-            ) : null}
           </View>
         )}
       />
@@ -251,12 +255,18 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
+    flexDirection: 'row',
+    gap: spacing.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+  },
+  cardBody: {
+    flex: 1,
+    minWidth: 0,
   },
   cardHeaderRow: {
     flexDirection: 'row',
