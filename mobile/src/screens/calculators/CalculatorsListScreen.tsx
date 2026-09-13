@@ -1,11 +1,9 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { MainTabScreenProps, RootStackParamList } from '../../navigation/types';
 import { colors, radius, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'CalculatorsList'>;
+type Props = MainTabScreenProps<'CalculatorsList'>;
 
 const ITEMS: { route: keyof RootStackParamList; title: string; description: string }[] = [
   { route: 'FabricCostCalculator', title: 'Kumaş Maliyeti Hesapla', description: 'İplik fiyatı, gramaj, en, fire ve terbiye maliyetinden ₺/metre ve ₺/kg maliyet' },
@@ -18,7 +16,7 @@ const ITEMS: { route: keyof RootStackParamList; title: string; description: stri
 
 export function CalculatorsListScreen({ navigation }: Props) {
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hint}>
           Tüm hesaplar sabit formüllerle yapılır — fiyat, fire ve verimlilik gibi değişken verileri siz girersiniz, sistem tahmin üretmez. Girdiğiniz değerler bu cihazda hatırlanır, bir dahaki sefere yeniden girmenize gerek kalmaz — değişiklik olduğunda üzerine yazmanız yeterli.
@@ -30,12 +28,12 @@ export function CalculatorsListScreen({ navigation }: Props) {
           </Pressable>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },

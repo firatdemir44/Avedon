@@ -15,7 +15,6 @@ import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { AdvisorScreen } from '../screens/advisor/AdvisorScreen';
-import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
 import { YarnCountCalculator } from '../screens/calculators/YarnCountCalculator';
@@ -86,11 +85,6 @@ export function RootNavigator() {
               name="Advisor"
               component={AdvisorScreen}
               options={{ headerShown: true, title: 'AI Tekstil Danışmanı' }}
-            />
-            <Stack.Screen
-              name="CalculatorsList"
-              component={CalculatorsListScreen}
-              options={{ headerShown: true, title: 'Hesap Araçları' }}
             />
             <Stack.Screen
               name="FabricCostCalculator"

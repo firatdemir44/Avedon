@@ -10,6 +10,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 export type MainTabParamList = {
   Feed: undefined;
   ProductList: undefined;
+  CalculatorsList: undefined;
   Conversations: undefined;
   MyProfile: undefined;
 };
@@ -30,7 +31,6 @@ export type RootStackParamList = {
   CompanyProfile: { companyId?: string } | undefined;
   AddProduct: { productId?: string } | undefined;
   Advisor: undefined;
-  CalculatorsList: undefined;
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;
   YarnCountCalculator: undefined;

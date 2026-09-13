@@ -7,6 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { fetchUnreadMessageCount } from '../api/client';
 import { FeedScreen } from '../screens/feed/FeedScreen';
 import { ProductListScreen } from '../screens/products/ProductListScreen';
+import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { colors } from '../theme';
@@ -63,6 +64,16 @@ export function MainTabs() {
           title: 'Ürünler',
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'grid' : 'grid-outline'} color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="CalculatorsList"
+        component={CalculatorsListScreen}
+        options={{
+          title: 'Hesaplamalar',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'calculator' : 'calculator-outline'} color={color} size={size} />
           ),
         }}
       />

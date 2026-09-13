@@ -102,9 +102,6 @@ export function ProductListScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.navigate('Advisor')} style={styles.menuChip}>
             <Text style={styles.menuChipText}>AI Danışman</Text>
           </Pressable>
-          <Pressable onPress={() => navigation.navigate('CalculatorsList')} style={styles.menuChip}>
-            <Text style={styles.menuChipText}>Hesap Araçları</Text>
-          </Pressable>
           <Pressable onPress={() => navigation.navigate('GarmentVisualCost')} style={styles.menuChip}>
             <Text style={styles.menuChipText}>Görsel Maliyet</Text>
           </Pressable>
