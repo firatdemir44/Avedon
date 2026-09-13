@@ -1,11 +1,14 @@
+// Renkler Avedon v4.2 tasarım dosyasından alındı (bkz. docs/tasarim-envanteri.md).
+// Değerler, dosyadan dışa aktarılan ekranların PNG'lerinden piksel düzeyinde okundu.
 export const colors = {
-  background: '#F7F7F5',
+  background: '#F5F8FA',
   surface: '#FFFFFF',
-  primary: '#1B4332',
+  primary: '#133C5F', // tasarımdaki lacivert — birincil butonlar, başlıklar
+  accent: '#2696C6', // tasarımdaki mavi — aktif sekme, vurgu, bağlantı
   primaryText: '#FFFFFF',
   text: '#1A1A1A',
   textMuted: '#6B6B6B',
-  border: '#E2E2DE',
+  border: '#DCE4EA',
   danger: '#B3261E',
 };
 

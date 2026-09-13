@@ -42,7 +42,7 @@ export function MainTabs() {
         freezeOnBlur: true,
         // Android'de klavye açılınca sekme çubuğu arama kutusunun üstüne binmesin.
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
       }}
     >
