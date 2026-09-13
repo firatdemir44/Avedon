@@ -1,113 +1,227 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
-import { sendWhatsAppTemplate } from '../whatsapp';
+import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
+import { sendWhatsAppTemplate } from '../whatsapp';
+import {
+  DELIVERY_MODES,
+  SAMPLE_ACTOR_SELECT,
+  SAMPLE_LIST_INCLUDE,
+  STATUS_ORDER,
+  canPerform,
+  chipLabelFor,
+  deliveryModeLabel,
+  nextStatusFor,
+  stepIndex,
+  stepLabelFor,
+  toListRow,
+  toTimelineSteps,
+  type ViewerRole,
+} from '../sampleRequests';
 
 export const sampleRequestsRouter = Router();
-
 sampleRequestsRouter.use(requireAuth);
 
-const STATUS_ORDER = ['talep_edildi', 'onaylandi', 'hazirlandi', 'teslim_edildi'] as const;
-const statusSchema = z.enum(STATUS_ORDER);
-const STATUS_LABELS: Record<(typeof STATUS_ORDER)[number], string> = {
-  talep_edildi: 'Talep Edildi',
-  onaylandi: 'Onaylandı',
-  hazirlandi: 'Hazırlandı',
-  teslim_edildi: 'Teslim Edildi',
-};
+const handle = makeHandle('sample-requests');
 
-const createSchema = z.object({
-  productId: z.string().min(1),
-  deliveryPreference: z.string().min(1),
-});
+function roleFor(request: { requesterId: string; product: { companyId: string } }, user: Request['user']): ViewerRole {
+  return {
+    isRequester: request.requesterId === user!.id,
+    // companyId null ise asla eşleşmemeli.
+    isSeller: !!user!.companyId && request.product.companyId === user!.companyId,
+  };
+}
 
-sampleRequestsRouter.post('/', async (req, res) => {
-  const parsed = createSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
-  }
-
-  const product = await prisma.product.findUnique({
-    where: { id: parsed.data.productId },
-    include: { company: { include: { users: true } } },
+async function loadForViewer(id: string, user: Request['user']) {
+  const request = await prisma.sampleRequest.findUnique({
+    where: { id },
+    include: SAMPLE_LIST_INCLUDE,
   });
-  if (!product) {
-    return res.status(404).json({ error: 'product_not_found' });
-  }
+  if (!request) return null;
 
-  const sampleRequest = await prisma.sampleRequest.create({
-    data: { ...parsed.data, requesterId: req.user!.id },
-    include: { product: true, requester: true },
-  });
+  const role = roleFor(request, user);
+  if (!role.isRequester && !role.isSeller) return null;
+  return { request, role };
+}
 
-  for (const employee of product.company.users) {
-    sendWhatsAppTemplate(employee.phone, [
-      `${sampleRequest.requester.firstName} ${sampleRequest.requester.lastName}`,
-      product.code,
-    ]).catch(() => {});
-  }
+const createSchema = z
+  .object({
+    productId: z.string().min(1),
+    deliveryMode: z.enum(DELIVERY_MODES),
+    note: z.string().trim().max(1000).optional(),
+  })
+  .strict();
 
-  res.status(201).json({ sampleRequest });
-});
+sampleRequestsRouter.post(
+  '/',
+  handle(async (req, res) => {
+    const parsed = createSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    }
 
-// ?as=requester -> talep eden kullanıcının kendi talepleri ("Taleplerim")
-// ?as=company   -> bir firmanın ürünlerine gelen talepler ("Gelen Talepler")
-// Filtre kimliği her zaman req.user'dan çözülür — client bir başkasının
-// taleplerini isteyemez.
-sampleRequestsRouter.get('/', async (req, res) => {
-  const as = req.query.as === 'company' ? 'company' : 'requester';
+    const product = await prisma.product.findUnique({
+      where: { id: parsed.data.productId },
+      include: { company: { include: { users: true } } },
+    });
+    if (!product) {
+      return res.status(404).json({ error: 'product_not_found' });
+    }
 
-  if (as === 'company' && !req.user!.companyId) {
-    return res.json({ sampleRequests: [] });
-  }
+    const created = await prisma.sampleRequest.create({
+      data: {
+        productId: parsed.data.productId,
+        requesterId: req.user!.id,
+        deliveryMode: parsed.data.deliveryMode,
+        note: parsed.data.note ?? '',
+        // İlk adım talebin kendisi — zaman çizelgesi hiç boş kalmasın.
+        events: {
+          create: { status: 'talep_edildi', actorId: req.user!.id, note: parsed.data.note ?? '' },
+        },
+      },
+      include: SAMPLE_LIST_INCLUDE,
+    });
 
-  const sampleRequests = await prisma.sampleRequest.findMany({
-    where:
-      as === 'company'
-        ? { product: { companyId: req.user!.companyId! } }
-        : { requesterId: req.user!.id },
-    include: { product: true, requester: true },
-    orderBy: { createdAt: 'desc' },
-  });
-  res.json({ sampleRequests });
-});
+    // Bildirim, kayıt kesinleştikten sonra (geri alınan bir işlem için müşteriye
+    // mesaj gitmesin).
+    for (const employee of product.company.users) {
+      sendWhatsAppTemplate(employee.phone, [
+        `${req.user!.firstName} ${req.user!.lastName}`,
+        product.code,
+      ]).catch(() => {});
+    }
 
-const updateStatusSchema = z.object({ status: statusSchema });
+    res.status(201).json({ sampleRequest: toListRow(created, roleFor(created, req.user)) });
+  })
+);
 
-sampleRequestsRouter.patch('/:id/status', async (req, res) => {
-  const parsed = updateStatusSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
-  }
+sampleRequestsRouter.get(
+  '/',
+  handle(async (req, res) => {
+    const as = req.query.as === 'company' ? 'company' : 'requester';
 
-  const existing = await prisma.sampleRequest.findUnique({
-    where: { id: req.params.id },
-    include: { product: true },
-  });
-  if (!existing) {
-    return res.status(404).json({ error: 'sample_request_not_found' });
-  }
-  if (existing.product.companyId !== req.user!.companyId) {
-    return res.status(403).json({ error: 'not_your_company' });
-  }
+    if (as === 'company' && !req.user!.companyId) {
+      return res.json({ sampleRequests: [] });
+    }
 
-  const currentIndex = STATUS_ORDER.indexOf(existing.status as (typeof STATUS_ORDER)[number]);
-  const nextIndex = STATUS_ORDER.indexOf(parsed.data.status);
-  if (nextIndex < currentIndex) {
-    return res.status(400).json({ error: 'cannot_move_status_backwards' });
-  }
+    const sampleRequests = await prisma.sampleRequest.findMany({
+      where:
+        as === 'company'
+          ? { product: { companyId: req.user!.companyId! } }
+          : { requesterId: req.user!.id },
+      include: SAMPLE_LIST_INCLUDE,
+      orderBy: { createdAt: 'desc' },
+    });
 
-  const sampleRequest = await prisma.sampleRequest.update({
-    where: { id: req.params.id },
-    data: { status: parsed.data.status },
-    include: { product: true, requester: true },
-  });
+    res.json({
+      sampleRequests: sampleRequests.map((r) => toListRow(r, roleFor(r, req.user))),
+    });
+  })
+);
 
-  sendWhatsAppTemplate(sampleRequest.requester.phone, [
-    sampleRequest.product.code,
-    STATUS_LABELS[parsed.data.status],
-  ]).catch(() => {});
+sampleRequestsRouter.get(
+  '/:id',
+  handle(async (req, res) => {
+    const loaded = await loadForViewer(req.params.id, req.user);
+    // Yetkisiz erişimde de 404: 403 dönmek id'nin var olduğunu doğrular ve
+    // talep id'lerinin denenerek bulunmasına imkân verirdi.
+    if (!loaded) {
+      return res.status(404).json({ error: 'sample_request_not_found' });
+    }
+    const { request, role } = loaded;
 
-  res.json({ sampleRequest });
-});
+    const events = await prisma.sampleRequestEvent.findMany({
+      where: { sampleRequestId: request.id },
+      orderBy: { createdAt: 'asc' },
+      include: { actor: { select: SAMPLE_ACTOR_SELECT } },
+    });
+
+    const next = nextStatusFor(request.status);
+    const canAdvance = !!next && canPerform(next, role);
+
+    res.json({
+      sampleRequest: {
+        id: request.id,
+        status: request.status,
+        statusLabel: chipLabelFor(request.status, request.deliveryMode),
+        deliveryMode: request.deliveryMode,
+        deliveryModeLabel: deliveryModeLabel(request.deliveryMode),
+        note: request.note,
+        createdAt: request.createdAt,
+        product: request.product,
+        requester: request.requester,
+      },
+      steps: toTimelineSteps(request, events),
+      nextStep: canAdvance && next ? { status: next, label: stepLabelFor(next, request.deliveryMode) } : null,
+      canAdvance,
+    });
+  })
+);
+
+const updateStatusSchema = z
+  .object({
+    status: z.enum(STATUS_ORDER),
+    note: z.string().trim().max(500).optional(),
+  })
+  .strict();
+
+sampleRequestsRouter.patch(
+  '/:id/status',
+  handle(async (req, res) => {
+    const parsed = updateStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    }
+
+    const loaded = await loadForViewer(req.params.id, req.user);
+    if (!loaded) {
+      return res.status(404).json({ error: 'sample_request_not_found' });
+    }
+    const { request, role } = loaded;
+
+    if (stepIndex(request.status) < 0) {
+      return res.status(500).json({ error: 'invalid_stored_status' });
+    }
+    // Tam bir adım ileri: geri gitmek de, adım atlamak da, aynı adımı tekrar
+    // işaretlemek de (mükerrer bildirim + mükerrer olay kaydı) engelleniyor.
+    if (parsed.data.status !== nextStatusFor(request.status)) {
+      return res.status(400).json({ error: 'invalid_status_transition' });
+    }
+    if (!canPerform(parsed.data.status, role)) {
+      return res.status(403).json({ error: 'not_allowed_for_this_step' });
+    }
+
+    const [updated] = await prisma.$transaction([
+      prisma.sampleRequest.update({
+        where: { id: request.id },
+        data: { status: parsed.data.status },
+        include: SAMPLE_LIST_INCLUDE,
+      }),
+      prisma.sampleRequestEvent.create({
+        data: {
+          sampleRequestId: request.id,
+          status: parsed.data.status,
+          actorId: req.user!.id,
+          note: parsed.data.note ?? '',
+        },
+      }),
+    ]);
+
+    // Kendi yaptığı işlem için kullanıcıya bildirim gitmesin.
+    if (!role.isRequester) {
+      const requester = await prisma.user.findUnique({
+        where: { id: request.requesterId },
+        select: { phone: true },
+      });
+      if (requester) {
+        sendWhatsAppTemplate(requester.phone, [
+          request.product.code,
+          chipLabelFor(parsed.data.status, request.deliveryMode),
+        ]).catch(() => {});
+      }
+    }
+
+    res.json({ sampleRequest: toListRow(updated, roleFor(updated, req.user)) });
+  })
+);

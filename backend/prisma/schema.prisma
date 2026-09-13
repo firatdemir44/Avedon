@@ -11,6 +11,10 @@ datasource db {
 // verification: "dogrulanmamis" | "inceleniyor" | "dogrulanmis"
 // product.type: "raschel" | "orme" | "dokuma" | "diger"
 // sampleRequest.status: "talep_edildi" | "onaylandi" | "hazirlandi" | "teslim_edildi"
+//   Son adımın ETİKETİ teslimat moduna göre değişir ("Teslim Edildi" / "Kurye
+//   Teslim Aldı") ama STATÜ tektir — mod zaten deliveryMode'da saklı, ayrıca
+//   statü olarak tutulsa iki alan birbiriyle çelişebilirdi.
+// sampleRequest.deliveryMode: "seller_ships" | "customer_courier"
 // post.visibility: "public" | "connections"
 // Enums are modeled as plain strings because the sqlite connector has no native enum type;
 // valid values are enforced at the API layer with zod.
@@ -50,6 +54,7 @@ model User {
   posts                Post[]
   postLikes            PostLike[]
   postComments         PostComment[]
+  sampleRequestEvents  SampleRequestEvent[]
   createdAt            DateTime        @default(now())
 }
 
@@ -71,14 +76,44 @@ model Product {
 }
 
 model SampleRequest {
-  id                 String   @id @default(cuid())
-  productId          String
-  product            Product  @relation(fields: [productId], references: [id])
-  requesterId        String
-  requester          User     @relation(fields: [requesterId], references: [id])
-  deliveryPreference String
-  status             String   @default("talep_edildi")
-  createdAt          DateTime @default(now())
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  requesterId  String
+  requester    User     @relation(fields: [requesterId], references: [id])
+  deliveryMode String   @default("seller_ships")
+  note         String   @default("")
+  status       String   @default("talep_edildi")
+  createdAt    DateTime @default(now())
+
+  events SampleRequestEvent[]
+
+  /// @deprecated Eski serbest metin teslimat tercihi. Yerini deliveryMode + note
+  /// aldı; yeni kayıtlarda boş kalıyor, hiçbir yerde okunmuyor. Ayrı bir temizlik
+  /// migration'ında silinecek.
+  deliveryPreference String @default("")
+
+  @@index([productId])
+}
+
+// Numune talebinin geçmişi: her adımı KİMİN, NE ZAMAN yaptığı.
+// Değişmezler:
+// - Sadece eklenir (append-only), hiçbir zaman güncellenmez/silinmez.
+// - Bir adımın TAMAMLANMIŞ sayılması SampleRequest.status'tan türetilir, olay
+//   kaydının varlığından değil. Olaylar adımı yalnızca zenginleştirir (aktör,
+//   zaman, not) — böylece geçmişi eksik eski kayıtlarda bile zaman çizelgesi
+//   listedeki statü ile çelişmez.
+model SampleRequestEvent {
+  id              String        @id @default(cuid())
+  sampleRequestId String
+  sampleRequest   SampleRequest @relation(fields: [sampleRequestId], references: [id], onDelete: Cascade)
+  status          String
+  actorId         String
+  actor           User          @relation(fields: [actorId], references: [id])
+  note            String        @default("")
+  createdAt       DateTime      @default(now())
+
+  @@index([sampleRequestId, createdAt])
 }
 
 // Telefon doğrulama kodları: hem yeni kayıtta hem girişte kullanılan tek OTP akışı.
