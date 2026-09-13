@@ -9,8 +9,23 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## Sonraki Özellik Kararı
 
-Gerçek kimlik doğrulama tamamlandı (bkz. Tamamlananlar). Kullanıcının 2020 proje dosyalarını inceledikten sonra yol haritası bu bulgulara göre güncellenecek. Diğer adaylar (bkz. `docs/durum.md`):
+Gerçek kimlik doğrulama tamamlandı (bkz. Tamamlananlar).
 
+**2020 vizyonu (Takyon Ai PDF) — KARAR VERİLDİ (2026-09-13):** PDF, Avedon'u feed/hikayeler/keşfet/mesajlaşma/bağlantı-network sistemi olan tam bir sosyal medya platformu olarak tanımlıyor (bkz. `Takyon Ai - Avedon Product.pdf`, 9 ekran). Kullanıcı **"Evet"** diyerek bu tam vizyonu (sosyal ağ + B2B ticaret hibriti) hedef olarak onayladı — seçici/kısmi yaklaşım değil, tam kapsam.
+
+**Aşamalı yol haritası (bağımlılık sırasına göre):**
+1. **Bağlantı/Network sistemi + zenginleştirilmiş profil sayfası** — PDF'e göre mesajlaşma ve birçok UI durumu ("bağlantı kur" vs "mesaj gönder") buna bağlı, bu yüzden temel/ilk aşama.
+2. **Mesajlaşma** — bağlantı sistemine bağımlı.
+3. **İçerik akışı (feed)** — gönderi paylaşma, beğeni, yorum.
+4. **Hikayeler** (24 saatlik içerik).
+5. **Keşfet / haber akışı** (otomatik içerik toplama, kişiselleştirme).
+6. **Kategori kataloğu** genişletmesi (üretici/konfeksiyoncu/boyahane vb. alt kategoriler).
+7. **Numune sürecini zaman damgalı timeline'a dönüştürme.**
+8. **Firma sayfasını zenginleştirme** (çalışan listesi, sertifikalar, ofis görselleri).
+
+Şu an **1. aşama (Bağlantı/Network sistemi)** üzerinde çalışılıyor.
+
+Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Ödeme/fatura akışı (hiç yok)
 - WhatsApp webhook'unu platform içi mesajlaşmaya bağlama
 - Mobile `Company` tipi ile Prisma şeması arasındaki `productCategories`/`employeeIds` tutarsızlığını gidermek
