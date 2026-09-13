@@ -1,17 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
-import { fetchProducts, fetchUnreadMessageCount, searchCompanies } from '../../api/client';
+import type { MainTabScreenProps } from '../../navigation/types';
+import { fetchProducts, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import type { Company, Product } from '../../types';
 import { colors, radius, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ProductList'>;
+type Props = MainTabScreenProps<'ProductList'>;
 
 const TYPE_LABELS: Record<Product['type'], string> = {
   raschel: 'Raschel',
@@ -21,13 +19,12 @@ const TYPE_LABELS: Record<Product['type'], string> = {
 };
 
 export function ProductListScreen({ navigation }: Props) {
-  const { user, logout } = useSession();
+  const { user } = useSession();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const queryRef = useRef(query);
   queryRef.current = query;
 
@@ -82,44 +79,26 @@ export function ProductListScreen({ navigation }: Props) {
     useCallback(() => {
       const signal = { cancelled: false };
       loadProducts(queryRef.current, signal);
-      if (user) {
-        fetchUnreadMessageCount()
-          .then(({ count }) => {
-            if (!signal.cancelled) setUnreadMessages(count);
-          })
-          .catch(() => {});
-      }
       return () => {
         signal.cancelled = true;
       };
-    }, [loadProducts, user])
+    }, [loadProducts])
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Ürünler</Text>
-          {user ? (
-            <Pressable
-              onPress={() => {
-                logout();
-                navigation.reset({ index: 0, routes: [{ name: 'RoleSelection' }] });
-              }}
-            >
-              <Text style={styles.logoutLink}>Çıkış</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        <TextInput
+          style={styles.search}
+          placeholder="İçerik, gramaj, kullanım alanı ara..."
+          placeholderTextColor={colors.textMuted}
+          value={query}
+          onChangeText={setQuery}
+        />
+        {/* Kumaş işiyle ilgili araçlar katalogun yanında kalıyor; gezinme
+            hedefleri (mesajlar, bağlantılar vb.) sekmelere ve Profil menüsüne
+            taşındı. */}
         <View style={styles.menuRow}>
-          {user ? (
-            <Pressable
-              onPress={() => navigation.navigate('Feed')}
-              style={[styles.menuChip, styles.menuChipPrimary]}
-            >
-              <Text style={[styles.menuChipText, styles.menuChipTextPrimary]}>Akış</Text>
-            </Pressable>
-          ) : null}
           <Pressable onPress={() => navigation.navigate('Advisor')} style={styles.menuChip}>
             <Text style={styles.menuChipText}>AI Danışman</Text>
           </Pressable>
@@ -129,46 +108,12 @@ export function ProductListScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.navigate('GarmentVisualCost')} style={styles.menuChip}>
             <Text style={styles.menuChipText}>Görsel Maliyet</Text>
           </Pressable>
-          {user ? (
-            <Pressable onPress={() => navigation.navigate('MySampleRequests')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>Taleplerim</Text>
-            </Pressable>
-          ) : null}
           {user?.companyId ? (
             <Pressable onPress={() => navigation.navigate('CompanyProfile')} style={styles.menuChip}>
               <Text style={styles.menuChipText}>Firmam</Text>
             </Pressable>
           ) : null}
-          {user?.isAdmin ? (
-            <Pressable onPress={() => navigation.navigate('Admin')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>Admin</Text>
-            </Pressable>
-          ) : null}
-          {user ? (
-            <Pressable onPress={() => navigation.navigate('Conversations')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>
-                {unreadMessages > 0 ? `Mesajlar (${unreadMessages})` : 'Mesajlar'}
-              </Text>
-            </Pressable>
-          ) : null}
-          {user ? (
-            <Pressable onPress={() => navigation.navigate('Connections')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>Bağlantılarım</Text>
-            </Pressable>
-          ) : null}
-          {user ? (
-            <Pressable onPress={() => navigation.navigate('ConnectionRequests')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>Bağlantı İstekleri</Text>
-            </Pressable>
-          ) : null}
         </View>
-        <TextInput
-          style={styles.search}
-          placeholder="İçerik, gramaj, kullanım alanı ara..."
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-        />
         {offline ? <Text style={styles.offlineNotice}>API'ye ulaşılamadı, örnek veriler gösteriliyor</Text> : null}
       </View>
       {loading && products.length === 0 ? (
@@ -224,12 +169,12 @@ export function ProductListScreen({ navigation }: Props) {
         )}
       />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -238,27 +183,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  logoutLink: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textMuted,
-  },
   menuRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   menuChip: {
     borderWidth: 1,
@@ -271,14 +200,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.primary,
-  },
-  // Akış, vizyona göre uygulamanın ana ekranı olacak — alt sekme çubuğu
-  // gelene kadar dolgulu chip ile öne çıkarıyoruz.
-  menuChipPrimary: {
-    backgroundColor: colors.primary,
-  },
-  menuChipTextPrimary: {
-    color: colors.primaryText,
   },
   search: {
     borderWidth: 1,

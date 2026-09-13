@@ -1,9 +1,7 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, Alert, Share, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
   deletePost,
@@ -16,7 +14,10 @@ import {
 import { PostCard } from './PostCard';
 import { colors, radius, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Feed'>;
+type Props = MainTabScreenProps<'Feed'>;
+
+// Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
+const REFRESH_THROTTLE_MS = 30000;
 
 export function FeedScreen({ navigation }: Props) {
   const { user } = useSession();
@@ -26,6 +27,7 @@ export function FeedScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadingMoreRef = useRef(false);
+  const lastLoadedAtRef = useRef(0);
 
   const loadFirstPage = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -34,6 +36,7 @@ export function FeedScreen({ navigation }: Props) {
         setPosts(fetched);
         setCursor(nextCursor);
         setError(null);
+        lastLoadedAtRef.current = Date.now();
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Akış alınamadı'))
       .finally(() => {
@@ -42,11 +45,16 @@ export function FeedScreen({ navigation }: Props) {
       });
   }, []);
 
-  // Yorum ekranından dönünce yorum sayısı güncellensin diye her odaklanmada
-  // ilk sayfa yeniden yükleniyor (sayfalama da sıfırlanıyor).
+  // Yorum ekranından dönünce yorum sayısı güncellensin diye odaklanmada ilk
+  // sayfa yeniden yükleniyor. Ama bu sekmeli yapıda her sekme geçişinde de
+  // tetikleniyor ve listeyi (dolayısıyla kaydırma konumunu) sıfırlıyordu —
+  // 30 saniyeden yeni bir yükleme varsa atlıyoruz.
   useFocusEffect(
     useCallback(() => {
+      const isFresh = Date.now() - lastLoadedAtRef.current < REFRESH_THROTTLE_MS;
+      if (isFresh && posts.length > 0) return;
       loadFirstPage();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loadFirstPage])
   );
 
@@ -126,14 +134,14 @@ export function FeedScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.container}>
         <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.container}>
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
@@ -174,12 +182,12 @@ export function FeedScreen({ navigation }: Props) {
         )}
       />
       {error && posts.length > 0 ? <Text style={styles.error}>{error}</Text> : null}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background },
   headerAction: { fontSize: 15, fontWeight: '600', color: colors.primary },
   listContent: { padding: spacing.lg },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },

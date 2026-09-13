@@ -65,8 +65,9 @@ export function PhoneVerificationScreen({ navigation }: Props) {
       }
 
       const { token, user } = await registerUser({ ...draft, verificationToken: result.verificationToken });
+      setSubmitting(false);
+      // Gezinme çağrısı yok: user dolunca RootNavigator ana sekmelere geçiyor.
       login(token, user);
-      navigation.navigate('ProductList');
     } catch (err) {
       const errCode = err instanceof ApiError ? err.code : undefined;
       setError(

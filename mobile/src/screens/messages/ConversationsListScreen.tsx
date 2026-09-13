@@ -1,15 +1,13 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, TextInput, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchConversations, type ConversationSummary } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
 import { colors, radius, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Conversations'>;
+type Props = MainTabScreenProps<'Conversations'>;
 
 const REFRESH_INTERVAL_MS = 15000;
 
@@ -68,14 +66,14 @@ export function ConversationsListScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.container}>
         <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.container}>
       <View style={styles.searchWrap}>
         <TextInput
           style={styles.search}
@@ -134,12 +132,12 @@ export function ConversationsListScreen({ navigation }: Props) {
           );
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background },
   headerAction: { fontSize: 15, fontWeight: '600', color: colors.primary },
   searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   search: {

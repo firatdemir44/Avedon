@@ -23,8 +23,9 @@ export function CompanyCodeScreen({ navigation }: Props) {
     setError(null);
     try {
       const { token, user } = await registerUser(draft);
+      setSubmitting(false);
+      // Gezinme çağrısı yok: user dolunca RootNavigator ana sekmelere geçiyor.
       login(token, user);
-      navigation.navigate('ProductList');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kayıt tamamlanamadı');
     } finally {

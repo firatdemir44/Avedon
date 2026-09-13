@@ -1,61 +1,59 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import {
   ApiError,
   fetchConnectionStatus,
-  fetchUserProfile,
   respondToConnectionRequest,
   sendConnectionRequest,
   startConversation,
   type ConnectionStatusResult,
-  type PublicUserProfile,
 } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { useUserProfile } from './useUserProfile';
+import { ProfileIdentity } from './ProfileIdentity';
+import { colors, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
+type Props = RootStackScreenProps<'Profile'>;
 
 export function ProfileScreen({ navigation, route }: Props) {
   const { userId } = route.params;
   const { user: currentUser } = useSession();
   const isSelf = currentUser?.id === userId;
 
-  const [profile, setProfile] = useState<PublicUserProfile | null>(null);
+  const { profile, loading, error: loadError, reload } = useUserProfile(userId);
   const [status, setStatus] = useState<ConnectionStatusResult | null>(null);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    Promise.all([fetchUserProfile(userId), isSelf ? Promise.resolve(null) : fetchConnectionStatus(userId)])
-      .then(([{ user }, statusResult]) => {
-        setProfile(user);
-        setStatus(statusResult);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Profil alınamadı'))
-      .finally(() => setLoading(false));
+  const loadStatus = useCallback(() => {
+    if (isSelf) return;
+    fetchConnectionStatus(userId)
+      .then(setStatus)
+      .catch(() => {});
   }, [userId, isSelf]);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      loadStatus();
+    }, [loadStatus])
   );
+
+  const refresh = () => {
+    reload();
+    loadStatus();
+  };
 
   const handleConnect = async () => {
     setActionLoading(true);
     try {
       await sendConnectionRequest(userId);
-      load();
+      refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'İstek gönderilemedi');
+      setActionError(err instanceof ApiError ? err.message : 'İstek gönderilemedi');
     } finally {
       setActionLoading(false);
     }
@@ -71,7 +69,7 @@ export function ProfileScreen({ navigation, route }: Props) {
         title: `${profile.firstName} ${profile.lastName}`,
       });
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Sohbet açılamadı');
+      setActionError(err instanceof ApiError ? err.message : 'Sohbet açılamadı');
     } finally {
       setActionLoading(false);
     }
@@ -82,9 +80,9 @@ export function ProfileScreen({ navigation, route }: Props) {
     setActionLoading(true);
     try {
       await respondToConnectionRequest(status.connectionId, nextStatus);
-      load();
+      refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'İşlem yapılamadı');
+      setActionError(err instanceof ApiError ? err.message : 'İşlem yapılamadı');
     } finally {
       setActionLoading(false);
     }
@@ -98,42 +96,23 @@ export function ProfileScreen({ navigation, route }: Props) {
     );
   }
 
-  if (error && !profile) {
+  if (!profile) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>{error}</Text>
+        <Text style={styles.empty}>{loadError ?? 'Profil bulunamadı'}</Text>
       </SafeAreaView>
     );
   }
 
-  if (!profile) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>Profil bulunamadı</Text>
-      </SafeAreaView>
-    );
-  }
+  const error = actionError ?? loadError;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <View style={styles.content}>
-        <Text style={styles.name}>
-          {profile.firstName} {profile.lastName}
-        </Text>
-        <Text style={styles.position}>{profile.position}</Text>
-
-        {profile.company ? (
-          <Pressable onPress={() => navigation.navigate('CompanyProfile', { companyId: profile.company!.id })}>
-            <Text style={styles.companyLink}>{profile.company.name}</Text>
-          </Pressable>
-        ) : null}
-
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Telefon</Text>
-          <Text style={profile.phone ? styles.rowValue : styles.rowValuePlaceholder}>
-            {profile.phone ?? 'Bağlantı kurulması gerekmektedir'}
-          </Text>
-        </View>
+        <ProfileIdentity
+          profile={profile}
+          onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
+        />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -178,59 +157,15 @@ export function ProfileScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  name: { fontSize: 24, fontWeight: '700', color: colors.text },
-  position: { fontSize: 15, color: colors.textMuted, marginTop: spacing.xs },
-  companyLink: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.primary,
-    marginTop: spacing.sm,
-  },
-  row: {
-    marginTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.md,
-  },
-  rowLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
-    marginBottom: 2,
-  },
-  rowValue: {
-    fontSize: 15,
-    color: colors.text,
-  },
-  rowValuePlaceholder: {
-    fontSize: 14,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-  },
-  actions: {
-    marginTop: spacing.lg,
-  },
+  actions: { marginTop: spacing.lg },
   connectedNote: {
     fontSize: 13,
     fontWeight: '600',
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  error: {
-    fontSize: 13,
-    color: colors.danger,
-    marginTop: spacing.md,
-  },
-  empty: {
-    textAlign: 'center',
-    color: colors.textMuted,
-    marginTop: spacing.xl,
-  },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  actionButton: { flex: 1 },
+  error: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
+  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

@@ -65,8 +65,8 @@ export function LoginScreen({ navigation }: Props) {
     try {
       const result = await verifyOtp(phone.trim(), code.trim());
       if (result.purpose === 'login') {
+        // Gezinme çağrısı gerekmiyor: user dolunca RootNavigator ana sekmelere geçiyor.
         login(result.token, result.user);
-        navigation.reset({ index: 0, routes: [{ name: 'ProductList' }] });
       } else {
         setError('Bu telefon numarasıyla kayıtlı hesap bulunamadı. Önce kayıt olmanız gerekiyor.');
       }
