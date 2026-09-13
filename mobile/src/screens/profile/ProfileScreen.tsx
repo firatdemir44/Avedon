@@ -12,6 +12,7 @@ import {
   fetchUserProfile,
   respondToConnectionRequest,
   sendConnectionRequest,
+  startConversation,
   type ConnectionStatusResult,
   type PublicUserProfile,
 } from '../../api/client';
@@ -55,6 +56,22 @@ export function ProfileScreen({ navigation, route }: Props) {
       load();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'İstek gönderilemedi');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenChat = async () => {
+    if (!profile) return;
+    setActionLoading(true);
+    try {
+      const { conversation } = await startConversation(userId);
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        title: `${profile.firstName} ${profile.lastName}`,
+      });
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Sohbet açılamadı');
     } finally {
       setActionLoading(false);
     }
@@ -146,7 +163,10 @@ export function ProfileScreen({ navigation, route }: Props) {
               </View>
             ) : null}
             {status.status === 'accepted' ? (
-              <PrimaryButton label="Bağlantıdasınız" onPress={() => {}} disabled />
+              <>
+                <Text style={styles.connectedNote}>Bağlantıdasınız</Text>
+                <PrimaryButton label="Mesaj Gönder" onPress={handleOpenChat} disabled={actionLoading} />
+              </>
             ) : null}
           </View>
         ) : null}
@@ -189,6 +209,12 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: spacing.lg,
+  },
+  connectedNote: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
   },
   actionRow: {
     flexDirection: 'row',

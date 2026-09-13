@@ -31,6 +31,9 @@ import { AdminScreen } from '../screens/admin/AdminScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
+import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
+import { ChatScreen } from '../screens/messages/ChatScreen';
+import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -144,6 +147,21 @@ export function RootNavigator() {
           name="ConnectionRequests"
           component={ConnectionRequestsScreen}
           options={{ headerShown: true, title: 'Bağlantı İstekleri' }}
+        />
+        <Stack.Screen
+          name="Conversations"
+          component={ConversationsListScreen}
+          options={{ headerShown: true, title: 'Mesajlar' }}
+        />
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={({ route }) => ({ headerShown: true, title: route.params.title })}
+        />
+        <Stack.Screen
+          name="NewConversation"
+          component={NewConversationScreen}
+          options={{ headerShown: true, title: 'Yeni Mesaj' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

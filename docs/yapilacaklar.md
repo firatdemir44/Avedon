@@ -4,6 +4,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## Açık İşler
 
+- **Telefonda test edilmeyi bekliyor:** Faz 1 (bağlantı sistemi) ve Faz 2 (mesajlaşma) kodu yazıldı, backend curl ile uçtan uca doğrulandı ve Metro paketi hatasız derlendi — ama henüz gerçek cihazda tıklanarak test edilmedi. Kullanıcı ev Wi-Fi'sine döndüğünde test edilecek.
 - **İncelenmeyi bekliyor:** Kullanıcının 2020'de hazırladığı orijinal Avedon proje temelleri — `Avedon v4.2 - Tasarım.xd` (Adobe XD tasarım dosyası) ve `Takyon Ai - Avedon Product.pdf`. Bu ikisi güncel mimari/trendlere göre projeyi yeniden değerlendirmek için kullanılacak. **Not:** `.xd` dosyası Adobe XD'nin kendi ikili/proprietary formatı — doğrudan okunamıyor, içeriğini görmek için ya Adobe XD ile PNG/PDF olarak dışa aktarılması ya da ekran görüntüleri alınması gerekecek.
 - **Gerçek SMS sağlayıcısı henüz yok:** OTP kodları şu an sadece backend konsoluna yazdırılıyor (geliştirme modu). Yayına çıkmadan önce Twilio gibi bir sağlayıcı eklenmeli (`backend/src/sms.ts` içinde yorum olarak nasıl ekleneceği yazılı).
 
@@ -23,7 +24,7 @@ Gerçek kimlik doğrulama tamamlandı (bkz. Tamamlananlar).
 7. **Numune sürecini zaman damgalı timeline'a dönüştürme.**
 8. **Firma sayfasını zenginleştirme** (çalışan listesi, sertifikalar, ofis görselleri).
 
-**1. aşama tamamlandı** (bkz. Tamamlananlar), şu an **2. aşama (Mesajlaşma)** planlanacak.
+**1. ve 2. aşama tamamlandı** (bkz. Tamamlananlar), sırada **3. aşama (İçerik akışı / feed)** var.
 
 Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Ödeme/fatura akışı (hiç yok)
@@ -38,4 +39,5 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - 2026-09-12: Git kimliği ayarlandı, otomatik commit/push izni kuruldu (`CLAUDE.md`, `.claude/settings.json`)
 - 2026-09-13: **Gerçek kimlik doğrulama** eklendi — SMS OTP tabanlı kayıt/giriş, 30 günlük oturum JWT'si, admin/ürün/numune talebi sahiplik kontrolleri artık sunucuda (client'a güvenmiyor). Eski `/api/login` ve "her kod kabul edilir" davranışı kaldırıldı.
 - 2026-09-13: **2020 vizyonu incelendi** (`Takyon Ai - Avedon Product.pdf`) ve kullanıcı tam sosyal ağ + B2B hibriti vizyonunu onayladı; aşamalı yol haritası oluşturuldu (yukarıda).
+- 2026-09-13: **Faz 2 — Mesajlaşma** tamamlandı. `Conversation` + `Message` modelleri (userAId < userBId kanonik sıralama), `/api/conversations` (başlat/listele/mesajlar/gönder/okundu/okunmamış-sayısı). Sohbet başlatmak ve yazmak için kabul edilmiş bağlantı şart, okumak için değil. Gerçek zamanlılık polling ile (sohbet 4sn, liste 15sn; uygulama arka plandayken duruyor). Mobilde: Mesajlar listesi (okunmamış rozeti, istemci tarafı arama), sohbet ekranı (iyimser gönderim + hata durumunda tekrar dene), yeni sohbet için bağlantı seçici, profilde "Mesaj Gönder", ana ekranda okunmamış sayaçlı "Mesajlar" chip'i. Uçtan uca curl ile doğrulandı (yabancı sohbete erişim 403, bağlantısız kişiye mesaj 403, boş mesaj 400, bozuk `since` 400, Türkçe karakterler byte-birebir).
 - 2026-09-13: **Faz 1 — Bağlantı sistemi + Profil sayfası** tamamlandı. Yeni `Connection` modeli (pending/accepted, reddetme = satır silme), `POST/PATCH /api/connections`, `GET /api/connections(?status=)`, `GET /api/connections/status/:userId`, `GET /api/users/:id` (bağlantı yoksa telefon alanı gizli). Mobilde: Profil ekranı (bağlantı kur/kabul/reddet butonları), Bağlantılarım ve Bağlantı İstekleri ekranları, firma sayfasında tıklanabilir çalışan listesi, gelen numune taleplerinde talep edenin adı artık profile bağlıyor. Uçtan uca curl ile doğrulandı (istek/kabul/red/kendine-istek-engeli/tekrar-istek-engeli/telefon gizliliği). Plan: `C:\Users\ebosc\.claude\plans\swift-rolling-kazoo.md`.

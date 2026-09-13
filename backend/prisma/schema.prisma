@@ -30,20 +30,23 @@ model Company {
 }
 
 model User {
-  id                  String          @id @default(cuid())
-  accountType         String
-  position            String
-  firstName           String
-  lastName            String
-  phone               String          @unique
-  phoneVerified       Boolean         @default(false)
-  isAdmin             Boolean         @default(false)
-  companyId           String?
-  company             Company?        @relation(fields: [companyId], references: [id])
-  sampleRequests      SampleRequest[]
-  sentConnections     Connection[]    @relation("ConnectionRequester")
-  receivedConnections Connection[]    @relation("ConnectionAddressee")
-  createdAt           DateTime        @default(now())
+  id                   String          @id @default(cuid())
+  accountType          String
+  position             String
+  firstName            String
+  lastName             String
+  phone                String          @unique
+  phoneVerified        Boolean         @default(false)
+  isAdmin              Boolean         @default(false)
+  companyId            String?
+  company              Company?        @relation(fields: [companyId], references: [id])
+  sampleRequests       SampleRequest[]
+  sentConnections      Connection[]    @relation("ConnectionRequester")
+  receivedConnections  Connection[]    @relation("ConnectionAddressee")
+  conversationsAsUserA Conversation[]  @relation("ConversationUserA")
+  conversationsAsUserB Conversation[]  @relation("ConversationUserB")
+  messages             Message[]
+  createdAt            DateTime        @default(now())
 }
 
 model Product {
@@ -82,6 +85,42 @@ model PhoneOtp {
   expiresAt DateTime
   attempts  Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+// Mesajlaşma değişmezleri (Conversation / Message):
+// - userAId her zaman userBId'den küçüktür (string karşılaştırması). Böylece iki
+//   kişi arasındaki sohbet tek bir kayıtla, tek sorguda deterministik bulunur.
+// - Okunmamış mesaj = senderId != ben && readAt == null.
+// - Sohbet başlatmak ve mesaj göndermek için karşılıklı kabul edilmiş bir
+//   Connection gerekir; okumak için gerekmez (ileride bağlantı kaldırılırsa geçmiş
+//   kaybolmasın diye).
+// - Gerçek zamanlılık şimdilik polling ile (4sn sohbet, 15sn liste). WebSocket'e
+//   geçilecekse index.ts'teki app.listen -> http.createServer(app) dönüşümü gerekir.
+model Conversation {
+  id            String    @id @default(cuid())
+  userAId       String
+  userA         User      @relation("ConversationUserA", fields: [userAId], references: [id])
+  userBId       String
+  userB         User      @relation("ConversationUserB", fields: [userBId], references: [id])
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  messages      Message[]
+
+  @@unique([userAId, userBId])
+  @@index([userBId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([conversationId, createdAt])
 }
 
 // status: "pending" | "accepted" — reddetme bir statü değil, satırın silinmesiyle

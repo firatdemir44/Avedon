@@ -25,4 +25,7 @@ export type RootStackParamList = {
   Profile: { userId: string };
   Connections: undefined;
   ConnectionRequests: undefined;
+  Conversations: undefined;
+  Chat: { conversationId: string; title: string };
+  NewConversation: undefined;
 };

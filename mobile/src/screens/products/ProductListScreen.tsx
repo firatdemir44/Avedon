@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { fetchProducts, searchCompanies } from '../../api/client';
+import { fetchProducts, fetchUnreadMessageCount, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
@@ -27,6 +27,7 @@ export function ProductListScreen({ navigation }: Props) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const queryRef = useRef(query);
   queryRef.current = query;
 
@@ -81,10 +82,17 @@ export function ProductListScreen({ navigation }: Props) {
     useCallback(() => {
       const signal = { cancelled: false };
       loadProducts(queryRef.current, signal);
+      if (user) {
+        fetchUnreadMessageCount()
+          .then(({ count }) => {
+            if (!signal.cancelled) setUnreadMessages(count);
+          })
+          .catch(() => {});
+      }
       return () => {
         signal.cancelled = true;
       };
-    }, [loadProducts])
+    }, [loadProducts, user])
   );
 
   return (
@@ -126,6 +134,13 @@ export function ProductListScreen({ navigation }: Props) {
           {user?.isAdmin ? (
             <Pressable onPress={() => navigation.navigate('Admin')} style={styles.menuChip}>
               <Text style={styles.menuChipText}>Admin</Text>
+            </Pressable>
+          ) : null}
+          {user ? (
+            <Pressable onPress={() => navigation.navigate('Conversations')} style={styles.menuChip}>
+              <Text style={styles.menuChipText}>
+                {unreadMessages > 0 ? `Mesajlar (${unreadMessages})` : 'Mesajlar'}
+              </Text>
             </Pressable>
           ) : null}
           {user ? (

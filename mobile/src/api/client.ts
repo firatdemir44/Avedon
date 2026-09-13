@@ -154,6 +154,65 @@ export function fetchIncomingConnectionRequests() {
   return request<{ requests: IncomingConnectionRequest[] }>('/connections?status=pending');
 }
 
+// Mesajlaşma. Tarih alanları ISO string olarak geliyor (Express, Prisma Date'ini
+// JSON'a serialize ederken ISO'ya çeviriyor).
+export type ConversationParticipant = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  company: { id: string; name: string } | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  body: string;
+  senderId: string;
+  createdAt: string;
+  readAt: string | null;
+};
+
+export type ConversationSummary = {
+  id: string;
+  user: ConversationParticipant;
+  lastMessage: { id: string; body: string; createdAt: string; senderId: string } | null;
+  unreadCount: number;
+  lastMessageAt: string;
+};
+
+export function fetchConversations() {
+  return request<{ conversations: ConversationSummary[] }>('/conversations');
+}
+
+export function fetchUnreadMessageCount() {
+  return request<{ count: number }>('/conversations/unread-count');
+}
+
+export function startConversation(userId: string) {
+  return request<{ conversation: ConversationSummary }>('/conversations', {
+    method: 'POST',
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export function fetchMessages(conversationId: string, since?: string) {
+  const query = since ? `?since=${encodeURIComponent(since)}` : '';
+  return request<{ messages: ChatMessage[] }>(`/conversations/${conversationId}/messages${query}`);
+}
+
+export function sendMessage(conversationId: string, body: string) {
+  return request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function markConversationRead(conversationId: string) {
+  return request<{ ok: true; updated: number }>(`/conversations/${conversationId}/read`, {
+    method: 'PATCH',
+  });
+}
+
 export function searchCompanies(search: string) {
   return request<{ companies: Company[] }>(`/companies?search=${encodeURIComponent(search)}`);
 }

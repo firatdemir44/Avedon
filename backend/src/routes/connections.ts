@@ -40,7 +40,9 @@ connectionsRouter.post('/', async (req, res) => {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       return res.status(409).json({ error: 'already_exists' });
     }
-    throw err;
+    // Express 4 async handler'daki throw'u yakalamıyor — istek askıda kalmasın.
+    console.error('[connections]', err);
+    res.status(500).json({ error: 'server_error' });
   }
 });
 
