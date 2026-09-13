@@ -9,7 +9,7 @@ import { useSession } from '../../context/SessionContext';
 import { createPost, fetchMyProducts, type MyProductOption, type PostVisibility } from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { pickCompressedImage } from '../../features/imagePicker';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePost'>;
 
@@ -180,42 +180,43 @@ const styles = StyleSheet.create({
     minHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     padding: spacing.md,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
     textAlignVertical: 'top',
   },
-  counter: { fontSize: 12, color: colors.textMuted, alignSelf: 'flex-end', marginTop: spacing.xs },
+  counter: { ...typography.caption, color: colors.textMuted, alignSelf: 'flex-end', marginTop: spacing.xs },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginTop: spacing.lg,
     marginBottom: spacing.xs,
   },
-  hint: { fontSize: 12, color: colors.textMuted, marginBottom: spacing.sm },
+  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
   preview: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radius.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   imageActions: { flexDirection: 'row', gap: spacing.sm },
   flexButton: { flex: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
+  chipText: { ...typography.label, color: colors.text },
   chipTextSelected: { color: colors.primaryText },
-  error: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
+  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
 });

@@ -13,7 +13,7 @@ import {
   type FeedPost,
 } from '../../api/client';
 import { PostCard } from './PostCard';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
 
@@ -202,12 +202,13 @@ export function FeedScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerAction: { fontSize: 15, fontWeight: '600', color: colors.accent },
+  headerAction: { ...typography.bodyStrong, color: colors.accent },
   headerLeftButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   listContent: { padding: spacing.lg },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,

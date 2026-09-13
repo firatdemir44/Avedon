@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, shadow, spacing, typography } from '../theme';
 
 interface Row {
   label: string;
@@ -22,12 +22,11 @@ export function ResultCard({ rows }: { rows: Row[] }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    backgroundColor: colors.surfaceTonal,
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.lg,
+    ...shadow.card,
   },
   row: {
     flexDirection: 'row',
@@ -35,12 +34,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   label: {
-    fontSize: 14,
+    ...typography.body,
     color: colors.textMuted,
   },
   value: {
-    fontSize: 15,
+    ...typography.bodyStrong,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.primary,
   },
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { PublicUserProfile } from '../../api/client';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 interface Props {
   profile: PublicUserProfile;
@@ -34,12 +34,11 @@ export function ProfileIdentity({ profile, onOpenCompany }: Props) {
 }
 
 const styles = StyleSheet.create({
-  name: { fontSize: 24, fontWeight: '700', color: colors.text },
-  position: { fontSize: 15, color: colors.textMuted, marginTop: spacing.xs },
+  name: { ...typography.title, fontSize: 24, lineHeight: 30, color: colors.primary },
+  position: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
   companyLink: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.primary,
+    ...typography.bodyStrong,
+    color: colors.accent,
     marginTop: spacing.sm,
   },
   row: {
@@ -49,11 +48,11 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   rowLabel: {
-    fontSize: 12,
+    ...typography.caption,
     fontWeight: '600',
     color: colors.textMuted,
     marginBottom: 2,
   },
-  rowValue: { fontSize: 15, color: colors.text },
-  rowValuePlaceholder: { fontSize: 14, color: colors.textMuted, fontStyle: 'italic' },
+  rowValue: { ...typography.body, color: colors.text },
+  rowValuePlaceholder: { ...typography.body, color: colors.textMuted },
 });

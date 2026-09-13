@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { askAdvisor, type AdvisorMessage } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 interface ChatItem extends AdvisorMessage {
   id: string;
@@ -146,16 +146,16 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   notConfiguredText: {
+    ...typography.body,
     textAlign: 'center',
     color: colors.textMuted,
-    fontSize: 14,
   },
   listContent: {
     padding: spacing.lg,
     gap: spacing.sm,
   },
   bubble: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     maxWidth: '85%',
@@ -163,22 +163,21 @@ const styles = StyleSheet.create({
   userBubble: {
     backgroundColor: colors.primary,
     alignSelf: 'flex-end',
+    borderBottomRightRadius: radius.sm,
   },
   assistantBubble: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignSelf: 'flex-start',
+    borderBottomLeftRadius: radius.sm,
+    ...shadow.card,
   },
   userText: {
+    ...typography.body,
     color: colors.primaryText,
-    fontSize: 15,
-    lineHeight: 21,
   },
   assistantText: {
+    ...typography.body,
     color: colors.text,
-    fontSize: 15,
-    lineHeight: 21,
   },
   suggestions: {
     paddingHorizontal: spacing.lg,
@@ -186,16 +185,19 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   suggestionChip: {
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     marginBottom: spacing.xs,
   },
   suggestionText: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.text,
   },
   inputRow: {
@@ -208,24 +210,25 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
   sendButton: {
+    minHeight: MIN_TOUCH,
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
   sendButtonText: {
+    ...typography.label,
     color: colors.primaryText,
-    fontWeight: '600',
-    fontSize: 14,
   },
 });

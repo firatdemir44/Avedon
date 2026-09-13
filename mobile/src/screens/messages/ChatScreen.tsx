@@ -25,7 +25,7 @@ import {
   type ChatMessage,
 } from '../../api/client';
 import { formatClockTime } from '../../features/time';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -254,8 +254,10 @@ export function ChatScreen({ route }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  // Baloncuklar: gönderenin tarafındaki köşe sivri kalıyor (konuşma yönü
+  // okunsun diye), diğer üç köşe yumuşak.
   bubble: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
     marginBottom: spacing.sm,
     maxWidth: '85%',
@@ -263,15 +265,16 @@ const styles = StyleSheet.create({
   myBubble: {
     backgroundColor: colors.primary,
     alignSelf: 'flex-end',
+    borderBottomRightRadius: radius.sm,
   },
   otherBubble: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignSelf: 'flex-start',
+    borderBottomLeftRadius: radius.sm,
+    ...shadow.card,
   },
-  myText: { color: colors.primaryText, fontSize: 15, lineHeight: 21 },
-  otherText: { color: colors.text, fontSize: 15, lineHeight: 21 },
+  myText: { ...typography.body, color: colors.primaryText },
+  otherText: { ...typography.body, color: colors.text },
   timeText: { fontSize: 11, marginTop: 4 },
   myTimeText: { color: colors.primaryText, opacity: 0.8, textAlign: 'right' },
   otherTimeText: { color: colors.textMuted },
@@ -285,28 +288,31 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
   sendButton: {
+    minHeight: MIN_TOUCH,
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
-  sendButtonText: { color: colors.primaryText, fontWeight: '600', fontSize: 14 },
+  sendButtonText: { ...typography.label, color: colors.primaryText },
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,
   },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

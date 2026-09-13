@@ -5,7 +5,7 @@ import { TextField } from '../../components/TextField';
 import { ResultCard } from '../../components/ResultCard';
 import { convertYarnCount, type YarnCountSystem } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 
 const SYSTEMS: { value: YarnCountSystem; label: string }[] = [
   { value: 'tex', label: 'Tex' },
@@ -60,8 +60,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginBottom: spacing.xs,
   },
@@ -72,21 +71,23 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   chip: {
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   chipSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
   chipText: {
-    fontSize: 14,
-    color: colors.text,
+    ...typography.label,
     fontWeight: '500',
+    color: colors.text,
   },
   chipTextSelected: {
     color: colors.primaryText,

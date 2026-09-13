@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 import type { AccountType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RoleSelection'>;
@@ -61,33 +61,36 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   card: {
-    borderWidth: 1,
-    borderColor: colors.border,
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
     borderRadius: radius.md,
     padding: spacing.md,
     backgroundColor: colors.surface,
+    ...shadow.card,
   },
   cardSelected: {
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderWidth: 2,
+    backgroundColor: colors.surfaceTonal,
   },
   cardTitle: {
-    fontSize: 16,
+    ...typography.subtitle,
     fontWeight: '700',
-    color: colors.text,
+    color: colors.primary,
     marginBottom: spacing.xs,
   },
   cardDescription: {
-    fontSize: 14,
+    ...typography.body,
     color: colors.textMuted,
   },
   loginLink: {
     marginTop: spacing.lg,
+    minHeight: MIN_TOUCH,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   loginLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
+    ...typography.bodyStrong,
+    color: colors.accent,
   },
 });

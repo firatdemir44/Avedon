@@ -1,18 +1,22 @@
 import React from 'react';
 import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
 
 interface Props extends TextInputProps {
   label: string;
 }
 
-export function TextField({ label, style, ...inputProps }: Props) {
+export function TextField({ label, style, multiline, ...inputProps }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={[styles.input, style]}
+        // Tasarımda form alanları tam yuvarlak ve açık mavi dolgulu. Çok satırlı
+        // alanda tam yuvarlak köşe metni kenardan kırptığı için orada yumuşak
+        // köşe kullanılıyor.
+        style={[styles.input, multiline ? styles.multiline : styles.single, style]}
         placeholderTextColor={colors.textMuted}
+        multiline={multiline}
         {...inputProps}
       />
     </View>
@@ -24,19 +28,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginBottom: spacing.xs,
+    marginLeft: spacing.sm,
   },
   input: {
+    minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 4,
     fontSize: 16,
     color: colors.text,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
+  single: { borderRadius: radius.pill },
+  multiline: { borderRadius: radius.md, minHeight: 96, textAlignVertical: 'top' },
 });

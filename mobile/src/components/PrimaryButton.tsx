@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
 
 interface Props {
   label: string;
@@ -16,9 +16,11 @@ export function PrimaryButton({ label, onPress, disabled, variant = 'primary', s
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[
+      // Basılı durumda hafif sönme: dokunmanın algılandığı görülsün.
+      style={({ pressed }) => [
         styles.base,
         isPrimary ? styles.primary : styles.secondary,
+        pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
@@ -30,8 +32,10 @@ export function PrimaryButton({ label, onPress, disabled, variant = 'primary', s
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    minHeight: MIN_TOUCH,
+    paddingVertical: spacing.sm + 4,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -39,21 +43,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   secondary: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  pressed: {
+    opacity: 0.85,
   },
   disabled: {
     opacity: 0.4,
   },
   primaryText: {
+    ...typography.subtitle,
     color: colors.primaryText,
-    fontSize: 16,
-    fontWeight: '600',
   },
   secondaryText: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '600',
+    ...typography.subtitle,
+    color: colors.primary,
   },
 });

@@ -5,7 +5,7 @@ import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchConversations, type ConversationSummary } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Conversations'>;
 
@@ -138,26 +138,26 @@ export function ConversationsListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerAction: { fontSize: 15, fontWeight: '600', color: colors.primary },
+  headerAction: { ...typography.bodyStrong, color: colors.accent },
   searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   search: {
+    minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -165,25 +165,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text, flexShrink: 1 },
-  time: { fontSize: 12, color: colors.textMuted },
-  meta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  name: { ...typography.subtitle, fontWeight: '700', color: colors.text, flexShrink: 1 },
+  time: { ...typography.caption, color: colors.textMuted },
+  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.xs,
   },
-  preview: { fontSize: 14, color: colors.textMuted, flex: 1 },
+  preview: { ...typography.body, color: colors.textMuted, flex: 1 },
   previewUnread: { color: colors.text, fontWeight: '600' },
   unreadBadge: {
     minWidth: 22,
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accent,
     alignItems: 'center',
   },
-  unreadBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primaryText },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  unreadBadgeText: { ...typography.caption, fontWeight: '700', color: colors.primaryText },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

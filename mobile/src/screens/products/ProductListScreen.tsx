@@ -6,8 +6,9 @@ import { fetchProducts, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
+import { Badge } from '../../components/Badge';
 import type { Company, Product } from '../../types';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
@@ -143,7 +144,7 @@ export function ProductListScreen({ navigation }: Props) {
             <View style={styles.cardBody}>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.code}>{item.code}</Text>
-                <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
+                <Badge label={TYPE_LABELS[item.type]} tone="outline" />
               </View>
               {item.company ? <Text style={styles.company}>{item.company.name}</Text> : null}
               <Text style={styles.content}>{item.content}</Text>
@@ -187,25 +188,26 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   menuChip: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.md,
-    paddingVertical: spacing.xs,
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
   menuChipText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.primary,
   },
   search: {
+    minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
   listContent: {
@@ -217,11 +219,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
   cardBody: {
     flex: 1,
@@ -234,28 +235,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   code: {
-    fontSize: 16,
+    ...typography.subtitle,
     fontWeight: '700',
-    color: colors.text,
-  },
-  typeBadge: {
-    fontSize: 12,
-    fontWeight: '600',
     color: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
   },
   company: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.accent,
     marginBottom: spacing.xs,
   },
   content: {
-    fontSize: 14,
+    ...typography.body,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -265,57 +255,56 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   meta: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textMuted,
   },
   useArea: {
-    fontSize: 13,
+    ...typography.caption,
     color: colors.textMuted,
-    fontStyle: 'italic',
   },
   sampleButton: {
     marginTop: spacing.sm,
     alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm,
   },
   sampleButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
+    ...typography.label,
+    color: colors.primaryText,
   },
   companySection: {
     marginBottom: spacing.sm,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.text,
+    ...typography.heading,
+    color: colors.primary,
     marginBottom: spacing.sm,
   },
   companyRow: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    ...shadow.card,
   },
   companyRowText: {
-    fontSize: 15,
-    fontWeight: '600',
+    ...typography.bodyStrong,
     color: colors.text,
   },
   empty: {
+    ...typography.body,
     textAlign: 'center',
     color: colors.textMuted,
     marginTop: spacing.xl,
   },
   offlineNotice: {
-    fontSize: 12,
+    ...typography.caption,
     color: colors.danger,
     marginTop: spacing.xs,
   },

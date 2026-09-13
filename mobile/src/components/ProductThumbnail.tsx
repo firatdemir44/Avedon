@@ -49,15 +49,12 @@ export function ProductThumbnail({ productId, hasImage, size = 76 }: Props) {
 
 const styles = StyleSheet.create({
   image: {
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTonal,
   },
   placeholder: {
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTonal,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 4,

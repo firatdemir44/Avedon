@@ -10,7 +10,7 @@ import {
   respondToConnectionRequest,
   type IncomingConnectionRequest,
 } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectionRequests'>;
 
@@ -96,19 +96,18 @@ const styles = StyleSheet.create({
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  name: { ...typography.subtitle, fontWeight: '700', color: colors.text },
+  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
   actionRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginTop: spacing.sm,
   },
   actionButton: { flex: 1 },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

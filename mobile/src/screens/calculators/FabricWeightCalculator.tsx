@@ -6,7 +6,7 @@ import { ResultCard } from '../../components/ResultCard';
 import { calculateFabricWeightGsm } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 interface Fields {
   tex: string;
@@ -51,7 +51,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   hint: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.textMuted,
     marginBottom: spacing.md,
   },

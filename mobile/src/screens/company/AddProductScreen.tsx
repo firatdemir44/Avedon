@@ -10,7 +10,7 @@ import { createProduct, updateProduct, deleteProduct, fetchProduct } from '../..
 import { pickCompressedImage } from '../../features/imagePicker';
 import { loadProductImage, setCachedProductImage } from '../../features/products/productImageCache';
 import { parseNumber } from '../../features/calculators/parse';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddProduct'>;
@@ -260,14 +260,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
+    ...typography.title,
+    color: colors.primary,
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
     marginBottom: spacing.xs,
   },
@@ -276,22 +274,20 @@ const styles = StyleSheet.create({
     aspectRatio: 4 / 3,
     borderRadius: radius.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   previewPlaceholder: {
     width: '100%',
     aspectRatio: 4 / 3,
     borderRadius: radius.md,
     marginBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
+    backgroundColor: colors.surfaceTonal,
     alignItems: 'center',
     justifyContent: 'center',
   },
   previewPlaceholderText: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.textMuted,
   },
   typeRow: {
@@ -301,27 +297,30 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   typeChip: {
+    minHeight: MIN_TOUCH - 8,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   typeChipSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
   typeChipText: {
-    fontSize: 14,
-    color: colors.text,
+    ...typography.label,
     fontWeight: '500',
+    color: colors.text,
   },
   typeChipTextSelected: {
     color: colors.primaryText,
   },
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     marginBottom: spacing.md,
   },

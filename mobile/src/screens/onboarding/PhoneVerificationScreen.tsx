@@ -8,7 +8,7 @@ import { OtpCodeField } from '../../components/OtpCodeField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, registerUser, requestOtp, verifyOtp } from '../../api/client';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
 
@@ -116,7 +116,8 @@ export function PhoneVerificationScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     marginBottom: spacing.md,
   },

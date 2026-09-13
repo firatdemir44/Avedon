@@ -9,7 +9,8 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { colors, radius, spacing } from '../../theme';
+import { Badge } from '../../components/Badge';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
@@ -109,7 +110,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.titleRow}>
           <Text style={styles.code}>{product.code}</Text>
-          <Text style={styles.typeBadge}>{TYPE_LABELS[product.type]}</Text>
+          <Badge label={TYPE_LABELS[product.type]} tone="outline" />
         </View>
 
         {product.company ? (
@@ -126,9 +127,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               <Text style={styles.companyName}>{product.company.name}</Text>
               <View style={styles.badgeRow}>
                 {product.company.verification === 'dogrulanmis' ? (
-                  <Text style={styles.badge}>Doğrulanmış Üretici</Text>
+                  <Badge label="Doğrulanmış Üretici" />
                 ) : null}
-                <Text style={styles.badge}>Toplam {product.companyProductCount} Ürün</Text>
+                <Badge label={`Toplam ${product.companyProductCount} Ürün`} />
               </View>
             </View>
           </Pressable>
@@ -195,24 +196,22 @@ function SpecRow({ label, value, last }: { label: string; value: string; last?: 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xl },
+  // Tasarımdaki kalın mavi çerçeve yerine yumuşak köşe + tonlu zemin: çerçeveli
+  // fotoğraf bugünkü arayüzlerde eskimiş duruyor.
   hero: {
     width: '100%',
     height: 260,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.accent,
+    borderRadius: radius.lg,
+    backgroundColor: colors.surfaceTonal,
   },
   heroPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderStyle: 'dashed',
-    borderColor: colors.border,
   },
-  heroPlaceholderText: { color: colors.textMuted, fontSize: 13 },
+  heroPlaceholderText: { ...typography.label, fontWeight: '400', color: colors.textMuted },
   zoomHint: {
+    ...typography.caption,
     textAlign: 'center',
-    fontSize: 12,
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
@@ -222,49 +221,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing.md,
   },
-  code: { fontSize: 22, fontWeight: '700', color: colors.primary, flex: 1 },
-  typeBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
+  code: { ...typography.title, color: colors.primary, flex: 1 },
   companyCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.md,
+    ...shadow.card,
   },
   companyText: { flex: 1, marginLeft: spacing.md },
-  companyName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  companyName: { ...typography.subtitle, fontWeight: '700', color: colors.text },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
-  badge: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.accent,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
   specCard: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.md,
+    ...shadow.card,
   },
-  specTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  specTitle: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -275,8 +252,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   specRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
-  specLabel: { fontSize: 13, color: colors.textMuted },
-  specValue: { fontSize: 14, color: colors.text, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
-  error: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  specLabel: { ...typography.label, fontWeight: '400', color: colors.textMuted },
+  specValue: { ...typography.label, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

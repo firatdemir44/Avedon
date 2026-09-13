@@ -5,8 +5,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchMySampleRequests, type SampleRequestRow } from '../../api/client';
+import { Badge } from '../../components/Badge';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
@@ -65,7 +66,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
               <Text style={styles.code}>{item.product.code}</Text>
               {/* Etiket sunucudan geliyor: son adımın adı teslimat moduna göre
                   değişiyor, istemcide ikinci bir eşleme tutulmuyor. */}
-              <Text style={styles.statusBadge}>{item.statusLabel}</Text>
+              <Badge label={item.statusLabel} />
             </View>
             <Text style={styles.meta}>{item.product.company.name}</Text>
             <Text style={styles.meta}>
@@ -84,11 +85,10 @@ const styles = StyleSheet.create({
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -96,18 +96,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  code: { fontSize: 16, fontWeight: '700', color: colors.text },
-  statusBadge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  meta: { fontSize: 13, color: colors.textMuted },
-  trackLink: { fontSize: 13, fontWeight: '600', color: colors.accent, marginTop: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  code: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
+  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted },
+  trackLink: { ...typography.label, color: colors.accent, marginTop: spacing.sm },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

@@ -5,7 +5,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useRegistration } from '../../context/RegistrationContext';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Position'>;
 
@@ -45,21 +45,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   chip: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     paddingVertical: spacing.sm + 4,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md + 2,
+    backgroundColor: colors.surfaceTonal,
   },
   chipSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
   chipText: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.text,
-    fontWeight: '500',
   },
   chipTextSelected: {
     color: colors.primaryText,

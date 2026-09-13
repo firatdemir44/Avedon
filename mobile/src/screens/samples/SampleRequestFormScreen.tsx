@@ -7,7 +7,7 @@ import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import { createSampleRequest } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'SampleRequestForm'>;
 
@@ -103,8 +103,8 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: spacing.lg },
-  sectionLabel: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
+  title: { ...typography.title, color: colors.primary, marginBottom: spacing.lg },
+  sectionLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
   option: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -115,7 +115,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.sm,
   },
-  optionSelected: { borderColor: colors.accent, borderWidth: 2 },
+  optionSelected: {
+    borderColor: colors.accent,
+    borderWidth: 2,
+    backgroundColor: colors.surfaceTonal,
+  },
   radio: {
     width: 20,
     height: 20,
@@ -129,8 +133,8 @@ const styles = StyleSheet.create({
   radioSelected: { borderColor: colors.accent },
   radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
   optionText: { flex: 1, marginLeft: spacing.md },
-  optionTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  optionTitle: { ...typography.bodyStrong, color: colors.text },
   optionTitleSelected: { color: colors.primary },
-  optionDescription: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  error: { fontSize: 13, color: colors.danger, marginBottom: spacing.md },
+  optionDescription: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
+  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginBottom: spacing.md },
 });

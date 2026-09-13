@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './MainTabs';
 import { useSession } from '../context/SessionContext';
-import { colors } from '../theme';
+import { colors, typography } from '../theme';
 import { RoleSelectionScreen } from '../screens/onboarding/RoleSelectionScreen';
 import { PositionScreen } from '../screens/onboarding/PositionScreen';
 import { PersonalInfoScreen } from '../screens/onboarding/PersonalInfoScreen';
@@ -69,7 +69,16 @@ export function RootNavigator() {
       {/* Giriş durumuna göre iki ayrı ağaç render ediliyor: giriş/çıkış sonrası
           ayrıca gezinme çağrısı gerekmiyor ve kayıt biten kullanıcı geri tuşuyla
           kayıt adımlarına dönemiyor. */}
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          // İtilen ekranların başlıkları da sekmelerdekiyle aynı dilde.
+          headerTitleStyle: { ...typography.heading, color: colors.primary },
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.accent,
+        }}
+      >
         {user ? (
           <Stack.Group>
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />

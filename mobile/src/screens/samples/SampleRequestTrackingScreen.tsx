@@ -14,7 +14,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { TextField } from '../../components/TextField';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { formatDateTime } from '../../features/time';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
@@ -173,19 +173,20 @@ const DOT_SIZE = 22;
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
+  // Tasarımda ürün adı açık mavi bir hapın içinde duruyor.
   productPill: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
   },
-  productCode: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  productCompany: { fontSize: 12, color: colors.textMuted },
-  deliveryMode: { fontSize: 14, color: colors.text, marginTop: spacing.md },
-  requestNote: { fontSize: 13, color: colors.textMuted, marginTop: spacing.xs, fontStyle: 'italic' },
+  productCode: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
+  productCompany: { ...typography.caption, color: colors.textMuted },
+  deliveryMode: { ...typography.body, color: colors.text, marginTop: spacing.md },
+  requestNote: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: spacing.xs },
   timeline: { marginTop: spacing.lg },
   stepRow: { flexDirection: 'row' },
   rail: { width: DOT_SIZE + spacing.md, alignItems: 'center' },
@@ -204,16 +205,23 @@ const styles = StyleSheet.create({
   line: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2 },
   lineDone: { backgroundColor: colors.accent },
   stepBody: { flex: 1, paddingBottom: spacing.lg },
-  stepLabel: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  stepLabelPending: { color: colors.textMuted, fontWeight: '600' },
-  stepTime: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
-  stepNote: { fontSize: 14, color: colors.text, marginTop: spacing.xs },
-  stepDescription: { fontSize: 14, color: colors.textMuted, marginTop: spacing.xs },
-  actorRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
+  stepLabel: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
+  stepLabelPending: { color: colors.textMuted },
+  stepTime: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
+  stepNote: { ...typography.body, color: colors.text, marginTop: spacing.xs },
+  stepDescription: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
+  actorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.sm,
+    backgroundColor: colors.surfaceTonal,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
   actorText: { marginLeft: spacing.sm, flex: 1 },
-  actorName: { fontSize: 14, fontWeight: '600', color: colors.text },
-  actorMeta: { fontSize: 12, color: colors.textMuted },
+  actorName: { ...typography.label, color: colors.text },
+  actorMeta: { ...typography.caption, color: colors.textMuted },
   actionBox: { marginTop: spacing.md },
-  error: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

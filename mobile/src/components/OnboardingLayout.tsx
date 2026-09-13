@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, spacing } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 interface Props {
   step: number;
@@ -43,26 +43,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
   },
   progressFill: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.accent,
   },
   content: {
     padding: spacing.lg,
     flexGrow: 1,
   },
   stepLabel: {
-    fontSize: 13,
+    ...typography.label,
     color: colors.textMuted,
-    fontWeight: '600',
     marginBottom: spacing.xs,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
+    ...typography.title,
+    fontSize: 26,
+    lineHeight: 32,
+    color: colors.primary,
     marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: 15,
+    ...typography.body,
     color: colors.textMuted,
     marginBottom: spacing.lg,
   },

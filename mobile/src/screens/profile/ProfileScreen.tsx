@@ -15,7 +15,7 @@ import {
 } from '../../api/client';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'Profile'>;
 
@@ -159,13 +159,12 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   actions: { marginTop: spacing.lg },
   connectedNote: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.textMuted,
     marginBottom: spacing.sm,
   },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1 },
-  error: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

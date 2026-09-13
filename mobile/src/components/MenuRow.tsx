@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, Pressable, StyleSheet } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../theme';
 
 interface Props {
   label: string;
@@ -10,7 +10,10 @@ interface Props {
 
 export function MenuRow({ label, onPress, variant = 'default' }: Props) {
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+      onPress={onPress}
+    >
       <Text style={[styles.label, variant === 'danger' && styles.labelDanger]}>{label}</Text>
     </Pressable>
   );
@@ -18,14 +21,16 @@ export function MenuRow({ label, onPress, variant = 'default' }: Props) {
 
 const styles = StyleSheet.create({
   row: {
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.sm,
+    ...shadow.card,
   },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
+  rowPressed: { backgroundColor: colors.surfaceTonal },
+  label: { ...typography.bodyStrong, color: colors.text },
   labelDanger: { color: colors.danger },
 });

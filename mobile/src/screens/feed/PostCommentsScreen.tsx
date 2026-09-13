@@ -23,7 +23,7 @@ import {
   type FeedPostComment,
 } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
 
@@ -151,11 +151,10 @@ const styles = StyleSheet.create({
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    ...shadow.card,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -163,10 +162,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  name: { fontSize: 14, fontWeight: '700', color: colors.text, flexShrink: 1 },
-  time: { fontSize: 12, color: colors.textMuted },
-  meta: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
-  body: { fontSize: 15, lineHeight: 21, color: colors.text, marginTop: spacing.xs },
+  name: { ...typography.label, fontWeight: '700', color: colors.accent, flexShrink: 1 },
+  time: { ...typography.caption, color: colors.textMuted },
+  meta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
+  body: { ...typography.body, color: colors.text, marginTop: spacing.xs },
   inputRow: {
     flexDirection: 'row',
     padding: spacing.md,
@@ -177,28 +176,31 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
   sendButton: {
+    minHeight: MIN_TOUCH,
     justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.sm,
+    paddingHorizontal: spacing.md + 2,
+    borderRadius: radius.pill,
     backgroundColor: colors.primary,
   },
-  sendButtonText: { color: colors.primaryText, fontWeight: '600', fontSize: 14 },
+  sendButtonText: { ...typography.label, color: colors.primaryText },
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,
   },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

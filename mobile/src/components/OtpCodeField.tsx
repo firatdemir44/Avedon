@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { TextField } from './TextField';
-import { colors, spacing } from '../theme';
+import { colors, spacing, typography } from '../theme';
 
 interface Props {
   code: string;
@@ -46,12 +46,13 @@ export function OtpCodeField({ code, onChangeCode, onResend, resendCooldownSecon
 const styles = StyleSheet.create({
   resendRow: {
     alignSelf: 'flex-start',
-    marginBottom: spacing.md,
+    justifyContent: 'center',
+    minHeight: 44,
+    marginBottom: spacing.sm,
   },
   resendText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
+    ...typography.label,
+    color: colors.accent,
   },
   resendTextDisabled: {
     color: colors.textMuted,

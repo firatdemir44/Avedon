@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSession } from '../../context/SessionContext';
 import { fetchAdminCompanies, updateCompanyVerification, type CompanyWithCounts } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
 const STATUS_OPTIONS: { value: VerificationStatus; label: string }[] = [
@@ -110,15 +110,14 @@ const styles = StyleSheet.create({
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
   cardHeaderRow: { marginBottom: spacing.xs },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 13, color: colors.textMuted, marginBottom: 2 },
+  name: { ...typography.subtitle, fontWeight: '700', color: colors.text },
+  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: 2 },
   statusRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -126,23 +125,25 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   statusChip: {
+    minHeight: 40,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceTonal,
   },
   statusChipActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   statusChipText: {
-    fontSize: 13,
-    fontWeight: '600',
+    ...typography.label,
     color: colors.text,
   },
   statusChipTextActive: {
     color: colors.primaryText,
   },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

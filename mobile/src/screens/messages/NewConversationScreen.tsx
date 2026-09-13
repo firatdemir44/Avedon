@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { fetchConnections, startConversation, type ConnectionSummary } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewConversation'>;
 
@@ -83,13 +83,12 @@ const styles = StyleSheet.create({
   listContent: { padding: spacing.lg },
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
-  name: { fontSize: 16, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  name: { ...typography.subtitle, fontWeight: '700', color: colors.text },
+  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
+  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

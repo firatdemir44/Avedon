@@ -8,7 +8,7 @@ import { TextField } from '../../components/TextField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { registerUser } from '../../api/client';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyCode'>;
 
@@ -56,12 +56,14 @@ export function CompanyCodeScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   hint: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.textMuted,
     marginBottom: spacing.md,
   },
   error: {
-    fontSize: 13,
+    ...typography.label,
+    fontWeight: '400',
     color: colors.danger,
     marginBottom: spacing.md,
   },

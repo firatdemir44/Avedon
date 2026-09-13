@@ -6,7 +6,7 @@ import { TextField } from '../../components/TextField';
 import { detectGarmentComponents, type DetectedComponent, type GarmentImageInput } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
-import { colors, radius, spacing } from '../../theme';
+import { colors, radius, shadow, spacing, typography } from '../../theme';
 
 interface PickedImage extends GarmentImageInput {
   uri: string;
@@ -178,7 +178,7 @@ export function GarmentVisualCostScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  hint: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
   imageRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTonal,
   },
   removeBadge: {
     position: 'absolute',
@@ -212,30 +212,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 16,
   },
-  notice: { fontSize: 13, color: colors.danger, marginTop: spacing.md },
+  notice: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
   table: { marginTop: spacing.lg },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
+  sectionTitle: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
   row: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    ...shadow.card,
   },
-  rowTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
-  rowDetail: { fontSize: 13, color: colors.textMuted, marginBottom: spacing.sm },
+  rowTitle: { ...typography.bodyStrong, fontWeight: '700', color: colors.text },
+  rowDetail: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.sm },
   rowInputs: { flexDirection: 'row', gap: spacing.sm },
   totalCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    backgroundColor: colors.surfaceTonal,
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.sm,
+    ...shadow.card,
   },
-  totalLabel: { fontSize: 15, color: colors.textMuted },
-  totalValue: { fontSize: 18, fontWeight: '700', color: colors.text },
+  totalLabel: { ...typography.body, color: colors.textMuted },
+  totalValue: { ...typography.heading, color: colors.primary },
 });

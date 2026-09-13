@@ -10,7 +10,7 @@ import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
-import { colors } from '../theme';
+import { colors, typography } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -45,6 +45,11 @@ export function MainTabs() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textMuted,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        // Başlıklar uygulamanın her yerinde lacivert ve kalın (bkz. theme/index.ts).
+        headerTitleStyle: { ...typography.heading, color: colors.primary },
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: colors.background },
       }}
     >
       <Tab.Screen

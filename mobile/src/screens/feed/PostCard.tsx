@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import type { FeedPost } from '../../api/client';
-import { colors, radius, spacing } from '../../theme';
+import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 
 interface Props {
   post: FeedPost;
@@ -50,6 +51,7 @@ function PostCardComponent({
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Pressable style={styles.headerText} onPress={() => onOpenAuthor(post)}>
+          {/* Tasarımda yazar adı mavi ve kalın — akışta en çok tıklanan hedef. */}
           <Text style={styles.name} numberOfLines={1}>
             {post.author.firstName} {post.author.lastName}
           </Text>
@@ -64,8 +66,9 @@ function PostCardComponent({
         {company ? <CompanyAvatar name={company.name} verification={company.verification} /> : null}
       </View>
 
-      {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
-
+      {/* Tasarımdaki sıra: FOTOĞRAF → sayaçlar → metin. Fotoğrafı metnin altına
+          koymak kaydırırken görseli geciktiriyordu; her sosyal uygulamada da
+          görsel önce geliyor. */}
       {post.hasImage ? (
         imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
@@ -76,35 +79,75 @@ function PostCardComponent({
         )
       ) : null}
 
+      {post.likeCount > 0 || post.commentCount > 0 ? (
+        <View style={styles.countRow}>
+          {post.likeCount > 0 ? (
+            <Text style={styles.countText}>♥ {post.likeCount}</Text>
+          ) : null}
+          {post.commentCount > 0 ? (
+            <Pressable onPress={() => onOpenComments(post)} hitSlop={8}>
+              <Text style={styles.countText}>{post.commentCount} yorum</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+
+      {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
+
+      {post.product ? (
+        <Pressable style={styles.productTag} onPress={() => onOpenProduct(post)}>
+          <Ionicons name="pricetag-outline" size={13} color={colors.primary} />
+          <Text style={styles.productTagText}>{post.product.code}</Text>
+        </Pressable>
+      ) : null}
+
+      {/* Tasarımdaki eşit sütunlu, ikon + etiket aksiyon satırı. Önceki hâli
+          ikonsuz ve sola yaslıydı; dokunma hedefleri de 48px altındaydı. */}
       <View style={styles.actionRow}>
-        <Pressable style={styles.action} onPress={() => onToggleLike(post)}>
-          <Text style={[styles.actionText, post.likedByMe && styles.actionTextActive]}>
-            {post.likedByMe ? '♥' : '♡'} Beğen{post.likeCount > 0 ? ` (${post.likeCount})` : ''}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.action} onPress={() => onOpenComments(post)}>
-          <Text style={styles.actionText}>
-            Yorum{post.commentCount > 0 ? ` (${post.commentCount})` : ''}
-          </Text>
-        </Pressable>
-        <Pressable style={styles.action} onPress={() => onShare(post)}>
-          <Text style={styles.actionText}>Paylaş</Text>
-        </Pressable>
+        <Action
+          icon={post.likedByMe ? 'heart' : 'heart-outline'}
+          label="Beğen"
+          active={post.likedByMe}
+          onPress={() => onToggleLike(post)}
+        />
+        <Action icon="chatbubble-outline" label="Yorum Yap" onPress={() => onOpenComments(post)} />
+        <Action icon="arrow-redo-outline" label="Paylaş" onPress={() => onShare(post)} />
         {post.product ? (
-          <Pressable style={styles.action} onPress={() => onOpenProduct(post)}>
-            <Text style={[styles.actionText, styles.actionTextActive]}>Talep Et</Text>
-          </Pressable>
+          <Action icon="cube-outline" label="Talep Et" active onPress={() => onOpenProduct(post)} />
         ) : null}
       </View>
 
-      {post.product ? <Text style={styles.productTag}>Ürün: {post.product.code}</Text> : null}
-
       {isMine ? (
-        <Pressable onPress={() => onDelete(post)} style={styles.deleteRow}>
+        <Pressable onPress={() => onDelete(post)} style={styles.deleteRow} hitSlop={8}>
           <Text style={styles.deleteText}>Sil</Text>
         </Pressable>
       ) : null}
     </View>
+  );
+}
+
+function Action({
+  icon,
+  label,
+  active,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  active?: boolean;
+  onPress: () => void;
+}) {
+  const color = active ? colors.accent : colors.textMuted;
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+      onPress={onPress}
+    >
+      <Ionicons name={icon} size={19} color={color} />
+      <Text style={[styles.actionText, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -113,11 +156,10 @@ export const PostCard = React.memo(PostCardComponent);
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadow.card,
   },
   headerRow: {
     flexDirection: 'row',
@@ -126,45 +168,58 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerText: { flex: 1, minWidth: 0 },
-  name: { fontSize: 15, fontWeight: '700', color: colors.text },
-  meta: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  name: { ...typography.bodyStrong, fontWeight: '700', color: colors.accent },
+  meta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
   body: {
-    fontSize: 15,
-    lineHeight: 21,
+    ...typography.body,
     color: colors.text,
     marginTop: spacing.sm,
   },
   image: {
     width: '100%',
     aspectRatio: 4 / 3,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     marginTop: spacing.sm,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surfaceTonal,
   },
   imagePlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
   },
+  countRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  countText: { ...typography.caption, color: colors.textMuted },
+  productTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    backgroundColor: colors.accentSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+  },
+  productTagText: { ...typography.caption, fontWeight: '600', color: colors.primary },
   actionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.xs,
   },
-  action: { paddingVertical: 2 },
-  actionText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
-  actionTextActive: { color: colors.primary },
-  productTag: {
-    fontSize: 12,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
+  action: {
+    flex: 1,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
   },
+  actionPressed: { opacity: 0.6 },
+  actionText: { ...typography.caption, fontWeight: '600' },
   deleteRow: { marginTop: spacing.sm, alignSelf: 'flex-start' },
-  deleteText: { fontSize: 12, fontWeight: '600', color: colors.danger },
+  deleteText: { ...typography.caption, fontWeight: '600', color: colors.danger },
 });

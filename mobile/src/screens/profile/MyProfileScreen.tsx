@@ -5,7 +5,7 @@ import { MenuRow } from '../../components/MenuRow';
 import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
-import { colors, spacing } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'MyProfile'>;
 
@@ -56,5 +56,5 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   menu: { marginTop: spacing.xl },
-  error: { fontSize: 14, color: colors.danger },
+  error: { ...typography.body, color: colors.danger },
 });
