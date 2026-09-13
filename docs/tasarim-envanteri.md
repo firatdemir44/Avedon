@@ -95,6 +95,35 @@ Ay görünümü + yaklaşan etkinlikler ("Fırat Demir ile buluşma 15:00", "Ion
 +90 ülke kodu ön eki, **"Veya sosyal medya hesabı kullanarak bağlan"**, SMS ücret uyarısı metni.
 Bizdeki telefon+OTP akışı ana hatta uyuyor; sosyal medya girişi yok.
 
+## Görsel dil (render edilmiş 3 ekrandan)
+
+XD'den dışa aktarılan ekranlardan üçü tam ekran çıktı: karşılama (`renditions/image-375-812.png`), `2.1 Login Screen`, `Keşfet Sayfası ilk açılış`. Renkler PNG'den piksel düzeyinde okundu (`docs/xd-extract.js` yanında duran yöntemle).
+
+### Renk paleti — uygulamadakinden farklı
+| Rol | Tasarım | Mevcut tema |
+|---|---|---|
+| Ana renk (koyu) | **#133C5F** (lacivert — "Giriş" butonu) | `#1B4332` koyu yeşil |
+| Vurgu / CTA | **#2696C6** (mavi — "Başlayalım" butonu) | — |
+| Açık yüzey vurgusu | **#C6E9FF** (açık mavi — form alanları) | — |
+| Koyu yüzey | **#1A1A1A** | `#1A1A1A` (sadece metin) |
+| Arka plan | **#FFFFFF** | `#F7F7F5` |
+
+**Uygulamanın rengi aslında mavi ailesi; biz yeşil kullanıyoruz.**
+
+### Biçim dili
+- Butonlar ve form alanları **tam yuvarlak (hap)** — bizimkiler `radius.md = 12`
+- Kartlar çok yuvarlak köşeli, bol beyaz alan
+- Ekranların altında büyük **düz vektör illüstrasyonlar**
+- Başlıklar koyu lacivert, italik-bold ("Merhaba")
+
+### Üst bar ve sekme çubuğu (Keşfet ekranından)
+- **Üst bar:** Avedon logosu (sol) · yuvarlak arama kutusu "Arama Yapın" (kamera + mikrofon ikonlu) · **mesaj ikonu (kırmızı rozetli)** (sağ)
+- **Alt sekme çubuğu 5 sekme:** Profil (rozetli) · Keşfet · **Ana Sayfa (mavi, aktif)** · Kategoriler · Takvim
+- **Önemli fark:** Tasarımda **mesajlaşma bir sekme değil**, üst barda rozetli ikon. Biz Mesajlar'ı sekme yaptık; tasarımda o slot **Takvim**'in.
+
+### Giriş ekranı çelişkisi
+`2.1 Login Screen` **kullanıcı adı + şifre** ve **Google / Facebook / LinkedIn ile giriş** gösteriyor. Ama aynı dosyadaki `Giriş` ekranı **+90 telefon + SMS doğrulama** akışını gösteriyor (PDF de telefon diyor). Dosyada iki farklı giriş tasarımı var — hangisinin güncel olduğu netleştirilmeli. Kurduğumuz sistem telefon + OTP.
+
 ## Sonuç — yol haritasına etkisi
 
 Yapılanlar tasarımın **iskeletine** uyuyor (akış, bağlantı, mesajlaşma, numune talebi, firma doğrulama). Tasarımın asıl derinliği **alan zenginliğinde**: firma/profil alanları, kategori ağacı, numune takibinin zaman damgalı ve kurye senaryolu hali, abonelik modeli.
