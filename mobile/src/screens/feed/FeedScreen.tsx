@@ -1,5 +1,6 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, Alert, Share, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -60,6 +61,19 @@ export function FeedScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      // AI Danışman bir hesaplama aracı değil, o yüzden Hesaplamalar sekmesinde
+      // değil ana ekranda duruyor — her zaman tek dokunuş uzakta.
+      headerLeft: () => (
+        <Pressable
+          onPress={() => navigation.navigate('Advisor')}
+          hitSlop={8}
+          accessibilityLabel="AI Tekstil Danışmanı"
+          style={styles.headerLeftButton}
+        >
+          <Ionicons name="sparkles" size={18} color={colors.accent} />
+          <Text style={styles.headerAction}>Danışman</Text>
+        </Pressable>
+      ),
       headerRight: () => (
         <Pressable onPress={() => navigation.navigate('CreatePost')} hitSlop={8}>
           <Text style={styles.headerAction}>+ Paylaş</Text>
@@ -188,7 +202,8 @@ export function FeedScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerAction: { fontSize: 15, fontWeight: '600', color: colors.primary },
+  headerAction: { fontSize: 15, fontWeight: '600', color: colors.accent },
+  headerLeftButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   listContent: { padding: spacing.lg },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
   error: {

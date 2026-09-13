@@ -12,6 +12,11 @@ const ITEMS: { route: keyof RootStackParamList; title: string; description: stri
   { route: 'YarnUsageCalculator', title: 'İplik Kullanım Miktarı', description: 'Belirli bir kumaş üretimi için gereken iplik miktarı' },
   { route: 'FabricWeightCalculator', title: 'Kumaş Gramajı Hesapla', description: 'İplik numarası, ilmek boyu ve K faktörü ile gramaj (gr/m²)' },
   { route: 'ProductionCalculator', title: 'Üretim Hesaplama', description: 'Makine hızı, vardiya ve verimlilikten günlük üretim kapasitesi' },
+  {
+    route: 'GarmentVisualCost',
+    title: 'Görsel Maliyet Tablosu',
+    description: 'Kıyafet fotoğrafından bileşenleri tespit edip miktar ve fiyat girerek maliyet tablosu çıkarır',
+  },
 ];
 
 export function CalculatorsListScreen({ navigation }: Props) {

@@ -95,16 +95,10 @@ export function ProductListScreen({ navigation }: Props) {
           value={query}
           onChangeText={setQuery}
         />
-        {/* Kumaş işiyle ilgili araçlar katalogun yanında kalıyor; gezinme
-            hedefleri (mesajlar, bağlantılar vb.) sekmelere ve Profil menüsüne
-            taşındı. */}
+        {/* Hesaplama araçları Hesaplamalar sekmesine, AI Danışman ana ekrana,
+            gezinme hedefleri sekmelere ve Profil menüsüne taşındı — burada
+            sadece katalogla doğrudan ilgili kısayol kalıyor. */}
         <View style={styles.menuRow}>
-          <Pressable onPress={() => navigation.navigate('Advisor')} style={styles.menuChip}>
-            <Text style={styles.menuChipText}>AI Danışman</Text>
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate('GarmentVisualCost')} style={styles.menuChip}>
-            <Text style={styles.menuChipText}>Görsel Maliyet</Text>
-          </Pressable>
           {user?.companyId ? (
             <Pressable onPress={() => navigation.navigate('CompanyProfile')} style={styles.menuChip}>
               <Text style={styles.menuChipText}>Firmam</Text>
