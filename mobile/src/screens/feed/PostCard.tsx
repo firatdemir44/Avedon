@@ -12,11 +12,21 @@ interface Props {
   onToggleLike: (post: FeedPost) => void;
   onOpenComments: (post: FeedPost) => void;
   onOpenProduct: (post: FeedPost) => void;
+  onOpenAuthor: (post: FeedPost) => void;
   onShare: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
 }
 
-function PostCardComponent({ post, isMine, onToggleLike, onOpenComments, onOpenProduct, onShare, onDelete }: Props) {
+function PostCardComponent({
+  post,
+  isMine,
+  onToggleLike,
+  onOpenComments,
+  onOpenProduct,
+  onOpenAuthor,
+  onShare,
+  onDelete,
+}: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
   );
@@ -39,7 +49,7 @@ function PostCardComponent({ post, isMine, onToggleLike, onOpenComments, onOpenP
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <View style={styles.headerText}>
+        <Pressable style={styles.headerText} onPress={() => onOpenAuthor(post)}>
           <Text style={styles.name} numberOfLines={1}>
             {post.author.firstName} {post.author.lastName}
           </Text>
@@ -50,7 +60,7 @@ function PostCardComponent({ post, isMine, onToggleLike, onOpenComments, onOpenP
             {formatRelativeTime(post.createdAt)} ·{' '}
             {post.visibility === 'public' ? 'Herkese açık' : 'Bağlantılarım'}
           </Text>
-        </View>
+        </Pressable>
         {company ? <CompanyAvatar name={company.name} verification={company.verification} /> : null}
       </View>
 

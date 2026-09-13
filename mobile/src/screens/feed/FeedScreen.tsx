@@ -160,6 +160,7 @@ export function FeedScreen({ navigation }: Props) {
             isMine={item.author.id === user?.id}
             onToggleLike={handleToggleLike}
             onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
+            onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
             onOpenProduct={(post) =>
               post.product &&
               navigation.navigate('SampleRequestForm', {
