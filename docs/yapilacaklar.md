@@ -31,12 +31,14 @@ Gerçek kimlik doğrulama tamamlandı (bkz. Tamamlananlar).
 **1., 2. ve 3. aşama + navigasyon yeniden yapılandırması tamamlandı ve cihazda test edildi.**
 
 **XD tasarımı incelendikten sonra güncellenen öncelik önerisi** (bkz. `docs/tasarim-envanteri.md` sonuç bölümü) — sıradaki adaylar, etki/maliyet sırasına göre:
-1. **Numune takibini zaman damgalı timeline'a çevirmek** (yol haritasında 7. madde): tasarımın en olgun akışı, bizim en zayıf yerimiz, doğrudan ticari değer. İki teslimat senaryosu (müşteri kuryesi / satıcı gönderir), her adımda tarih-saat ve kimin yaptığı, kargo takibi.
-2. **Kategori ağacı** (6. madde): taksonomi tasarımdan hazır çıktı (30+ örme tipi, sektör ayrımı, kullanım amacı). Ürün arama/filtrelemeyi gerçekten kullanılır yapar.
-3. **Firma sayfası alanları** (8. madde): kuruluş yılı, firma tipi, çalışan sayısı, ana pazarlar, sertifikalar, ofis görselleri.
-4. **Google ile giriş** (yukarıdaki açık iş; kullanıcının Google Cloud hazırlığı gerekiyor).
-5. Hikayeler / Keşfet / Takvim — vizyonun sosyal katmanı.
-6. **Abonelik/ödeme** — iş modeli kararı gerektiriyor (3 ay ücretsiz + aylık abonelik + ilk 10 ürün ücretsiz).
+1. ~~**Numune takibini zaman damgalı timeline'a çevirmek**~~ → **2026-09-13'te yapıldı** (Tamamlananlar'a bakın). **Cihazda test edilmeyi bekliyor.**
+2. **Ürün detay sayfası** — tasarımda tam tanımlı (tam genişlik fotoğraf, favori/yıldız, "Doğrulanmış Üretici" + toplam ürün rozetleri, özellikler kartı, alt aksiyon çubuğunda mesaj/telefon + "Numune Talep Et"), bizde hiç yok; ürünler sadece listede kart olarak duruyor.
+3. **Görsel dil geçişi** — hap butonlar, italik lacivert başlıklar, fotoğraf çerçeveleri, ikonlu 4 sütunlu aksiyon satırı, açık mavi bölgeler. Kullanıcı isteği: **önce güncel (2026) mobil tasarım trendleri araştırılacak**, 6 yıllık tasarım birebir kopyalanmayacak.
+4. **Kategori ağacı** (6. madde): taksonomi tasarımdan hazır çıktı (30+ örme tipi, sektör ayrımı, kullanım amacı). Ürün arama/filtrelemeyi gerçekten kullanılır yapar.
+5. **Firma sayfası alanları** (8. madde): kuruluş yılı, firma tipi, çalışan sayısı, ana pazarlar, sertifikalar, ofis görselleri.
+6. **Google ile giriş** (yukarıdaki açık iş; kullanıcının Google Cloud hazırlığı gerekiyor).
+7. Hikayeler / Takvim — vizyonun sosyal katmanı. (Keşfet kullanıcı kararıyla yol haritasından çıkarıldı, yerini Hesaplamalar sekmesi aldı.)
+8. **Abonelik/ödeme** — iş modeli kararı gerektiriyor (3 ay ücretsiz + aylık abonelik + ilk 10 ürün ücretsiz).
 
 Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Ödeme/fatura akışı (hiç yok)
@@ -45,6 +47,7 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 
 ## Tamamlananlar (kısa özet)
 
+- 2026-09-13: **Numune takip zaman çizelgesi** tamamlandı (yol haritası 7. madde). Yeni `SampleRequestEvent` modeli her adımın kim tarafından ne zaman yapıldığını saklıyor (sadece eklenir; migration mevcut talepler için ilk adımı geriye dönük doldurdu). Bir adımın tamamlanmış sayılması **statüden** türetiliyor, olay kaydının varlığından değil — geçmişi eksik eski kayıtlar listedeki rozetle çelişmesin diye. Teslimat tercihi serbest metinden iki seçeneğe indi (satıcı gönderir / müşteri kuryesi alır) ve son adımın **etiketi** buna göre değişiyor, statü tek kalıyor. Tüm etiket ve açıklama metinleri sunucudan geliyor (istemcide ikinci bir kopya tutulmuyor). Bu arada dört mevcut kusur düzeldi: async hataları yakalanmıyordu (istek asılı kalıyordu), yanıtlarda telefon numarası ve base64 ürün fotoğrafı sızıyordu, statü merdiveni adım atlamaya/aynı adımı tekrarlamaya izin veriyordu, yetkisiz erişim 403 dönüp talep id'sinin varlığını doğruluyordu. Mobilde: dikey zaman çizelgesi ekranı (dolu/boş daireler, tarih-saat, adımı yapan kişi ve firması, teslim notu), talep formunda iki seçenekli teslimat kartları, her iki talep listesi de karta dokununca takibe gidiyor. 40 otomatik uçtan uca kontrol geçti. **Cihazda test edilmedi.**
 - 2026-09-12: Backend + mobile ilk kurulum (npm install, `.env`, Prisma migrate+seed, Expo çalıştırma)
 - 2026-09-12: Telefon–bilgisayar bağlantı sorunu çözüldü (AVG Antivirus firewall'u engelliyordu)
 - 2026-09-12: Anthropic API anahtarı eklendi, AI Danışman + Kıyafet Analizi aktif edildi

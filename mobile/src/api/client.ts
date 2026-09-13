@@ -1,5 +1,13 @@
 import { Platform } from 'react-native';
-import type { Company, Product, ProductType, SampleRequest, User, VerificationStatus } from '../types';
+import type {
+  Company,
+  DeliveryMode,
+  Product,
+  ProductType,
+  SampleRequestStatus,
+  User,
+  VerificationStatus,
+} from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
@@ -360,30 +368,89 @@ export function askAdvisor(question: string, history: AdvisorMessage[]) {
   });
 }
 
-export type SampleRequestWithDetails = SampleRequest & {
-  product: Product;
-  requester: User;
-};
+// Numune talebi yanıtları, User/Product'ın tamamını DEĞİL sunucunun açıkça
+// seçtiği alanları taşır (telefon numarası ve base64 ürün fotoğrafı sızmasın
+// diye). Bu yüzden ayrı, dar tipler tanımlı.
+export interface SampleActor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  company: { id: string; name: string } | null;
+}
 
-export function createSampleRequest(payload: { productId: string; deliveryPreference: string }) {
-  return request<{ sampleRequest: SampleRequestWithDetails }>('/sample-requests', {
+export interface SampleProductRef {
+  id: string;
+  code: string;
+  companyId: string;
+  company: { id: string; name: string };
+}
+
+export interface SampleNextStep {
+  status: SampleRequestStatus;
+  label: string;
+}
+
+export interface SampleRequestRow {
+  id: string;
+  status: SampleRequestStatus;
+  statusLabel: string;
+  deliveryMode: DeliveryMode;
+  deliveryModeLabel: string;
+  note: string;
+  createdAt: string;
+  product: SampleProductRef;
+  requester: SampleActor;
+  // Bu kullanıcının bu talebi bir adım ilerletme yetkisi varsa dolu gelir;
+  // yetki kararı sunucuda, istemci sadece düğmeyi gösterir/gizler.
+  nextStep: SampleNextStep | null;
+  canAdvance: boolean;
+}
+
+export interface SampleTimelineStep {
+  status: SampleRequestStatus;
+  label: string;
+  state: 'done' | 'pending';
+  occurredAt: string | null;
+  actor: SampleActor | null;
+  note: string;
+  description: string;
+}
+
+export interface SampleRequestTimeline {
+  sampleRequest: Omit<SampleRequestRow, 'nextStep' | 'canAdvance'>;
+  steps: SampleTimelineStep[];
+  nextStep: SampleNextStep | null;
+  canAdvance: boolean;
+}
+
+export function createSampleRequest(payload: {
+  productId: string;
+  deliveryMode: DeliveryMode;
+  note?: string;
+}) {
+  return request<{ sampleRequest: SampleRequestRow }>('/sample-requests', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
 export function fetchMySampleRequests() {
-  return request<{ sampleRequests: SampleRequestWithDetails[] }>('/sample-requests?as=requester');
+  return request<{ sampleRequests: SampleRequestRow[] }>('/sample-requests?as=requester');
 }
 
 export function fetchIncomingSampleRequests() {
-  return request<{ sampleRequests: SampleRequestWithDetails[] }>('/sample-requests?as=company');
+  return request<{ sampleRequests: SampleRequestRow[] }>('/sample-requests?as=company');
 }
 
-export function updateSampleRequestStatus(id: string, status: SampleRequest['status']) {
-  return request<{ sampleRequest: SampleRequestWithDetails }>(`/sample-requests/${id}/status`, {
+export function fetchSampleRequestTimeline(id: string) {
+  return request<SampleRequestTimeline>(`/sample-requests/${id}`);
+}
+
+export function updateSampleRequestStatus(id: string, status: SampleRequestStatus, note?: string) {
+  return request<{ sampleRequest: SampleRequestRow }>(`/sample-requests/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(note ? { status, note } : { status }),
   });
 }
 

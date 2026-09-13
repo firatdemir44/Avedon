@@ -38,6 +38,7 @@ export type RootStackParamList = {
   FabricWeightCalculator: undefined;
   ProductionCalculator: undefined;
   SampleRequestForm: { productId: string; productCode: string };
+  SampleRequestTracking: { sampleRequestId: string };
   MySampleRequests: undefined;
   IncomingSampleRequests: undefined;
   GarmentVisualCost: undefined;

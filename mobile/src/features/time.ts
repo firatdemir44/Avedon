@@ -19,6 +19,13 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   return date.toLocaleDateString('tr-TR');
 }
 
+// Numune takibinde tasarımdaki "03/09/20 · 10:00" biçimi.
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.toLocaleDateString('tr-TR')} · ${formatClockTime(iso)}`;
+}
+
 export function formatClockTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';

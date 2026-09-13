@@ -1,15 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchMySampleRequests, type SampleRequestWithDetails } from '../../api/client';
-import { STATUS_LABELS } from '../../features/sampleRequests/status';
+import { fetchMySampleRequests, type SampleRequestRow } from '../../api/client';
+import { formatRelativeTime } from '../../features/time';
 import { colors, radius, spacing } from '../../theme';
 
-export function MySampleRequestsScreen() {
+type Props = RootStackScreenProps<'MySampleRequests'>;
+
+export function MySampleRequestsScreen({ navigation }: Props) {
   const { user } = useSession();
-  const [requests, setRequests] = useState<SampleRequestWithDetails[]>([]);
+  const [requests, setRequests] = useState<SampleRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,13 +55,24 @@ export function MySampleRequestsScreen() {
           <Text style={styles.empty}>{error ?? 'Henüz numune talebiniz yok.'}</Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.card}>
+          <Pressable
+            style={styles.card}
+            onPress={() =>
+              navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })
+            }
+          >
             <View style={styles.cardHeaderRow}>
               <Text style={styles.code}>{item.product.code}</Text>
-              <Text style={styles.statusBadge}>{STATUS_LABELS[item.status]}</Text>
+              {/* Etiket sunucudan geliyor: son adımın adı teslimat moduna göre
+                  değişiyor, istemcide ikinci bir eşleme tutulmuyor. */}
+              <Text style={styles.statusBadge}>{item.statusLabel}</Text>
             </View>
-            <Text style={styles.meta}>Teslimat tercihi: {item.deliveryPreference}</Text>
-          </View>
+            <Text style={styles.meta}>{item.product.company.name}</Text>
+            <Text style={styles.meta}>
+              {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
+            </Text>
+            <Text style={styles.trackLink}>Takibi görüntüle →</Text>
+          </Pressable>
         )}
       />
     </SafeAreaView>
@@ -94,5 +108,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   meta: { fontSize: 13, color: colors.textMuted },
+  trackLink: { fontSize: 13, fontWeight: '600', color: colors.accent, marginTop: spacing.sm },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

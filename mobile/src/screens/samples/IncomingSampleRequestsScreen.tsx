@@ -2,23 +2,22 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/types';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
   fetchIncomingSampleRequests,
   updateSampleRequestStatus,
-  type SampleRequestWithDetails,
+  type SampleRequestRow,
 } from '../../api/client';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { STATUS_LABELS, nextStatus } from '../../features/sampleRequests/status';
+import { formatRelativeTime } from '../../features/time';
 import { colors, radius, spacing } from '../../theme';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'IncomingSampleRequests'>;
+type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
 export function IncomingSampleRequestsScreen({ navigation }: Props) {
   const { user } = useSession();
-  const [requests, setRequests] = useState<SampleRequestWithDetails[]>([]);
+  const [requests, setRequests] = useState<SampleRequestRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +40,13 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
     }, [load])
   );
 
-  const handleAdvance = async (request: SampleRequestWithDetails) => {
-    const next = nextStatus(request.status);
-    if (!next) return;
+  const handleAdvance = async (request: SampleRequestRow) => {
+    // Hangi adımın kime açık olduğuna sunucu karar veriyor; burada sadece
+    // sunucunun verdiği bir sonraki adım uygulanıyor.
+    if (!request.nextStep) return;
     setUpdatingId(request.id);
     try {
-      await updateSampleRequestStatus(request.id, next);
+      await updateSampleRequestStatus(request.id, request.nextStep.status);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Durum güncellenemedi');
@@ -78,32 +78,44 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<Text style={styles.empty}>{error ?? 'Henüz gelen numune talebi yok.'}</Text>}
-        renderItem={({ item }) => {
-          const next = nextStatus(item.status);
-          return (
-            <View style={styles.card}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.code}>{item.product.code}</Text>
-                <Text style={styles.statusBadge}>{STATUS_LABELS[item.status]}</Text>
-              </View>
-              <Pressable onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}>
-                <Text style={styles.meta}>
-                  Talep eden: <Text style={styles.link}>{item.requester.firstName} {item.requester.lastName}</Text>
-                </Text>
-              </Pressable>
-              <Text style={styles.meta}>Teslimat tercihi: {item.deliveryPreference}</Text>
-              {next ? (
-                <PrimaryButton
-                  label={updatingId === item.id ? 'Güncelleniyor...' : `${STATUS_LABELS[next]} olarak işaretle`}
-                  disabled={updatingId === item.id}
-                  onPress={() => handleAdvance(item)}
-                  variant="secondary"
-                  style={{ marginTop: spacing.sm }}
-                />
-              ) : null}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.card}
+            onPress={() =>
+              navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })
+            }
+          >
+            <View style={styles.cardHeaderRow}>
+              <Text style={styles.code}>{item.product.code}</Text>
+              <Text style={styles.statusBadge}>{item.statusLabel}</Text>
             </View>
-          );
-        }}
+            <Pressable onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}>
+              <Text style={styles.meta}>
+                Talep eden:{' '}
+                <Text style={styles.link}>
+                  {item.requester.firstName} {item.requester.lastName}
+                </Text>
+              </Text>
+            </Pressable>
+            <Text style={styles.meta}>
+              {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
+            </Text>
+            {item.note ? <Text style={styles.note}>“{item.note}”</Text> : null}
+            {item.nextStep ? (
+              <PrimaryButton
+                label={
+                  updatingId === item.id
+                    ? 'Güncelleniyor...'
+                    : `${item.nextStep.label} olarak işaretle`
+                }
+                disabled={updatingId === item.id}
+                onPress={() => handleAdvance(item)}
+                variant="secondary"
+                style={{ marginTop: spacing.sm }}
+              />
+            ) : null}
+          </Pressable>
+        )}
       />
     </SafeAreaView>
   );
@@ -138,6 +150,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   meta: { fontSize: 13, color: colors.textMuted },
+  note: { fontSize: 13, color: colors.text, marginTop: spacing.xs, fontStyle: 'italic' },
   link: { color: colors.primary, fontWeight: '600' },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

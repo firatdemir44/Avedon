@@ -47,11 +47,17 @@ export interface Product {
 
 export type SampleRequestStatus = 'talep_edildi' | 'onaylandi' | 'hazirlandi' | 'teslim_edildi';
 
+// Son adımın ETİKETİ teslimat moduna göre değişir ("Teslim Edildi" / "Kurye
+// Teslim Aldı") ama statü tektir. Etiketlerin tamamını sunucu üretiyor —
+// istemcide ikinci bir kopya tutulursa ikisi zamanla birbirinden ayrılır.
+export type DeliveryMode = 'seller_ships' | 'customer_courier';
+
 export interface SampleRequest {
   id: string;
   productId: string;
   requesterId: string;
-  deliveryPreference: string;
+  deliveryMode: DeliveryMode;
+  note: string;
   status: SampleRequestStatus;
   createdAt: string;
 }

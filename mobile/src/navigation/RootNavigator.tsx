@@ -22,6 +22,7 @@ import { YarnUsageCalculator } from '../screens/calculators/YarnUsageCalculator'
 import { FabricWeightCalculator } from '../screens/calculators/FabricWeightCalculator';
 import { ProductionCalculator } from '../screens/calculators/ProductionCalculator';
 import { SampleRequestFormScreen } from '../screens/samples/SampleRequestFormScreen';
+import { SampleRequestTrackingScreen } from '../screens/samples/SampleRequestTrackingScreen';
 import { MySampleRequestsScreen } from '../screens/samples/MySampleRequestsScreen';
 import { IncomingSampleRequestsScreen } from '../screens/samples/IncomingSampleRequestsScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
@@ -120,6 +121,11 @@ export function RootNavigator() {
               name="SampleRequestForm"
               component={SampleRequestFormScreen}
               options={{ headerShown: true, title: 'Numune Talebi' }}
+            />
+            <Stack.Screen
+              name="SampleRequestTracking"
+              component={SampleRequestTrackingScreen}
+              options={{ headerShown: true, title: 'Numune Takibi' }}
             />
             <Stack.Screen
               name="MySampleRequests"
