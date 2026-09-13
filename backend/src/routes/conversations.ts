@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
+import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
 import {
@@ -13,16 +14,7 @@ import {
 export const conversationsRouter = Router();
 conversationsRouter.use(requireAuth);
 
-// Express 4, async handler'lardaki reddedilen promise'leri yakalamıyor —
-// yakalanmazsa istek 500 dönmek yerine askıda kalıyor.
-function handle(fn: (req: Request, res: Response) => Promise<unknown>) {
-  return (req: Request, res: Response) => {
-    fn(req, res).catch((err) => {
-      console.error('[conversations]', err);
-      if (!res.headersSent) res.status(500).json({ error: 'server_error' });
-    });
-  };
-}
+const handle = makeHandle('conversations');
 
 const LAST_MESSAGE_SELECT = { id: true, body: true, createdAt: true, senderId: true } as const;
 

@@ -28,4 +28,7 @@ export type RootStackParamList = {
   Conversations: undefined;
   Chat: { conversationId: string; title: string };
   NewConversation: undefined;
+  Feed: undefined;
+  CreatePost: undefined;
+  PostComments: { postId: string };
 };

@@ -25,6 +25,21 @@ productsRouter.get('/', async (req, res) => {
   res.json({ products });
 });
 
+// Gönderi oluştururken ürün seçici için hafif liste. /:id'den ÖNCE tanımlı
+// olmalı, yoksa "mine" bir ürün id'si sanılır. Fotoğraf içermez — /companies/:id
+// tüm ürünleri base64 fotoğraflarıyla döndüğü için seçiciye uygun değil.
+productsRouter.get('/mine', requireAuth, async (req, res) => {
+  if (!req.user!.companyId) {
+    return res.json({ products: [] });
+  }
+  const products = await prisma.product.findMany({
+    where: { companyId: req.user!.companyId },
+    select: { id: true, code: true, type: true },
+    orderBy: { code: 'asc' },
+  });
+  res.json({ products });
+});
+
 productsRouter.post('/', requireAuth, async (req, res) => {
   const parsed = createProductSchema.safeParse(req.body);
   if (!parsed.success) {

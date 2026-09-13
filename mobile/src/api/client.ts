@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import type { Company, Product, SampleRequest, User } from '../types';
+import type { Company, Product, ProductType, SampleRequest, User, VerificationStatus } from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
@@ -211,6 +211,102 @@ export function markConversationRead(conversationId: string) {
   return request<{ ok: true; updated: number }>(`/conversations/${conversationId}/read`, {
     method: 'PATCH',
   });
+}
+
+// İçerik akışı. Liste yanıtları fotoğraf İÇERMEZ (hasImage:true der), fotoğraf
+// kart görünür olunca fetchPostImage ile tek tek çekilir — bir sayfa onlarca
+// base64 fotoğrafla megabaytlara çıkıyordu.
+export type PostVisibility = 'public' | 'connections';
+
+export type PostAuthor = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  company: { id: string; name: string; verification: VerificationStatus } | null;
+};
+
+export type FeedPost = {
+  id: string;
+  body: string;
+  hasImage: boolean;
+  imageUrl: string | null;
+  visibility: PostVisibility;
+  createdAt: string;
+  author: PostAuthor;
+  product: { id: string; code: string } | null;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+};
+
+export type FeedPostComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: PostAuthor;
+};
+
+export type FeedCursor = { before: string; beforeId: string };
+
+export function fetchFeed(cursor?: FeedCursor | null, limit = 10) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) {
+    params.set('before', cursor.before);
+    params.set('beforeId', cursor.beforeId);
+  }
+  return request<{ posts: FeedPost[]; nextCursor: FeedCursor | null }>(`/posts?${params.toString()}`);
+}
+
+export interface NewPostInput {
+  body?: string;
+  imageUrl?: string;
+  productId?: string;
+  visibility: PostVisibility;
+}
+
+export function createPost(input: NewPostInput) {
+  return request<{ post: FeedPost }>('/posts', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deletePost(id: string) {
+  return request<void>(`/posts/${id}`, { method: 'DELETE' });
+}
+
+export function fetchPostImage(id: string) {
+  return request<{ imageUrl: string }>(`/posts/${id}/image`);
+}
+
+export function likePost(id: string) {
+  return request<{ liked: boolean; likeCount: number }>(`/posts/${id}/like`, { method: 'POST' });
+}
+
+export function unlikePost(id: string) {
+  return request<{ liked: boolean; likeCount: number }>(`/posts/${id}/like`, { method: 'DELETE' });
+}
+
+export function fetchPostComments(postId: string) {
+  return request<{ comments: FeedPostComment[] }>(`/posts/${postId}/comments`);
+}
+
+export function createPostComment(postId: string, body: string) {
+  return request<{ comment: FeedPostComment }>(`/posts/${postId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function deletePostComment(postId: string, commentId: string) {
+  return request<void>(`/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
+}
+
+export type MyProductOption = { id: string; code: string; type: ProductType };
+
+export function fetchMyProducts() {
+  return request<{ products: MyProductOption[] }>('/products/mine');
 }
 
 export function searchCompanies(search: string) {

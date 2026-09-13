@@ -34,6 +34,9 @@ import { ConnectionRequestsScreen } from '../screens/connections/ConnectionReque
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { ChatScreen } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
+import { FeedScreen } from '../screens/feed/FeedScreen';
+import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
+import { PostCommentsScreen } from '../screens/feed/PostCommentsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -162,6 +165,17 @@ export function RootNavigator() {
           name="NewConversation"
           component={NewConversationScreen}
           options={{ headerShown: true, title: 'Yeni Mesaj' }}
+        />
+        <Stack.Screen name="Feed" component={FeedScreen} options={{ headerShown: true, title: 'Akış' }} />
+        <Stack.Screen
+          name="CreatePost"
+          component={CreatePostScreen}
+          options={{ headerShown: true, title: 'Gönderi Paylaş' }}
+        />
+        <Stack.Screen
+          name="PostComments"
+          component={PostCommentsScreen}
+          options={{ headerShown: true, title: 'Yorumlar' }}
         />
       </Stack.Navigator>
     </NavigationContainer>

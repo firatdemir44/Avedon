@@ -20,7 +20,8 @@ async function main() {
 
   const existing = await prisma.company.count();
   if (existing > 0) {
-    console.log('Seed atlandı: firma verisi zaten mevcut.');
+    console.log('Firma/ürün seed atlandı: veri zaten mevcut.');
+    await seedPosts();
     return;
   }
 
@@ -79,7 +80,59 @@ async function main() {
     ],
   });
 
+  await seedPosts();
   console.log('Seed tamamlandı.');
+}
+
+// Akışın ilk açılışta boş görünmemesi için birkaç örnek gönderi. Fotoğraf
+// eklenmiyor — dev.db gereksiz büyümesin.
+async function seedPosts() {
+  if ((await prisma.post.count()) > 0) {
+    console.log('Gönderi seed atlandı: zaten mevcut.');
+    return;
+  }
+
+  const admin = await prisma.user.findUnique({ where: { phone: '05000000000' } });
+  if (!admin) return;
+
+  const firstProduct = await prisma.product.findFirst({ orderBy: { code: 'asc' } });
+
+  await prisma.post.create({
+    data: {
+      authorId: admin.id,
+      body: 'Avedon yayında! Tekstil sektöründe firmaların birbirini bulması, kumaş paylaşması ve numune talep etmesi artık tek uygulamada.',
+      visibility: 'public',
+    },
+  });
+
+  await prisma.post.create({
+    data: {
+      authorId: admin.id,
+      body: 'Yeni sezon örme kumaş koleksiyonumuz hazırlanıyor. Gramaj ve en bilgilerini yakında paylaşacağız.',
+      visibility: 'public',
+    },
+  });
+
+  await prisma.post.create({
+    data: {
+      authorId: admin.id,
+      body: 'Bu gönderiyi yalnızca bağlantılarım görebilir — görünürlük ayarının çalıştığını buradan test edebilirsiniz.',
+      visibility: 'connections',
+    },
+  });
+
+  if (firstProduct) {
+    await prisma.post.create({
+      data: {
+        authorId: admin.id,
+        body: `${firstProduct.code} kodlu kumaşımız stokta. Numune talebi için aşağıdaki butonu kullanabilirsiniz.`,
+        productId: firstProduct.id,
+        visibility: 'public',
+      },
+    });
+  }
+
+  console.log('Örnek gönderiler eklendi.');
 }
 
 main()

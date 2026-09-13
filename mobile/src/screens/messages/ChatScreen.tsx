@@ -24,7 +24,7 @@ import {
   sendMessage,
   type ChatMessage,
 } from '../../api/client';
-import { formatClockTime } from '../../features/messages/time';
+import { formatClockTime } from '../../features/time';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;

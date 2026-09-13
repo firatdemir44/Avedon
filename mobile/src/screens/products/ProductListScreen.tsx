@@ -112,6 +112,14 @@ export function ProductListScreen({ navigation }: Props) {
           ) : null}
         </View>
         <View style={styles.menuRow}>
+          {user ? (
+            <Pressable
+              onPress={() => navigation.navigate('Feed')}
+              style={[styles.menuChip, styles.menuChipPrimary]}
+            >
+              <Text style={[styles.menuChipText, styles.menuChipTextPrimary]}>Akış</Text>
+            </Pressable>
+          ) : null}
           <Pressable onPress={() => navigation.navigate('Advisor')} style={styles.menuChip}>
             <Text style={styles.menuChipText}>AI Danışman</Text>
           </Pressable>
@@ -263,6 +271,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.primary,
+  },
+  // Akış, vizyona göre uygulamanın ana ekranı olacak — alt sekme çubuğu
+  // gelene kadar dolgulu chip ile öne çıkarıyoruz.
+  menuChipPrimary: {
+    backgroundColor: colors.primary,
+  },
+  menuChipTextPrimary: {
+    color: colors.primaryText,
   },
   search: {
     borderWidth: 1,

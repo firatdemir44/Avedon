@@ -11,6 +11,7 @@ datasource db {
 // verification: "dogrulanmamis" | "inceleniyor" | "dogrulanmis"
 // product.type: "raschel" | "orme" | "dokuma" | "diger"
 // sampleRequest.status: "talep_edildi" | "onaylandi" | "hazirlandi" | "teslim_edildi"
+// post.visibility: "public" | "connections"
 // Enums are modeled as plain strings because the sqlite connector has no native enum type;
 // valid values are enforced at the API layer with zod.
 
@@ -46,6 +47,9 @@ model User {
   conversationsAsUserA Conversation[]  @relation("ConversationUserA")
   conversationsAsUserB Conversation[]  @relation("ConversationUserB")
   messages             Message[]
+  posts                Post[]
+  postLikes            PostLike[]
+  postComments         PostComment[]
   createdAt            DateTime        @default(now())
 }
 
@@ -62,6 +66,7 @@ model Product {
   useArea        String
   imageUrl       String?
   sampleRequests SampleRequest[]
+  posts          Post[]
   createdAt      DateTime        @default(now())
 }
 
@@ -121,6 +126,57 @@ model Message {
   readAt         DateTime?
 
   @@index([conversationId, createdAt])
+}
+
+// İçerik akışı (Post / PostLike / PostComment) değişmezleri:
+// - Akışta bir gönderi görünür: visibility "public" ise herkese, "connections" ise
+//   sadece yazarın kabul edilmiş bağlantılarına (ve yazarın kendisine).
+// - imageUrl, Product.imageUrl ile aynı biçimde base64 data URL tutar. LİSTE
+//   yanıtlarında ASLA dönmez (bir sayfa yüzlerce KB'lık fotoğrafla megabaytlara
+//   çıkardı) — liste hasImage:true der, istemci GET /api/posts/:id/image ile tek
+//   tek çeker ve önbelleğe alır.
+// - productId sadece yazarın kendi firmasının ürününü gösterebilir (başkasının
+//   ürününü kendi gönderisine iliştirip talep toplamasın diye). Ürün silinirse
+//   SetNull ile boşalır, gönderi ayakta kalır.
+model Post {
+  id         String        @id @default(cuid())
+  authorId   String
+  author     User          @relation(fields: [authorId], references: [id])
+  body       String        @default("")
+  imageUrl   String?
+  productId  String?
+  product    Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  visibility String        @default("public")
+  createdAt  DateTime      @default(now())
+  likes      PostLike[]
+  comments   PostComment[]
+
+  @@index([createdAt])
+  @@index([authorId, createdAt])
+  @@index([productId])
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
 }
 
 // status: "pending" | "accepted" — reddetme bir statü değil, satırın silinmesiyle

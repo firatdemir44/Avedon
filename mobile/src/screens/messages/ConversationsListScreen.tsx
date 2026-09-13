@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchConversations, type ConversationSummary } from '../../api/client';
-import { formatRelativeTime } from '../../features/messages/time';
+import { formatRelativeTime } from '../../features/time';
 import { colors, radius, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Conversations'>;
