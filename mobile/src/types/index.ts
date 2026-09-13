@@ -42,7 +42,10 @@ export interface Product {
   widthCm: number; // en (cm)
   content: string; // içerik, örn. "%95 Pamuk %5 Elastan"
   useArea: string; // kullanım alanı, örn. "Spor Giyim"
-  imageUrl?: string;
+  // Fotoğrafın kendisi hiçbir liste/detay yanıtında gelmez; hasImage true ise
+  // GET /api/products/:id/image ile ayrıca çekilir (bkz. features/imageCache.ts).
+  hasImage: boolean;
+  company?: { id: string; name: string; verification: VerificationStatus };
 }
 
 export type SampleRequestStatus = 'talep_edildi' | 'onaylandi' | 'hazirlandi' | 'teslim_edildi';

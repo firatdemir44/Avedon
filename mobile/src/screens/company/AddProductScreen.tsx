@@ -8,6 +8,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import { createProduct, updateProduct, deleteProduct, fetchProduct } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
+import { loadProductImage, setCachedProductImage } from '../../features/products/productImageCache';
 import { parseNumber } from '../../features/calculators/parse';
 import { colors, radius, spacing } from '../../theme';
 import type { ProductType } from '../../types';
@@ -55,9 +56,17 @@ export function AddProductScreen({ navigation, route }: Props) {
         setWidthCm(String(product.widthCm));
         setContent(product.content);
         setUseArea(product.useArea);
-        if (product.imageUrl) {
-          setImageUri(product.imageUrl);
-          setImageDataUrl(product.imageUrl);
+        // Fotoğraf artık ürün yanıtında gelmiyor, ayrı uçtan çekiliyor
+        // (bkz. features/imageCache.ts). Gelmezse önizleme boş kalır, kaydetme
+        // sırasında da gönderilmez — yani mevcut fotoğraf silinmez.
+        if (product.hasImage) {
+          loadProductImage(productId)
+            .then((url) => {
+              if (cancelled) return;
+              setImageUri(url);
+              setImageDataUrl(url);
+            })
+            .catch(() => {});
         }
       })
       .catch((err) => {
@@ -121,10 +130,14 @@ export function AddProductScreen({ navigation, route }: Props) {
         useArea: useArea.trim(),
         imageUrl: imageDataUrl ?? undefined,
       };
+      // Fotoğraf önbellekte tutuluyor; kaydedilen görseli oraya da yazmazsak
+      // geri dönünce listede/detayda eski fotoğraf görünmeye devam ederdi.
       if (isEditing && productId) {
         await updateProduct(productId, payload);
+        if (imageDataUrl) setCachedProductImage(productId, imageDataUrl);
       } else {
-        await createProduct(payload);
+        const { product } = await createProduct(payload);
+        if (imageDataUrl) setCachedProductImage(product.id, imageDataUrl);
       }
       navigation.goBack();
     } catch (err) {

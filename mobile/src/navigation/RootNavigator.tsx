@@ -14,6 +14,7 @@ import { PhoneVerificationScreen } from '../screens/onboarding/PhoneVerification
 import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
+import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { AdvisorScreen } from '../screens/advisor/AdvisorScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
@@ -81,6 +82,12 @@ export function RootNavigator() {
               name="AddProduct"
               component={AddProductScreen}
               options={{ headerShown: true, title: 'Ürün Ekle' }}
+            />
+            <Stack.Screen
+              name="ProductDetail"
+              component={ProductDetailScreen}
+              // Başlık ürün kodu olarak ekranın kendisi tarafından güncelleniyor.
+              options={{ headerShown: true, title: 'Ürün' }}
             />
             <Stack.Screen
               name="Advisor"

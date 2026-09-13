@@ -30,6 +30,7 @@ export type RootStackParamList = {
   Admin: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   AddProduct: { productId?: string } | undefined;
+  ProductDetail: { productId: string };
   Advisor: undefined;
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;

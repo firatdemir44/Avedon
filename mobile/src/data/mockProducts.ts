@@ -11,6 +11,7 @@ export const mockProducts: Product[] = [
     widthCm: 150,
     content: '%100 Polyester',
     useArea: 'Dış Giyim / Astar',
+    hasImage: false,
   },
   {
     id: 'p2',
@@ -22,6 +23,7 @@ export const mockProducts: Product[] = [
     widthCm: 170,
     content: '%95 Pamuk %5 Elastan',
     useArea: 'Spor Giyim',
+    hasImage: false,
   },
   {
     id: 'p3',
@@ -33,6 +35,7 @@ export const mockProducts: Product[] = [
     widthCm: 150,
     content: '%100 Pamuk',
     useArea: 'Gömlek',
+    hasImage: false,
   },
   {
     id: 'p4',
@@ -44,5 +47,6 @@ export const mockProducts: Product[] = [
     widthCm: 180,
     content: '%80 Pamuk %20 Polyester',
     useArea: 'Sweatshirt / Şardonlu',
+    hasImage: false,
   },
 ];

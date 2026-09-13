@@ -140,10 +140,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
-            disabled={!isOwnCompany}
-            onPress={() => navigation.navigate('AddProduct', { productId: item.id })}
+            // Herkes için ürün sayfası açılıyor; düzenleme oradaki düğmede.
+            // Eskiden kendi firman değilse karta dokunmak hiçbir şey yapmıyordu.
+            onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
           >
-            <ProductThumbnail imageUrl={item.imageUrl} />
+            <ProductThumbnail productId={item.id} hasImage={item.hasImage} />
             <View style={styles.cardBody}>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.code}>{item.code}</Text>
@@ -153,7 +154,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               <Text style={styles.meta}>
                 {item.weightGsm} gr/m² · {item.widthCm} cm en · {item.stock} m stok
               </Text>
-              {isOwnCompany ? <Text style={styles.editHint}>Düzenlemek için dokunun</Text> : null}
+              {isOwnCompany ? <Text style={styles.editHint}>Detay için dokunun</Text> : null}
               {!isOwnCompany && user ? (
                 <Pressable
                   style={styles.sampleButton}

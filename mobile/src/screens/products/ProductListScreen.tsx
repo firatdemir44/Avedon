@@ -133,13 +133,19 @@ export function ProductListScreen({ navigation }: Props) {
         }
         ListEmptyComponent={<Text style={styles.empty}>Sonuç bulunamadı</Text>}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <ProductThumbnail imageUrl={item.imageUrl} />
+          // Kartın tamamı (fotoğraf dahil) ürün sayfasını açıyor; fotoğraf
+          // orada tam genişlikte ve dokununca tam ekran büyüyor.
+          <Pressable
+            style={styles.card}
+            onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+          >
+            <ProductThumbnail productId={item.id} hasImage={item.hasImage} />
             <View style={styles.cardBody}>
               <View style={styles.cardHeaderRow}>
                 <Text style={styles.code}>{item.code}</Text>
                 <Text style={styles.typeBadge}>{TYPE_LABELS[item.type]}</Text>
               </View>
+              {item.company ? <Text style={styles.company}>{item.company.name}</Text> : null}
               <Text style={styles.content}>{item.content}</Text>
               <View style={styles.metaRow}>
                 <Text style={styles.meta}>{item.weightGsm} gr/m²</Text>
@@ -156,7 +162,7 @@ export function ProductListScreen({ navigation }: Props) {
                 </Pressable>
               ) : null}
             </View>
-          </View>
+          </Pressable>
         )}
       />
       )}
@@ -241,6 +247,12 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
+  },
+  company: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.accent,
+    marginBottom: spacing.xs,
   },
   content: {
     fontSize: 14,

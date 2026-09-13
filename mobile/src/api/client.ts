@@ -339,8 +339,16 @@ export function createProduct(payload: NewProductInput) {
   });
 }
 
+// Detay yanıtı listeye göre bir alan fazla taşıyor: firmanın toplam ürün sayısı
+// (tasarımdaki "Toplam N Ürün" rozeti).
+export type ProductDetail = Product & { companyProductCount: number };
+
 export function fetchProduct(id: string) {
-  return request<{ product: Product }>(`/products/${id}`);
+  return request<{ product: ProductDetail }>(`/products/${id}`);
+}
+
+export function fetchProductImage(id: string) {
+  return request<{ imageUrl: string }>(`/products/${id}/image`);
 }
 
 export type UpdateProductInput = Partial<NewProductInput>;
