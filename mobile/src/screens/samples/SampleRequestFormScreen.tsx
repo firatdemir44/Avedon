@@ -26,7 +26,6 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
     try {
       await createSampleRequest({
         productId,
-        requesterId: user.id,
         deliveryPreference: deliveryPreference.trim(),
       });
       setDone(true);

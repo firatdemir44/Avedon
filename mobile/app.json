@@ -27,7 +27,8 @@
         {
           "photosPermission": "Konfeksiyon ürün fotoğrafı seçebilmek için galeriye erişim izni gerekir."
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

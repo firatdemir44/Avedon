@@ -70,3 +70,14 @@ model SampleRequest {
   status             String   @default("talep_edildi")
   createdAt          DateTime @default(now())
 }
+
+// Telefon doğrulama kodları: hem yeni kayıtta hem girişte kullanılan tek OTP akışı.
+// codeHash = HMAC-SHA256(JWT_SECRET, phone + code) — düz kodun DB'de tutulmaması için.
+model PhoneOtp {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  codeHash  String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}

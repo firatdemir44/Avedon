@@ -21,7 +21,7 @@ const TYPE_LABELS: Record<Product['type'], string> = {
 };
 
 export function ProductListScreen({ navigation }: Props) {
-  const { user, setUser } = useSession();
+  const { user, logout } = useSession();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -95,7 +95,7 @@ export function ProductListScreen({ navigation }: Props) {
           {user ? (
             <Pressable
               onPress={() => {
-                setUser(null);
+                logout();
                 navigation.reset({ index: 0, routes: [{ name: 'RoleSelection' }] });
               }}
             >

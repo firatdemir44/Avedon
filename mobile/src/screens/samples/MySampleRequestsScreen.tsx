@@ -18,7 +18,7 @@ export function MySampleRequestsScreen() {
       if (!user) return;
       let cancelled = false;
       setLoading(true);
-      fetchMySampleRequests(user.id)
+      fetchMySampleRequests()
         .then(({ sampleRequests }) => {
           if (!cancelled) setRequests(sampleRequests);
         })

@@ -2,8 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { sendWhatsAppTemplate } from '../whatsapp';
+import { requireAuth } from '../middleware/auth';
 
 export const sampleRequestsRouter = Router();
+
+sampleRequestsRouter.use(requireAuth);
 
 const STATUS_ORDER = ['talep_edildi', 'onaylandi', 'hazirlandi', 'teslim_edildi'] as const;
 const statusSchema = z.enum(STATUS_ORDER);
@@ -16,7 +19,6 @@ const STATUS_LABELS: Record<(typeof STATUS_ORDER)[number], string> = {
 
 const createSchema = z.object({
   productId: z.string().min(1),
-  requesterId: z.string().min(1),
   deliveryPreference: z.string().min(1),
 });
 
@@ -35,7 +37,7 @@ sampleRequestsRouter.post('/', async (req, res) => {
   }
 
   const sampleRequest = await prisma.sampleRequest.create({
-    data: parsed.data,
+    data: { ...parsed.data, requesterId: req.user!.id },
     include: { product: true, requester: true },
   });
 
@@ -49,16 +51,22 @@ sampleRequestsRouter.post('/', async (req, res) => {
   res.status(201).json({ sampleRequest });
 });
 
-// requesterId: talep eden kullanıcının kendi talepleri ("Taleplerim")
-// companyId: bir firmanın ürünlerine gelen talepler ("Gelen Talepler")
+// ?as=requester -> talep eden kullanıcının kendi talepleri ("Taleplerim")
+// ?as=company   -> bir firmanın ürünlerine gelen talepler ("Gelen Talepler")
+// Filtre kimliği her zaman req.user'dan çözülür — client bir başkasının
+// taleplerini isteyemez.
 sampleRequestsRouter.get('/', async (req, res) => {
-  const { requesterId, companyId } = req.query;
+  const as = req.query.as === 'company' ? 'company' : 'requester';
+
+  if (as === 'company' && !req.user!.companyId) {
+    return res.json({ sampleRequests: [] });
+  }
 
   const sampleRequests = await prisma.sampleRequest.findMany({
-    where: {
-      ...(typeof requesterId === 'string' ? { requesterId } : {}),
-      ...(typeof companyId === 'string' ? { product: { companyId } } : {}),
-    },
+    where:
+      as === 'company'
+        ? { product: { companyId: req.user!.companyId! } }
+        : { requesterId: req.user!.id },
     include: { product: true, requester: true },
     orderBy: { createdAt: 'desc' },
   });
@@ -73,9 +81,15 @@ sampleRequestsRouter.patch('/:id/status', async (req, res) => {
     return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
   }
 
-  const existing = await prisma.sampleRequest.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.sampleRequest.findUnique({
+    where: { id: req.params.id },
+    include: { product: true },
+  });
   if (!existing) {
     return res.status(404).json({ error: 'sample_request_not_found' });
+  }
+  if (existing.product.companyId !== req.user!.companyId) {
+    return res.status(403).json({ error: 'not_your_company' });
   }
 
   const currentIndex = STATUS_ORDER.indexOf(existing.status as (typeof STATUS_ORDER)[number]);

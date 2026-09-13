@@ -12,10 +12,10 @@ export const registerSchema = z.object({
   companyName: z.string().optional(),
   taxId: z.string().optional(),
   companyCode: z.string().optional(),
+  verificationToken: z.string().min(1),
 });
 
 export const createProductSchema = z.object({
-  companyId: z.string().min(1),
   code: z.string().min(1),
   type: productTypeSchema,
   stock: z.number().nonnegative(),

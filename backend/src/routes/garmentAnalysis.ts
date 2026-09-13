@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
+import { requireAuth } from '../middleware/auth';
 
 export const garmentAnalysisRouter = Router();
+garmentAnalysisRouter.use(requireAuth);
 
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 

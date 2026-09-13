@@ -16,6 +16,29 @@ const API_BASE_URL =
 
 const REQUEST_TIMEOUT_MS = 30000;
 
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  details?: unknown;
+
+  constructor(message: string, status: number, code?: string, details?: unknown) {
+    super(message);
+    this.status = status;
+    this.code = code;
+    this.details = details;
+  }
+}
+
+// Oturum token'ı SessionContext tarafından login/restore anında ayarlanır.
+// Her istekte SecureStore'dan okumak yerine bellekte tutuyoruz — RootNavigator
+// zaten SessionContext'in restore işlemi bitene kadar hiçbir ekranı render
+// etmiyor, o yüzden bu değişken set edilmeden bir istek atılma riski yok.
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -23,22 +46,25 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
       signal: controller.signal,
       ...options,
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('İstek zaman aşımına uğradı, lütfen tekrar deneyin.');
+      throw new ApiError('İstek zaman aşımına uğradı, lütfen tekrar deneyin.', 0);
     }
-    throw err;
+    throw new ApiError(err instanceof Error ? err.message : 'Ağ hatası', 0);
   } finally {
     clearTimeout(timeout);
   }
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(body?.error ?? `İstek başarısız (${res.status})`);
+    throw new ApiError(body?.error ?? `İstek başarısız (${res.status})`, res.status, body?.error, body?.details);
   }
   return body as T;
 }
@@ -48,8 +74,30 @@ export function fetchProducts(search?: string) {
   return request<{ products: Product[] }>(`/products${query}`);
 }
 
+export function requestOtp(phone: string) {
+  return request<{ ok: true }>('/otp/request', {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+}
+
+export type VerifyOtpResult =
+  | { purpose: 'login'; token: string; user: User }
+  | { purpose: 'register'; verificationToken: string };
+
+export function verifyOtp(phone: string, code: string) {
+  return request<VerifyOtpResult>('/otp/verify', {
+    method: 'POST',
+    body: JSON.stringify({ phone, code }),
+  });
+}
+
+export function fetchMe() {
+  return request<{ user: User }>('/me');
+}
+
 export function registerUser(draft: RegistrationDraft) {
-  return request<{ user: User }>('/register', {
+  return request<{ token: string; user: User }>('/register', {
     method: 'POST',
     body: JSON.stringify(draft),
   });
@@ -64,7 +112,6 @@ export function searchCompanies(search: string) {
 }
 
 export interface NewProductInput {
-  companyId: string;
   code: string;
   type: Product['type'];
   stock: number;
@@ -86,7 +133,7 @@ export function fetchProduct(id: string) {
   return request<{ product: Product }>(`/products/${id}`);
 }
 
-export type UpdateProductInput = Partial<Omit<NewProductInput, 'companyId'>>;
+export type UpdateProductInput = Partial<NewProductInput>;
 
 export function updateProduct(id: string, payload: UpdateProductInput) {
   return request<{ product: Product }>(`/products/${id}`, {
@@ -116,27 +163,19 @@ export type SampleRequestWithDetails = SampleRequest & {
   requester: User;
 };
 
-export function createSampleRequest(payload: {
-  productId: string;
-  requesterId: string;
-  deliveryPreference: string;
-}) {
+export function createSampleRequest(payload: { productId: string; deliveryPreference: string }) {
   return request<{ sampleRequest: SampleRequestWithDetails }>('/sample-requests', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
-export function fetchMySampleRequests(requesterId: string) {
-  return request<{ sampleRequests: SampleRequestWithDetails[] }>(
-    `/sample-requests?requesterId=${encodeURIComponent(requesterId)}`
-  );
+export function fetchMySampleRequests() {
+  return request<{ sampleRequests: SampleRequestWithDetails[] }>('/sample-requests?as=requester');
 }
 
-export function fetchIncomingSampleRequests(companyId: string) {
-  return request<{ sampleRequests: SampleRequestWithDetails[] }>(
-    `/sample-requests?companyId=${encodeURIComponent(companyId)}`
-  );
+export function fetchIncomingSampleRequests() {
+  return request<{ sampleRequests: SampleRequestWithDetails[] }>('/sample-requests?as=company');
 }
 
 export function updateSampleRequestStatus(id: string, status: SampleRequest['status']) {
@@ -163,28 +202,15 @@ export function detectGarmentComponents(images: GarmentImageInput[]) {
   });
 }
 
-export function loginUser(phone: string) {
-  return request<{ user: User }>('/login', {
-    method: 'POST',
-    body: JSON.stringify({ phone }),
-  });
-}
-
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };
 
-export function fetchAdminCompanies(adminUserId: string) {
-  return request<{ companies: CompanyWithCounts[] }>(
-    `/admin/companies?adminUserId=${encodeURIComponent(adminUserId)}`
-  );
+export function fetchAdminCompanies() {
+  return request<{ companies: CompanyWithCounts[] }>('/admin/companies');
 }
 
-export function updateCompanyVerification(
-  adminUserId: string,
-  companyId: string,
-  verification: Company['verification']
-) {
+export function updateCompanyVerification(companyId: string, verification: Company['verification']) {
   return request<{ company: Company }>(`/admin/companies/${companyId}/verification`, {
     method: 'PATCH',
-    body: JSON.stringify({ adminUserId, verification }),
+    body: JSON.stringify({ verification }),
   });
 }

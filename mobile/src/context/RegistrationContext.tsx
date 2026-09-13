@@ -10,6 +10,7 @@ export interface RegistrationDraft {
   companyName: string;
   taxId: string;
   companyCode: string;
+  verificationToken: string;
 }
 
 const initialDraft: RegistrationDraft = {
@@ -21,6 +22,7 @@ const initialDraft: RegistrationDraft = {
   companyName: '',
   taxId: '',
   companyCode: '',
+  verificationToken: '',
 };
 
 interface RegistrationContextValue {

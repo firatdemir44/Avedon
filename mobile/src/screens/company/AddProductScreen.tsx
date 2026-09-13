@@ -124,7 +124,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       if (isEditing && productId) {
         await updateProduct(productId, payload);
       } else {
-        await createProduct({ companyId: user.companyId, ...payload });
+        await createProduct(payload);
       }
       navigation.goBack();
     } catch (err) {

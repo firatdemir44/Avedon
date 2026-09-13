@@ -1,6 +1,9 @@
 import { Router } from 'express';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { registerSchema } from '../validation';
+import { normalizePhone } from '../phone';
+import { verifyRegistrationTicket, signSessionToken } from '../auth';
 
 export const registerRouter = Router();
 
@@ -17,8 +20,14 @@ registerRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
   }
   const data = parsed.data;
+  const phone = normalizePhone(data.phone);
 
-  const existingPhone = await prisma.user.findUnique({ where: { phone: data.phone } });
+  const ticket = verifyRegistrationTicket(data.verificationToken);
+  if (!ticket || ticket.phone !== phone) {
+    return res.status(400).json({ error: 'invalid_verification_token' });
+  }
+
+  const existingPhone = await prisma.user.findUnique({ where: { phone } });
   if (existingPhone) {
     return res.status(409).json({ error: 'phone_already_registered' });
   }
@@ -46,18 +55,25 @@ registerRouter.post('/', async (req, res) => {
     }
   }
 
-  const user = await prisma.user.create({
-    data: {
-      accountType: data.accountType,
-      position: data.position,
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phone: data.phone,
-      phoneVerified: true,
-      companyId,
-    },
-    include: { company: true },
-  });
+  try {
+    const user = await prisma.user.create({
+      data: {
+        accountType: data.accountType,
+        position: data.position,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone,
+        phoneVerified: true,
+        companyId,
+      },
+      include: { company: true },
+    });
 
-  res.status(201).json({ user });
+    res.status(201).json({ token: signSessionToken(user.id), user });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      return res.status(409).json({ error: 'phone_already_registered' });
+    }
+    throw err;
+  }
 });

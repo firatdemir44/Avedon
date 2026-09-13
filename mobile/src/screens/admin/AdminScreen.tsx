@@ -21,13 +21,13 @@ export function AdminScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    if (!user?.id) return;
+    if (!user?.isAdmin) return;
     setLoading(true);
-    fetchAdminCompanies(user.id)
+    fetchAdminCompanies()
       .then(({ companies: fetched }) => setCompanies(fetched))
       .catch((err) => setError(err instanceof Error ? err.message : 'Firmalar alınamadı'))
       .finally(() => setLoading(false));
-  }, [user?.id]);
+  }, [user?.isAdmin]);
 
   useFocusEffect(
     useCallback(() => {
@@ -36,10 +36,10 @@ export function AdminScreen() {
   );
 
   const handleSetStatus = async (companyId: string, status: VerificationStatus) => {
-    if (!user?.id) return;
+    if (!user?.isAdmin) return;
     setUpdatingId(companyId);
     try {
-      await updateCompanyVerification(user.id, companyId, status);
+      await updateCompanyVerification(companyId, status);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Durum güncellenemedi');

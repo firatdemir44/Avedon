@@ -5,28 +5,82 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { OtpCodeField } from '../../components/OtpCodeField';
 import { useSession } from '../../context/SessionContext';
-import { loginUser } from '../../api/client';
+import { ApiError, requestOtp, verifyOtp } from '../../api/client';
 import { colors, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 export function LoginScreen({ navigation }: Props) {
-  const { setUser } = useSession();
+  const { login } = useSession();
   const [phone, setPhone] = useState('');
+  const [code, setCode] = useState('');
+  const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
+  const sendCode = async () => {
     setSubmitting(true);
     setError(null);
     try {
-      const { user } = await loginUser(phone.trim());
-      setUser(user);
-      navigation.reset({ index: 0, routes: [{ name: 'ProductList' }] });
+      await requestOtp(phone.trim());
+      setStep('code');
+      setCooldown(60);
     } catch (err) {
-      const message = err instanceof Error ? err.message : '';
-      setError(message === 'user_not_found' ? 'Bu telefon numarasıyla kayıtlı hesap bulunamadı.' : 'Giriş yapılamadı');
+      if (err instanceof ApiError && err.code === 'cooldown') {
+        setStep('code');
+        setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
+      } else {
+        setError('Kod gönderilemedi, lütfen tekrar deneyin.');
+      }
+    } finally {
+      setSubmitting(false);
+      setResending(false);
+    }
+  };
+
+  const handleResend = async () => {
+    setResending(true);
+    setError(null);
+    try {
+      await requestOtp(phone.trim());
+      setCooldown(60);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'cooldown') {
+        setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
+      } else {
+        setError('Kod gönderilemedi, lütfen tekrar deneyin.');
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const result = await verifyOtp(phone.trim(), code.trim());
+      if (result.purpose === 'login') {
+        login(result.token, result.user);
+        navigation.reset({ index: 0, routes: [{ name: 'ProductList' }] });
+      } else {
+        setError('Bu telefon numarasıyla kayıtlı hesap bulunamadı. Önce kayıt olmanız gerekiyor.');
+      }
+    } catch (err) {
+      const code = err instanceof ApiError ? err.code : undefined;
+      setError(
+        code === 'mismatch'
+          ? 'Kod hatalı, tekrar deneyin.'
+          : code === 'expired'
+            ? 'Kodun süresi doldu, yeni kod isteyin.'
+            : code === 'max_attempts'
+              ? 'Çok fazla yanlış deneme yapıldı, yeni kod isteyin.'
+              : 'Doğrulama başarısız, lütfen tekrar deneyin.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -36,20 +90,46 @@ export function LoginScreen({ navigation }: Props) {
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.content}>
         <Text style={styles.title}>Giriş Yap</Text>
-        <Text style={styles.subtitle}>Kayıtlı telefon numaranızla giriş yapın.</Text>
-        <TextField
-          label="Telefon"
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="05XX XXX XX XX"
-          keyboardType="phone-pad"
-        />
+        <Text style={styles.subtitle}>
+          {step === 'phone'
+            ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
+            : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
+        </Text>
+
+        {step === 'phone' ? (
+          <TextField
+            label="Telefon"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="05XX XXX XX XX"
+            keyboardType="phone-pad"
+          />
+        ) : (
+          <OtpCodeField
+            code={code}
+            onChangeCode={setCode}
+            onResend={handleResend}
+            resendCooldownSeconds={cooldown}
+            resending={resending}
+          />
+        )}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton
-          label={submitting ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-          disabled={submitting || phone.trim().length < 10}
-          onPress={handleLogin}
-        />
+
+        {step === 'phone' ? (
+          <PrimaryButton
+            label={submitting ? 'Gönderiliyor...' : 'Kod Gönder'}
+            disabled={submitting || phone.trim().length < 10}
+            onPress={sendCode}
+          />
+        ) : (
+          <PrimaryButton
+            label={submitting ? 'Doğrulanıyor...' : 'Giriş Yap'}
+            disabled={submitting || code.trim().length !== 6}
+            onPress={handleVerify}
+          />
+        )}
+
         <PrimaryButton
           label="Hesabım Yok, Kayıt Ol"
           variant="secondary"

@@ -1,21 +1,13 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
+import { requireAdminAuth } from '../middleware/auth';
 
 export const adminRouter = Router();
 
-async function requireAdmin(adminUserId: unknown): Promise<boolean> {
-  if (typeof adminUserId !== 'string') return false;
-  const user = await prisma.user.findUnique({ where: { id: adminUserId } });
-  return !!user?.isAdmin;
-}
+adminRouter.use(requireAdminAuth);
 
-adminRouter.get('/companies', async (req, res) => {
-  const isAdmin = await requireAdmin(req.query.adminUserId);
-  if (!isAdmin) {
-    return res.status(403).json({ error: 'not_admin' });
-  }
-
+adminRouter.get('/companies', async (_req, res) => {
   const companies = await prisma.company.findMany({
     orderBy: { createdAt: 'desc' },
     include: { _count: { select: { users: true, products: true } } },
@@ -24,7 +16,6 @@ adminRouter.get('/companies', async (req, res) => {
 });
 
 const updateVerificationSchema = z.object({
-  adminUserId: z.string().min(1),
   verification: z.enum(['dogrulanmamis', 'inceleniyor', 'dogrulanmis']),
 });
 
@@ -32,11 +23,6 @@ adminRouter.patch('/companies/:id/verification', async (req, res) => {
   const parsed = updateVerificationSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
-  }
-
-  const isAdmin = await requireAdmin(parsed.data.adminUserId);
-  if (!isAdmin) {
-    return res.status(403).json({ error: 'not_admin' });
   }
 
   const company = await prisma.company.update({

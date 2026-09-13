@@ -14,7 +14,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompanyCode'>;
 
 export function CompanyCodeScreen({ navigation }: Props) {
   const { draft, updateDraft } = useRegistration();
-  const { setUser } = useSession();
+  const { login } = useSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,8 +22,8 @@ export function CompanyCodeScreen({ navigation }: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const { user } = await registerUser(draft);
-      setUser(user);
+      const { token, user } = await registerUser(draft);
+      login(token, user);
       navigation.navigate('ProductList');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kayıt tamamlanamadı');

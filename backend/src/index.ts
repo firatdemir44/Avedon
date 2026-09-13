@@ -7,7 +7,8 @@ import { companiesRouter } from './routes/companies';
 import { advisorRouter } from './routes/advisor';
 import { sampleRequestsRouter } from './routes/sampleRequests';
 import { garmentAnalysisRouter } from './routes/garmentAnalysis';
-import { loginRouter } from './routes/login';
+import { otpRouter } from './routes/otp';
+import { meRouter } from './routes/me';
 import { adminRouter } from './routes/admin';
 import { whatsappWebhookRouter } from './routes/whatsappWebhook';
 
@@ -22,7 +23,8 @@ app.use('/api/companies', companiesRouter);
 app.use('/api/advisor', advisorRouter);
 app.use('/api/sample-requests', sampleRequestsRouter);
 app.use('/api/garment-analysis', garmentAnalysisRouter);
-app.use('/api/login', loginRouter);
+app.use('/api/otp', otpRouter);
+app.use('/api/me', meRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 

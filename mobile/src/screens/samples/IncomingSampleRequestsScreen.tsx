@@ -25,7 +25,7 @@ export function IncomingSampleRequestsScreen() {
       return;
     }
     setLoading(true);
-    fetchIncomingSampleRequests(user.companyId)
+    fetchIncomingSampleRequests()
       .then(({ sampleRequests }) => setRequests(sampleRequests))
       .catch((err) => setError(err instanceof Error ? err.message : 'Talepler alınamadı'))
       .finally(() => setLoading(false));
