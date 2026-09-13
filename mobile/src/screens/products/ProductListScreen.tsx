@@ -128,6 +128,16 @@ export function ProductListScreen({ navigation }: Props) {
               <Text style={styles.menuChipText}>Admin</Text>
             </Pressable>
           ) : null}
+          {user ? (
+            <Pressable onPress={() => navigation.navigate('Connections')} style={styles.menuChip}>
+              <Text style={styles.menuChipText}>Bağlantılarım</Text>
+            </Pressable>
+          ) : null}
+          {user ? (
+            <Pressable onPress={() => navigation.navigate('ConnectionRequests')} style={styles.menuChip}>
+              <Text style={styles.menuChipText}>Bağlantı İstekleri</Text>
+            </Pressable>
+          ) : null}
         </View>
         <TextInput
           style={styles.search}

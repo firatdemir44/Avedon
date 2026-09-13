@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { fetchCompany } from '../../api/client';
+import { fetchCompany, type CompanyEmployee } from '../../api/client';
 import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
@@ -30,7 +30,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
-  const [company, setCompany] = useState<(Company & { products: Product[] }) | null>(null);
+  const [company, setCompany] = useState<(Company & { products: Product[]; users: CompanyEmployee[] }) | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +113,25 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                   style={styles.actionButton}
                 />
               </View>
+            ) : null}
+            {company.users.filter((u) => u.id !== user?.id).length > 0 ? (
+              <>
+                <Text style={styles.sectionTitle}>Çalışanlar</Text>
+                {company.users
+                  .filter((u) => u.id !== user?.id)
+                  .map((employee) => (
+                    <Pressable
+                      key={employee.id}
+                      style={styles.employeeRow}
+                      onPress={() => navigation.navigate('Profile', { userId: employee.id })}
+                    >
+                      <Text style={styles.employeeName}>
+                        {employee.firstName} {employee.lastName}
+                      </Text>
+                      <Text style={styles.meta}>{employee.position}</Text>
+                    </Pressable>
+                  ))}
+              </>
             ) : null}
             <Text style={styles.sectionTitle}>Ürünler ({company.products.length})</Text>
           </View>
@@ -210,6 +231,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.text,
     marginTop: spacing.lg,
+  },
+  employeeRow: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  employeeName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
   card: {
     flexDirection: 'row',

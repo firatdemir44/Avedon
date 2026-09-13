@@ -1,7 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
   fetchIncomingSampleRequests,
@@ -12,7 +14,9 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { STATUS_LABELS, nextStatus } from '../../features/sampleRequests/status';
 import { colors, radius, spacing } from '../../theme';
 
-export function IncomingSampleRequestsScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'IncomingSampleRequests'>;
+
+export function IncomingSampleRequestsScreen({ navigation }: Props) {
   const { user } = useSession();
   const [requests, setRequests] = useState<SampleRequestWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,9 +86,11 @@ export function IncomingSampleRequestsScreen() {
                 <Text style={styles.code}>{item.product.code}</Text>
                 <Text style={styles.statusBadge}>{STATUS_LABELS[item.status]}</Text>
               </View>
-              <Text style={styles.meta}>
-                Talep eden: {item.requester.firstName} {item.requester.lastName}
-              </Text>
+              <Pressable onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}>
+                <Text style={styles.meta}>
+                  Talep eden: <Text style={styles.link}>{item.requester.firstName} {item.requester.lastName}</Text>
+                </Text>
+              </Pressable>
               <Text style={styles.meta}>Teslimat tercihi: {item.deliveryPreference}</Text>
               {next ? (
                 <PrimaryButton
@@ -132,5 +138,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   meta: { fontSize: 13, color: colors.textMuted },
+  link: { color: colors.primary, fontWeight: '600' },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

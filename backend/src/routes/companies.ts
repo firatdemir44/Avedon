@@ -19,7 +19,10 @@ companiesRouter.get('/', async (req, res) => {
 companiesRouter.get('/:id', async (req, res) => {
   const company = await prisma.company.findUnique({
     where: { id: req.params.id },
-    include: { products: true },
+    include: {
+      products: true,
+      users: { select: { id: true, firstName: true, lastName: true, position: true } },
+    },
   });
   if (!company) {
     return res.status(404).json({ error: 'company_not_found' });

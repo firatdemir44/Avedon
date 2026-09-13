@@ -22,4 +22,7 @@ export type RootStackParamList = {
   MySampleRequests: undefined;
   IncomingSampleRequests: undefined;
   GarmentVisualCost: undefined;
+  Profile: { userId: string };
+  Connections: undefined;
+  ConnectionRequests: undefined;
 };

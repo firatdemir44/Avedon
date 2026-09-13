@@ -9,6 +9,8 @@ import { sampleRequestsRouter } from './routes/sampleRequests';
 import { garmentAnalysisRouter } from './routes/garmentAnalysis';
 import { otpRouter } from './routes/otp';
 import { meRouter } from './routes/me';
+import { connectionsRouter } from './routes/connections';
+import { usersRouter } from './routes/users';
 import { adminRouter } from './routes/admin';
 import { whatsappWebhookRouter } from './routes/whatsappWebhook';
 
@@ -25,6 +27,8 @@ app.use('/api/sample-requests', sampleRequestsRouter);
 app.use('/api/garment-analysis', garmentAnalysisRouter);
 app.use('/api/otp', otpRouter);
 app.use('/api/me', meRouter);
+app.use('/api/connections', connectionsRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 

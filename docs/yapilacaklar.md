@@ -23,7 +23,7 @@ Gerçek kimlik doğrulama tamamlandı (bkz. Tamamlananlar).
 7. **Numune sürecini zaman damgalı timeline'a dönüştürme.**
 8. **Firma sayfasını zenginleştirme** (çalışan listesi, sertifikalar, ofis görselleri).
 
-Şu an **1. aşama (Bağlantı/Network sistemi)** üzerinde çalışılıyor.
+**1. aşama tamamlandı** (bkz. Tamamlananlar), şu an **2. aşama (Mesajlaşma)** planlanacak.
 
 Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Ödeme/fatura akışı (hiç yok)
@@ -36,4 +36,6 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - 2026-09-12: Telefon–bilgisayar bağlantı sorunu çözüldü (AVG Antivirus firewall'u engelliyordu)
 - 2026-09-12: Anthropic API anahtarı eklendi, AI Danışman + Kıyafet Analizi aktif edildi
 - 2026-09-12: Git kimliği ayarlandı, otomatik commit/push izni kuruldu (`CLAUDE.md`, `.claude/settings.json`)
-- 2026-09-13: **Gerçek kimlik doğrulama** eklendi — SMS OTP tabanlı kayıt/giriş, 30 günlük oturum JWT'si, admin/ürün/numune talebi sahiplik kontrolleri artık sunucuda (client'a güvenmiyor). Eski `/api/login` ve "her kod kabul edilir" davranışı kaldırıldı. Detaylar: `C:\Users\ebosc\.claude\plans\swift-rolling-kazoo.md`.
+- 2026-09-13: **Gerçek kimlik doğrulama** eklendi — SMS OTP tabanlı kayıt/giriş, 30 günlük oturum JWT'si, admin/ürün/numune talebi sahiplik kontrolleri artık sunucuda (client'a güvenmiyor). Eski `/api/login` ve "her kod kabul edilir" davranışı kaldırıldı.
+- 2026-09-13: **2020 vizyonu incelendi** (`Takyon Ai - Avedon Product.pdf`) ve kullanıcı tam sosyal ağ + B2B hibriti vizyonunu onayladı; aşamalı yol haritası oluşturuldu (yukarıda).
+- 2026-09-13: **Faz 1 — Bağlantı sistemi + Profil sayfası** tamamlandı. Yeni `Connection` modeli (pending/accepted, reddetme = satır silme), `POST/PATCH /api/connections`, `GET /api/connections(?status=)`, `GET /api/connections/status/:userId`, `GET /api/users/:id` (bağlantı yoksa telefon alanı gizli). Mobilde: Profil ekranı (bağlantı kur/kabul/reddet butonları), Bağlantılarım ve Bağlantı İstekleri ekranları, firma sayfasında tıklanabilir çalışan listesi, gelen numune taleplerinde talep edenin adı artık profile bağlıyor. Uçtan uca curl ile doğrulandı (istek/kabul/red/kendine-istek-engeli/tekrar-istek-engeli/telefon gizliliği). Plan: `C:\Users\ebosc\.claude\plans\swift-rolling-kazoo.md`.

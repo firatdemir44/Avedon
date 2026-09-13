@@ -103,8 +103,55 @@ export function registerUser(draft: RegistrationDraft) {
   });
 }
 
+export type CompanyEmployee = Pick<User, 'id' | 'firstName' | 'lastName' | 'position'>;
+
 export function fetchCompany(id: string) {
-  return request<{ company: Company & { products: Product[] } }>(`/companies/${id}`);
+  return request<{ company: Company & { products: Product[]; users: CompanyEmployee[] } }>(`/companies/${id}`);
+}
+
+export type PublicUserProfile = Pick<User, 'id' | 'firstName' | 'lastName' | 'position' | 'accountType'> & {
+  phone?: string;
+  company: Pick<Company, 'id' | 'name' | 'verification'> | null;
+};
+
+export function fetchUserProfile(id: string) {
+  return request<{ user: PublicUserProfile }>(`/users/${id}`);
+}
+
+export type ConnectionStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
+export interface ConnectionStatusResult {
+  status: ConnectionStatus;
+  connectionId?: string;
+}
+
+export function fetchConnectionStatus(userId: string) {
+  return request<ConnectionStatusResult>(`/connections/status/${userId}`);
+}
+
+export function sendConnectionRequest(addresseeId: string) {
+  return request<{ connection: { id: string; status: string } }>('/connections', {
+    method: 'POST',
+    body: JSON.stringify({ addresseeId }),
+  });
+}
+
+export function respondToConnectionRequest(id: string, status: 'accepted' | 'rejected') {
+  return request<{ ok?: true; connection?: unknown }>(`/connections/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export type ConnectionSummary = { connectionId: string; user: User };
+
+export function fetchConnections() {
+  return request<{ connections: ConnectionSummary[] }>('/connections?status=accepted');
+}
+
+export type IncomingConnectionRequest = { id: string; requester: User; createdAt: string };
+
+export function fetchIncomingConnectionRequests() {
+  return request<{ requests: IncomingConnectionRequest[] }>('/connections?status=pending');
 }
 
 export function searchCompanies(search: string) {

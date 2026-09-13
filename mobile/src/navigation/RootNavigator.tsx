@@ -28,6 +28,9 @@ import { IncomingSampleRequestsScreen } from '../screens/samples/IncomingSampleR
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
+import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
+import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -130,6 +133,17 @@ export function RootNavigator() {
           name="Admin"
           component={AdminScreen}
           options={{ headerShown: true, title: 'Firma Doğrulama (Admin)' }}
+        />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: 'Profil' }} />
+        <Stack.Screen
+          name="Connections"
+          component={ConnectionsListScreen}
+          options={{ headerShown: true, title: 'Bağlantılarım' }}
+        />
+        <Stack.Screen
+          name="ConnectionRequests"
+          component={ConnectionRequestsScreen}
+          options={{ headerShown: true, title: 'Bağlantı İstekleri' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
