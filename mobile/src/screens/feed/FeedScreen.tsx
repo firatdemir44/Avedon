@@ -13,6 +13,7 @@ import {
   type FeedPost,
 } from '../../api/client';
 import { PostCard } from './PostCard';
+import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { colors, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
@@ -52,8 +53,9 @@ export function FeedScreen({ navigation }: Props) {
   // 30 saniyeden yeni bir yükleme varsa atlıyoruz.
   useFocusEffect(
     useCallback(() => {
+      const stale = consumeFeedStale();
       const isFresh = Date.now() - lastLoadedAtRef.current < REFRESH_THROTTLE_MS;
-      if (isFresh && posts.length > 0) return;
+      if (!stale && isFresh && posts.length > 0) return;
       loadFirstPage();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loadFirstPage])

@@ -16,6 +16,7 @@ import {
   type VideoRef,
 } from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
+import { markFeedStale } from '../../features/feed/feedRefresh';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { MAX_VIDEO_SECONDS, VideoPickError, pickVideo, uploadVideo } from '../../features/videoUpload';
 import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
@@ -36,9 +37,9 @@ function formatDuration(seconds: number | null) {
 
 function videoErrorMessage(err: unknown) {
   if (err instanceof VideoPickError) {
-    return err.code === 'permission_denied'
-      ? 'Galeriye erişim izni verilmedi.'
-      : `Video en fazla ${MAX_VIDEO_SECONDS} saniye olabilir.`;
+    if (err.code === 'permission_denied') return 'Galeriye erişim izni verilmedi.';
+    if (err.code === 'too_long') return `Video en fazla ${MAX_VIDEO_SECONDS} saniye olabilir.`;
+    return 'Video dosyası çok büyük (en fazla 190 MB). Telefonun kamera ayarlarından video çözünürlüğünü 1080p\'ye düşürüp yeniden çekin.';
   }
   if (err instanceof ApiError) {
     if (err.code === 'video_not_configured') return 'Video paylaşımı henüz etkinleştirilmedi.';
@@ -103,16 +104,27 @@ export function CreatePostScreen({ navigation }: Props) {
 
   const pickAndUploadVideo = async () => {
     setError(null);
+    let reservedId: string | null = null;
     try {
       const picked = await pickVideo();
       if (!picked) return;
       setVideo({ phase: 'uploading', progress: 0, durationSeconds: picked.durationSeconds });
-      const ref = await uploadVideo(picked, (progress) =>
-        setVideo((prev) => (prev?.phase === 'uploading' ? { ...prev, progress } : prev))
-      );
-      unpostedVideoIdRef.current = ref.id;
+      const ref = await uploadVideo(picked, {
+        onProgress: (progress) =>
+          setVideo((prev) => (prev?.phase === 'uploading' ? { ...prev, progress } : prev)),
+        // Kayıt açılır açılmaz işaretleniyor: yükleme sırasında ekrandan çıkılırsa
+        // ya da yükleme başarısız olursa Cloudflare'de sahipsiz kalmasın.
+        onReserved: (reserved) => {
+          reservedId = reserved.id;
+          unpostedVideoIdRef.current = reserved.id;
+        },
+      });
       setVideo({ phase: 'uploaded', ref, durationSeconds: picked.durationSeconds });
     } catch (err) {
+      if (reservedId) {
+        deleteVideo(reservedId).catch(() => {});
+        if (unpostedVideoIdRef.current === reservedId) unpostedVideoIdRef.current = null;
+      }
       setVideo(null);
       setError(videoErrorMessage(err));
     }
@@ -145,6 +157,7 @@ export function CreatePostScreen({ navigation }: Props) {
       });
       // Video artık gönderiye bağlı; ekrandan çıkarken silinmesin.
       unpostedVideoIdRef.current = null;
+      markFeedStale();
       // Az önce yüklediğimiz fotoğrafı önbelleğe koyuyoruz ki akışa dönünce
       // tekrar indirilmesin.
       if (post.imageUrl) setCachedPostImage(post.id, post.imageUrl);
@@ -182,7 +195,9 @@ export function CreatePostScreen({ navigation }: Props) {
           <View style={styles.videoBox}>
             <Text style={styles.videoTitle}>
               {video.phase === 'uploading'
-                ? `Video yükleniyor %${Math.round(video.progress * 100)}`
+                ? video.progress >= 0.999
+                  ? 'Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...'
+                  : `Video yükleniyor %${Math.round(video.progress * 100)}`
                 : `Video yüklendi${video.durationSeconds != null ? ` · ${formatDuration(video.durationSeconds)}` : ''}`}
             </Text>
             <View style={styles.progressTrack}>
