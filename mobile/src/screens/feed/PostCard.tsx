@@ -67,7 +67,14 @@ function PostCardComponent({
             {post.editedAt ? ' · düzenlendi' : ''}
           </Text>
         </Pressable>
-        {company ? <CompanyAvatar name={company.name} verification={company.verification} /> : null}
+        {company ? (
+          <CompanyAvatar
+            name={company.name}
+            verification={company.verification}
+            companyId={company.id}
+            logoUpdatedAt={company.logoUpdatedAt}
+          />
+        ) : null}
       </View>
 
       {/* Tasarımdaki sıra: FOTOĞRAF → sayaçlar → metin. Fotoğrafı metnin altına

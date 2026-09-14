@@ -122,6 +122,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               name={product.company.name}
               verification={product.company.verification}
               size={44}
+              companyId={product.company.id}
+              logoUpdatedAt={product.company.logoUpdatedAt}
             />
             <View style={styles.companyText}>
               <Text style={styles.companyName}>{product.company.name}</Text>

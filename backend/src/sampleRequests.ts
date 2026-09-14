@@ -94,14 +94,14 @@ export const SAMPLE_ACTOR_SELECT = {
   firstName: true,
   lastName: true,
   position: true,
-  company: { select: { id: true, name: true } },
+  company: { select: { id: true, name: true, logoUpdatedAt: true } },
 } satisfies Prisma.UserSelect;
 
 export const SAMPLE_PRODUCT_SELECT = {
   id: true,
   code: true,
   companyId: true,
-  company: { select: { id: true, name: true } },
+  company: { select: { id: true, name: true, logoUpdatedAt: true } },
 } satisfies Prisma.ProductSelect;
 
 export const SAMPLE_LIST_INCLUDE = {

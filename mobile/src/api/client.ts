@@ -117,9 +117,30 @@ export function fetchCompany(id: string) {
   return request<{ company: Company & { products: Product[]; users: CompanyEmployee[] } }>(`/companies/${id}`);
 }
 
+export function fetchCompanyLogo(id: string) {
+  return request<{ imageUrl: string }>(`/companies/${id}/logo`);
+}
+
+// logo: yeni logo için data URL, kaldırmak için null, dokunmamak için alan yok.
+// Vergi numarası ve şirket kodu düzenlenemez.
+export interface UpdateCompanyInput {
+  name?: string;
+  about?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  logo?: string | null;
+}
+
+export function updateCompany(id: string, input: UpdateCompanyInput) {
+  return request<{ company: Company; verificationReset: boolean }>(`/companies/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
 export type PublicUserProfile = Pick<User, 'id' | 'firstName' | 'lastName' | 'position' | 'accountType'> & {
   phone?: string;
-  company: Pick<Company, 'id' | 'name' | 'verification'> | null;
+  company: Pick<Company, 'id' | 'name' | 'verification' | 'logoUpdatedAt'> | null;
 };
 
 export function fetchUserProfile(id: string) {
@@ -169,7 +190,7 @@ export type ConversationParticipant = {
   firstName: string;
   lastName: string;
   position: string;
-  company: { id: string; name: string } | null;
+  company: { id: string; name: string; logoUpdatedAt: string | null } | null;
 };
 
 export type ChatMessage = {
@@ -231,7 +252,7 @@ export type PostAuthor = {
   firstName: string;
   lastName: string;
   position: string;
-  company: { id: string; name: string; verification: VerificationStatus } | null;
+  company: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null } | null;
 };
 
 // Video dosyası Cloudflare Stream'de durur; burada yalnızca durumu var. İzleme
@@ -435,14 +456,14 @@ export interface SampleActor {
   firstName: string;
   lastName: string;
   position: string;
-  company: { id: string; name: string } | null;
+  company: { id: string; name: string; logoUpdatedAt: string | null } | null;
 }
 
 export interface SampleProductRef {
   id: string;
   code: string;
   companyId: string;
-  company: { id: string; name: string };
+  company: { id: string; name: string; logoUpdatedAt: string | null };
 }
 
 export interface SampleNextStep {

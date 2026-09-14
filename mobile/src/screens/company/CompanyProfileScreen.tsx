@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
+import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
 import type { Company, Product, VerificationStatus } from '../../types';
 
@@ -55,6 +56,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [load])
   );
 
+  // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
+  // yazıyordu (denetim FINDING-018).
+  useEffect(() => {
+    navigation.setOptions({ title: isOwnCompany ? 'Firmam' : company?.name ?? 'Firma' });
+  }, [navigation, isOwnCompany, company?.name]);
+
   if (!viewedCompanyId) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -92,7 +99,16 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.headerTopRow}>
-              <Text style={styles.name}>{company.name}</Text>
+              <View style={styles.identity}>
+                <CompanyAvatar
+                  name={company.name}
+                  verification={company.verification}
+                  size={56}
+                  companyId={company.id}
+                  logoUpdatedAt={company.logoUpdatedAt}
+                />
+                <Text style={styles.name}>{company.name}</Text>
+              </View>
               <Text
                 style={[
                   styles.verificationBadge,
@@ -104,6 +120,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             </View>
             <Text style={styles.meta}>Vergi No: {company.taxId}</Text>
             {isOwnCompany ? <Text style={styles.meta}>Şirket Kodu: {company.companyCode}</Text> : null}
+            {company.about ? <Text style={styles.about}>{company.about}</Text> : null}
+            {company.contactEmail ? <Text style={styles.meta}>E-posta: {company.contactEmail}</Text> : null}
+            {company.contactPhone ? <Text style={styles.meta}>Telefon: {company.contactPhone}</Text> : null}
             {isOwnCompany ? (
               <View style={styles.actionRow}>
                 <PrimaryButton label="Ürün Ekle" onPress={() => navigation.navigate('AddProduct')} style={styles.actionButton} />
@@ -114,6 +133,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                   style={styles.actionButton}
                 />
               </View>
+            ) : null}
+            {isOwnCompany ? (
+              <PrimaryButton
+                label="Firmayı Düzenle"
+                variant="secondary"
+                onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
+                style={{ marginTop: spacing.sm }}
+              />
             ) : null}
             {company.users.filter((u) => u.id !== user?.id).length > 0 ? (
               <>
@@ -195,12 +222,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flexShrink: 1,
+  },
   name: {
     ...typography.title,
     fontSize: 24,
     lineHeight: 30,
     color: colors.primary,
     flexShrink: 1,
+  },
+  about: {
+    ...typography.body,
+    color: colors.text,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
   verificationBadge: {
     ...typography.caption,

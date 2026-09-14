@@ -30,9 +30,24 @@ model Company {
   productCategories String    @default("")
   verification      String    @default("dogrulanmamis")
   companyCode       String    @unique
+  // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:
+  // istemci "logo var mı" bilgisini ve önbellek anahtarını buradan alır.
+  logoUpdatedAt     DateTime?
   createdAt         DateTime  @default(now())
   users             User[]
   products          Product[]
+  logo              CompanyLogo?
+}
+
+// Firma logosu (base64 data URL) ayrı tabloda: giriş yanıtı, kullanıcı profili
+// ve firma araması firmayı `include: { company: true }` ile çekiyor; logo
+// Company'de olsaydı her birinde gereksiz yere taşınırdı. Yalnızca
+// GET /api/companies/:id/logo döner.
+model CompanyLogo {
+  companyId String   @id
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  updatedAt DateTime @updatedAt
 }
 
 model User {

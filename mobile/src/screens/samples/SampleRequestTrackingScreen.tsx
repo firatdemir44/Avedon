@@ -155,7 +155,12 @@ function TimelineStep({ step, isLast }: { step: SampleTimelineStep; isLast: bool
 function StepActor({ actor }: { actor: SampleActor }) {
   return (
     <View style={styles.actorRow}>
-      <CompanyAvatar name={actor.company?.name ?? actor.firstName} size={32} />
+      <CompanyAvatar
+        name={actor.company?.name ?? actor.firstName}
+        size={32}
+        companyId={actor.company?.id}
+        logoUpdatedAt={actor.company?.logoUpdatedAt}
+      />
       <View style={styles.actorText}>
         <Text style={styles.actorName}>
           {actor.firstName} {actor.lastName}

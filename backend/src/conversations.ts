@@ -13,7 +13,7 @@ export const PARTICIPANT_SELECT = {
   firstName: true,
   lastName: true,
   position: true,
-  company: { select: { id: true, name: true } },
+  company: { select: { id: true, name: true, logoUpdatedAt: true } },
 } satisfies Prisma.UserSelect;
 
 export function isParticipant(conversation: { userAId: string; userBId: string }, userId: string): boolean {

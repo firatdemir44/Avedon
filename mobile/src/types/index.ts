@@ -28,6 +28,8 @@ export interface Company {
   employeeIds: string[];
   verification: VerificationStatus;
   companyCode: string; // kayıt sırasında çalışanların katılması için
+  // Logonun kendisi ayrıca çekilir; bu alan hem "logo var mı" hem önbellek anahtarı.
+  logoUpdatedAt: string | null;
 }
 
 export type ProductType = 'raschel' | 'orme' | 'dokuma' | 'diger';
@@ -45,7 +47,7 @@ export interface Product {
   // Fotoğrafın kendisi hiçbir liste/detay yanıtında gelmez; hasImage true ise
   // GET /api/products/:id/image ile ayrıca çekilir (bkz. features/imageCache.ts).
   hasImage: boolean;
-  company?: { id: string; name: string; verification: VerificationStatus };
+  company?: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null };
 }
 
 export type SampleRequestStatus = 'talep_edildi' | 'onaylandi' | 'hazirlandi' | 'teslim_edildi';

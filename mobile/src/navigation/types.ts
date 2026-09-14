@@ -29,6 +29,7 @@ export type RootStackParamList = {
   // Üste itilen ekranlar
   Admin: undefined;
   CompanyProfile: { companyId?: string } | undefined;
+  EditCompany: { companyId: string };
   AddProduct: { productId?: string } | undefined;
   ProductDetail: { productId: string };
   Advisor: undefined;

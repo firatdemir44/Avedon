@@ -10,7 +10,7 @@ export const POST_AUTHOR_SELECT = {
   firstName: true,
   lastName: true,
   position: true,
-  company: { select: { id: true, name: true, verification: true } },
+  company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } },
 } satisfies Prisma.UserSelect;
 
 export const POST_PRODUCT_SELECT = { id: true, code: true } satisfies Prisma.ProductSelect;

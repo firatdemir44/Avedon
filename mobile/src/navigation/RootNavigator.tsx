@@ -13,6 +13,7 @@ import { CompanyInfoScreen } from '../screens/onboarding/CompanyInfoScreen';
 import { PhoneVerificationScreen } from '../screens/onboarding/PhoneVerificationScreen';
 import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
+import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { AdvisorScreen } from '../screens/advisor/AdvisorScreen';
@@ -86,7 +87,14 @@ export function RootNavigator() {
             <Stack.Screen
               name="CompanyProfile"
               component={CompanyProfileScreen}
-              options={{ headerShown: true, title: 'Firmam' }}
+              // Başlık ekranın kendisinde güncellenir: kendi firman "Firmam",
+              // başka firma kendi adı.
+              options={{ headerShown: true, title: 'Firma' }}
+            />
+            <Stack.Screen
+              name="EditCompany"
+              component={EditCompanyScreen}
+              options={{ headerShown: true, title: 'Firmayı Düzenle' }}
             />
             <Stack.Screen
               name="AddProduct"

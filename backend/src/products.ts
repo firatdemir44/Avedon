@@ -9,6 +9,7 @@ export const PRODUCT_COMPANY_SELECT = {
   id: true,
   name: true,
   verification: true,
+  logoUpdatedAt: true,
 } satisfies Prisma.CompanySelect;
 
 export const PRODUCT_SELECT = {
