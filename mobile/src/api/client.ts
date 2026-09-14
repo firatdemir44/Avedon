@@ -271,6 +271,8 @@ export type FeedPost = {
   video: VideoRef | null;
   visibility: PostVisibility;
   createdAt: string;
+  // Yazar metni, görünürlüğü ya da ürünü değiştirdiyse dolu.
+  editedAt: string | null;
   author: PostAuthor;
   product: { id: string; code: string } | null;
   likeCount: number;
@@ -307,6 +309,24 @@ export interface NewPostInput {
 export function createPost(input: NewPostInput) {
   return request<{ post: FeedPost }>('/posts', {
     method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchPost(id: string) {
+  return request<{ post: FeedPost }>(`/posts/${id}`);
+}
+
+// Fotoğraf ve video düzenlenemez; productId: null ürünü gönderiden kaldırır.
+export interface UpdatePostInput {
+  body?: string;
+  productId?: string | null;
+  visibility?: PostVisibility;
+}
+
+export function updatePost(id: string, input: UpdatePostInput) {
+  return request<{ post: FeedPost }>(`/posts/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(input),
   });
 }

@@ -193,6 +193,7 @@ export function FeedScreen({ navigation }: Props) {
               })
             }
             onShare={handleShare}
+            onEdit={(post) => navigation.navigate('CreatePost', { postId: post.id })}
             onDelete={handleDelete}
           />
         )}

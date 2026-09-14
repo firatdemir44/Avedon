@@ -58,6 +58,7 @@ type PostWithIncludes = {
   imageUrl: string | null;
   visibility: string;
   createdAt: Date;
+  editedAt: Date | null;
   author: unknown;
   product: { id: string; code: string } | null;
   video: VideoRecord | null;
@@ -74,6 +75,7 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     imageUrl: includeImage ? post.imageUrl : null,
     visibility: post.visibility,
     createdAt: post.createdAt,
+    editedAt: post.editedAt,
     author: post.author,
     product: post.product,
     video: post.video ? toVideoRow(post.video) : null,

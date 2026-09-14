@@ -16,6 +16,7 @@ interface Props {
   onOpenProduct: (post: FeedPost) => void;
   onOpenAuthor: (post: FeedPost) => void;
   onShare: (post: FeedPost) => void;
+  onEdit: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
 }
 
@@ -27,6 +28,7 @@ function PostCardComponent({
   onOpenProduct,
   onOpenAuthor,
   onShare,
+  onEdit,
   onDelete,
 }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(
@@ -62,6 +64,7 @@ function PostCardComponent({
           <Text style={styles.meta}>
             {formatRelativeTime(post.createdAt)} ·{' '}
             {post.visibility === 'public' ? 'Herkese açık' : 'Bağlantılarım'}
+            {post.editedAt ? ' · düzenlendi' : ''}
           </Text>
         </Pressable>
         {company ? <CompanyAvatar name={company.name} verification={company.verification} /> : null}
@@ -121,9 +124,28 @@ function PostCardComponent({
       </View>
 
       {isMine ? (
-        <Pressable onPress={() => onDelete(post)} style={styles.deleteRow} hitSlop={8}>
-          <Text style={styles.deleteText}>Sil</Text>
-        </Pressable>
+        <View style={styles.ownerRow}>
+          <Pressable
+            onPress={() => onEdit(post)}
+            hitSlop={8}
+            style={styles.ownerAction}
+            accessibilityRole="button"
+            accessibilityLabel="Gönderiyi düzenle"
+          >
+            <Ionicons name="create-outline" size={16} color={colors.accent} />
+            <Text style={styles.editText}>Düzenle</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => onDelete(post)}
+            hitSlop={8}
+            style={styles.ownerAction}
+            accessibilityRole="button"
+            accessibilityLabel="Gönderiyi sil"
+          >
+            <Ionicons name="trash-outline" size={16} color={colors.danger} />
+            <Text style={styles.deleteText}>Sil</Text>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -223,6 +245,8 @@ const styles = StyleSheet.create({
   },
   actionPressed: { opacity: 0.6 },
   actionText: { ...typography.caption, fontWeight: '600' },
-  deleteRow: { marginTop: spacing.sm, alignSelf: 'flex-start' },
+  ownerRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm },
+  ownerAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
+  editText: { ...typography.caption, fontWeight: '600', color: colors.accent },
   deleteText: { ...typography.caption, fontWeight: '600', color: colors.danger },
 });

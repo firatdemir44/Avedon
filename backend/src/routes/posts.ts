@@ -105,6 +105,107 @@ postsRouter.get(
   })
 );
 
+// Gönderiye yalnızca kullanıcının kendi firmasının ürünü iliştirilebilir
+// (başkasının ürününü kendi gönderisine iliştirip talep toplamasın diye).
+// Uygun değilse yanıtı kendisi yazar ve false döner.
+async function checkOwnProduct(req: Request, res: Response, productId: string) {
+  if (!req.user!.companyId) {
+    res.status(403).json({ error: 'no_company' });
+    return false;
+  }
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { companyId: true },
+  });
+  if (!product) {
+    res.status(404).json({ error: 'product_not_found' });
+    return false;
+  }
+  if (product.companyId !== req.user!.companyId) {
+    res.status(403).json({ error: 'not_your_company' });
+    return false;
+  }
+  return true;
+}
+
+async function isLikedBy(postId: string, userId: string) {
+  const like = await prisma.postLike.findUnique({
+    where: { postId_userId: { postId, userId } },
+    select: { id: true },
+  });
+  return !!like;
+}
+
+// Tek gönderi: düzenleme ekranını doldurmak için. Görünürlük kuralı akıştakiyle aynı.
+postsRouter.get(
+  '/:id',
+  handle(async (req, res) => {
+    const viewable = await loadViewablePost(req, res);
+    if (!viewable) return;
+    const post = await prisma.post.findUnique({ where: { id: viewable.id }, include: POST_INCLUDE });
+    if (!post) {
+      return res.status(404).json({ error: 'post_not_found' });
+    }
+    res.json({ post: toFeedRow(post, await isLikedBy(post.id, req.user!.id)) });
+  })
+);
+
+// Fotoğraf ve video bilinçli olarak düzenlenemez: değiştirmek için gönderi
+// silinip yeniden paylaşılır. Beğeni ve yorumlar düzenlemede korunur.
+const updateSchema = z
+  .object({
+    body: z.string().trim().max(3000).optional(),
+    productId: z.string().min(1).nullable().optional(),
+    visibility: z.enum(['public', 'connections']).optional(),
+  })
+  .strict();
+
+postsRouter.patch(
+  '/:id',
+  handle(async (req, res) => {
+    const parsed = updateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    }
+
+    const existing = await prisma.post.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, authorId: true, body: true, imageUrl: true, videoId: true, productId: true, visibility: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'post_not_found' });
+    }
+    if (existing.authorId !== req.user!.id) {
+      return res.status(403).json({ error: 'not_author' });
+    }
+
+    const { body, productId, visibility } = parsed.data;
+    const nextBody = body !== undefined ? body : existing.body;
+    if (!nextBody && !existing.imageUrl && !existing.videoId) {
+      return res.status(400).json({ error: 'empty_post' });
+    }
+    if (productId && productId !== existing.productId && !(await checkOwnProduct(req, res, productId))) return;
+
+    const changed =
+      nextBody !== existing.body ||
+      (visibility !== undefined && visibility !== existing.visibility) ||
+      (productId !== undefined && productId !== existing.productId);
+
+    const post = await prisma.post.update({
+      where: { id: existing.id },
+      data: {
+        body: nextBody,
+        ...(visibility !== undefined ? { visibility } : {}),
+        ...(productId !== undefined ? { productId } : {}),
+        // Hiçbir şey değişmediyse "düzenlendi" işareti konmaz.
+        ...(changed ? { editedAt: new Date() } : {}),
+      },
+      include: POST_INCLUDE,
+    });
+    res.json({ post: toFeedRow(post, await isLikedBy(post.id, req.user!.id)) });
+  })
+);
+
 const createSchema = z
   .object({
     body: z.string().trim().max(3000).optional(),
@@ -147,22 +248,7 @@ postsRouter.post(
       }
     }
 
-    if (productId) {
-      if (!req.user!.companyId) {
-        return res.status(403).json({ error: 'no_company' });
-      }
-      const product = await prisma.product.findUnique({
-        where: { id: productId },
-        select: { id: true, companyId: true },
-      });
-      if (!product) {
-        return res.status(404).json({ error: 'product_not_found' });
-      }
-      // Başkasının ürününü kendi gönderisine iliştirip talep toplamasın diye.
-      if (product.companyId !== req.user!.companyId) {
-        return res.status(403).json({ error: 'not_your_company' });
-      }
-    }
+    if (productId && !(await checkOwnProduct(req, res, productId))) return;
 
     let post;
     try {

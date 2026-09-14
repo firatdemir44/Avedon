@@ -188,6 +188,10 @@ model Post {
   videoId    String?       @unique
   video      Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
   createdAt  DateTime      @default(now())
+  // Yazar yazıyı/görünürlüğü/ürünü değiştirince dolar; akışta "düzenlendi"
+  // gösterilir (alıcı metnin sonradan değiştiğini bilsin). Fotoğraf ve video
+  // düzenlenemez.
+  editedAt   DateTime?
   likes      PostLike[]
   comments   PostComment[]
 

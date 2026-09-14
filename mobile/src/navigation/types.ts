@@ -49,7 +49,8 @@ export type RootStackParamList = {
   ConnectionRequests: undefined;
   Chat: { conversationId: string; title: string };
   NewConversation: undefined;
-  CreatePost: undefined;
+  // postId verilirse ekran düzenleme modunda açılır.
+  CreatePost: { postId?: string } | undefined;
   PostComments: { postId: string };
 };
 
