@@ -58,7 +58,7 @@ export function ProductionCalculator() {
           Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine bilgilerini doldurun.
         </Text>
 
-        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} percents={result?.percents} />
+        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
 
         <Text style={styles.section}>Makine</Text>
         <TextField label="İğne sayısı" keyboardType="number-pad" value={f.needles} onChangeText={(v) => update({ needles: v })} placeholder="Örn. 2568" />
@@ -75,6 +75,17 @@ export function ProductionCalculator() {
               { label: 'Günlük üretim', value: `${formatNumber(result.kgPerDay, 0)} kg` },
               ...(result.dailyFeeIncome !== null
                 ? [{ label: 'Günlük fason geliri', value: `${formatNumber(result.dailyFeeIncome, 0)} ₺` }]
+                : []),
+              // Birden fazla iplik varsa her birinin kumaştaki payı (önceden
+              // tablo satırında gösteriliyordu, tablo küçülünce buraya taşındı).
+              ...(result.percents.filter((p) => p > 0).length > 1
+                ? result.percents
+                    .map((percent, index) => ({ percent, index }))
+                    .filter(({ percent }) => percent > 0)
+                    .map(({ percent, index }) => ({
+                      label: `${index + 1}. iplik payı`,
+                      value: `%${formatNumber(percent, 1)}`,
+                    }))
                 : []),
             ]}
           />

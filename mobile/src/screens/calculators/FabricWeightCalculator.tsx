@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from '../../components/TextField';
 import { ResultCard } from '../../components/ResultCard';
 import { ChipSelect } from '../../components/ChipSelect';
 import { FEED_SYSTEM_OPTIONS } from '../../components/YarnFeedRowsEditor';
+import { UnitToggle } from '../../components/UnitToggle';
 import {
   gsmFromKnitStructure,
   gsmFromSample,
@@ -101,8 +102,14 @@ export function FabricWeightCalculator() {
             <TextField label="Sıra sayısı (sıra/cm)" keyboardType="decimal-pad" value={f.coursesPerCm} onChangeText={(v) => update({ coursesPerCm: v })} placeholder="Örn. 20" />
             <TextField label="Çubuk sayısı (çubuk/cm)" keyboardType="decimal-pad" value={f.walesPerCm} onChangeText={(v) => update({ walesPerCm: v })} placeholder="Örn. 15" />
             <TextField label="50 iğne iplik uzunluğu (cm)" keyboardType="decimal-pad" value={f.length50} onChangeText={(v) => update({ length50: v })} placeholder="Örn. 14" />
-            <TextField label="İplik numarası" keyboardType="decimal-pad" value={f.count} onChangeText={(v) => update({ count: v })} placeholder="Örn. 30" />
-            <ChipSelect compact options={FEED_SYSTEM_OPTIONS} value={f.system} onChange={(system) => update({ system })} />
+            <View style={styles.countRow}>
+              <View style={styles.countField}>
+                <TextField label="İplik numarası" keyboardType="decimal-pad" value={f.count} onChangeText={(v) => update({ count: v })} placeholder="Örn. 30" />
+              </View>
+              <View style={styles.countUnit}>
+                <UnitToggle options={FEED_SYSTEM_OPTIONS} value={f.system} onChange={(system) => update({ system })} label="İplik numara sistemi" />
+              </View>
+            </View>
             <Text style={styles.label}>Örgü</Text>
             <ChipSelect
               options={[
@@ -133,4 +140,8 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
+  countRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
+  countField: { flex: 1 },
+  // TextField kendi altında boşluk bırakıyor; düğme giriş kutusuyla aynı hizada dursun.
+  countUnit: { marginBottom: spacing.md },
 });

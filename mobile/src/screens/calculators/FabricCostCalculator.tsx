@@ -3,8 +3,10 @@ import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from '../../components/TextField';
 import { ResultCard } from '../../components/ResultCard';
-import { ChipSelect } from '../../components/ChipSelect';
-import { PrimaryButton } from '../../components/PrimaryButton';
+import { Ionicons } from '@expo/vector-icons';
+import { TableInput } from '../../components/TableInput';
+import { UnitToggle } from '../../components/UnitToggle';
+import { tableStyles } from '../../components/YarnFeedRowsEditor';
 import { calculateFabricPricing, type Currency, type MoneyTriple } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
@@ -99,41 +101,74 @@ export function FabricCostCalculator() {
         <Text style={styles.section}>İplikler</Text>
         <Text style={styles.hint}>Kumaşa giren her ipliğin kilo fiyatını, kumaştaki oranını ve firesini girin. Oranların toplamı 100 olmalı.</Text>
 
-        {f.yarns.map((yarn, index) => (
-          <View key={index} style={styles.block}>
-            <View style={styles.blockHeader}>
-              <Text style={styles.blockTitle}>{index + 1}. iplik</Text>
+        {/* Kullanıcı isteği (2026-09-14): her iplik ayrı kutuda alt alta alanlar
+            olunca ekran çok uzuyordu; tek satır = tek iplik tablosu. */}
+        <View style={styles.table}>
+          <View style={styles.row}>
+            <Text style={[styles.head, styles.colIndex]}>#</Text>
+            <Text style={[styles.head, styles.colPrice]}>Kilo fiyatı</Text>
+            <Text style={[styles.head, styles.colPercent]}>Oran %</Text>
+            <Text style={[styles.head, styles.colPercent]}>Fire %</Text>
+            <View style={styles.colRemove} />
+          </View>
+          {f.yarns.map((yarn, index) => (
+            <View key={index} style={styles.row}>
+              <Text style={[styles.index, styles.colIndex]}>{index + 1}</Text>
+              <View style={[styles.colPrice, styles.priceCell]}>
+                <TableInput
+                  style={styles.priceInput}
+                  value={yarn.price}
+                  onChangeText={(v) => updateYarn(index, { price: v })}
+                  placeholder="3,20"
+                  accessibilityLabel={`${index + 1}. iplik kilo fiyatı`}
+                />
+                <UnitToggle
+                  options={CURRENCIES}
+                  value={yarn.currency}
+                  onChange={(currency) => updateYarn(index, { currency })}
+                  label={`${index + 1}. iplik para birimi`}
+                />
+              </View>
+              <TableInput
+                style={styles.colPercent}
+                value={yarn.ratio}
+                onChangeText={(v) => updateYarn(index, { ratio: v })}
+                placeholder="95"
+                accessibilityLabel={`${index + 1}. iplik oranı, yüzde`}
+              />
+              <TableInput
+                style={styles.colPercent}
+                value={yarn.wastage}
+                onChangeText={(v) => updateYarn(index, { wastage: v })}
+                placeholder="5"
+                accessibilityLabel={`${index + 1}. iplik firesi, yüzde`}
+              />
               {f.yarns.length > 1 ? (
                 <Pressable
+                  style={styles.colRemove}
                   onPress={() => update({ yarns: f.yarns.filter((_, i) => i !== index) })}
-                  hitSlop={10}
+                  hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel={`${index + 1}. ipliği kaldır`}
                 >
-                  <Text style={styles.remove}>Kaldır</Text>
+                  <Ionicons name="close" size={18} color={colors.textMuted} />
                 </Pressable>
-              ) : null}
+              ) : (
+                <View style={styles.colRemove} />
+              )}
             </View>
-            <TextField label="Kilo fiyatı" keyboardType="decimal-pad" value={yarn.price} onChangeText={(v) => updateYarn(index, { price: v })} placeholder="Örn. 3,20" />
-            <ChipSelect compact options={CURRENCIES} value={yarn.currency} onChange={(currency) => updateYarn(index, { currency })} />
-            <View style={styles.twoCol}>
-              <View style={styles.col}>
-                <TextField label="Oran (%)" keyboardType="decimal-pad" value={yarn.ratio} onChangeText={(v) => updateYarn(index, { ratio: v })} placeholder="Örn. 95" />
-              </View>
-              <View style={styles.col}>
-                <TextField label="İplik firesi (%)" keyboardType="decimal-pad" value={yarn.wastage} onChangeText={(v) => updateYarn(index, { wastage: v })} placeholder="Örn. 5" />
-              </View>
-            </View>
-          </View>
-        ))}
-        {f.yarns.length < MAX_YARNS ? (
-          <PrimaryButton
-            label="İplik Ekle"
-            variant="secondary"
-            onPress={() => update({ yarns: [...f.yarns, { ...EMPTY_YARN }] })}
-            style={{ marginBottom: spacing.lg }}
-          />
-        ) : null}
+          ))}
+          {f.yarns.length < MAX_YARNS ? (
+            <Pressable
+              onPress={() => update({ yarns: [...f.yarns, { ...EMPTY_YARN }] })}
+              style={styles.addRow}
+              accessibilityRole="button"
+            >
+              <Ionicons name="add" size={18} color={colors.accent} />
+              <Text style={styles.addText}>İplik ekle</Text>
+            </Pressable>
+          ) : null}
+        </View>
 
         <Text style={styles.section}>Kur</Text>
         <Text style={styles.hint}>Uygulama internetten kur çekmez; güncel kuru siz girin. Boş bırakırsanız sonuç yalnızca ₺ olarak gösterilir.</Text>
@@ -214,18 +249,11 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   section: { ...typography.heading, color: colors.primary, marginBottom: spacing.xs },
   hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
-  block: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    paddingBottom: 0,
-    marginBottom: spacing.md,
-  },
-  blockHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
-  blockTitle: { ...typography.bodyStrong, color: colors.primary, flex: 1 },
-  remove: { ...typography.label, color: colors.danger },
+  ...tableStyles,
+  colPrice: { flex: 2 },
+  priceCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  priceInput: { flex: 1 },
+  colPercent: { flex: 1 },
   twoCol: { flexDirection: 'row', gap: spacing.sm },
   col: { flex: 1 },
   warning: { ...typography.label, color: colors.danger, marginBottom: spacing.sm },

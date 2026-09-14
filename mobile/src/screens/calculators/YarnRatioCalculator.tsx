@@ -32,7 +32,7 @@ export function YarnRatioCalculator() {
           Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin. Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.
         </Text>
 
-        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} percents={percents} />
+        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
 
         {usable > 0 ? (
           <ResultCard
