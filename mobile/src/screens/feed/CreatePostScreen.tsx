@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Image, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -6,26 +6,70 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
-import { createPost, fetchMyProducts, type MyProductOption, type PostVisibility } from '../../api/client';
+import {
+  ApiError,
+  createPost,
+  deleteVideo,
+  fetchMyProducts,
+  type MyProductOption,
+  type PostVisibility,
+  type VideoRef,
+} from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { pickCompressedImage } from '../../features/imagePicker';
+import { MAX_VIDEO_SECONDS, VideoPickError, pickVideo, uploadVideo } from '../../features/videoUpload';
 import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePost'>;
 
 const MAX_BODY = 3000;
 
+type VideoState =
+  | { phase: 'uploading'; progress: number; durationSeconds: number | null }
+  | { phase: 'uploaded'; ref: VideoRef; durationSeconds: number | null };
+
+function formatDuration(seconds: number | null) {
+  if (seconds == null) return '';
+  const total = Math.round(seconds);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function videoErrorMessage(err: unknown) {
+  if (err instanceof VideoPickError) {
+    return err.code === 'permission_denied'
+      ? 'Galeriye erişim izni verilmedi.'
+      : `Video en fazla ${MAX_VIDEO_SECONDS} saniye olabilir.`;
+  }
+  if (err instanceof ApiError) {
+    if (err.code === 'video_not_configured') return 'Video paylaşımı henüz etkinleştirilmedi.';
+    if (err.code === 'too_many_pending_uploads') return 'Yarım kalan çok fazla yükleme var, biraz sonra tekrar deneyin.';
+  }
+  return 'Video yüklenemedi, bağlantınızı kontrol edip tekrar deneyin.';
+}
+
 export function CreatePostScreen({ navigation }: Props) {
   const { user } = useSession();
   const [body, setBody] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
+  const [video, setVideo] = useState<VideoState | null>(null);
   const [visibility, setVisibility] = useState<PostVisibility>('public');
   const [products, setProducts] = useState<MyProductOption[]>([]);
   const [productId, setProductId] = useState<string | null>(null);
   const [pickingImage, setPickingImage] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Yüklenmiş ama paylaşılmamış video ekrandan çıkınca silinsin; yoksa ücretli
+  // Cloudflare deposunda sahipsiz kalırdı.
+  const unpostedVideoIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (unpostedVideoIdRef.current) {
+        deleteVideo(unpostedVideoIdRef.current).catch(() => {});
+      }
+    };
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -57,7 +101,35 @@ export function CreatePostScreen({ navigation }: Props) {
     }
   };
 
-  const canSubmit = (body.trim().length > 0 || !!imageDataUrl) && !submitting;
+  const pickAndUploadVideo = async () => {
+    setError(null);
+    try {
+      const picked = await pickVideo();
+      if (!picked) return;
+      setVideo({ phase: 'uploading', progress: 0, durationSeconds: picked.durationSeconds });
+      const ref = await uploadVideo(picked, (progress) =>
+        setVideo((prev) => (prev?.phase === 'uploading' ? { ...prev, progress } : prev))
+      );
+      unpostedVideoIdRef.current = ref.id;
+      setVideo({ phase: 'uploaded', ref, durationSeconds: picked.durationSeconds });
+    } catch (err) {
+      setVideo(null);
+      setError(videoErrorMessage(err));
+    }
+  };
+
+  const removeVideo = () => {
+    if (unpostedVideoIdRef.current) {
+      deleteVideo(unpostedVideoIdRef.current).catch(() => {});
+      unpostedVideoIdRef.current = null;
+    }
+    setVideo(null);
+  };
+
+  const uploadingVideo = video?.phase === 'uploading';
+  const videoRef = video?.phase === 'uploaded' ? video.ref : null;
+  const hasMedia = !!imageDataUrl || !!video;
+  const canSubmit = (body.trim().length > 0 || !!imageDataUrl || !!videoRef) && !submitting && !uploadingVideo;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -67,9 +139,12 @@ export function CreatePostScreen({ navigation }: Props) {
       const { post } = await createPost({
         body: body.trim() || undefined,
         imageUrl: imageDataUrl ?? undefined,
+        videoId: videoRef?.id,
         productId: productId ?? undefined,
         visibility,
       });
+      // Video artık gönderiye bağlı; ekrandan çıkarken silinmesin.
+      unpostedVideoIdRef.current = null;
       // Az önce yüklediğimiz fotoğrafı önbelleğe koyuyoruz ki akışa dönünce
       // tekrar indirilmesin.
       if (post.imageUrl) setCachedPostImage(post.id, post.imageUrl);
@@ -96,23 +171,58 @@ export function CreatePostScreen({ navigation }: Props) {
           {body.length} / {MAX_BODY}
         </Text>
 
-        <Text style={styles.label}>Fotoğraf</Text>
+        <Text style={styles.label}>Fotoğraf veya video</Text>
+        <Text style={styles.hint}>
+          Bir gönderiye bir fotoğraf ya da en fazla {MAX_VIDEO_SECONDS} saniyelik bir video eklenebilir.
+        </Text>
+
         {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} /> : null}
+
+        {video ? (
+          <View style={styles.videoBox}>
+            <Text style={styles.videoTitle}>
+              {video.phase === 'uploading'
+                ? `Video yükleniyor %${Math.round(video.progress * 100)}`
+                : `Video yüklendi${video.durationSeconds != null ? ` · ${formatDuration(video.durationSeconds)}` : ''}`}
+            </Text>
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  { width: `${Math.round((video.phase === 'uploading' ? video.progress : 1) * 100)}%` },
+                ]}
+              />
+            </View>
+            {video.phase === 'uploaded' ? (
+              <Text style={styles.hint}>Paylaştıktan sonra kısa bir süre işlenir, sonra akışta izlenebilir.</Text>
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={styles.imageActions}>
-          <PrimaryButton
-            label={pickingImage ? 'İşleniyor...' : imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
-            variant="secondary"
-            disabled={pickingImage}
-            onPress={pickImage}
-            style={styles.flexButton}
-          />
-          {imageUri ? (
+          {!video ? (
+            <PrimaryButton
+              label={pickingImage ? 'İşleniyor...' : imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
+              variant="secondary"
+              disabled={pickingImage}
+              onPress={pickImage}
+              style={styles.flexButton}
+            />
+          ) : null}
+          {!imageUri && !video ? (
+            <PrimaryButton label="Video Ekle" variant="secondary" onPress={pickAndUploadVideo} style={styles.flexButton} />
+          ) : null}
+          {hasMedia && !uploadingVideo ? (
             <PrimaryButton
               label="Kaldır"
               variant="secondary"
               onPress={() => {
-                setImageUri(null);
-                setImageDataUrl(null);
+                if (video) {
+                  removeVideo();
+                } else {
+                  setImageUri(null);
+                  setImageDataUrl(null);
+                }
               }}
               style={styles.flexButton}
             />
@@ -163,7 +273,7 @@ export function CreatePostScreen({ navigation }: Props) {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton
-          label={submitting ? 'Paylaşılıyor...' : 'Paylaş'}
+          label={submitting ? 'Paylaşılıyor...' : uploadingVideo ? 'Video yükleniyor...' : 'Paylaş'}
           disabled={!canSubmit}
           onPress={handleSubmit}
           style={{ marginTop: spacing.md }}
@@ -202,6 +312,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     backgroundColor: colors.surfaceTonal,
   },
+  videoBox: {
+    backgroundColor: colors.surfaceTonal,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  videoTitle: { ...typography.bodyStrong, color: colors.text },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden' },
+  progressFill: { height: 6, backgroundColor: colors.accent },
   imageActions: { flexDirection: 'row', gap: spacing.sm },
   flexButton: { flex: 1 },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },

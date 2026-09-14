@@ -15,6 +15,7 @@ import { postsRouter } from './routes/posts';
 import { usersRouter } from './routes/users';
 import { adminRouter } from './routes/admin';
 import { whatsappWebhookRouter } from './routes/whatsappWebhook';
+import { videosRouter } from './routes/videos';
 
 const app = express();
 app.use(cors());
@@ -34,6 +35,7 @@ app.use('/api/conversations', conversationsRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/videos', videosRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;

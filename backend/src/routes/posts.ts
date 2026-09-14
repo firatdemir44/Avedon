@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { makeHandle } from './handle';
@@ -13,6 +14,7 @@ import {
   toCommentRow,
   toFeedRow,
 } from '../posts';
+import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
 
 export const postsRouter = Router();
 postsRouter.use(requireAuth);
@@ -64,6 +66,11 @@ postsRouter.get(
       include: POST_INCLUDE,
     });
 
+    // Cloudflare videoyu işlerken durum veritabanında "processing" kalır;
+    // yerel geliştirmede webhook sunucumuza ulaşamadığı için akış isteğinde
+    // bekleyen birkaç video Stream'den tazeleniyor.
+    await refreshPendingVideos(posts);
+
     const likedSet = new Set<string>();
     if (posts.length > 0) {
       const liked = await prisma.postLike.findMany({
@@ -106,10 +113,12 @@ const createSchema = z
     // sunucusuna IP sızdıran bir piksel olurdu.
     imageUrl: z.string().startsWith('data:image/').max(2_000_000).optional(),
     productId: z.string().min(1).optional(),
+    videoId: z.string().min(1).optional(),
     visibility: z.enum(['public', 'connections']).optional(),
   })
   .strict()
-  .refine((data) => !!data.body?.trim() || !!data.imageUrl, { message: 'empty_post' });
+  .refine((data) => !!data.body?.trim() || !!data.imageUrl || !!data.videoId, { message: 'empty_post' })
+  .refine((data) => !(data.imageUrl && data.videoId), { message: 'image_and_video' });
 
 postsRouter.post(
   '/',
@@ -118,7 +127,25 @@ postsRouter.post(
     if (!parsed.success) {
       return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
     }
-    const { body, imageUrl, productId, visibility } = parsed.data;
+    const { body, imageUrl, productId, videoId, visibility } = parsed.data;
+
+    if (videoId) {
+      const video = await prisma.video.findUnique({
+        where: { id: videoId },
+        select: { ownerId: true, status: true, post: { select: { id: true } } },
+      });
+      // Başkasının yüklediği videoyu kendi gönderisine iliştiremesin. Yetkisizlikte
+      // de 404: 403 videonun var olduğunu doğrulardı.
+      if (!video || video.ownerId !== req.user!.id) {
+        return res.status(404).json({ error: 'video_not_found' });
+      }
+      if (video.post) {
+        return res.status(409).json({ error: 'video_already_used' });
+      }
+      if (video.status === 'error') {
+        return res.status(400).json({ error: 'video_failed' });
+      }
+    }
 
     if (productId) {
       if (!req.user!.companyId) {
@@ -137,16 +164,27 @@ postsRouter.post(
       }
     }
 
-    const post = await prisma.post.create({
-      data: {
-        authorId: req.user!.id,
-        body: body?.trim() ?? '',
-        imageUrl,
-        productId,
-        visibility: visibility ?? 'public',
-      },
-      include: POST_INCLUDE,
-    });
+    let post;
+    try {
+      post = await prisma.post.create({
+        data: {
+          authorId: req.user!.id,
+          body: body?.trim() ?? '',
+          imageUrl,
+          productId,
+          videoId,
+          visibility: visibility ?? 'public',
+        },
+        include: POST_INCLUDE,
+      });
+    } catch (err) {
+      // Aynı video iki istekle aynı anda iki gönderiye bağlanmaya çalışılırsa
+      // yukarıdaki kontrolü ikisi de geçer; benzersizlik kısıtı ikincisini durdurur.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        return res.status(409).json({ error: 'video_already_used' });
+      }
+      throw err;
+    }
 
     res.status(201).json({ post: toFeedRow(post, false, true) });
   })
@@ -163,6 +201,13 @@ postsRouter.delete(
       return res.status(403).json({ error: 'not_author' });
     }
     await prisma.post.delete({ where: { id: post.id } });
+    // Gönderi gidince video da Cloudflare'den silinir; yoksa ücretli depoda
+    // sahipsiz kalırdı. Silme hatası gönderi silmeyi geri almaz.
+    if (post.videoId) {
+      await deleteVideoCompletely(post.videoId).catch((err) =>
+        console.error('[posts] video cleanup failed', post.videoId, err)
+      );
+    }
     res.status(204).send();
   })
 );

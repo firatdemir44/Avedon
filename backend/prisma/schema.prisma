@@ -16,6 +16,7 @@ datasource db {
 //   statü olarak tutulsa iki alan birbiriyle çelişebilirdi.
 // sampleRequest.deliveryMode: "seller_ships" | "customer_courier"
 // post.visibility: "public" | "connections"
+// video.status: "uploading" | "processing" | "ready" | "error"
 // Enums are modeled as plain strings because the sqlite connector has no native enum type;
 // valid values are enforced at the API layer with zod.
 
@@ -55,6 +56,7 @@ model User {
   postLikes            PostLike[]
   postComments         PostComment[]
   sampleRequestEvents  SampleRequestEvent[]
+  videos               Video[]
   createdAt            DateTime        @default(now())
 }
 
@@ -182,6 +184,9 @@ model Post {
   productId  String?
   product    Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
   visibility String        @default("public")
+  // Bir gönderide ya fotoğraf ya video olur, ikisi birden olmaz (API'de zorunlu).
+  videoId    String?       @unique
+  video      Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
   createdAt  DateTime      @default(now())
   likes      PostLike[]
   comments   PostComment[]
@@ -212,6 +217,35 @@ model PostComment {
   createdAt DateTime @default(now())
 
   @@index([postId, createdAt])
+}
+
+// Videolar (Cloudflare Stream) değişmezleri:
+// - Dosyanın kendisi bizde değil Cloudflare'de durur; telefon doğrudan
+//   Cloudflare'e yükler (tek kullanımlık adres), sunucu 100 MB'lık dosyayı
+//   hiç görmez. Burada yalnızca kimin olduğu ve işlenme durumu tutulur.
+// - Her video Stream'de requireSignedURLs ile GİZLİ yüklenir. İzleme adresi
+//   yalnızca GET /api/videos/:id/playback'ten, izleyicinin videonun bağlı olduğu
+//   içeriği görme hakkı doğrulandıktan sonra, 1 saatlik anahtarla verilir.
+// - streamUid istemciye asla dönmez.
+// - Durum "processing"ten "ready"ye webhook olmadan da geçer: yerel geliştirmede
+//   Cloudflare sunucumuza ulaşamadığı için okuma uçları bekleyen videoları
+//   Stream'den tazeler (bkz. src/videos.ts).
+model Video {
+  id              String    @id @default(cuid())
+  ownerId         String
+  owner           User      @relation(fields: [ownerId], references: [id])
+  streamUid       String    @unique
+  status          String    @default("uploading")
+  durationSeconds Float?
+  errorReason     String    @default("")
+  // customer-XXXX.cloudflarestream.com — video hazır olunca Stream'in HLS
+  // adresinden öğreniliyor, oynatma adresini kurmak için gerekli.
+  playbackHost    String    @default("")
+  createdAt       DateTime  @default(now())
+  readyAt         DateTime?
+  post            Post?
+
+  @@index([ownerId, createdAt])
 }
 
 // status: "pending" | "accepted" — reddetme bir statü değil, satırın silinmesiyle

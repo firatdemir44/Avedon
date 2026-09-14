@@ -234,11 +234,41 @@ export type PostAuthor = {
   company: { id: string; name: string; verification: VerificationStatus } | null;
 };
 
+// Video dosyası Cloudflare Stream'de durur; burada yalnızca durumu var. İzleme
+// adresi yetki kontrolünden sonra fetchVideoPlayback ile, süreli anahtarla alınır.
+export type VideoStatus = 'uploading' | 'processing' | 'ready' | 'error';
+
+export interface VideoRef {
+  id: string;
+  status: VideoStatus;
+  durationSeconds: number | null;
+  errorReason: string;
+}
+
+export function requestVideoUploadUrl() {
+  return request<{ video: VideoRef; uploadURL: string; maxDurationSeconds: number }>('/videos/upload-url', {
+    method: 'POST',
+  });
+}
+
+export function fetchVideo(id: string) {
+  return request<{ video: VideoRef }>(`/videos/${id}`);
+}
+
+export function fetchVideoPlayback(id: string) {
+  return request<{ hlsUrl: string; thumbnailUrl: string }>(`/videos/${id}/playback`);
+}
+
+export function deleteVideo(id: string) {
+  return request<void>(`/videos/${id}`, { method: 'DELETE' });
+}
+
 export type FeedPost = {
   id: string;
   body: string;
   hasImage: boolean;
   imageUrl: string | null;
+  video: VideoRef | null;
   visibility: PostVisibility;
   createdAt: string;
   author: PostAuthor;
@@ -269,6 +299,7 @@ export function fetchFeed(cursor?: FeedCursor | null, limit = 10) {
 export interface NewPostInput {
   body?: string;
   imageUrl?: string;
+  videoId?: string;
   productId?: string;
   visibility: PostVisibility;
 }

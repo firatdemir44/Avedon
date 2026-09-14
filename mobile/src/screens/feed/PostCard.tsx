@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { PostVideo } from '../../components/PostVideo';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import type { FeedPost } from '../../api/client';
@@ -69,7 +70,9 @@ function PostCardComponent({
       {/* Tasarımdaki sıra: FOTOĞRAF → sayaçlar → metin. Fotoğrafı metnin altına
           koymak kaydırırken görseli geciktiriyordu; her sosyal uygulamada da
           görsel önce geliyor. */}
-      {post.hasImage ? (
+      {post.video ? (
+        <PostVideo key={post.video.id} video={post.video} />
+      ) : post.hasImage ? (
         imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
         ) : (

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { getConnectionState, isConnectedAccepted } from './connections';
+import { VIDEO_SELECT, toVideoRow, type VideoRecord } from './videoFields';
 
 export type PostVisibility = 'public' | 'connections';
 
@@ -17,6 +18,7 @@ export const POST_PRODUCT_SELECT = { id: true, code: true } satisfies Prisma.Pro
 export const POST_INCLUDE = {
   author: { select: POST_AUTHOR_SELECT },
   product: { select: POST_PRODUCT_SELECT },
+  video: { select: VIDEO_SELECT },
   _count: { select: { likes: true, comments: true } },
 } satisfies Prisma.PostInclude;
 
@@ -58,6 +60,7 @@ type PostWithIncludes = {
   createdAt: Date;
   author: unknown;
   product: { id: string; code: string } | null;
+  video: VideoRecord | null;
   _count: { likes: number; comments: number };
 };
 
@@ -73,6 +76,7 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     createdAt: post.createdAt,
     author: post.author,
     product: post.product,
+    video: post.video ? toVideoRow(post.video) : null,
     likeCount: post._count.likes,
     commentCount: post._count.comments,
     likedByMe,
