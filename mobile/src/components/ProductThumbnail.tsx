@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { getCachedProductImage, loadProductImage } from '../features/products/productImageCache';
-import { colors, radius } from '../theme';
+import { colors, fonts, radius } from '../theme';
 
 interface Props {
   productId: string;
@@ -60,6 +60,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   placeholderText: {
+    fontFamily: fonts.regular,
     fontSize: 10,
     color: colors.textMuted,
     textAlign: 'center',

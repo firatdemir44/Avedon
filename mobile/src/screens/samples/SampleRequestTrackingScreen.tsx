@@ -14,7 +14,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { TextField } from '../../components/TextField';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { formatDateTime } from '../../features/time';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
@@ -184,14 +184,14 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
     justifyContent: 'center',
     backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
   },
-  productCode: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
+  productCode: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
   productCompany: { ...typography.caption, color: colors.textMuted },
   deliveryMode: { ...typography.body, color: colors.text, marginTop: spacing.md },
-  requestNote: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: spacing.xs },
+  requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: spacing.xs },
   timeline: { marginTop: spacing.lg },
   stepRow: { flexDirection: 'row' },
   rail: { width: DOT_SIZE + spacing.md, alignItems: 'center' },
@@ -205,12 +205,12 @@ const styles = StyleSheet.create({
   },
   dotDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   dotPending: { backgroundColor: colors.surface, borderColor: colors.border },
-  dotCheck: { color: colors.primaryText, fontSize: 12, fontWeight: '700' },
+  dotCheck: { color: colors.primaryText, fontSize: 12, fontFamily: fonts.bold },
   // Çizgi, bir sonraki adımın dairesine kadar uzasın diye esner.
   line: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2 },
   lineDone: { backgroundColor: colors.accent },
   stepBody: { flex: 1, paddingBottom: spacing.lg },
-  stepLabel: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
+  stepLabel: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
   stepLabelPending: { color: colors.textMuted },
   stepTime: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
   stepNote: { ...typography.body, color: colors.text, marginTop: spacing.xs },
@@ -227,6 +227,6 @@ const styles = StyleSheet.create({
   actorName: { ...typography.label, color: colors.text },
   actorMeta: { ...typography.caption, color: colors.textMuted },
   actionBox: { marginTop: spacing.md },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

@@ -5,7 +5,7 @@ import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchConversations, type ConversationSummary } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Conversations'>;
 
@@ -138,13 +138,15 @@ export function ConversationsListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerAction: { ...typography.bodyStrong, color: colors.accent },
+  // Lacivert üst bant üzerinde beyaz.
+  headerAction: { ...typography.bodyStrong, color: colors.primaryText },
   searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   search: {
+    fontFamily: fonts.regular,
     minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
@@ -165,9 +167,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  name: { ...typography.subtitle, fontWeight: '700', color: colors.text, flexShrink: 1 },
+  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text, flexShrink: 1 },
   time: { ...typography.caption, color: colors.textMuted },
-  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
+  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
   previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   preview: { ...typography.body, color: colors.textMuted, flex: 1 },
-  previewUnread: { color: colors.text, fontWeight: '600' },
+  previewUnread: { color: colors.text, fontFamily: fonts.semibold },
   unreadBadge: {
     minWidth: 22,
     paddingHorizontal: 7,
@@ -184,6 +186,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
   },
-  unreadBadgeText: { ...typography.caption, fontWeight: '700', color: colors.primaryText },
+  unreadBadgeText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primaryText },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

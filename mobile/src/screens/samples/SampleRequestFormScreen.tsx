@@ -7,7 +7,7 @@ import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import { createSampleRequest } from '../../api/client';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'SampleRequestForm'>;
 
@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
   optionText: { flex: 1, marginLeft: spacing.md },
   optionTitle: { ...typography.bodyStrong, color: colors.text },
   optionTitleSelected: { color: colors.primary },
-  optionDescription: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginBottom: spacing.md },
+  optionDescription: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.md },
 });

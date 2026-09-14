@@ -15,7 +15,7 @@ import {
 } from '../../api/client';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'Profile'>;
 
@@ -165,6 +165,6 @@ const styles = StyleSheet.create({
   },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1 },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

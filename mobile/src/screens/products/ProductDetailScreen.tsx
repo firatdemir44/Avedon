@@ -10,7 +10,7 @@ import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Badge } from '../../components/Badge';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  heroPlaceholderText: { ...typography.label, fontWeight: '400', color: colors.textMuted },
+  heroPlaceholderText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   zoomHint: {
     ...typography.caption,
     textAlign: 'center',
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   companyText: { flex: 1, marginLeft: spacing.md },
-  companyName: { ...typography.subtitle, fontWeight: '700', color: colors.text },
+  companyName: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   specCard: {
     backgroundColor: colors.surface,
@@ -254,8 +254,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   specRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
-  specLabel: { ...typography.label, fontWeight: '400', color: colors.textMuted },
+  specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   specValue: { ...typography.label, color: colors.text, flexShrink: 1, textAlign: 'right' },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

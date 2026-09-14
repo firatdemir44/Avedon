@@ -29,7 +29,9 @@
         }
       ],
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      "expo-font",
+      "expo-splash-screen"
     ]
   }
 }

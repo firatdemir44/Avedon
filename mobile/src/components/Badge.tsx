@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, fonts, radius, spacing, typography } from '../theme';
 
 interface Props {
   label: string;
@@ -25,7 +25,7 @@ export function Badge({ label, tone = 'soft', style }: Props) {
 const styles = StyleSheet.create({
   base: {
     alignSelf: 'flex-start',
-    borderRadius: radius.pill,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: 3,
   },
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
   outline: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   text: {
     ...typography.caption,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
     color: colors.primary,
   },
   textSolid: { color: colors.primaryText },

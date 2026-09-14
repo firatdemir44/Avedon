@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSession } from '../../context/SessionContext';
 import { fetchAdminCompanies, updateCompanyVerification, type CompanyWithCounts } from '../../api/client';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
 const STATUS_OPTIONS: { value: VerificationStatus; label: string }[] = [
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   cardHeaderRow: { marginBottom: spacing.xs },
-  name: { ...typography.subtitle, fontWeight: '700', color: colors.text },
-  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: 2 },
+  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
+  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: 2 },
   statusRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surfaceTonal,

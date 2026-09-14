@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
 
 interface Props<T extends string> {
   options: { value: T; label: string }[];
@@ -40,13 +40,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surfaceTonal,
   },
   chipCompact: { minHeight: 36, paddingHorizontal: spacing.sm + 2, paddingVertical: 6 },
   chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-  text: { ...typography.label, fontWeight: '500', color: colors.text },
+  text: { ...typography.label, fontFamily: fonts.medium, color: colors.text },
   textSelected: { color: colors.primaryText },
 });

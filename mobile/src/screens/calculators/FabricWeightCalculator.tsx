@@ -15,7 +15,7 @@ import {
 } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Mode = 'sample' | 'structure';
 
@@ -138,7 +138,7 @@ export function FabricWeightCalculator() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
   countRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   countField: { flex: 1 },

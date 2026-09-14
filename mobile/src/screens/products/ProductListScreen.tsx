@@ -8,7 +8,7 @@ import { useSession } from '../../context/SessionContext';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
 import type { Company, Product } from '../../types';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH - 8,
     justifyContent: 'center',
     backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
@@ -200,10 +200,11 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   search: {
+    fontFamily: fonts.regular,
     minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
   },
   code: {
     ...typography.subtitle,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.primary,
   },
   company: {
@@ -268,7 +269,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH - 8,
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
   },

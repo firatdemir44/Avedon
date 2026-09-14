@@ -6,7 +6,7 @@ import { TextField } from '../../components/TextField';
 import { detectGarmentComponents, type DetectedComponent, type GarmentImageInput } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 interface PickedImage extends GarmentImageInput {
   uri: string;
@@ -178,7 +178,7 @@ export function GarmentVisualCostScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
   imageRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -209,10 +209,10 @@ const styles = StyleSheet.create({
   removeBadgeText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     lineHeight: 16,
   },
-  notice: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  notice: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
   table: { marginTop: spacing.lg },
   sectionTitle: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
   row: {
@@ -222,8 +222,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     ...shadow.card,
   },
-  rowTitle: { ...typography.bodyStrong, fontWeight: '700', color: colors.text },
-  rowDetail: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.sm },
+  rowTitle: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.text },
+  rowDetail: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
   rowInputs: { flexDirection: 'row', gap: spacing.sm },
   totalCard: {
     flexDirection: 'row',

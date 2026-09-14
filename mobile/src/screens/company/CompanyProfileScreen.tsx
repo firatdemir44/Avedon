@@ -10,7 +10,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { Company, Product, VerificationStatus } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
@@ -243,11 +243,11 @@ const styles = StyleSheet.create({
   },
   verificationBadge: {
     ...typography.caption,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
     color: colors.textMuted,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: 3,
   },
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.textMuted,
     marginBottom: 2,
   },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   code: {
     ...typography.subtitle,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.primary,
   },
   content: {
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH - 8,
     justifyContent: 'center',
     backgroundColor: colors.primary,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm,
   },

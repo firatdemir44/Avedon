@@ -12,7 +12,7 @@ import {
 } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Mode = 'convert' | 'sample';
 
@@ -101,5 +101,5 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
 });

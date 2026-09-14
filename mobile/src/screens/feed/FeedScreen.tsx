@@ -14,7 +14,7 @@ import {
 } from '../../api/client';
 import { PostCard } from './PostCard';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
 
@@ -72,7 +72,7 @@ export function FeedScreen({ navigation }: Props) {
           accessibilityLabel="AI Tekstil Danışmanı"
           style={styles.headerLeftButton}
         >
-          <Ionicons name="sparkles" size={18} color={colors.accent} />
+          <Ionicons name="sparkles" size={18} color={colors.primaryText} />
           <Text style={styles.headerAction}>Danışman</Text>
         </Pressable>
       ),
@@ -205,13 +205,14 @@ export function FeedScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerAction: { ...typography.bodyStrong, color: colors.accent },
+  // Lacivert üst bant üzerinde beyaz.
+  headerAction: { ...typography.bodyStrong, color: colors.primaryText },
   headerLeftButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   listContent: { padding: spacing.lg },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
   error: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,

@@ -10,7 +10,7 @@ import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
-import { colors, typography } from '../theme';
+import { colors, fonts, typography } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -43,13 +43,16 @@ export function MainTabs() {
         freezeOnBlur: true,
         // Android'de klavye açılınca sekme çubuğu arama kutusunun üstüne binmesin.
         tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
-        // Başlıklar uygulamanın her yerinde lacivert ve kalın (bkz. theme/index.ts).
-        headerTitleStyle: { ...typography.heading, color: colors.primary },
+        tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.medium },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        tabBarBadgeStyle: { backgroundColor: colors.notification, fontFamily: fonts.semibold, fontSize: 11 },
+        // C · Pazar Masası: lacivert üst bant, beyaz başlık (bkz. theme/index.ts).
+        headerTitleStyle: { ...typography.heading, color: colors.primaryText },
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.background },
+        headerStyle: { backgroundColor: colors.primary },
+        headerTintColor: colors.primaryText,
       }}
     >
       <Tab.Screen

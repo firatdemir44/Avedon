@@ -6,7 +6,7 @@ import { PostVideo } from '../../components/PostVideo';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import type { FeedPost } from '../../api/client';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 interface Props {
   post: FeedPost;
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   headerText: { flex: 1, minWidth: 0 },
-  name: { ...typography.bodyStrong, fontWeight: '700', color: colors.accent },
+  name: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.accent },
   meta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
   body: {
     ...typography.body,
@@ -231,11 +231,11 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     marginTop: spacing.sm,
     backgroundColor: colors.accentSoft,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: 4,
   },
-  productTagText: { ...typography.caption, fontWeight: '600', color: colors.primary },
+  productTagText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
   actionRow: {
     flexDirection: 'row',
     marginTop: spacing.sm,
@@ -251,9 +251,9 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   actionPressed: { opacity: 0.6 },
-  actionText: { ...typography.caption, fontWeight: '600' },
+  actionText: { ...typography.caption, fontFamily: fonts.semibold },
   ownerRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm },
   ownerAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
-  editText: { ...typography.caption, fontWeight: '600', color: colors.accent },
-  deleteText: { ...typography.caption, fontWeight: '600', color: colors.danger },
+  editText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
+  deleteText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.danger },
 });

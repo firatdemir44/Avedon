@@ -4,7 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { AccountType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RoleSelection'>;
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...typography.subtitle,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.primary,
     marginBottom: spacing.xs,
   },

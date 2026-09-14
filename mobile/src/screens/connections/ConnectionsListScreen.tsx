@@ -5,7 +5,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { fetchConnections, type ConnectionSummary } from '../../api/client';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Connections'>;
 
@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadow.card,
   },
-  name: { ...typography.subtitle, fontWeight: '700', color: colors.text },
-  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginTop: 2 },
+  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
+  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

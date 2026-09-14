@@ -7,7 +7,7 @@ import { useSession } from '../../context/SessionContext';
 import { fetchMySampleRequests, type SampleRequestRow } from '../../api/client';
 import { Badge } from '../../components/Badge';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
@@ -96,8 +96,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  code: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
-  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted },
+  code: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
+  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   trackLink: { ...typography.label, color: colors.accent, marginTop: spacing.sm },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

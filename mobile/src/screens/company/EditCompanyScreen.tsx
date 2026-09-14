@@ -7,7 +7,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
 type Props = RootStackScreenProps<'EditCompany'>;
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   logoImage: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  logoInitial: { fontSize: 40, fontWeight: '700', color: colors.primaryText },
+  logoInitial: { fontSize: 40, fontFamily: fonts.bold, color: colors.primaryText },
   logoActions: { flex: 1, gap: spacing.sm },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginBottom: spacing.sm },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.sm },
 });

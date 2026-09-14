@@ -2,6 +2,7 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { StatusBar } from 'expo-status-bar';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './MainTabs';
 import { useSession } from '../context/SessionContext';
@@ -47,7 +48,7 @@ const navigationTheme: Theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: colors.accent,
+    primary: colors.primary,
     background: colors.background,
     card: colors.surface,
     text: colors.text,
@@ -68,17 +69,20 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navigationTheme}>
+      {/* Girişten sonra her ekranın üstü lacivert bant: saat/pil beyaz. Kayıt
+          ekranları açık zeminde, orada koyu. */}
+      <StatusBar style={user ? 'light' : 'dark'} />
       {/* Giriş durumuna göre iki ayrı ağaç render ediliyor: giriş/çıkış sonrası
           ayrıca gezinme çağrısı gerekmiyor ve kayıt biten kullanıcı geri tuşuyla
           kayıt adımlarına dönemiyor. */}
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          // İtilen ekranların başlıkları da sekmelerdekiyle aynı dilde.
-          headerTitleStyle: { ...typography.heading, color: colors.primary },
+          // İtilen ekranların başlıkları da sekmelerdeki gibi lacivert bant.
+          headerTitleStyle: { ...typography.heading, color: colors.primaryText },
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: colors.background },
-          headerTintColor: colors.accent,
+          headerStyle: { backgroundColor: colors.primary },
+          headerTintColor: colors.primaryText,
         }}
       >
         {user ? (

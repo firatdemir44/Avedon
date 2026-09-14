@@ -21,7 +21,7 @@ import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { markFeedStale } from '../../features/feed/feedRefresh';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { MAX_VIDEO_SECONDS, VideoPickError, pickVideo, uploadVideo } from '../../features/videoUpload';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePost'>;
 
@@ -378,6 +378,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   bodyInput: {
+    fontFamily: fonts.regular,
     minHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surfaceTonal,
@@ -430,5 +431,5 @@ const styles = StyleSheet.create({
   chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
   chipText: { ...typography.label, color: colors.text },
   chipTextSelected: { color: colors.primaryText },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginTop: spacing.md },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
 });

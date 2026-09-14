@@ -5,7 +5,7 @@ import { TableInput } from './TableInput';
 import { UnitToggle } from './UnitToggle';
 import type { YarnCountSystem, YarnFeedRow } from '../features/calculators/formulas';
 import { parseNumber } from '../features/calculators/parse';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
 
 // Alanlar metin olarak tutuluyor (kullanıcı "15," yazarken silinmesin diye);
 // hesap anında sayıya çevriliyor.
@@ -131,7 +131,7 @@ export const tableStyles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
-  head: { ...typography.caption, fontWeight: '600', color: colors.textMuted, textAlign: 'center' },
+  head: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted, textAlign: 'center' },
   index: { ...typography.label, color: colors.primary, textAlign: 'center' },
   colIndex: { width: 16 },
   colRemove: { width: 24, alignItems: 'center', justifyContent: 'center', minHeight: MIN_TOUCH - 4 },

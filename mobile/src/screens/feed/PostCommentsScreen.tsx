@@ -23,7 +23,7 @@ import {
   type FeedPostComment,
 } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
 
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  name: { ...typography.label, fontWeight: '700', color: colors.accent, flexShrink: 1 },
+  name: { ...typography.label, fontFamily: fonts.bold, color: colors.accent, flexShrink: 1 },
   time: { ...typography.caption, color: colors.textMuted },
   meta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
   body: { ...typography.body, color: colors.text, marginTop: spacing.xs },
@@ -175,12 +175,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   input: {
+    fontFamily: fonts.regular,
     flex: 1,
     minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
@@ -191,13 +192,13 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
     justifyContent: 'center',
     paddingHorizontal: spacing.md + 2,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
   },
   sendButtonText: { ...typography.label, color: colors.primaryText },
   error: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { askAdvisor, type AdvisorMessage } from '../../api/client';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 interface ChatItem extends AdvisorMessage {
   id: string;
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surfaceTonal,
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.text,
   },
   inputRow: {
@@ -209,11 +209,12 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   input: {
+    fontFamily: fonts.regular,
     flex: 1,
     minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
@@ -224,7 +225,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
     justifyContent: 'center',
     paddingHorizontal: spacing.md + 2,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
   },
   sendButtonText: {

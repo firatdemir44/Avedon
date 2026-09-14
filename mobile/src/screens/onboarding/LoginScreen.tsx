@@ -8,7 +8,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { OtpCodeField } from '../../components/OtpCodeField';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, requestOtp, verifyOtp } from '../../api/client';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -146,5 +146,5 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
   title: { ...typography.title, fontSize: 26, lineHeight: 32, color: colors.primary, marginBottom: spacing.xs },
   subtitle: { ...typography.body, color: colors.textMuted, marginBottom: spacing.lg },
-  error: { ...typography.label, fontWeight: '400', color: colors.danger, marginBottom: spacing.md },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.md },
 });

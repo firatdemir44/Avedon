@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, radius, shadow, spacing, typography } from '../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../theme';
 
 interface Row {
   label: string;
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   value: {
     ...typography.bodyStrong,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.primary,
   },
 });

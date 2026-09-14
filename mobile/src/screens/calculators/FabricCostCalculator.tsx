@@ -10,7 +10,7 @@ import { tableStyles } from '../../components/YarnFeedRowsEditor';
 import { calculateFabricPricing, type Currency, type MoneyTriple } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 interface YarnFields {
   price: string;
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
   section: { ...typography.heading, color: colors.primary, marginBottom: spacing.xs },
-  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
   ...tableStyles,
   colPrice: { flex: 2 },
   priceCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },

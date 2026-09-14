@@ -3,7 +3,7 @@ import { View, Text, Image, Pressable, ActivityIndicator, StyleSheet } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { fetchVideo, fetchVideoPlayback, type VideoRef } from '../api/client';
-import { colors, radius, spacing, typography } from '../theme';
+import { colors, fonts, radius, spacing, typography } from '../theme';
 
 const POLL_MS = 5000;
 const POLL_LIMIT_MS = 5 * 60 * 1000;
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   stateText: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.surface,
     textAlign: 'center',
   },
@@ -194,5 +194,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
-  durationText: { ...typography.caption, fontWeight: '600', color: colors.surface },
+  durationText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.surface },
 });

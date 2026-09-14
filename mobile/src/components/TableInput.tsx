@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextInput, StyleSheet, type TextInputProps } from 'react-native';
-import { MIN_TOUCH, colors, radius } from '../theme';
+import { MIN_TOUCH, colors, fonts, radius } from '../theme';
 
 // Hesap tablolarında etiketsiz, dar sayı hücresi. Etiket tablo başlığında
 // durduğu için ekran okuyucu adı `accessibilityLabel` ile verilmeli.
@@ -17,6 +17,7 @@ export function TableInput({ style, ...props }: TextInputProps) {
 
 const styles = StyleSheet.create({
   input: {
+    fontFamily: fonts.regular,
     minHeight: MIN_TOUCH - 4,
     borderWidth: 1,
     borderColor: colors.border,

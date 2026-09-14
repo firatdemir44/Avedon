@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
 import type { MainTabScreenProps, RootStackParamList } from '../../navigation/types';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'CalculatorsList'>;
 
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.textMuted,
     marginBottom: spacing.lg,
   },
@@ -63,13 +63,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     ...typography.subtitle,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.primary,
     marginBottom: spacing.xs,
   },
   cardDescription: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.textMuted,
   },
 });

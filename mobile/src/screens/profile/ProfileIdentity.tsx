@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { PublicUserProfile } from '../../api/client';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 interface Props {
   profile: PublicUserProfile;
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     ...typography.caption,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
     color: colors.textMuted,
     marginBottom: 2,
   },

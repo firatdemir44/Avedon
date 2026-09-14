@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, View, Image, Pressable, Text, StyleSheet, StatusBar } from 'react-native';
+import { fonts } from '../theme';
 
 interface Props {
   imageUrl: string | null;
@@ -52,5 +53,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
+  closeText: { color: '#FFFFFF', fontSize: 18, fontFamily: fonts.semibold },
 });

@@ -10,7 +10,7 @@ import { createProduct, updateProduct, deleteProduct, fetchProduct } from '../..
 import { pickCompressedImage } from '../../features/imagePicker';
 import { loadProductImage, setCachedProductImage } from '../../features/products/productImageCache';
 import { parseNumber } from '../../features/calculators/parse';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddProduct'>;
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   previewPlaceholderText: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.textMuted,
   },
   typeRow: {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
     backgroundColor: colors.surfaceTonal,
@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   typeChipText: {
     ...typography.label,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.text,
   },
   typeChipTextSelected: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   },
   error: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.danger,
     marginBottom: spacing.md,
   },

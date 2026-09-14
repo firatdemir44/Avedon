@@ -11,7 +11,7 @@ import {
 import { yarnUsageRatios } from '../../features/calculators/formulas';
 import { formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 interface Fields {
   rows: YarnFeedRowFields[];
@@ -53,5 +53,5 @@ export function YarnRatioCalculator() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
 });

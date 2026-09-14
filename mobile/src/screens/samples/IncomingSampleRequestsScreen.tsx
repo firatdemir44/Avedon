@@ -12,7 +12,7 @@ import {
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Badge } from '../../components/Badge';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
@@ -138,9 +138,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
-  code: { ...typography.subtitle, fontWeight: '700', color: colors.primary },
-  meta: { ...typography.label, fontWeight: '400', color: colors.textMuted },
-  note: { ...typography.label, fontWeight: '400', color: colors.text, marginTop: spacing.xs },
-  link: { color: colors.accent, fontWeight: '600' },
+  code: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
+  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
+  link: { color: colors.accent, fontFamily: fonts.semibold },
   empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

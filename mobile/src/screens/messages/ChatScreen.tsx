@@ -25,7 +25,7 @@ import {
   type ChatMessage,
 } from '../../api/client';
 import { formatClockTime } from '../../features/time';
-import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   },
   myText: { ...typography.body, color: colors.primaryText },
   otherText: { ...typography.body, color: colors.text },
-  timeText: { fontSize: 11, marginTop: 4 },
+  timeText: { fontFamily: fonts.regular, fontSize: 11, marginTop: 4 },
   myTimeText: { color: colors.primaryText, opacity: 0.8, textAlign: 'right' },
   otherTimeText: { color: colors.textMuted },
   inputRow: {
@@ -287,12 +287,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   input: {
+    fontFamily: fonts.regular,
     flex: 1,
     minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
     fontSize: 15,
@@ -303,13 +304,13 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
     justifyContent: 'center',
     paddingHorizontal: spacing.md + 2,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
   },
   sendButtonText: { ...typography.label, color: colors.primaryText },
   error: {
     ...typography.label,
-    fontWeight: '400',
+    fontFamily: fonts.regular,
     color: colors.danger,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,
