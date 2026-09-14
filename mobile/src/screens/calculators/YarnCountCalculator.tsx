@@ -1,56 +1,97 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import React, { useMemo } from 'react';
+import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TextField } from '../../components/TextField';
 import { ResultCard } from '../../components/ResultCard';
-import { convertYarnCount, type YarnCountSystem } from '../../features/calculators/formulas';
+import { ChipSelect } from '../../components/ChipSelect';
+import {
+  convertYarnCount,
+  yarnCountFromSample,
+  type YarnCountResult,
+  type YarnCountSystem,
+} from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
+import { usePersistedFields } from '../../features/calculators/usePersistedFields';
+import { colors, spacing, typography } from '../../theme';
+
+type Mode = 'convert' | 'sample';
+
+interface Fields {
+  mode: Mode;
+  value: string;
+  system: YarnCountSystem;
+  ply: string;
+  lengthCm: string;
+  weightGrams: string;
+}
+
+const INITIAL: Fields = { mode: 'convert', value: '', system: 'ne', ply: '1', lengthCm: '', weightGrams: '' };
 
 const SYSTEMS: { value: YarnCountSystem; label: string }[] = [
+  { value: 'ne', label: 'Ne' },
+  { value: 'nm', label: 'Nm' },
   { value: 'tex', label: 'Tex' },
-  { value: 'nm', label: 'Nm (Metrik)' },
-  { value: 'ne', label: 'Ne (İngiliz Pamuk)' },
+  { value: 'dtex', label: 'dtex' },
   { value: 'denye', label: 'Denye' },
 ];
 
-export function YarnCountCalculator() {
-  const [system, setSystem] = useState<YarnCountSystem>('tex');
-  const [value, setValue] = useState('');
+function resultRows(r: YarnCountResult) {
+  return [
+    { label: 'Ne (İngiliz pamuk)', value: formatNumber(r.ne, 1) },
+    { label: 'Nm (Metrik)', value: formatNumber(r.nm, 1) },
+    { label: 'Tex', value: formatNumber(r.tex, 1) },
+    { label: 'dtex', value: formatNumber(r.dtex, 0) },
+    { label: 'Denye', value: formatNumber(r.denye, 0) },
+  ];
+}
 
-  const result = useMemo(() => {
-    const n = parseNumber(value);
-    if (!value || n <= 0) return null;
-    return convertYarnCount(n, system);
-  }, [value, system]);
+export function YarnCountCalculator() {
+  const [f, update] = usePersistedFields('yarn_count_v2', INITIAL);
+
+  const converted = useMemo(() => {
+    const value = parseNumber(f.value);
+    if (value <= 0) return null;
+    return convertYarnCount(value, f.system, Math.max(1, Math.round(parseNumber(f.ply) || 1)));
+  }, [f.value, f.system, f.ply]);
+
+  const fromSample = useMemo(() => {
+    const length = parseNumber(f.lengthCm);
+    const weight = parseNumber(f.weightGrams);
+    if (length <= 0 || weight <= 0) return null;
+    return yarnCountFromSample(length, weight);
+  }, [f.lengthCm, f.weightGrams]);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Sistem</Text>
-        <View style={styles.systemRow}>
-          {SYSTEMS.map((s) => (
-            <Pressable
-              key={s.value}
-              onPress={() => setSystem(s.value)}
-              style={[styles.chip, system === s.value && styles.chipSelected]}
-            >
-              <Text style={[styles.chipText, system === s.value && styles.chipTextSelected]}>{s.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <TextField label="Değer" keyboardType="numeric" value={value} onChangeText={setValue} placeholder="Örn. 30" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ChipSelect
+          options={[
+            { value: 'convert', label: 'Sistem çevir' },
+            { value: 'sample', label: 'Numuneden hesapla' },
+          ]}
+          value={f.mode}
+          onChange={(mode) => update({ mode })}
+        />
 
-        {result ? (
-          <ResultCard
-            rows={[
-              { label: 'Tex', value: formatNumber(result.tex) },
-              { label: 'Nm (Metrik)', value: formatNumber(result.nm) },
-              { label: 'Ne (İngiliz Pamuk)', value: formatNumber(result.ne) },
-              { label: 'Denye', value: formatNumber(result.denye) },
-            ]}
-          />
-        ) : null}
+        {f.mode === 'convert' ? (
+          <>
+            <Text style={styles.label}>Numaralandırma sistemi</Text>
+            <ChipSelect options={SYSTEMS} value={f.system} onChange={(system) => update({ system })} />
+            <TextField label="İplik numarası" keyboardType="decimal-pad" value={f.value} onChangeText={(v) => update({ value: v })} placeholder="Örn. 30" />
+            <TextField label="Kat sayısı" keyboardType="number-pad" value={f.ply} onChangeText={(v) => update({ ply: v })} placeholder="1" />
+            <Text style={styles.hint}>Tek kat iplik için 1 bırakın. 60/2 Ne gibi katlı iplikte numaraya 60, kat sayısına 2 yazın.</Text>
+            {converted ? <ResultCard rows={resultRows(converted)} /> : null}
+          </>
+        ) : (
+          <>
+            <Text style={styles.hint}>
+              İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha güvenilir yapar.
+            </Text>
+            <TextField label="İplik uzunluğu (cm)" keyboardType="decimal-pad" value={f.lengthCm} onChangeText={(v) => update({ lengthCm: v })} placeholder="Örn. 100" />
+            <TextField label="İplik ağırlığı (gr)" keyboardType="decimal-pad" value={f.weightGrams} onChangeText={(v) => update({ weightGrams: v })} placeholder="Örn. 0,02" />
+            {fromSample ? <ResultCard rows={resultRows(fromSample)} /> : null}
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -59,37 +100,6 @@ export function YarnCountCalculator() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
-  label: {
-    ...typography.label,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  systemRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  chip: {
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.pill,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  chipText: {
-    ...typography.label,
-    fontWeight: '500',
-    color: colors.text,
-  },
-  chipTextSelected: {
-    color: colors.primaryText,
-  },
+  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
+  hint: { ...typography.label, fontWeight: '400', color: colors.textMuted, marginBottom: spacing.md },
 });

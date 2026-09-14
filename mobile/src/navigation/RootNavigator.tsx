@@ -20,6 +20,7 @@ import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculato
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
 import { YarnCountCalculator } from '../screens/calculators/YarnCountCalculator';
 import { YarnUsageCalculator } from '../screens/calculators/YarnUsageCalculator';
+import { YarnRatioCalculator } from '../screens/calculators/YarnRatioCalculator';
 import { FabricWeightCalculator } from '../screens/calculators/FabricWeightCalculator';
 import { ProductionCalculator } from '../screens/calculators/ProductionCalculator';
 import { SampleRequestFormScreen } from '../screens/samples/SampleRequestFormScreen';
@@ -106,7 +107,7 @@ export function RootNavigator() {
             <Stack.Screen
               name="FabricCostCalculator"
               component={FabricCostCalculator}
-              options={{ headerShown: true, title: 'Kumaş Maliyeti' }}
+              options={{ headerShown: true, title: 'Maliyet ve Satış Fiyatı' }}
             />
             <Stack.Screen
               name="GarmentCostCalculator"
@@ -124,6 +125,11 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'İplik Kullanım Miktarı' }}
             />
             <Stack.Screen
+              name="YarnRatioCalculator"
+              component={YarnRatioCalculator}
+              options={{ headerShown: true, title: 'İplik Kullanım Oranı' }}
+            />
+            <Stack.Screen
               name="FabricWeightCalculator"
               component={FabricWeightCalculator}
               options={{ headerShown: true, title: 'Kumaş Gramajı' }}
@@ -131,7 +137,7 @@ export function RootNavigator() {
             <Stack.Screen
               name="ProductionCalculator"
               component={ProductionCalculator}
-              options={{ headerShown: true, title: 'Üretim Hesaplama' }}
+              options={{ headerShown: true, title: 'Kumaş Üretimi' }}
             />
             <Stack.Screen
               name="SampleRequestForm"

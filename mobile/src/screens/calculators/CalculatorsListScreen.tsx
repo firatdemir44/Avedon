@@ -6,12 +6,13 @@ import { MIN_TOUCH, colors, radius, shadow, spacing, typography } from '../../th
 type Props = MainTabScreenProps<'CalculatorsList'>;
 
 const ITEMS: { route: keyof RootStackParamList; title: string; description: string }[] = [
-  { route: 'FabricCostCalculator', title: 'Kumaş Maliyeti Hesapla', description: 'İplik fiyatı, gramaj, en, fire ve terbiye maliyetinden ₺/metre ve ₺/kg maliyet' },
+  { route: 'FabricCostCalculator', title: 'Kumaş Maliyeti ve Satış Fiyatı', description: 'İplik fiyatı ve oranları, fireler, örme ve boya fasonu, gider ve kârdan ham ve boyalı kumaşın kg fiyatı' },
   { route: 'GarmentCostCalculator', title: 'Konfeksiyon Ürün Maliyeti Hesapla', description: 'Kumaş tüketimi + işçilik + aksesuar ile birim giysi maliyeti' },
-  { route: 'YarnCountCalculator', title: 'İplik Numarası Hesapla / Çevir', description: 'Ne, Nm, Tex, Denye arası çeviri' },
+  { route: 'YarnCountCalculator', title: 'İplik Numarası Hesapla / Çevir', description: 'Ne, Nm, Tex, dtex, Denye arası çeviri, katlı iplik ve numuneden numara' },
+  { route: 'YarnRatioCalculator', title: 'İplik Kullanım Oranı', description: 'Pamuk ve likra gibi karışımlarda her ipliğin kumaştaki payı' },
   { route: 'YarnUsageCalculator', title: 'İplik Kullanım Miktarı', description: 'Belirli bir kumaş üretimi için gereken iplik miktarı' },
-  { route: 'FabricWeightCalculator', title: 'Kumaş Gramajı Hesapla', description: 'İplik numarası, ilmek boyu ve K faktörü ile gramaj (gr/m²)' },
-  { route: 'ProductionCalculator', title: 'Üretim Hesaplama', description: 'Makine hızı, vardiya ve verimlilikten günlük üretim kapasitesi' },
+  { route: 'FabricWeightCalculator', title: 'Kumaş Gramajı Hesapla', description: 'Kesilen numuneden kesin ya da sıra, çubuk ve ilmek boyundan tahmini gramaj' },
+  { route: 'ProductionCalculator', title: 'Kumaş Üretimi Hesapla', description: 'İğne sayısı, devir, sistem ve iplik bilgisinden saatlik ve günlük kg üretim' },
   {
     route: 'GarmentVisualCost',
     title: 'Görsel Maliyet Tablosu',
@@ -24,7 +25,7 @@ export function CalculatorsListScreen({ navigation }: Props) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.hint}>
-          Tüm hesaplar sabit formüllerle yapılır — fiyat, fire ve verimlilik gibi değişken verileri siz girersiniz, sistem tahmin üretmez. Girdiğiniz değerler bu cihazda hatırlanır, bir dahaki sefere yeniden girmenize gerek kalmaz — değişiklik olduğunda üzerine yazmanız yeterli.
+          Tüm hesaplar sabit formüllerle yapılır. Fiyat, fire ve verimlilik gibi değişken verileri siz girersiniz, sistem tahmin üretmez. Girdiğiniz değerler bu cihazda hatırlanır; değişiklik olduğunda üzerine yazmanız yeterli.
         </Text>
         {ITEMS.map((item) => (
           <Pressable key={item.route} style={styles.card} onPress={() => navigation.navigate(item.route as never)}>

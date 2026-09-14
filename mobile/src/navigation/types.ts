@@ -36,6 +36,7 @@ export type RootStackParamList = {
   GarmentCostCalculator: undefined;
   YarnCountCalculator: undefined;
   YarnUsageCalculator: undefined;
+  YarnRatioCalculator: undefined;
   FabricWeightCalculator: undefined;
   ProductionCalculator: undefined;
   SampleRequestForm: { productId: string; productCode: string };
