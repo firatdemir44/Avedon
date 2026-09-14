@@ -202,11 +202,11 @@ function triple(tryAmount: number, usdTry: number, eurTry: number): MoneyTriple 
 }
 
 // Sıra: iplik (fire dahil) → + örme fason → + genel gider → ham maliyet.
-// Boyalı: (ham maliyet + boya fason) boya firesiyle kilo kaybettiği için
-// kalan kiloya bölünür: 100 kg ham kumaş %8 fireyle 92 kg boyalı kumaş olur.
-// DOĞRULANMADI: referans ekrandaki sonuç rakamları okunamadı; boya firesinin
-// bölme (kilo kaybı) mı çarpma mı olarak uygulandığı kullanıcıyla bir gerçek
-// örnek üzerinden teyit edilmeli.
+// Boyalı: boya fasonu HAM kilo üzerinden alınır; boya firesi kilo kaybıdır ve
+// maliyet çıkan boyalı kiloya bölünür. Kullanıcının tarifi (2026-09-14):
+// "100 kg ham kumaş boyaya girer, %8 fire verirse 92 kg çıkar; boya ücreti
+// 100 kilo üzerinden alınır, maliyet 92 kg boyalı ürüne göre hesaplanır."
+// Yani boyalı maliyet = (ham maliyet + boya fason) / (1 - fire).
 export function calculateFabricPricing(input: FabricPricingInput): FabricPricingResult {
   const { usdTry, eurTry } = input;
   const ratioTotal = input.yarns.reduce((sum, y) => sum + (y.price > 0 ? y.ratioPercent : 0), 0);

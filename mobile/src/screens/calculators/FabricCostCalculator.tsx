@@ -157,7 +157,7 @@ export function FabricCostCalculator() {
         </View>
         <View style={styles.twoCol}>
           <View style={styles.col}>
-            <TextField label="Boya fason (₺/kg)" keyboardType="decimal-pad" value={f.dyeingFee} onChangeText={(v) => update({ dyeingFee: v })} placeholder="Örn. 70" />
+            <TextField label="Boya fason (₺/ham kg)" keyboardType="decimal-pad" value={f.dyeingFee} onChangeText={(v) => update({ dyeingFee: v })} placeholder="Örn. 70" />
           </View>
           <View style={styles.col}>
             <TextField label="Boya firesi (%)" keyboardType="decimal-pad" value={f.dyeingLoss} onChangeText={(v) => update({ dyeingLoss: v })} placeholder="Örn. 8" />
@@ -200,7 +200,7 @@ export function FabricCostCalculator() {
               ]}
             />
             <Text style={styles.footnote}>
-              Ham maliyet: iplik (fire dahil) + örme fason, üzerine genel gider. Boyalı maliyet: ham maliyet + boya fason, boya firesiyle kaybedilen kilo düşülerek. Satış fiyatları maliyete kâr oranı eklenerek bulunur.
+              Ham maliyet: iplik (fire dahil) + örme fason, üzerine genel gider. Boyalı maliyet: boya ücreti ham kilo üzerinden ödenir, toplam maliyet firesi düşülmüş boyalı kiloya bölünür (100 kg ham kumaş %8 fireyle 92 kg boyalı çıkar). Satış fiyatları maliyete kâr oranı eklenerek bulunur.
             </Text>
           </>
         ) : null}
