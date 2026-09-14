@@ -1,6 +1,12 @@
 # Avedon — çalışma düzeni
 
-Bu bilgisayar projenin tek geliştirme ortamı. Kullanıcı başka bir makinede (iş yeri vb.) geliştirme yapmıyor — kod da, veritabanı da burada yaşıyor.
+Proje **iki makinede** geliştiriliyor (2026-09-14'ten itibaren): ev PC'si ve iş PC'si. Ortak olan tek şey GitHub deposu — `.env` dosyaları ve yerel SQLite veritabanı (`backend/prisma/dev.db`) git'e girmediği için **her makinede ayrıdır**.
+
+Bu yüzden:
+- **Oturuma başlarken önce `git pull`** — diğer makinede çalışılmış olabilir.
+- **İş bitince push et** — diğer makine devam edebilsin.
+- Yeni bir makinede ilk kurulum: her iki klasörde `npm install`, `backend/.env` oluştur (`DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`), `npx prisma migrate deploy` + `npm run seed`. `JWT_SECRET` makineye özel olabilir; production'daki (Render) değerle aynı olmak zorunda değil — sadece o makinede üretilen oturum jetonları o makinede geçerli olur.
+- Yerel veritabanları ayrı olduğu için bir makinede eklenen test verisi diğerinde görünmez; ortak gerçek veri yalnızca canlı ortamdadır (Render).
 
 ## Otomatik commit + push (önceden onaylanmış)
 
