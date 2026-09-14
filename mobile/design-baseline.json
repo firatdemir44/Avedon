@@ -34,6 +34,7 @@
     { "id": "FINDING-014", "impact": "medium", "category": "forms", "tell": 34, "summary": "Telefon, ad, soyad, firma adı alanlarında textContentType/autoComplete yok: otomatik doldurma çalışmıyor (LoginScreen, PersonalInfoScreen, CompanyInfoScreen)", "status": "open" },
     { "id": "FINDING-015", "impact": "polish", "category": "color", "tell": 6, "summary": "ImageViewerModal içinde satır içi #FFFFFF", "status": "open" },
     { "id": "FINDING-016", "impact": "polish", "category": "navigation", "summary": "Akış başlığında '+ Paylaş' düz metin, 'Danışman' ikon+metin: iki başlık eylemi farklı dilde", "status": "open" },
+    { "id": "FINDING-018", "impact": "medium", "category": "navigation", "summary": "CompanyProfile ekranının başlığı RootNavigator'da sabit 'Firmam': başka bir firmanın sayfası açıldığında da 'Firmam' yazıyor (Trunk Test: 'hangi ekrandayım?' sorusu yanlış cevaplanıyor)", "status": "open" },
     { "id": "FINDING-017", "impact": "polish", "category": "performance", "tell": 13, "summary": "CreatePostScreen ürün seçici firmanın tüm ürünlerini ScrollView içinde map ile çiziyor; katalog büyürse FlatList gerekir", "status": "open" }
   ],
   "dismissed": [
