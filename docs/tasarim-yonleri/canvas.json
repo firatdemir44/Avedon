@@ -1,0 +1,17 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A · Akış", "x": 0, "y": 0, "w": 390, "h": 844 },
+    { "file": "AUrun.dc.html", "title": "A · Ürün sayfası", "x": 470, "y": 0, "w": 390, "h": 844 },
+    { "file": "BAkis.dc.html", "title": "B · Akış", "x": 1060, "y": 0, "w": 390, "h": 844 },
+    { "file": "BUrun.dc.html", "title": "B · Ürün sayfası", "x": 1530, "y": 0, "w": 390, "h": 844 },
+    { "file": "CAkis.dc.html", "title": "C · Akış", "x": 2120, "y": 0, "w": 390, "h": 844 },
+    { "file": "CUrun.dc.html", "title": "C · Ürün sayfası", "x": 2590, "y": 0, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    { "id": "yonler-nasil-secilir", "x": 0, "y": -560, "w": 2980, "text": "Avedon için üç farklı tasarım yönü, aynı iki ekran üzerinde: Akış ve Ürün sayfası.\nBirini seç ya da beğendiğin parçaları söyle (örneğin A'nın düzeni ile B'nin kumaş etiketi).\nFotoğraflar kumaş deseniyle çizilmiş yer tutucular. Kişi adları ve sayılar örnek, gerçek veri değil. Menü yapısı ve sekmeler üç yönde de aynı kaldı." },
+    { "id": "yon-a", "x": 0, "y": -380, "w": 860, "text": "A · Rafine Lacivert\n2020 kimliğini koruyup sadeleştirir: lacivert ve mavi kalır, kutular yerine ince çizgiler, fotoğraflar kenardan kenara. Yazı tipi Figtree.\nArtısı: en düşük risk, bugünkü uygulamaya en yakın.\nEksisi: en az ayırt edici olan; başka uygulamalara benzeyebilir." },
+    { "id": "yon-b", "x": 1060, "y": -380, "w": 860, "text": "B · Ham Kumaş\nTekstilden beslenen sıcak, dergi havasında bir kimlik: ham bez rengi zemin, lacivert mürekkep, kök boya kırmızısı vurgu. Başlıklarda Newsreader, metinde Instrument Sans. İmza öğesi: ürün ölçüleri kumaş etiketi gibi dikişli bir kutuda.\nArtısı: en akılda kalıcı ve sektöre en özgü yön.\nEksisi: 2020'deki mavi kimlikten ayrılır; iki özel yazı tipi uygulamaya yük ekler." },
+    { "id": "yon-c", "x": 2120, "y": -380, "w": 860, "text": "C · Pazar Masası\nAlım satım yapan için yoğun, bilgi önde bir düzen: lacivert üst bant, kodlar ve ölçüler eşit aralıklı IBM Plex Mono ile, ürün ölçüleri akışta fotoğrafın hemen altında.\nArtısı: ürünleri en hızlı karşılaştırılan yön; B2B ticarete en uygun.\nEksisi: sosyal ağ sıcaklığı azalır, yazılar küçülür, bir iş aracı gibi hissettirir." }
+  ],
+  "launch": { "view": "canvas" }
+}

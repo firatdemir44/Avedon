@@ -1,0 +1,53 @@
+{
+  "tool": "mobile-redesign-app",
+  "version": 1,
+  "date": "2026-09-14",
+  "pass": "static (kullanıcı ekranları cihazda gözle inceledi; asistan ekran görüntüsü görmedi)",
+  "designScore": "A-",
+  "slopScore": "A",
+  "categories": {
+    "navigation": "A-",
+    "anatomy": "B",
+    "typography": "A",
+    "color": "A-",
+    "surfaces": "A-",
+    "states": "C+",
+    "interaction": "A-",
+    "forms": "A-",
+    "performance": "A",
+    "copy": "A"
+  },
+  "findings": [
+    { "id": "FINDING-001", "impact": "medium", "category": "navigation", "summary": "Deep link yok: akıştaki Paylaş düz metin gönderiyor, ürün/gönderi bağlantısı uygulamada açılmıyor", "status": "open" },
+    { "id": "FINDING-002", "impact": "medium", "category": "anatomy", "summary": "AddProductScreen ve CompanyProfileScreen native başlığın altında SafeAreaView edges top kullanıyor: çift üst boşluk", "status": "open" },
+    { "id": "FINDING-003", "impact": "medium", "category": "anatomy", "summary": "İçerikte başlık tekrarı: AddProductScreen (başlık 'Ürün Ekle' + metin 'Ürünü Düzenle') ve SampleRequestFormScreen", "status": "open" },
+    { "id": "FINDING-004", "impact": "polish", "category": "typography", "summary": "Marka yazı tipi yok, sistem fontu; kimlik tipografiye yansımıyor (yeniden tasarımın hedefi)", "status": "open" },
+    { "id": "FINDING-005", "impact": "medium", "category": "color", "summary": "Koyu mod yok (app.json userInterfaceStyle: light) ve semantik açık/koyu token çifti yok", "status": "open" },
+    { "id": "FINDING-006", "impact": "medium", "category": "surfaces", "tell": 3, "summary": "Kart yığını: akış dışındaki liste ekranlarının hepsi gri zemin + beyaz gölgeli kart (Ürünler, Talepler, Mesajlar, Bağlantılar, Firma, Hesaplamalar)", "status": "open" },
+    { "id": "FINDING-007", "impact": "polish", "category": "surfaces", "tell": 12, "summary": "Her yerde baş harf avatarı; Company modelinde logo alanı yok", "status": "open" },
+    { "id": "FINDING-008", "impact": "medium", "category": "states", "tell": 37, "summary": "Yüklemede yalnızca spinner (20 dosya), içerik ekranlarında iskelet yok", "status": "open" },
+    { "id": "FINDING-009", "impact": "medium", "category": "states", "tell": 38, "summary": "Aşağı çekip yenileme yalnızca Akış ve Mesajlar'da; Ürünler, Talepler ve Firma sayfasında yok", "status": "open" },
+    { "id": "FINDING-010", "impact": "medium", "category": "states", "tell": 38, "summary": "Çevrimdışı durumu yok; Ürünler API'ye ulaşamayınca örnek veriye düşüyor ve bunu yalnızca küçük bir notla belirtiyor", "status": "open" },
+    { "id": "FINDING-011", "impact": "medium", "category": "interaction", "tell": 35, "summary": "Basma geri bildirimi tutarsız (liste kartları ve çiplerde yok), titreşim sözlüğü yok", "status": "open" },
+    { "id": "FINDING-012", "impact": "polish", "category": "copy", "tell": 1, "summary": "Metin glifi ikon olarak kullanılıyor: ✓ (CompanyAvatar, takip adımı), ✕ (fotoğraf görüntüleyici), ♥ (akış sayacı); tek ikon ailesi Ionicons olmalı", "status": "open" },
+    { "id": "FINDING-013", "impact": "polish", "category": "copy", "tell": 33, "summary": "Görünür metinde uzun tire: ChatScreen:226, CalculatorsListScreen:27, FabricWeightCalculator:36, CompanyCodeScreen:50, GarmentVisualCostScreen:91", "status": "open" },
+    { "id": "FINDING-014", "impact": "medium", "category": "forms", "tell": 34, "summary": "Telefon, ad, soyad, firma adı alanlarında textContentType/autoComplete yok: otomatik doldurma çalışmıyor (LoginScreen, PersonalInfoScreen, CompanyInfoScreen)", "status": "open" },
+    { "id": "FINDING-015", "impact": "polish", "category": "color", "tell": 6, "summary": "ImageViewerModal içinde satır içi #FFFFFF", "status": "open" },
+    { "id": "FINDING-016", "impact": "polish", "category": "navigation", "summary": "Akış başlığında '+ Paylaş' düz metin, 'Danışman' ikon+metin: iki başlık eylemi farklı dilde", "status": "open" },
+    { "id": "FINDING-017", "impact": "polish", "category": "performance", "tell": 13, "summary": "CreatePostScreen ürün seçici firmanın tüm ürünlerini ScrollView içinde map ile çiziyor; katalog büyürse FlatList gerekir", "status": "open" }
+  ],
+  "dismissed": [
+    "tell 32: Alert.alert 2 kez, ikisi de silme onayı (izinli kullanım)",
+    "tell 13: diğer ScrollView+map kullanımları sınırlı ve sabit (hesaplama listesi, tip çipleri, 4 adımlı takip, fotoğraf satırı)",
+    "tell 22: 28 justifyContent center; boş durum ve yükleme göstergeleri (izinli kullanım)",
+    "tell 5: shadow.card tokenı elevation içeriyor"
+  ],
+  "navRead": "tabs (5): Akış · Ürünler · Hesaplamalar · Mesajlar · Profil; React Navigation native-stack + bottom-tabs; giriş durumu koşullu Stack.Group ile ayrılıyor; tüm detay ekranları kök yığında (sekme çubuğunu örtüyor); deep link yok. Denetim yapısal bir sorun bulmadı: navigasyon yeniden yapılandırması önerilmiyor.",
+  "unverified": [
+    "1.3x yazı boyutunda sekme çubuğu",
+    "klavye açıkken gönder düğmeleri (her iki platform)",
+    "Android kenardan kenara alt boşluklar",
+    "en uzun listede kaydırma performansı",
+    "açılış ekranından ilk ekrana geçişte beyaz yanıp sönme"
+  ]
+}
