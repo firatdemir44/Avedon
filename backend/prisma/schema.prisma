@@ -72,26 +72,82 @@ model User {
   postComments         PostComment[]
   sampleRequestEvents  SampleRequestEvent[]
   videos               Video[]
+  productFavorites     ProductFavorite[]
+  productViews         ProductView[]
   createdAt            DateTime        @default(now())
 }
 
+// Katalog anahtarları (type, subtype, usages) src/catalog.ts'te tanımlı ve API'de
+// doğrulanıyor. type: "orme" | "raschel" | "dokuma" | "dantel" | "triko" | "diger".
 model Product {
   id             String          @id @default(cuid())
   companyId      String
   company        Company         @relation(fields: [companyId], references: [id])
   code           String
   type           String
+  // Alt çeşit anahtarı (ör. "suprem"); boş = belirtilmemiş.
+  subtype        String          @default("")
+  // Kullanım amaçları: JSON dizi metni, ör. ["pantolonluk","taytlik"].
+  usages         String          @default("[]")
   // Float: form "220,5" gibi ondalık kabul ediyor; Int iken sunucu 201 dönüp
   // değeri sessizce 220'ye kesiyordu.
   stock          Float
+  // "m" | "kg"
+  stockUnit      String          @default("m")
   weightGsm      Float
   widthCm        Float
   content        String
-  useArea        String
+  // Serbest kullanım notu (isteğe bağlı); etiketler usages'ta.
+  useArea        String          @default("")
+  /// @deprecated Tek fotoğraf dönemi. 2026-09-15 migration'ı fotoğrafları
+  /// ProductImage'a (sıra 0) kopyaladı; artık okunmuyor ve yazılmıyor. Ayrı bir
+  /// temizlik migration'ında silinecek.
   imageUrl       String?
+  images         ProductImage[]
+  favorites      ProductFavorite[]
+  views          ProductView[]
   sampleRequests SampleRequest[]
   posts          Post[]
   createdAt      DateTime        @default(now())
+}
+
+// Ürün fotoğrafları: position 0 kapak. Sıralar her zaman 0..n-1 (bkz.
+// replaceProductImages). imageUrl base64 data URL; liste yanıtlarında dönmez.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position  Int
+  imageUrl  String
+  createdAt DateTime @default(now())
+
+  @@unique([productId, position])
+}
+
+model ProductFavorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt])
+}
+
+// "Son bakılan ürünler": kullanıcı-ürün başına tek satır, her bakışta viewedAt
+// güncellenir; kullanıcı başına en fazla MAX_RECENT_VIEWS satır tutulur.
+model ProductView {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  viewedAt  DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId, viewedAt])
 }
 
 model SampleRequest {

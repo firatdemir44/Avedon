@@ -89,6 +89,20 @@ async function main() {
     ],
   });
 
+  // Katalog alanları (Aşama A): klasör ve filtre görünümleri boş kalmasın.
+  const catalogSeed: { code: string; subtype: string; usages: string[] }[] = [
+    { code: 'RSC-2201', subtype: 'astarlik', usages: ['astar', 'dis_giyim'] },
+    { code: 'ORM-0587', subtype: 'suprem', usages: ['tisortluk', 'spor_giyim', 'taytlik'] },
+    { code: 'DKM-1190', subtype: 'poplin', usages: ['gomleklik'] },
+    { code: 'ORM-0723', subtype: 'uc_iplik', usages: ['sweatshirt', 'esofman'] },
+  ];
+  for (const item of catalogSeed) {
+    await prisma.product.updateMany({
+      where: { code: item.code },
+      data: { subtype: item.subtype, usages: JSON.stringify(item.usages) },
+    });
+  }
+
   await seedPosts();
   console.log('Seed tamamlandı.');
 }

@@ -17,6 +17,9 @@ import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
+import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
+import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
+import { RecentlyViewedProductsScreen } from '../screens/products/RecentlyViewedProductsScreen';
 import { AdvisorScreen } from '../screens/advisor/AdvisorScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
@@ -110,6 +113,21 @@ export function RootNavigator() {
               component={ProductDetailScreen}
               // Başlık ürün kodu olarak ekranın kendisi tarafından güncelleniyor.
               options={{ headerShown: true, title: 'Ürün' }}
+            />
+            <Stack.Screen
+              name="ProductFilters"
+              component={ProductFiltersScreen}
+              options={{ headerShown: true, title: 'Filtrele' }}
+            />
+            <Stack.Screen
+              name="FavoriteProducts"
+              component={FavoriteProductsScreen}
+              options={{ headerShown: true, title: 'Favorilerim' }}
+            />
+            <Stack.Screen
+              name="RecentlyViewedProducts"
+              component={RecentlyViewedProductsScreen}
+              options={{ headerShown: true, title: 'Son Baktıklarım' }}
             />
             <Stack.Screen
               name="Advisor"

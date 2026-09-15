@@ -1,41 +1,53 @@
 import React from 'react';
 import { View, Text, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { formatMeasure } from '../features/calculators/parse';
+import { STOCK_UNIT_LABELS, type StockUnit } from '../features/products/catalog';
 import { colors, fonts, radius, spacing, typography } from '../theme';
 
-// Bu metrajın altındaki stok "azalıyor" sayılır: turuncu nokta ve yazı.
+// Bu miktarın altındaki stok "azalıyor" sayılır: turuncu nokta ve yazı.
 // Taslakta 60 m turuncu, 540 m ve üstü yeşil gösteriliyordu; numune ve küçük
-// sipariş için 100 m makul bir alt sınır. Ürün bazında eşik gelirse burası değişir.
-export const LOW_STOCK_METERS = 100;
+// sipariş için 100 m makul bir alt sınır. Kilogramla satılan kumaşta (örme
+// kumaşlar ~150-300 gr/m²'de metrenin kabaca üçte biri) 30 kg.
+export const LOW_STOCK: Record<StockUnit, number> = { m: 100, kg: 30 };
 
-export function isLowStock(stock: number) {
-  return stock < LOW_STOCK_METERS;
+export function isLowStock(stock: number, unit: StockUnit = 'm') {
+  return stock < (LOW_STOCK[unit] ?? LOW_STOCK.m);
 }
 
-export function StockDot({ stock }: { stock: number }) {
-  return <View style={[styles.dot, { backgroundColor: isLowStock(stock) ? colors.warningDot : colors.success }]} />;
+// "1.200 m" / "450 kg"
+export function formatStock(stock: number, unit: StockUnit = 'm') {
+  return `${formatMeasure(stock)} ${STOCK_UNIT_LABELS[unit]?.short ?? unit}`;
+}
+
+interface StockProps {
+  stock: number;
+  unit?: StockUnit;
+}
+
+export function StockDot({ stock, unit }: StockProps) {
+  return <View style={[styles.dot, { backgroundColor: isLowStock(stock, unit) ? colors.warningDot : colors.success }]} />;
 }
 
 // Satır içi: "● 1.200 m" (eşit aralıklı yazı).
-export function StockValue({ stock, style }: { stock: number; style?: StyleProp<ViewStyle> }) {
-  const low = isLowStock(stock);
+export function StockValue({ stock, unit = 'm', style }: StockProps & { style?: StyleProp<ViewStyle> }) {
+  const low = isLowStock(stock, unit);
   return (
     <View
       style={[styles.inline, style]}
-      accessibilityLabel={`Stok ${formatMeasure(stock)} metre${low ? ', azalıyor' : ''}`}
+      accessibilityLabel={`Stok ${formatMeasure(stock)} ${STOCK_UNIT_LABELS[unit]?.long ?? unit}${low ? ', azalıyor' : ''}`}
     >
-      <StockDot stock={stock} />
-      <Text style={[styles.value, low && styles.valueLow]}>{formatMeasure(stock)} m</Text>
+      <StockDot stock={stock} unit={unit} />
+      <Text style={[styles.value, low && styles.valueLow]}>{formatStock(stock, unit)}</Text>
     </View>
   );
 }
 
 // Ürün sayfasının başındaki durum rozeti: "● Stokta" / "● Az stok".
-export function StockBadge({ stock }: { stock: number }) {
-  const low = isLowStock(stock);
+export function StockBadge({ stock, unit }: StockProps) {
+  const low = isLowStock(stock, unit);
   return (
     <View style={[styles.badge, { backgroundColor: low ? colors.warningSoft : colors.successSoft }]}>
-      <StockDot stock={stock} />
+      <StockDot stock={stock} unit={unit} />
       <Text style={[styles.badgeText, { color: low ? colors.warning : colors.success }]}>
         {low ? 'Az stok' : 'Stokta'}
       </Text>

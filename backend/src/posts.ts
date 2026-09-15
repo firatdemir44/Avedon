@@ -22,6 +22,7 @@ export const POST_PRODUCT_SELECT = {
   weightGsm: true,
   widthCm: true,
   stock: true,
+  stockUnit: true,
 } satisfies Prisma.ProductSelect;
 
 export const POST_INCLUDE = {

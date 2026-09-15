@@ -9,6 +9,8 @@ import type {
   VerificationStatus,
 } from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
+import { productQueryString, type ProductFilters } from '../features/products/filters';
+import type { StockUnit } from '../features/products/catalog';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
 // değişkeniyle verin (örn. "https://api.avedon.com/api") — aksi halde web'de
@@ -296,7 +298,7 @@ export type FeedPost = {
   editedAt: string | null;
   author: PostAuthor;
   // Ölçüler akış kartındaki ürün şeridi için (backend POST_PRODUCT_SELECT).
-  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number } | null;
+  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number; stockUnit: StockUnit } | null;
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
@@ -394,15 +396,25 @@ export function searchCompanies(search: string) {
   return request<{ companies: Company[] }>(`/companies?search=${encodeURIComponent(search)}`);
 }
 
+// Arama + filtreler (features/products/filters.ts). Giriş yapılmışsa her ürün
+// isFavorite taşır.
+export function fetchProductList(search: string, filters: ProductFilters) {
+  return request<{ products: Product[] }>(`/products${productQueryString(search, filters)}`);
+}
+
 export interface NewProductInput {
   code: string;
   type: Product['type'];
+  subtype: string;
+  usages: string[];
   stock: number;
+  stockUnit: StockUnit;
   weightGsm: number;
   widthCm: number;
   content: string;
   useArea: string;
-  imageUrl?: string;
+  // data URL'ler; ilki kapak.
+  images: string[];
 }
 
 export function createProduct(payload: NewProductInput) {
@@ -420,11 +432,22 @@ export function fetchProduct(id: string) {
   return request<{ product: ProductDetail }>(`/products/${id}`);
 }
 
+// Kapak fotoğrafı (sıra 0).
 export function fetchProductImage(id: string) {
   return request<{ imageUrl: string }>(`/products/${id}/image`);
 }
 
-export type UpdateProductInput = Partial<NewProductInput>;
+export function fetchProductImageAt(id: string, position: number) {
+  return request<{ imageUrl: string }>(`/products/${id}/images/${position}`);
+}
+
+// Güncellemede fotoğraf: yeni data URL ya da mevcut fotoğrafın eski sırası.
+export type ProductImageInput = string | { existing: number };
+
+export type UpdateProductInput = Partial<Omit<NewProductInput, 'images'>> & {
+  // Verilirse fotoğrafların tamamı bu liste olur; verilmezse dokunulmaz.
+  images?: ProductImageInput[];
+};
 
 export function updateProduct(id: string, payload: UpdateProductInput) {
   return request<{ product: Product }>(`/products/${id}`, {
@@ -435,6 +458,26 @@ export function updateProduct(id: string, payload: UpdateProductInput) {
 
 export function deleteProduct(id: string) {
   return request<void>(`/products/${id}`, { method: 'DELETE' });
+}
+
+export function setProductFavorite(id: string, favorite: boolean) {
+  return request<{ isFavorite: boolean }>(`/products/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' });
+}
+
+export type FavoriteProduct = Product & { favoritedAt: string };
+
+export function fetchFavoriteProducts() {
+  return request<{ products: FavoriteProduct[] }>('/me/favorites');
+}
+
+export type RecentlyViewedProduct = Product & { viewedAt: string };
+
+export function fetchRecentlyViewedProducts() {
+  return request<{ products: RecentlyViewedProduct[] }>('/me/recently-viewed');
+}
+
+export function clearRecentlyViewedProducts() {
+  return request<void>('/me/recently-viewed', { method: 'DELETE' });
 }
 
 export interface AdvisorMessage {

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchProduct } from '../../api/client';
+import { fetchProduct, setProductFavorite } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
@@ -15,19 +15,21 @@ import {
   isNotFound,
 } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { StockBadge } from '../../components/StockIndicator';
-import { PRODUCT_TYPE_LABELS } from '../../components/ProductRow';
+import { ProductGallery } from '../../components/ProductGallery';
+import { StockBadge, formatStock } from '../../components/StockIndicator';
+import { categoryLabel, subtypeLabel, typeLabel, usageLabel } from '../../features/products/catalog';
 import { formatMeasure } from '../../features/calculators/parse';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { haptics } from '../../features/haptics';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
 
-// Taslak: docs/tasarim-yonleri/CUrun.dc.html. Fotoğraf + kod bloğu, çizgili
-// özellik satırları, firma satırı; eylemler ekranın altına sabit çubukta.
+// Taslak: docs/tasarim-yonleri/CUrun.dc.html + orijinal tasarım "Ürün Sayfası"
+// (kaydırmalı galeri, favori yıldızı). Galeri + kod bloğu, çizgili özellik
+// satırları, firma satırı; eylemler ekranın altına sabit çubukta.
 export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { user } = useSession();
@@ -37,25 +39,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const { data: product, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchProduct(productId).then(({ product: fetched }) => fetched)
   );
-  const [imageUrl, setImageUrl] = useState<string | null>(
-    () => getCachedProductImage(productId) ?? null
-  );
-  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [favorite, setFavorite] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
-    if (!product?.hasImage || imageUrl) return;
-    let cancelled = false;
-    loadProductImage(productId)
-      .then((url) => {
-        if (!cancelled) setImageUrl(url);
-      })
-      .catch(() => {
-        // Fotoğraf gelmezse sayfanın geri kalanı çalışmaya devam etsin.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [productId, product?.hasImage, imageUrl]);
+    if (product) setFavorite(!!product.isFavorite);
+  }, [product]);
 
   useEffect(() => {
     // Taslakta başlık ürün kodu, eşit aralıklı yazıyla.
@@ -88,49 +78,70 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }
 
   const isOwnProduct = !!user?.companyId && user.companyId === product.companyId;
-  const typeLabel = PRODUCT_TYPE_LABELS[product.type] ?? product.type;
   const company = product.company;
   const openCompany = () => navigation.navigate('CompanyProfile', { companyId: product.companyId });
+  const subtype = subtypeLabel(product.type, product.subtype ?? '');
+  const usages = (product.usages ?? []).map(usageLabel).join(', ');
+
+  // İyimser: yıldız hemen değişir, sunucu reddederse geri döner.
+  const toggleFavorite = async () => {
+    if (favoriteBusy) return;
+    const next = !favorite;
+    setFavorite(next);
+    setFavoriteBusy(true);
+    haptics.light();
+    try {
+      const result = await setProductFavorite(product.id, next);
+      setFavorite(result.isFavorite);
+    } catch {
+      setFavorite(!next);
+      haptics.error();
+    } finally {
+      setFavoriteBusy(false);
+    }
+  };
+
+  const favoriteButton = isOwnProduct ? null : (
+    <Pressable
+      onPress={toggleFavorite}
+      accessibilityRole="button"
+      accessibilityState={{ selected: favorite }}
+      accessibilityLabel={favorite ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+      hitSlop={4}
+      style={({ pressed }) => [styles.favoriteButton, pressed && styles.favoritePressed]}
+    >
+      <Ionicons name={favorite ? 'star' : 'star-outline'} size={22} color={favorite ? colors.warningDot : colors.text} />
+    </Pressable>
+  );
 
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
         <View style={[styles.block, styles.heroBlock]}>
-          {imageUrl ? (
-            <Pressable
-              onPress={() => setViewerOpen(true)}
-              accessibilityRole="imagebutton"
-              accessibilityLabel={`${product.code} fotoğrafı`}
-              accessibilityHint="Tam ekran büyütür"
-              style={({ pressed }) => pressed && styles.heroPressed}
-            >
-              <Image source={{ uri: imageUrl }} style={styles.hero} resizeMode="cover" />
-            </Pressable>
-          ) : (
-            <View style={[styles.hero, styles.heroPlaceholder]}>
-              <Ionicons name="image-outline" size={28} color={colors.chevron} />
-              <Text style={styles.heroPlaceholderText}>
-                {product.hasImage ? 'Fotoğraf yükleniyor' : 'Bu ürünün fotoğrafı yok'}
-              </Text>
-            </View>
-          )}
+          <ProductGallery
+            productId={product.id}
+            imageCount={product.imageCount ?? (product.hasImage ? 1 : 0)}
+            onOpenImage={setViewerUrl}
+            overlay={favoriteButton}
+          />
           <View style={styles.titleRow}>
             <View style={styles.titleTexts}>
               <Text style={styles.code}>{product.code}</Text>
-              <Text style={styles.titleMeta}>
-                {typeLabel} · {product.useArea}
-              </Text>
+              <Text style={styles.titleMeta}>{categoryLabel(product.type, product.subtype ?? '')}</Text>
             </View>
-            <StockBadge stock={product.stock} />
+            <StockBadge stock={product.stock} unit={product.stockUnit} />
           </View>
         </View>
 
         <View style={[styles.block, styles.specBlock]}>
-          <SpecRow label="Stok" value={`${formatMeasure(product.stock)} m`} />
+          <SpecRow label="Çeşit" value={typeLabel(product.type)} />
+          {subtype ? <SpecRow label="Alt çeşit" value={subtype} /> : null}
+          {usages ? <SpecRow label="Kullanım" value={usages} sans /> : null}
+          <SpecRow label="Stok" value={formatStock(product.stock, product.stockUnit)} />
           <SpecRow label="Ağırlık" value={`${formatMeasure(product.weightGsm)} gr/m²`} />
           <SpecRow label="Genişlik" value={`${formatMeasure(product.widthCm)} cm`} />
-          <SpecRow label="İçerik" value={product.content} />
-          <SpecRow label="Tip" value={typeLabel} last />
+          <SpecRow label="İçerik" value={product.content} last={!product.useArea} />
+          {product.useArea ? <SpecRow label="Not" value={product.useArea} sans last /> : null}
         </View>
 
         {company ? (
@@ -195,16 +206,17 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         )}
       </View>
 
-      <ImageViewerModal imageUrl={imageUrl} visible={viewerOpen} onClose={() => setViewerOpen(false)} />
+      <ImageViewerModal imageUrl={viewerUrl} visible={!!viewerUrl} onClose={() => setViewerUrl(null)} />
     </View>
   );
 }
 
-function SpecRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+// sans: serbest metin (kullanım, not) eşit aralıklı yazıyla değil normal yazıyla.
+function SpecRow({ label, value, last, sans }: { label: string; value: string; last?: boolean; sans?: boolean }) {
   return (
     <View style={[styles.specRow, !last && styles.specDivider]}>
       <Text style={styles.specLabel}>{label}</Text>
-      <Text style={styles.specValue}>{value}</Text>
+      <Text style={[styles.specValue, sans && styles.specValueSans]}>{value}</Text>
     </View>
   );
 }
@@ -214,10 +226,18 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.md, gap: spacing.blockGap },
   block: { backgroundColor: colors.surface },
   heroBlock: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.gutter, gap: 12 },
-  hero: { width: '100%', height: 219, borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  heroPressed: { opacity: 0.9 },
-  heroPlaceholder: { alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  heroPlaceholderText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  favoriteButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoritePressed: { backgroundColor: colors.pressed },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   titleTexts: { flex: 1, gap: 2 },
   code: { fontFamily: fonts.monoSemibold, fontSize: 24, lineHeight: 30, color: colors.primary },
@@ -233,7 +253,15 @@ const styles = StyleSheet.create({
   },
   specDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  specValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  specValue: {
+    ...typography.mono,
+    fontFamily: fonts.monoMedium,
+    fontSize: 16,
+    color: colors.text,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  specValueSans: { ...typography.body, color: colors.text },
   companyRow: {
     flexDirection: 'row',
     alignItems: 'center',

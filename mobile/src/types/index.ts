@@ -1,5 +1,8 @@
 // Avedon MVP - temel veri modeli
 // Bkz. avedon-mvp-spec.md bölüm 4.1 - 4.4
+import type { ProductType, StockUnit } from '../features/products/catalog';
+
+export type { ProductType, StockUnit };
 
 export type AccountType = 'konfeksiyon' | 'uretici' | 'bireysel';
 
@@ -32,21 +35,26 @@ export interface Company {
   logoUpdatedAt: string | null;
 }
 
-export type ProductType = 'raschel' | 'orme' | 'dokuma' | 'diger';
-
 export interface Product {
   id: string;
   companyId: string;
   code: string;
+  // Katalog anahtarları: features/products/catalog.ts
   type: ProductType;
-  stock: number; // metre veya kg
+  subtype: string; // alt çeşit, boş = belirtilmemiş
+  usages: string[]; // kullanım amaçları
+  stock: number;
+  stockUnit: StockUnit;
   weightGsm: number; // gramaj (gr/m2)
   widthCm: number; // en (cm)
   content: string; // içerik, örn. "%95 Pamuk %5 Elastan"
-  useArea: string; // kullanım alanı, örn. "Spor Giyim"
-  // Fotoğrafın kendisi hiçbir liste/detay yanıtında gelmez; hasImage true ise
-  // GET /api/products/:id/image ile ayrıca çekilir (bkz. features/imageCache.ts).
+  useArea: string; // serbest kullanım notu (isteğe bağlı)
+  // Fotoğrafların kendisi hiçbir liste/detay yanıtında gelmez; kapak
+  // GET /api/products/:id/image, galeri /images/:position ile ayrıca çekilir.
   hasImage: boolean;
+  imageCount: number;
+  // Giriş yapılmış isteklerde dolu.
+  isFavorite?: boolean;
   company?: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null };
 }
 

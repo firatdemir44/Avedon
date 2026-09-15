@@ -1,6 +1,7 @@
 import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { ProductFilters } from '../features/products/filters';
 
 // ÖNEMLİ: Hiçbir rota adı hem sekme hem yığın listesinde bulunamaz.
 // React Navigation, navigate çağrısını önce çağıran ekranın KENDİ navigatörüne
@@ -9,7 +10,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 // profil rotasının adı "MyProfile".
 export type MainTabParamList = {
   Feed: undefined;
-  ProductList: undefined;
+  // Filtre ekranı "Uygula"da filtreleri buraya geri gönderir; appliedAt her
+  // uygulamada değişir, aynı filtre ikinci kez uygulansa da ekran yenilenir.
+  ProductList: { filters?: ProductFilters; appliedAt?: number } | undefined;
   CalculatorsList: undefined;
   Conversations: undefined;
   MyProfile: undefined;
@@ -32,6 +35,9 @@ export type RootStackParamList = {
   EditCompany: { companyId: string };
   AddProduct: { productId?: string } | undefined;
   ProductDetail: { productId: string };
+  ProductFilters: { filters: ProductFilters };
+  FavoriteProducts: undefined;
+  RecentlyViewedProducts: undefined;
   Advisor: undefined;
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;

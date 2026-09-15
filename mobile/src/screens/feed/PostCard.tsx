@@ -153,7 +153,7 @@ function PostCardComponent({
             {formatMeasure(product.widthCm)} cm
           </Text>
           <View style={styles.specDivider} />
-          <StockValue stock={product.stock} style={styles.specStock} />
+          <StockValue stock={product.stock} unit={product.stockUnit} style={styles.specStock} />
         </Pressable>
       ) : null}
 

@@ -1,7 +1,7 @@
 # Orijinal Avedon projesi → bugünkü uygulama: fark ve aşama planı
 
 **Tarih:** 2026-09-15 · **Kaynak:** kullanıcının paylaştığı Google Drive klasörü "Avedon Tasarım" (Takyon Ai)
-**Durum:** plan — kullanıcı onayı bekliyor, kod yazılmadı.
+**Durum:** plan onaylandı (2026-09-15). Aşama A tamamlandı (ayrıntı: `docs/yapilacaklar.md`), sıradaki Aşama B.
 
 ## Kaynaklar (yerelde, repoya girmez)
 
@@ -61,7 +61,8 @@ Sıra ölçütü: pilot firmalara en hızlı somut fayda, sonra sosyal katman, e
 
 **Pilot öncesi engel (aşamalardan bağımsız, hâlâ açık):** SMS sağlayıcısı — giriş kodu şu an yalnızca Render kayıtlarında.
 
-### Aşama A — Katalog derinliği (önerilen ilk iş)
+### Aşama A — Katalog derinliği ✅ (2026-09-15)
+Sektör seviyesi (Konfeksiyon, Boyahane, İplik, Aksesuar, Baskı) bilinçli olarak eklenmedi: bunlar kumaş değil firma türü; Aşama B'de firma sayfası/firma listesiyle birlikte ele alınacak.
 1. **Kategori ağacı:** sektör → çeşit → alt çeşit (sunucuda yönetilebilir liste; mevcut 4 tip veri kaybı olmadan taşınır) + **kullanım amacı** etiketleri (çoklu).
 2. Ürünler "Çeşitler" görünümü alt çeşit klasörlerine ve kumaş fotoğraflı kategori karelerine genişler.
 3. **Filtreleme:** stok aralığı, gramaj/en aralığı, içerik, kullanım amacı, firma.
@@ -79,7 +80,7 @@ Sıra ölçütü: pilot firmalara en hızlı somut fayda, sonra sosyal katman, e
 2. Numune listesinde **Tekrar Et**, zaman çizelgesinde kişi fotoğrafı, kargo takip numarası.
 3. **Bildirimler sayfası** (yeni talep, adım değişti, mesaj, bağlantı isteği, profil görüntülendi); telefon bildirimleri ayrı adım.
 4. **Ürün görünürlüğü:** herkese açık / yalnız seçili firmalara.
-5. (Karar gerekir) Ödemeli numune adımları — ödeme uygulama içinde mi, dışında mı?
+5. Ödemeli numune: **karar (2026-09-15) — ilk demoda ödemeyi firmalar kendi yöntemiyle halleder**; uygulamada ödeme adımı/altyapısı yok. İstenirse yalnızca bilgi amaçlı "ücretli numune" notu eklenebilir.
 
 ### Aşama D — Sosyal katman
 1. Profil: kapak, konum, **deneyim, eğitim, yetenekler (bağlantı onaylı), iletişim**.
@@ -92,13 +93,13 @@ Sıra ölçütü: pilot firmalara en hızlı somut fayda, sonra sosyal katman, e
 1. **Fotoğrafla arama:** kumaş fotoğrafını AI ile tanıyıp (tip, desen, renk) benzer ürünleri bulma — mevcut Anthropic anahtarıyla yapılabilir; önce küçük bir doğruluk denemesi.
 2. Sesli arama (telefonun konuşmayı yazıya çevirmesi).
 3. **Takvim / randevu:** firmalar arası görüşme talebi, kabul, hatırlatma.
-4. (Karar + dış hizmet) Görüntülü görüşme.
+4. ~~Görüntülü görüşme~~ — **karar (2026-09-15): gerek yok**, yapılmayacak.
 
 ### Aşama F — İş modeli (kullanıcı kararı gerektirir)
 3 ay ücretsiz → aylık abonelik, ürün kotası ("ilk 10 ürün ücretsiz"), ödeme sağlayıcısı (iyzico/PayTR vb.). Fiyat, kapsam ve fatura kararları kullanıcıda; ödeme bilgisi asistan tarafından girilmez.
 
-## Kullanıcı kararı gereken noktalar
-- Aşama sırası (öneri: A → B → C → D → E → F; SMS sağlayıcısı pilot öncesi paralel).
-- Ödemeli numune: ödeme uygulama içinde mi, firma kendi yöntemiyle mi?
-- Abonelik fiyatı ve ücretsiz dönem (Aşama F).
-- Görüntülü görüşme gerekli mi, yoksa telefonla aramaya yönlendirme yeterli mi?
+## Kullanıcı kararları (2026-09-15)
+- Aşama sırası: A → B → C → D → E → F onaylandı, A ile başlandı. SMS sağlayıcısı pilot öncesi ayrıca çözülecek.
+- Ödemeli numune: ilk demoda firmalar kendi yöntemiyle halleder (uygulama içi ödeme yok).
+- Abonelik fiyatı ve ücret konuları: sonraki aşamalarda (Aşama F).
+- Görüntülü görüşme: gerek yok.

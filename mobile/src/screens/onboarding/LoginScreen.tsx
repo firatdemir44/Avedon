@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Image, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -105,9 +105,17 @@ export function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.brand, { paddingTop: insets.top }]}>
-            <Text style={styles.brandText} accessibilityRole="header">
-              Avedon
-            </Text>
+            {/* Orijinal Avedon logosu; lacivert zemin için harfleri beyaz sürüm
+                (assets/brand, kaynak docs/orijinal-tasarim/logo). */}
+            <Image
+              source={require('../../../assets/brand/avedon-logo-light.png')}
+              style={styles.brandLogo}
+              resizeMode="contain"
+              accessible
+              accessibilityRole="header"
+              accessibilityLabel="Avedon"
+            />
+            <Text style={styles.brandTagline}>Kaliteli kumaş aramanın yenilikçi yolu</Text>
           </View>
 
           <View style={styles.content}>
@@ -194,7 +202,9 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     justifyContent: 'flex-end',
   },
-  brandText: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 40, color: colors.primaryText },
+  // Logo dosyası 900x145; genişlik ekrana göre, en-boy oranı sabit.
+  brandLogo: { width: '72%', maxWidth: 280, aspectRatio: 900 / 145 },
+  brandTagline: { ...typography.body, color: colors.onPrimaryMuted, marginTop: spacing.sm },
   content: { paddingHorizontal: spacing.lg, paddingTop: 28 },
   title: { ...typography.title, color: colors.text },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: 6 },

@@ -24,6 +24,9 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 - **Bölüm başlığı:** `SectionHeader` — bloğun üstünde küçük gri başlık, isteğe bağlı eşit aralıklı sayı: "Ürünler (12)".
 - **Çizgili satır:** `ListRow` (başlık, alt başlık, sol öğe, sağ ek bilgi, ok). Son satırda çizgi yok (`divider={index < n - 1}`).
 - **Arama çubuğu:** beyaz şerit içinde `SearchField` (Ürünler, Mesajlar).
+- **Filtre (Ürünler, Aşama A):** arama çubuğunun yanında 44px kare filtre düğmesi (etkin filtre varsa lacivert dolu + kırmızı sayı rozeti); görünüm seçiminin altında yatay kaydırılan etkin filtre çipleri (açık mavi, "×" ile tek tek kaldırılır, sonda kırmızı "Temizle"). Filtre ekranı başlıklı beyaz bloklar + altta sabit "Temizle / Filtreyi Uygula".
+- **Klasör içi alt çeşit çipleri:** klasör geri satırının altında yatay çipler "Süprem 3"; sayı eşit aralıklı yazıyla.
+- **Logo:** `assets/brand/avedon-logo-light.png` (harfler beyaz) lacivert zeminde, `avedon-logo.png` açık zeminde, `avedon-mark.png` yalnızca girdap işareti. Kaynak: `docs/orijinal-tasarim/logo` (repoya girmez). Logo metinle yeniden çizilmez, dosya kullanılır.
 - **Görünüm seçimi (Ürünler):** arama şeridinin altında iki eşit düğme, seçili olan lacivert dolu. "Tümü" tek akış, "Çeşitler" kumaş çeşidi klasörleri (klasör satırı: açık mavi kare içinde klasör ikonu + "N ürün"); açık klasörün üstünde geri satırı. Seçim cihazda hatırlanır. Arama yazılınca klasörler yerine sonuçlar gelir.
 - **Başlık eylemleri:** `HeaderButton` — lacivert bantta yalnızca ikon (Akış: danışman, paylaş) ya da ikon + kısa etiket (Mesajlar: + Yeni). Düz metin eylem yok.
 - **Sabit eylem çubuğu:** ekranın altında beyaz, üst çizgili, `PrimaryButton size="lg"` (Ürün sayfası: Firma + Numune Talep Et; Numune takibi: adımı işaretle). Alt güvenli alan `useSafeAreaInsets` ile çubuğun kendisine eklenir.
@@ -41,6 +44,8 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 | `CompanyAvatar` | Kare (6px) lacivert baş harf ya da firma logosu |
 | `Skeleton` | `SkeletonList` / `SkeletonDetail`; yeni düzendeki listeler **blok** (tek beyaz blokta çizgili) ya da **yığın** (akış) iskeleti kullanır |
 | `StateView` | `EmptyState`, `ErrorState`, `InlineError` |
+| `ProductGallery` | Ürün sayfası kaydırmalı fotoğraf galerisi: yalnızca görünen ve komşu fotoğraflar çekilir; sayaç "2/4", noktalar, `overlay` ile üstte düğme (favori yıldızı) |
+| `MultiChipSelect` | Çoklu seçim çipleri (kullanım amaçları); seçili çip lacivert + onay işareti. Tek seçim için `ChipSelect` |
 
 ## Basma geri bildirimi (4. aşama)
 
@@ -80,6 +85,6 @@ Basmanın kendisi titreşmez. Sohbet mesajı ve yorum gibi **sık** işlemlerde 
 Taslaklarda karşılığı olmayanlar; aynı kalıplarla uyarlanmalı:
 
 - Kayıt adımları: `RoleSelection`, `Position`, `PersonalInfo`, `CompanyInfo`, `PhoneVerification`, `CompanyCode`, `OnboardingLayout`, `OtpCodeField`
-- Formlar: `AddProduct`, `CreatePost`, `EditCompany`, `SampleRequestForm`, `TextField`, `ChipSelect`
+- Formlar (`AddProduct` 2026-09-15'te geçti): `CreatePost`, `EditCompany`, `SampleRequestForm`, `TextField`, `ChipSelect`
 - 7 hesaplama formu, `GarmentVisualCost`, `Advisor`, `Admin`
 - `ImageViewerModal` (✕ karakteri), kalan uzun tireler: `FabricWeightCalculator`, `CompanyCodeScreen`, `GarmentVisualCostScreen`

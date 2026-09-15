@@ -11,6 +11,8 @@ export interface ImageCache {
   get(id: string): string | undefined;
   set(id: string, imageUrl: string): void;
   load(id: string): Promise<string>;
+  // Fotoğraf değişince/silinince eski kopya gösterilmesin.
+  delete(id: string): void;
 }
 
 export function createImageCache(fetcher: (id: string) => Promise<{ imageUrl: string }>): ImageCache {
@@ -18,7 +20,7 @@ export function createImageCache(fetcher: (id: string) => Promise<{ imageUrl: st
   const inFlight = new Map<string, Promise<string>>();
 
   function set(id: string, imageUrl: string) {
-    if (cache.size >= MAX_ENTRIES) {
+    if (!cache.has(id) && cache.size >= MAX_ENTRIES) {
       const oldest = cache.keys().next().value;
       if (oldest) cache.delete(oldest);
     }
@@ -28,6 +30,10 @@ export function createImageCache(fetcher: (id: string) => Promise<{ imageUrl: st
   return {
     get: (id) => cache.get(id),
     set,
+    delete(id) {
+      cache.delete(id);
+      inFlight.delete(id);
+    },
     load(id) {
       const cached = cache.get(id);
       if (cached) return Promise.resolve(cached);

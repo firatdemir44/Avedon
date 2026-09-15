@@ -1,38 +1,56 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MainTabScreenProps } from '../../navigation/types';
-import { fetchProducts, searchCompanies } from '../../api/client';
+import { fetchProductList, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { ProductRow, PRODUCT_TYPE_LABELS } from '../../components/ProductRow';
+import { ProductRow } from '../../components/ProductRow';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { ListRow } from '../../components/ListRow';
 import { SectionHeader } from '../../components/SectionHeader';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SearchField } from '../../components/SearchField';
 import { haptics } from '../../features/haptics';
-import type { Company, Product, ProductType } from '../../types';
+import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, USAGES, typeLabel, type ProductType } from '../../features/products/catalog';
+import {
+  EMPTY_FILTERS,
+  activeFilterChips,
+  type ProductFilters,
+} from '../../features/products/filters';
+import type { Company, Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
 // Kullanıcı isteği (2026-09-15): ürünler ya tek akışta ("Tümü") ya da kumaş
 // çeşidine göre klasörlerde ("Çeşitler") görülebilsin; seçim hatırlanır.
+// Aşama A: klasör içinde alt çeşit çipleri, kullanım amacı kısayolları, filtreler.
 type ViewMode = 'all' | 'groups';
 const VIEW_MODE_KEY = 'avedon.productListViewMode';
-const TYPE_ORDER: ProductType[] = ['raschel', 'orme', 'dokuma', 'diger'];
+
+// Sunucuya ulaşılamazsa örnek veri; filtrelerin en temel ikisi uygulanır.
+function filterMock(search: string, filters: ProductFilters) {
+  const q = search.trim().toLocaleLowerCase('tr-TR');
+  return mockProducts.filter(
+    (p) =>
+      (!filters.type || p.type === filters.type) &&
+      (!q || [p.code, p.content, p.useArea, typeLabel(p.type)].join(' ').toLocaleLowerCase('tr-TR').includes(q))
+  );
+}
 
 // Taslak: docs/tasarim-yonleri/CUrunler.dc.html. Üstte beyaz arama çubuğu
-// (yanında "Firmam"), altta gri aralıktan sonra çizgiyle ayrılan ürün satırları.
-export function ProductListScreen({ navigation }: Props) {
+// (yanında filtre ve "Firmam"), altta gri aralıktan sonra çizgili ürün satırları.
+export function ProductListScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<ProductFilters>(EMPTY_FILTERS);
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +58,12 @@ export function ProductListScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [openType, setOpenType] = useState<ProductType | null>(null);
+  // null: klasördeki tüm ürünler · '': alt çeşidi belirtilmemiş olanlar
+  const [openSubtype, setOpenSubtype] = useState<string | null>(null);
   const queryRef = useRef(query);
   queryRef.current = query;
+  const filtersRef = useRef(filters);
+  filtersRef.current = filters;
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_MODE_KEY)
@@ -51,88 +73,140 @@ export function ProductListScreen({ navigation }: Props) {
       .catch(() => {});
   }, []);
 
+  // Filtre ekranı "Uygula"da buraya döner.
+  const appliedAt = route.params?.appliedAt;
+  useEffect(() => {
+    if (route.params?.filters) {
+      setFilters(route.params.filters);
+      setOpenType(null);
+      setOpenSubtype(null);
+    }
+    // appliedAt her uygulamada değişir; filtre nesnesinin kendisine bakılmıyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedAt]);
+
   const changeViewMode = (mode: ViewMode) => {
     if (mode === viewMode) return;
     haptics.selection();
     setViewMode(mode);
     setOpenType(null);
+    setOpenSubtype(null);
     AsyncStorage.setItem(VIEW_MODE_KEY, mode).catch(() => {});
   };
 
   // pull: aşağı çekip yenileme — liste yerinde kalır, üstte gösterge döner.
-  const loadProducts = useCallback((search: string, signal: { cancelled: boolean }, pull = false) => {
-    if (pull) setRefreshing(true);
-    else setLoading(true);
-    fetchProducts(search)
-      .then(({ products: fetched }) => {
-        if (signal.cancelled) return;
-        setProducts(fetched);
-        setOffline(false);
-      })
-      .catch(() => {
-        if (signal.cancelled) return;
-        // API'ye ulaşılamıyorsa geliştirme kolaylığı için mock veriye düş
-        const q = search.trim().toLowerCase();
-        setProducts(
-          q
-            ? mockProducts.filter((p) =>
-                [p.code, p.content, p.useArea, PRODUCT_TYPE_LABELS[p.type]].join(' ').toLowerCase().includes(q)
-              )
-            : mockProducts
-        );
-        setOffline(true);
-      })
-      .finally(() => {
-        if (signal.cancelled) return;
-        setLoading(false);
-        setRefreshing(false);
-      });
-
-    if (search.trim()) {
-      searchCompanies(search)
-        .then(({ companies: fetched }) => {
-          if (!signal.cancelled) setCompanies(fetched);
+  const loadProducts = useCallback(
+    (search: string, activeFilters: ProductFilters, signal: { cancelled: boolean }, pull = false) => {
+      if (pull) setRefreshing(true);
+      else setLoading(true);
+      fetchProductList(search, activeFilters)
+        .then(({ products: fetched }) => {
+          if (signal.cancelled) return;
+          setProducts(fetched);
+          setOffline(false);
         })
         .catch(() => {
-          if (!signal.cancelled) setCompanies([]);
+          if (signal.cancelled) return;
+          setProducts(filterMock(search, activeFilters));
+          setOffline(true);
+        })
+        .finally(() => {
+          if (signal.cancelled) return;
+          setLoading(false);
+          setRefreshing(false);
         });
-    } else {
-      setCompanies([]);
-    }
-  }, []);
+
+      if (search.trim()) {
+        searchCompanies(search)
+          .then(({ companies: fetched }) => {
+            if (!signal.cancelled) setCompanies(fetched);
+          })
+          .catch(() => {
+            if (!signal.cancelled) setCompanies([]);
+          });
+      } else {
+        setCompanies([]);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const signal = { cancelled: false };
-    const timer = setTimeout(() => loadProducts(query, signal), 300);
+    const timer = setTimeout(() => loadProducts(query, filters, signal), 300);
     return () => {
       signal.cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, loadProducts]);
+  }, [query, filters, loadProducts]);
 
   useFocusEffect(
     useCallback(() => {
       const signal = { cancelled: false };
-      loadProducts(queryRef.current, signal);
+      loadProducts(queryRef.current, filtersRef.current, signal);
       return () => {
         signal.cancelled = true;
       };
     }, [loadProducts])
   );
 
-  const groups = useMemo(
+  const chips = activeFilterChips(filters);
+
+  const typeGroups = useMemo(
     () =>
-      TYPE_ORDER.map((type) => ({ type, count: products.filter((p) => p.type === type).length })).filter(
+      PRODUCT_TYPES.map((type) => {
+        const items = products.filter((p) => p.type === type);
+        return {
+          type,
+          count: items.length,
+          cover: items.find((p) => p.hasImage) ?? null,
+          subtypeCount: new Set(items.map((p) => p.subtype).filter(Boolean)).size,
+        };
+      }).filter((g) => g.count > 0),
+    [products]
+  );
+
+  const usageGroups = useMemo(
+    () =>
+      USAGES.map((u) => ({ ...u, count: products.filter((p) => p.usages?.includes(u.key)).length })).filter(
         (g) => g.count > 0
       ),
     [products]
   );
 
-  // Klasör görünümünde, klasör açılmamışken ve arama yokken klasör listesi çizilir.
-  const showFolders = viewMode === 'groups' && openType === null && !query.trim();
-  const visibleProducts = viewMode === 'groups' && openType ? products.filter((p) => p.type === openType) : products;
+  const subtypeGroups = useMemo(() => {
+    if (!openType) return [];
+    const inType = products.filter((p) => p.type === openType);
+    const known = SUBTYPES[openType]
+      .map((s) => ({ key: s.key, label: s.label, count: inType.filter((p) => p.subtype === s.key).length }))
+      .filter((g) => g.count > 0);
+    const unspecified = inType.filter((p) => !p.subtype || !SUBTYPES[openType].some((s) => s.key === p.subtype)).length;
+    return unspecified > 0 && known.length > 0 ? [...known, { key: '', label: 'Belirtilmemiş', count: unspecified }] : known;
+  }, [products, openType]);
 
-  const refresh = refreshControl(refreshing, () => loadProducts(queryRef.current, { cancelled: false }, true));
+  const showFolders = viewMode === 'groups' && openType === null && !query.trim();
+  const inOpenFolder = viewMode === 'groups' && openType !== null;
+  const visibleProducts = inOpenFolder
+    ? products.filter(
+        (p) =>
+          p.type === openType &&
+          (openSubtype === null ||
+            (openSubtype === ''
+              ? !p.subtype || !SUBTYPES[openType!].some((s) => s.key === p.subtype)
+              : p.subtype === openSubtype))
+      )
+    : products;
+
+  const refresh = refreshControl(refreshing, () =>
+    loadProducts(queryRef.current, filtersRef.current, { cancelled: false }, true)
+  );
+
+  const openFilters = () => navigation.navigate('ProductFilters', { filters });
+
+  const applyUsageShortcut = (key: string) => {
+    haptics.selection();
+    setFilters((prev) => ({ ...prev, usages: [key] }));
+  };
 
   const viewToggle = (
     <View style={styles.toggleBar} accessibilityRole="tablist">
@@ -150,7 +224,11 @@ export function ProductListScreen({ navigation }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={option.mode === 'all' ? 'Tüm ürünler tek listede' : 'Ürünler çeşide göre klasörlerde'}
-            style={({ pressed }) => [styles.toggleOption, selected && styles.toggleSelected, pressed && !selected && styles.togglePressed]}
+            style={({ pressed }) => [
+              styles.toggleOption,
+              selected && styles.toggleSelected,
+              pressed && !selected && styles.togglePressed,
+            ]}
           >
             <Ionicons name={option.icon} size={18} color={selected ? colors.primaryText : colors.textMuted} />
             <Text style={[styles.toggleText, selected && styles.toggleTextSelected]}>{option.label}</Text>
@@ -159,6 +237,44 @@ export function ProductListScreen({ navigation }: Props) {
       })}
     </View>
   );
+
+  const filterChipsBar =
+    chips.length > 0 ? (
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsBar}
+        contentContainerStyle={styles.chipsContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {chips.map((chip) => (
+          <Pressable
+            key={chip.key}
+            onPress={() => {
+              haptics.selection();
+              setFilters((prev) => chip.remove(prev));
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`${chip.label} filtresini kaldır`}
+            style={({ pressed }) => [styles.activeChip, pressed && styles.activeChipPressed]}
+          >
+            <Text style={styles.activeChipText}>{chip.label}</Text>
+            <Ionicons name="close" size={15} color={colors.primary} />
+          </Pressable>
+        ))}
+        <Pressable
+          onPress={() => {
+            haptics.selection();
+            setFilters(EMPTY_FILTERS);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Tüm filtreleri temizle"
+          style={({ pressed }) => [styles.clearChip, pressed && styles.pressedFade]}
+        >
+          <Text style={styles.clearChipText}>Temizle</Text>
+        </Pressable>
+      </ScrollView>
+    ) : null;
 
   const companiesHeader =
     companies.length > 0 ? (
@@ -169,7 +285,15 @@ export function ProductListScreen({ navigation }: Props) {
             <ListRow
               key={c.id}
               title={c.name}
-              left={<CompanyAvatar name={c.name} verification={c.verification} size={36} />}
+              left={
+                <CompanyAvatar
+                  name={c.name}
+                  verification={c.verification}
+                  size={36}
+                  companyId={c.id}
+                  logoUpdatedAt={c.logoUpdatedAt}
+                />
+              }
               divider={index < companies.length - 1}
               onPress={() => navigation.navigate('CompanyProfile', { companyId: c.id })}
             />
@@ -178,23 +302,105 @@ export function ProductListScreen({ navigation }: Props) {
       </View>
     ) : null;
 
-  const openFolderHeader =
-    viewMode === 'groups' && openType ? (
+  const openFolderHeader = inOpenFolder ? (
+    <View style={styles.block}>
       <Pressable
         onPress={() => {
           haptics.selection();
           setOpenType(null);
+          setOpenSubtype(null);
         }}
         accessibilityRole="button"
-        accessibilityLabel={`${PRODUCT_TYPE_LABELS[openType]} klasöründen çık, tüm çeşitlere dön`}
+        accessibilityLabel={`${TYPE_LABELS[openType!]} klasöründen çık, tüm çeşitlere dön`}
         style={({ pressed }) => [styles.folderBack, pressed && styles.rowPressed]}
       >
         <Ionicons name="chevron-back" size={20} color={colors.primary} />
         <Ionicons name="folder-open-outline" size={20} color={colors.primary} />
-        <Text style={styles.folderBackTitle}>{PRODUCT_TYPE_LABELS[openType]}</Text>
+        <Text style={styles.folderBackTitle}>{TYPE_LABELS[openType!]}</Text>
         <Text style={styles.folderBackCount}>{visibleProducts.length} ürün</Text>
       </Pressable>
+      {subtypeGroups.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.subtypeStrip}
+          style={styles.subtypeStripWrap}
+        >
+          {[{ key: null as string | null, label: 'Tümü', count: products.filter((p) => p.type === openType).length }, ...subtypeGroups].map(
+            (group) => {
+              const selected = openSubtype === group.key;
+              return (
+                <Pressable
+                  key={group.key ?? 'tumu'}
+                  onPress={() => {
+                    haptics.selection();
+                    setOpenSubtype(group.key);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  accessibilityLabel={`${group.label}, ${group.count} ürün`}
+                  style={({ pressed }) => [styles.subtypeChip, selected && styles.subtypeChipSelected, pressed && !selected && styles.togglePressed]}
+                >
+                  <Text style={[styles.subtypeChipText, selected && styles.toggleTextSelected]}>{group.label}</Text>
+                  <Text style={[styles.subtypeChipCount, selected && styles.toggleTextSelected]}>{group.count}</Text>
+                </Pressable>
+              );
+            }
+          )}
+        </ScrollView>
+      ) : null}
+    </View>
+  ) : null;
+
+  const usageShortcuts =
+    usageGroups.length > 0 && filters.usages.length === 0 ? (
+      <View>
+        <SectionHeader title="Kullanım amacına göre" first />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.block}
+          contentContainerStyle={styles.usageStrip}
+        >
+          {usageGroups.map((group) => (
+            <Pressable
+              key={group.key}
+              onPress={() => applyUsageShortcut(group.key)}
+              accessibilityRole="button"
+              accessibilityLabel={`${group.label} kumaşlar, ${group.count} ürün`}
+              style={({ pressed }) => [styles.usageChip, pressed && styles.togglePressed]}
+            >
+              <Text style={styles.usageChipText}>{group.label}</Text>
+              <Text style={styles.usageChipCount}>{group.count}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
     ) : null;
+
+  const emptyState = query.trim() ? (
+    <EmptyState
+      icon="search-outline"
+      title="Sonuç bulunamadı"
+      message={
+        companies.length > 0
+          ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
+          : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, çeşit veya kullanım amacıyla deneyin.`
+      }
+      actionLabel="Aramayı temizle"
+      onAction={() => setQuery('')}
+    />
+  ) : chips.length > 0 ? (
+    <EmptyState
+      icon="options-outline"
+      title="Filtreye uyan ürün yok"
+      message="Filtrelerden birkaçını kaldırarak tekrar deneyin."
+      actionLabel="Filtreleri temizle"
+      onAction={() => setFilters(EMPTY_FILTERS)}
+    />
+  ) : (
+    <EmptyState icon="cube-outline" title="Henüz ürün yok" message="Üreticiler ürün ekledikçe katalog burada dolacak." />
+  );
 
   return (
     <View style={styles.container}>
@@ -202,10 +408,23 @@ export function ProductListScreen({ navigation }: Props) {
         <SearchField
           value={query}
           onChangeText={setQuery}
-          placeholder="İçerik, gramaj, kullanım alanı ara"
+          placeholder="Kod, içerik, çeşit, kullanım ara"
           accessibilityLabel="Ürün ve firma ara"
           style={styles.searchField}
         />
+        <Pressable
+          onPress={openFilters}
+          accessibilityRole="button"
+          accessibilityLabel={chips.length ? `Filtrele, ${chips.length} filtre etkin` : 'Filtrele'}
+          style={({ pressed }) => [styles.filterButton, chips.length > 0 && styles.filterButtonActive, pressed && styles.togglePressed]}
+        >
+          <Ionicons name="options-outline" size={22} color={chips.length ? colors.primaryText : colors.primary} />
+          {chips.length > 0 ? (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{chips.length}</Text>
+            </View>
+          ) : null}
+        </Pressable>
         {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
             doğrudan ilgili kısayol kalıyor. */}
         {user?.companyId ? (
@@ -218,33 +437,42 @@ export function ProductListScreen({ navigation }: Props) {
         ) : null}
       </View>
       {viewToggle}
+      {filterChipsBar}
       {offline ? <Text style={styles.offlineNotice}>Sunucuya ulaşılamadı, örnek veriler gösteriliyor.</Text> : null}
       {loading && products.length === 0 ? (
         <SkeletonList variant="product" />
       ) : showFolders ? (
         <FlatList
-          data={groups}
+          data={typeGroups}
           keyExtractor={(item) => item.type}
           contentContainerStyle={styles.listContent}
           refreshControl={refresh}
-          ListHeaderComponent={<SectionHeader title="Kumaş çeşitleri" count={groups.length} first />}
-          ListEmptyComponent={
-            <EmptyState icon="cube-outline" title="Henüz ürün yok" message="Üreticiler ürün ekledikçe katalog burada dolacak." />
+          ListHeaderComponent={
+            <View>
+              {usageShortcuts}
+              <SectionHeader title="Kumaş çeşitleri" count={typeGroups.length} first={!usageShortcuts} />
+            </View>
           }
+          ListEmptyComponent={emptyState}
           renderItem={({ item, index }) => (
             <ListRow
-              title={PRODUCT_TYPE_LABELS[item.type]}
-              subtitle={`${item.count} ürün`}
+              title={TYPE_LABELS[item.type]}
+              subtitle={item.subtypeCount > 0 ? `${item.count} ürün · ${item.subtypeCount} alt çeşit` : `${item.count} ürün`}
               left={
-                <View style={styles.folderIcon}>
-                  <Ionicons name="folder" size={22} color={colors.primary} />
-                </View>
+                item.cover ? (
+                  <ProductThumbnail productId={item.cover.id} hasImage size={44} />
+                ) : (
+                  <View style={styles.folderIcon}>
+                    <Ionicons name="folder" size={22} color={colors.primary} />
+                  </View>
+                )
               }
-              divider={index < groups.length - 1}
-              accessibilityLabel={`${PRODUCT_TYPE_LABELS[item.type]} klasörü, ${item.count} ürün`}
+              divider={index < typeGroups.length - 1}
+              accessibilityLabel={`${TYPE_LABELS[item.type]} klasörü, ${item.count} ürün`}
               onPress={() => {
                 haptics.selection();
                 setOpenType(item.type);
+                setOpenSubtype(null);
               }}
             />
           )}
@@ -257,49 +485,25 @@ export function ProductListScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           refreshControl={refresh}
           ListHeaderComponent={
-            companiesHeader || openFolderHeader ? (
-              <View>
-                {companiesHeader}
-                {openFolderHeader ? <View style={styles.blockGap} /> : null}
-                {openFolderHeader}
-                {companiesHeader ? (
-                  <SectionHeader title="Ürünler" count={visibleProducts.length} />
-                ) : (
-                  <View style={styles.blockGap} />
-                )}
-              </View>
-            ) : (
-              <View style={styles.blockGap} />
-            )
+            <View>
+              {companiesHeader}
+              {openFolderHeader ? <View style={styles.blockGap} /> : null}
+              {openFolderHeader}
+              {companiesHeader ? (
+                <SectionHeader title="Ürünler" count={visibleProducts.length} />
+              ) : (
+                <View style={styles.blockGap} />
+              )}
+            </View>
           }
-          ListEmptyComponent={
-            query.trim() ? (
-              <EmptyState
-                icon="search-outline"
-                title="Sonuç bulunamadı"
-                message={
-                  companies.length > 0
-                    ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
-                    : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, gramaj veya kullanım alanıyla deneyin.`
-                }
-                actionLabel="Aramayı temizle"
-                onAction={() => setQuery('')}
-              />
-            ) : (
-              <EmptyState
-                icon="cube-outline"
-                title="Henüz ürün yok"
-                message="Üreticiler ürün ekledikçe katalog burada dolacak."
-              />
-            )
-          }
+          ListEmptyComponent={emptyState}
           renderItem={({ item, index }) => (
             <ProductRow
               product={item}
               divider={index < visibleProducts.length - 1}
               onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
               onRequestSample={
-                user
+                user && user.companyId !== item.companyId
                   ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
                   : undefined
               }
@@ -323,6 +527,30 @@ const styles = StyleSheet.create({
   },
   searchField: { flex: 1 },
   myCompany: { paddingHorizontal: spacing.gutter },
+  filterButton: {
+    width: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  filterButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: radius.pill,
+    backgroundColor: colors.notification,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
+  },
+  filterBadgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
   toggleBar: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -348,6 +576,22 @@ const styles = StyleSheet.create({
   togglePressed: { backgroundColor: colors.pressed },
   toggleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
   toggleTextSelected: { color: colors.primaryText },
+  chipsBar: { flexGrow: 0, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  chipsContent: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm, alignItems: 'center' },
+  activeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 36,
+    paddingHorizontal: 10,
+    borderRadius: radius.md,
+    backgroundColor: colors.accentSoft,
+  },
+  activeChipPressed: { backgroundColor: colors.pressed },
+  activeChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
+  clearChip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.xs },
+  clearChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
+  pressedFade: { opacity: 0.6 },
   offlineNotice: {
     ...typography.caption,
     color: colors.danger,
@@ -359,8 +603,8 @@ const styles = StyleSheet.create({
   blockGap: { height: spacing.blockGap },
   block: { backgroundColor: colors.surface },
   folderIcon: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: radius.md,
     backgroundColor: colors.accentSoft,
     alignItems: 'center',
@@ -377,4 +621,34 @@ const styles = StyleSheet.create({
   rowPressed: { backgroundColor: colors.pressed },
   folderBackTitle: { ...typography.subtitle, color: colors.primary, flex: 1 },
   folderBackCount: { ...typography.mono, color: colors.textMuted },
+  subtypeStripWrap: { borderTopWidth: 1, borderTopColor: colors.divider },
+  subtypeStrip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: 10 },
+  subtypeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  subtypeChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  subtypeChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  subtypeChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
+  usageStrip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: 10 },
+  usageChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTonal,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  usageChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  usageChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
 });
