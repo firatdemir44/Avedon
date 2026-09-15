@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { fetchCompany } from '../../api/client';
@@ -16,34 +17,23 @@ import {
 import { refreshControl } from '../../components/refresh';
 import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { ProductThumbnail } from '../../components/ProductThumbnail';
-import { Badge } from '../../components/Badge';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { formatMeasure } from '../../features/calculators/parse';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
-import type { Product, VerificationStatus } from '../../types';
+import { ListRow } from '../../components/ListRow';
+import { ProductRow } from '../../components/ProductRow';
+import { SectionHeader } from '../../components/SectionHeader';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
+import type { VerificationStatus } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 
-const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
-  dogrulanmamis: 'Doğrulanmamış',
-  inceleniyor: 'İnceleniyor',
-  dogrulanmis: 'Doğrulanmış',
-};
-
-const TYPE_LABELS: Record<Product['type'], string> = {
-  raschel: 'Raschel',
-  orme: 'Örme',
-  dokuma: 'Dokuma',
-  diger: 'Diğer',
-};
-
+// Taslak: docs/tasarim-yonleri/CFirma.dc.html. Kimlik bloğu, "Çalışanlar" ve
+// "Ürünler" bölümleri çizgili satırlarla; kendi firmanda eylemler kimlik bloğunda.
 export function CompanyProfileScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
   // Ürün ekleyip / firmayı düzenleyip geri dönünce sayfa iskelete dönmüyor,
-  // güncel bilgi sessizce geliyor (eskiden her dönüşte tüm sayfa yeniden yükleniyordu).
+  // güncel bilgi sessizce geliyor.
   const { data: company, status, error, refreshing, reload, refresh } = useFocusLoad(
     () => fetchCompany(viewedCompanyId as string).then(({ company: fetched }) => fetched),
     { enabled: !!viewedCompanyId }
@@ -55,8 +45,6 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     navigation.setOptions({ title: isOwnCompany ? 'Firmam' : company?.name ?? 'Firma' });
   }, [navigation, isOwnCompany, company?.name]);
 
-  // Not: bu ekran başlıklı bir yığın ekranı; üst güvenli alanı başlık zaten
-  // karşılıyor. Eskiden 'top' da verildiği için başlığın altında fazladan boşluk vardı.
   if (!viewedCompanyId) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -89,6 +77,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     );
   }
 
+  const employees = company.users.filter((u) => u.id !== user?.id);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
@@ -97,7 +87,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
-          <View style={styles.header}>
+          <View>
             {error ? (
               <InlineError
                 message={friendlyMessage(error, 'Firma bilgisi alınamadı')}
@@ -105,254 +95,186 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 style={styles.banner}
               />
             ) : null}
-            <View style={styles.headerTopRow}>
-              <View style={styles.identity}>
-                <CompanyAvatar
-                  name={company.name}
-                  verification={company.verification}
-                  size={56}
-                  companyId={company.id}
-                  logoUpdatedAt={company.logoUpdatedAt}
-                />
-                <Text style={styles.name}>{company.name}</Text>
+
+            <View style={styles.identityBlock}>
+              <View style={styles.identityRow}>
+                <CompanyAvatar name={company.name} size={56} companyId={company.id} logoUpdatedAt={company.logoUpdatedAt} />
+                <View style={styles.identityTexts}>
+                  <Text style={styles.name}>{company.name}</Text>
+                  <View style={styles.tagRow}>
+                    <VerificationTag status={company.verification} />
+                    <Text style={styles.taxId}>VKN {company.taxId}</Text>
+                  </View>
+                </View>
               </View>
-              <Text
-                style={[
-                  styles.verificationBadge,
-                  company.verification === 'dogrulanmis' && styles.verificationBadgeVerified,
-                ]}
-              >
-                {VERIFICATION_LABELS[company.verification] ?? company.verification}
-              </Text>
+
+              {company.about ? <Text style={styles.about}>{company.about}</Text> : null}
+              {company.contactEmail || company.contactPhone || isOwnCompany ? (
+                <View style={styles.facts}>
+                  {company.contactEmail ? <Fact label="E-posta" value={company.contactEmail} /> : null}
+                  {company.contactPhone ? <Fact label="Telefon" value={company.contactPhone} mono /> : null}
+                  {isOwnCompany ? <Fact label="Şirket kodu" value={company.companyCode} mono /> : null}
+                </View>
+              ) : null}
+
+              {isOwnCompany ? (
+                <View style={styles.actions}>
+                  <View style={styles.actionRow}>
+                    <PrimaryButton
+                      label="Ürün Ekle"
+                      icon="add"
+                      onPress={() => navigation.navigate('AddProduct')}
+                      style={styles.actionButton}
+                    />
+                    <PrimaryButton
+                      label="Gelen Talepler"
+                      variant="outline"
+                      onPress={() => navigation.navigate('IncomingSampleRequests')}
+                      style={styles.actionButton}
+                    />
+                  </View>
+                  <PrimaryButton
+                    label="Firmayı Düzenle"
+                    variant="outline"
+                    icon="create-outline"
+                    onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
+                  />
+                </View>
+              ) : null}
             </View>
-            <Text style={styles.meta}>Vergi No: {company.taxId}</Text>
-            {isOwnCompany ? <Text style={styles.meta}>Şirket Kodu: {company.companyCode}</Text> : null}
-            {company.about ? <Text style={styles.about}>{company.about}</Text> : null}
-            {company.contactEmail ? <Text style={styles.meta}>E-posta: {company.contactEmail}</Text> : null}
-            {company.contactPhone ? <Text style={styles.meta}>Telefon: {company.contactPhone}</Text> : null}
-            {isOwnCompany ? (
-              <View style={styles.actionRow}>
-                <PrimaryButton label="Ürün Ekle" onPress={() => navigation.navigate('AddProduct')} style={styles.actionButton} />
-                <PrimaryButton
-                  label="Gelen Talepler"
-                  variant="secondary"
-                  onPress={() => navigation.navigate('IncomingSampleRequests')}
-                  style={styles.actionButton}
-                />
-              </View>
-            ) : null}
-            {isOwnCompany ? (
-              <PrimaryButton
-                label="Firmayı Düzenle"
-                variant="secondary"
-                onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
-                style={{ marginTop: spacing.sm }}
-              />
-            ) : null}
-            {company.users.filter((u) => u.id !== user?.id).length > 0 ? (
+
+            {employees.length > 0 ? (
               <>
-                <Text style={styles.sectionTitle}>Çalışanlar</Text>
-                {company.users
-                  .filter((u) => u.id !== user?.id)
-                  .map((employee) => (
-                    <Pressable
+                <SectionHeader title="Çalışanlar" />
+                <View style={styles.block}>
+                  {employees.map((employee, index) => (
+                    <ListRow
                       key={employee.id}
-                      style={styles.employeeRow}
+                      title={`${employee.firstName} ${employee.lastName}`}
+                      subtitle={employee.position}
+                      minHeight={60}
+                      divider={index < employees.length - 1}
                       onPress={() => navigation.navigate('Profile', { userId: employee.id })}
-                    >
-                      <Text style={styles.employeeName}>
-                        {employee.firstName} {employee.lastName}
-                      </Text>
-                      <Text style={styles.meta}>{employee.position}</Text>
-                    </Pressable>
+                    />
                   ))}
+                </View>
               </>
             ) : null}
-            <Text style={styles.sectionTitle}>Ürünler ({company.products.length})</Text>
+
+            <SectionHeader title="Ürünler" count={company.products.length} />
           </View>
         }
         ListEmptyComponent={
-          <EmptyState
-            compact
-            icon="cube-outline"
-            title="Henüz ürün eklenmemiş"
-            message={
-              isOwnCompany
-                ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
-                : 'Bu firma henüz ürün eklemedi.'
-            }
-            actionLabel={isOwnCompany ? 'Ürün Ekle' : undefined}
-            onAction={isOwnCompany ? () => navigation.navigate('AddProduct') : undefined}
-          />
+          <View style={styles.block}>
+            <EmptyState
+              compact
+              icon="cube-outline"
+              title="Henüz ürün eklenmemiş"
+              message={
+                isOwnCompany
+                  ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
+                  : 'Bu firma henüz ürün eklemedi.'
+              }
+              actionLabel={isOwnCompany ? 'Ürün Ekle' : undefined}
+              onAction={isOwnCompany ? () => navigation.navigate('AddProduct') : undefined}
+            />
+          </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
+        renderItem={({ item, index }) => (
+          <ProductRow
+            product={item}
+            showCompany={false}
+            divider={index < company.products.length - 1}
             // Herkes için ürün sayfası açılıyor; düzenleme oradaki düğmede.
-            // Eskiden kendi firman değilse karta dokunmak hiçbir şey yapmıyordu.
             onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-          >
-            <ProductThumbnail productId={item.id} hasImage={item.hasImage} />
-            <View style={styles.cardBody}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.code}>{item.code}</Text>
-                <Badge label={TYPE_LABELS[item.type]} tone="outline" />
-              </View>
-              <Text style={styles.content}>{item.content}</Text>
-              <Text style={styles.meta}>
-                {formatMeasure(item.weightGsm)} gr/m² · {formatMeasure(item.widthCm)} cm en ·{' '}
-                {formatMeasure(item.stock)} m stok
-              </Text>
-              {isOwnCompany ? <Text style={styles.editHint}>Detay için dokunun</Text> : null}
-              {!isOwnCompany && user ? (
-                <Pressable
-                  style={styles.sampleButton}
-                  onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
-                >
-                  <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </Pressable>
+            onRequestSample={
+              !isOwnCompany && user
+                ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
+                : undefined
+            }
+          />
         )}
       />
     </SafeAreaView>
   );
 }
 
+function VerificationTag({ status }: { status: VerificationStatus }) {
+  if (status === 'dogrulanmis') {
+    return (
+      <View style={[styles.tag, { backgroundColor: colors.accentSoft }]}>
+        <Ionicons name="checkmark" size={13} color={colors.primary} />
+        <Text style={[styles.tagText, { color: colors.primary }]}>Doğrulanmış</Text>
+      </View>
+    );
+  }
+  if (status === 'inceleniyor') {
+    return (
+      <View style={[styles.tag, { backgroundColor: colors.warningSoft }]}>
+        <Ionicons name="time-outline" size={13} color={colors.warning} />
+        <Text style={[styles.tagText, { color: colors.warning }]}>İnceleniyor</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={[styles.tag, styles.tagOutline]}>
+      <Text style={[styles.tagText, { color: colors.textMuted }]}>Doğrulanmamış</Text>
+    </View>
+  );
+}
+
+function Fact({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <View style={styles.fact}>
+      <Text style={styles.factLabel}>{label}</Text>
+      <Text style={[styles.factValue, mono && styles.factValueMono]} selectable>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  listContent: { paddingBottom: spacing.xl },
+  banner: { margin: spacing.gutter, marginBottom: 0 },
+  block: { backgroundColor: colors.surface },
+  identityBlock: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
-  listContent: {
-    padding: spacing.lg,
-  },
-  banner: {
-    marginBottom: spacing.md,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  identity: {
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.gutter },
+  identityTexts: { flex: 1, gap: spacing.xs },
+  name: { fontFamily: fonts.semibold, fontSize: 20, lineHeight: 26, color: colors.text },
+  tagRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
+  tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    flexShrink: 1,
-  },
-  name: {
-    ...typography.title,
-    fontSize: 24,
-    lineHeight: 30,
-    color: colors.primary,
-    flexShrink: 1,
-  },
-  about: {
-    ...typography.body,
-    color: colors.text,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  verificationBadge: {
-    ...typography.caption,
-    fontFamily: fonts.semibold,
-    color: colors.textMuted,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
+    gap: 5,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
-  verificationBadgeVerified: {
-    color: colors.primary,
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  meta: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    marginBottom: 2,
-  },
-  sectionTitle: {
-    ...typography.heading,
-    color: colors.primary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  employeeRow: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadow.card,
-  },
-  employeeName: {
-    ...typography.bodyStrong,
-    color: colors.text,
-  },
-  card: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
-  },
-  cardBody: {
-    flex: 1,
-    minWidth: 0,
-  },
-  cardHeaderRow: {
+  tagOutline: { borderWidth: 1, borderColor: colors.border },
+  tagText: { ...typography.caption, fontFamily: fonts.semibold },
+  taxId: { ...typography.mono, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  about: { ...typography.body, color: colors.text, marginTop: 12 },
+  facts: { marginTop: spacing.sm },
+  fact: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    gap: spacing.md,
+    minHeight: 40,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
   },
-  code: {
-    ...typography.subtitle,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-  },
-  content: {
-    ...typography.body,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  sampleButton: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm,
-  },
-  sampleButtonText: {
-    ...typography.label,
-    color: colors.primaryText,
-  },
-  editHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
+  factLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  factValue: { ...typography.body, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  factValueMono: { fontFamily: fonts.mono },
+  actions: { marginTop: 12, gap: spacing.sm },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  actionButton: { flex: 1, paddingHorizontal: spacing.sm },
 });

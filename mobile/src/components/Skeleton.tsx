@@ -110,18 +110,22 @@ export function Bone({
   );
 }
 
-// ---- Liste iskeletleri: her biri gerçek kartın boyunu ve dizilişini taklit ediyor.
+// ---- Liste iskeletleri: her biri gerçek satırın/kartın boyunu ve dizilişini taklit ediyor.
 
 export type SkeletonListVariant = 'product' | 'post' | 'row' | 'request' | 'comment' | 'chat';
 
 const DEFAULT_COUNT: Record<SkeletonListVariant, number> = {
-  product: 5,
+  product: 6,
   post: 3,
   row: 7,
   request: 5,
   comment: 5,
   chat: 6,
 };
+
+// Yeni düzene (5. aşama) geçmiş listeler: kutu değil, gri aralıktan sonra
+// beyaz blok içinde çizgili satırlar. Diğerleri kendi ekranları geçene kadar kart.
+const FLUSH_VARIANTS: SkeletonListVariant[] = ['product'];
 
 // Aynı genişlikte kemikler yapay duruyor; satırdan satıra hafif değişiyor.
 const LINE_WIDTHS: DimensionValue[] = ['72%', '58%', '84%', '64%', '78%', '52%', '90%'];
@@ -136,26 +140,14 @@ export function SkeletonList({
   style?: StyleProp<ViewStyle>;
 }) {
   const items = Array.from({ length: count }, (_, i) => i);
+  const flush = FLUSH_VARIANTS.includes(variant);
   return (
-    <SkeletonPulse style={[styles.list, style]}>
+    <SkeletonPulse style={[flush ? styles.listFlush : styles.list, style]}>
       {items.map((i) => {
         const w = LINE_WIDTHS[i % LINE_WIDTHS.length];
         switch (variant) {
           case 'product':
-            return (
-              <View key={i} style={[styles.card, styles.productCard]}>
-                <Bone width={76} height={76} rounded={radius.md} />
-                <View style={styles.productLines}>
-                  <View style={styles.spread}>
-                    <Bone width={96} height={16} />
-                    <Bone width={56} height={20} rounded={radius.sm} soft />
-                  </View>
-                  <Bone width={120} height={12} />
-                  <Bone width={w} height={12} soft />
-                  <Bone width="60%" height={11} soft />
-                </View>
-              </View>
-            );
+            return <ProductRowBones key={i} lineWidth={w} last={i === count - 1} />;
           case 'post':
             return (
               <View key={i} style={[styles.card, styles.gapSm]}>
@@ -227,9 +219,33 @@ export function SkeletonList({
   );
 }
 
+// ProductRow ile aynı ölçüler: 64px görsel, kod + tip, firma, içerik, ölçü satırı.
+function ProductRowBones({ lineWidth, last, noCompany }: { lineWidth: DimensionValue; last?: boolean; noCompany?: boolean }) {
+  return (
+    <View style={[styles.productRow, !last && styles.rowDivider]}>
+      <Bone width={64} height={64} rounded={radius.md} />
+      <View style={styles.productLines}>
+        <View style={styles.inlineGap}>
+          <Bone width={88} height={15} />
+          <Bone width={46} height={16} rounded={radius.sm} soft />
+        </View>
+        {noCompany ? null : <Bone width={120} height={12} />}
+        <Bone width={lineWidth} height={12} soft />
+        <View style={[styles.spread, styles.measureRow]}>
+          <Bone width={150} height={11} soft />
+          <Bone width={52} height={12} soft />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ---- Sayfa iskeletleri: ayrıntı ekranlarının üst yerleşimi.
 
 export type SkeletonDetailVariant = 'product' | 'profile' | 'company' | 'timeline';
+
+// Yeni düzene geçmiş sayfalar kenardan kenara bloklarla çiziliyor (iç boşluk yok).
+const FLUSH_DETAILS: SkeletonDetailVariant[] = ['product', 'company'];
 
 export function SkeletonDetail({
   variant,
@@ -238,7 +254,10 @@ export function SkeletonDetail({
   variant: SkeletonDetailVariant;
   style?: StyleProp<ViewStyle>;
 }) {
-  return <SkeletonPulse style={[styles.detail, style]}>{renderDetail(variant)}</SkeletonPulse>;
+  const flush = FLUSH_DETAILS.includes(variant);
+  return (
+    <SkeletonPulse style={[flush ? styles.detailFlush : styles.detail, style]}>{renderDetail(variant)}</SkeletonPulse>
+  );
 }
 
 function renderDetail(variant: SkeletonDetailVariant) {
@@ -246,26 +265,30 @@ function renderDetail(variant: SkeletonDetailVariant) {
     case 'product':
       return (
         <>
-          <Bone height={260} rounded={radius.lg} />
-          <View style={[styles.spread, styles.mtMd]}>
-            <Bone width={140} height={26} />
-            <Bone width={60} height={22} rounded={radius.sm} soft />
-          </View>
-          <View style={[styles.card, styles.companyRow, styles.mtMd]}>
-            <Bone width={44} height={44} rounded={radius.md} />
-            <View style={[styles.flex, styles.gapXs]}>
-              <Bone width="60%" height={15} />
-              <Bone width="45%" height={18} rounded={radius.sm} soft />
+          <View style={[styles.block, styles.blockPad, styles.gapMd]}>
+            <Bone height={219} rounded={radius.md} />
+            <View style={styles.spread}>
+              <View style={styles.gapXs}>
+                <Bone width={140} height={24} />
+                <Bone width={170} height={13} soft />
+              </View>
+              <Bone width={64} height={24} rounded={radius.sm} soft />
             </View>
           </View>
-          <View style={[styles.card, styles.mtMd, styles.gapSm]}>
-            <Bone width={96} height={18} />
-            {LINE_WIDTHS.map((w, i) => (
-              <View key={i} style={styles.spread}>
-                <Bone width={90} height={12} soft />
-                <Bone width={w === '90%' ? 140 : 100} height={12} />
+          <View style={[styles.block, styles.specBlock]}>
+            {['Stok', 'Ağırlık', 'Genişlik', 'İçerik', 'Tip'].map((key, i) => (
+              <View key={key} style={[styles.spread, styles.specRow, i < 4 && styles.rowDivider]}>
+                <Bone width={64} height={12} soft />
+                <Bone width={i === 3 ? 130 : 90} height={13} />
               </View>
             ))}
+          </View>
+          <View style={[styles.block, styles.blockPad, styles.inlineGap]}>
+            <Bone width={36} height={36} rounded={radius.md} />
+            <View style={[styles.flex, styles.gapXs]}>
+              <Bone width="55%" height={14} />
+              <Bone width="40%" height={11} soft />
+            </View>
           </View>
         </>
       );
@@ -283,28 +306,26 @@ function renderDetail(variant: SkeletonDetailVariant) {
     case 'company':
       return (
         <>
-          <View style={styles.companyRow}>
-            <Bone width={56} height={56} rounded={radius.md} />
-            <Bone width={170} height={24} />
-          </View>
-          <Bone width={140} height={13} soft style={styles.mtSm} />
-          <Bone width="90%" height={13} soft style={styles.mtXs} />
-          <Bone width="70%" height={13} soft style={styles.mtXs} />
-          <View style={[styles.spread, styles.mtMd, styles.gapSmRow]}>
-            <Bone height={44} rounded={radius.md} style={styles.flex} />
-            <Bone height={44} rounded={radius.md} soft style={styles.flex} />
-          </View>
-          <Bone width={120} height={18} style={styles.mtLg} />
-          {[0, 1].map((i) => (
-            <View key={i} style={[styles.card, styles.productCard, styles.mtSm]}>
-              <Bone width={76} height={76} rounded={radius.md} />
-              <View style={styles.productLines}>
-                <Bone width={96} height={16} />
-                <Bone width="80%" height={12} soft />
-                <Bone width="60%" height={11} soft />
+          <View style={[styles.block, styles.blockPad]}>
+            <View style={styles.inlineGap}>
+              <Bone width={56} height={56} rounded={radius.md} />
+              <View style={[styles.flex, styles.gapXs]}>
+                <Bone width={180} height={20} />
+                <View style={styles.inlineGap}>
+                  <Bone width={92} height={20} rounded={radius.sm} soft />
+                  <Bone width={110} height={12} soft />
+                </View>
               </View>
             </View>
-          ))}
+          </View>
+          <View style={styles.sectionBone}>
+            <Bone width={80} height={12} soft />
+          </View>
+          <View style={styles.block}>
+            {[0, 1].map((i) => (
+              <ProductRowBones key={i} lineWidth={LINE_WIDTHS[i]} last={i === 1} noCompany />
+            ))}
+          </View>
         </>
       );
     case 'timeline':
@@ -330,24 +351,39 @@ function renderDetail(variant: SkeletonDetailVariant) {
 
 const styles = StyleSheet.create({
   list: { padding: spacing.lg },
+  listFlush: { marginTop: spacing.blockGap, backgroundColor: colors.surface },
   detail: { padding: spacing.lg },
-  // Gerçek kartlarla aynı kutu: beyaz, 6px köşe, 16px iç boşluk.
+  detailFlush: { gap: spacing.blockGap },
+  // Henüz yeni düzene geçmemiş kartlarla aynı kutu: beyaz, 6px köşe, 16px iç boşluk.
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     padding: spacing.md,
     marginBottom: spacing.md,
   },
+  block: { backgroundColor: colors.surface },
+  blockPad: { paddingHorizontal: spacing.gutter, paddingVertical: 12 },
+  specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
+  specRow: { minHeight: 40 },
+  sectionBone: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md, paddingBottom: 8 },
   compactGap: { marginBottom: spacing.sm },
-  productCard: { flexDirection: 'row', gap: spacing.md },
-  productLines: { flex: 1, gap: 9, paddingTop: 2 },
-  companyRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  productRow: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  productLines: { flex: 1, gap: 7, paddingTop: 1 },
+  measureRow: { marginTop: 4 },
+  inlineGap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   spread: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   flex: { flex: 1 },
   shrink: { flexShrink: 1 },
   gapXs: { gap: 6 },
   gapSm: { gap: spacing.sm },
-  gapSmRow: { gap: spacing.sm },
+  gapMd: { gap: 12 },
   postActions: { marginTop: spacing.xs, paddingHorizontal: spacing.md },
   bubble: {
     width: '62%',

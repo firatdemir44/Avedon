@@ -1,28 +1,26 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { fetchProducts, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
-import { ProductThumbnail } from '../../components/ProductThumbnail';
-import { Badge } from '../../components/Badge';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { formatMeasure } from '../../features/calculators/parse';
+import { ProductRow, PRODUCT_TYPE_LABELS } from '../../components/ProductRow';
+import { ListRow } from '../../components/ListRow';
+import { SectionHeader } from '../../components/SectionHeader';
+import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import type { Company, Product } from '../../types';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
-const TYPE_LABELS: Record<Product['type'], string> = {
-  raschel: 'Raschel',
-  orme: 'Örme',
-  dokuma: 'Dokuma',
-  diger: 'Diğer',
-};
-
+// Taslak: docs/tasarim-yonleri/CUrunler.dc.html. Üstte beyaz arama çubuğu
+// (yanında "Firmam"), altta gri aralıktan sonra çizgiyle ayrılan ürün satırları.
 export function ProductListScreen({ navigation }: Props) {
   const { user } = useSession();
   const [query, setQuery] = useState('');
@@ -51,7 +49,7 @@ export function ProductListScreen({ navigation }: Props) {
         setProducts(
           q
             ? mockProducts.filter((p) =>
-                [p.code, p.content, p.useArea, TYPE_LABELS[p.type]].join(' ').toLowerCase().includes(q)
+                [p.code, p.content, p.useArea, PRODUCT_TYPE_LABELS[p.type]].join(' ').toLowerCase().includes(q)
               )
             : mockProducts
         );
@@ -97,245 +95,148 @@ export function ProductListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TextInput
-          style={styles.search}
-          placeholder="İçerik, gramaj, kullanım alanı ara..."
-          placeholderTextColor={colors.textMuted}
-          value={query}
-          onChangeText={setQuery}
-        />
-        {/* Hesaplama araçları Hesaplamalar sekmesine, AI Danışman ana ekrana,
-            gezinme hedefleri sekmelere ve Profil menüsüne taşındı — burada
-            sadece katalogla doğrudan ilgili kısayol kalıyor. */}
-        <View style={styles.menuRow}>
-          {user?.companyId ? (
-            <Pressable onPress={() => navigation.navigate('CompanyProfile')} style={styles.menuChip}>
-              <Text style={styles.menuChipText}>Firmam</Text>
+      <View style={styles.searchBar}>
+        <View style={styles.searchField}>
+          <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="İçerik, gramaj, kullanım alanı ara"
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            returnKeyType="search"
+            autoCorrect={false}
+            accessibilityLabel="Ürün ve firma ara"
+          />
+          {query ? (
+            <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
+              <Ionicons name="close-circle" size={18} color={colors.chevron} />
             </Pressable>
           ) : null}
         </View>
-        {offline ? <Text style={styles.offlineNotice}>API'ye ulaşılamadı, örnek veriler gösteriliyor</Text> : null}
+        {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
+            doğrudan ilgili kısayol kalıyor. */}
+        {user?.companyId ? (
+          <PrimaryButton
+            label="Firmam"
+            variant="outline"
+            onPress={() => navigation.navigate('CompanyProfile')}
+            style={styles.myCompany}
+          />
+        ) : null}
       </View>
+      {offline ? <Text style={styles.offlineNotice}>Sunucuya ulaşılamadı, örnek veriler gösteriliyor.</Text> : null}
       {loading && products.length === 0 ? (
-        <SkeletonList variant="product" style={styles.skeleton} />
+        <SkeletonList variant="product" />
       ) : (
-      <FlatList
-        data={products}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={refreshControl(refreshing, () =>
-          loadProducts(queryRef.current, { cancelled: false }, true)
-        )}
-        ListHeaderComponent={
-          companies.length > 0 ? (
-            <View style={styles.companySection}>
-              <Text style={styles.sectionTitle}>Firmalar</Text>
-              {companies.map((c) => (
-                <Pressable
-                  key={c.id}
-                  style={styles.companyRow}
-                  onPress={() => navigation.navigate('CompanyProfile', { companyId: c.id })}
-                >
-                  <Text style={styles.companyRowText}>{c.name}</Text>
-                </Pressable>
-              ))}
-              <Text style={styles.sectionTitle}>Ürünler</Text>
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          query.trim() ? (
-            <EmptyState
-              icon="search-outline"
-              title="Sonuç bulunamadı"
-              message={
-                companies.length > 0
-                  ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
-                  : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, gramaj veya kullanım alanıyla deneyin.`
+        <FlatList
+          data={products}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl(refreshing, () =>
+            loadProducts(queryRef.current, { cancelled: false }, true)
+          )}
+          ListHeaderComponent={
+            companies.length > 0 ? (
+              <View>
+                <SectionHeader title="Firmalar" first />
+                <View style={styles.block}>
+                  {companies.map((c, index) => (
+                    <ListRow
+                      key={c.id}
+                      title={c.name}
+                      left={<CompanyAvatar name={c.name} verification={c.verification} size={36} />}
+                      divider={index < companies.length - 1}
+                      onPress={() => navigation.navigate('CompanyProfile', { companyId: c.id })}
+                    />
+                  ))}
+                </View>
+                <SectionHeader title="Ürünler" count={products.length} />
+              </View>
+            ) : (
+              <View style={styles.blockGap} />
+            )
+          }
+          ListEmptyComponent={
+            query.trim() ? (
+              <EmptyState
+                icon="search-outline"
+                title="Sonuç bulunamadı"
+                message={
+                  companies.length > 0
+                    ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
+                    : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, gramaj veya kullanım alanıyla deneyin.`
+                }
+                actionLabel="Aramayı temizle"
+                onAction={() => setQuery('')}
+              />
+            ) : (
+              <EmptyState
+                icon="cube-outline"
+                title="Henüz ürün yok"
+                message="Üreticiler ürün ekledikçe katalog burada dolacak."
+              />
+            )
+          }
+          renderItem={({ item, index }) => (
+            <ProductRow
+              product={item}
+              divider={index < products.length - 1}
+              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
+              onRequestSample={
+                user
+                  ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
+                  : undefined
               }
-              actionLabel="Aramayı temizle"
-              onAction={() => setQuery('')}
             />
-          ) : (
-            <EmptyState
-              icon="cube-outline"
-              title="Henüz ürün yok"
-              message="Üreticiler ürün ekledikçe katalog burada dolacak."
-            />
-          )
-        }
-        renderItem={({ item }) => (
-          // Kartın tamamı (fotoğraf dahil) ürün sayfasını açıyor; fotoğraf
-          // orada tam genişlikte ve dokununca tam ekran büyüyor.
-          <Pressable
-            style={styles.card}
-            onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-          >
-            <ProductThumbnail productId={item.id} hasImage={item.hasImage} />
-            <View style={styles.cardBody}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.code}>{item.code}</Text>
-                <Badge label={TYPE_LABELS[item.type]} tone="outline" />
-              </View>
-              {item.company ? <Text style={styles.company}>{item.company.name}</Text> : null}
-              <Text style={styles.content}>{item.content}</Text>
-              <View style={styles.metaRow}>
-                <Text style={styles.meta}>{formatMeasure(item.weightGsm)} gr/m²</Text>
-                <Text style={styles.meta}>{formatMeasure(item.widthCm)} cm en</Text>
-                <Text style={styles.meta}>{formatMeasure(item.stock)} m stok</Text>
-              </View>
-              <Text style={styles.useArea}>{item.useArea}</Text>
-              {user ? (
-                <Pressable
-                  style={styles.sampleButton}
-                  onPress={() => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })}
-                >
-                  <Text style={styles.sampleButtonText}>Numune Talep Et</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </Pressable>
-        )}
-      />
+          )}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  menuRow: {
+  container: { flex: 1, backgroundColor: colors.background },
+  searchBar: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  menuChip: {
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  menuChipText: {
-    ...typography.label,
-    color: colors.primary,
-  },
-  search: {
-    fontFamily: fonts.regular,
+  searchField: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     minHeight: MIN_TOUCH,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm + 4,
-    fontSize: 15,
     backgroundColor: colors.surfaceTonal,
-    color: colors.text,
+    paddingHorizontal: 12,
   },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
-  },
-  card: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
-  },
-  cardBody: {
+  searchInput: {
     flex: 1,
-    minWidth: 0,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  code: {
-    ...typography.subtitle,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-  },
-  company: {
-    ...typography.label,
-    color: colors.accent,
-    marginBottom: spacing.xs,
-  },
-  content: {
-    ...typography.body,
+    fontFamily: fonts.regular,
+    fontSize: 14,
     color: colors.text,
-    marginBottom: spacing.sm,
+    paddingVertical: 0,
+    minHeight: MIN_TOUCH - 2,
   },
-  metaRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  meta: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  useArea: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  sampleButton: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm,
-  },
-  sampleButtonText: {
-    ...typography.label,
-    color: colors.primaryText,
-  },
-  companySection: {
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.heading,
-    color: colors.primary,
-    marginBottom: spacing.sm,
-  },
-  companyRow: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadow.card,
-  },
-  companyRowText: {
-    ...typography.bodyStrong,
-    color: colors.text,
-  },
-  // Arama kutusu zaten üstte boşluk bırakıyor; iskelet listeyle aynı hizada başlasın.
-  skeleton: { paddingTop: 0 },
+  myCompany: { paddingHorizontal: spacing.gutter },
   offlineNotice: {
     ...typography.caption,
     color: colors.danger,
-    marginTop: spacing.xs,
+    backgroundColor: colors.dangerSoft,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 6,
   },
+  listContent: { paddingBottom: spacing.xl },
+  blockGap: { height: spacing.blockGap },
+  block: { backgroundColor: colors.surface },
 });

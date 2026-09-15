@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Image, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchProduct } from '../../api/client';
@@ -18,23 +19,19 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { Badge } from '../../components/Badge';
+import { StockBadge } from '../../components/StockIndicator';
+import { PRODUCT_TYPE_LABELS } from '../../components/ProductRow';
 import { formatMeasure } from '../../features/calculators/parse';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
-import type { ProductType } from '../../types';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
 
-const TYPE_LABELS: Record<ProductType, string> = {
-  raschel: 'Raschel',
-  orme: 'Örme',
-  dokuma: 'Dokuma',
-  diger: 'Diğer',
-};
-
+// Taslak: docs/tasarim-yonleri/CUrun.dc.html. Fotoğraf + kod bloğu, çizgili
+// özellik satırları, firma satırı; eylemler ekranın altına sabit çubukta.
 export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { user } = useSession();
+  const insets = useSafeAreaInsets();
   // Düzenleme ekranından dönünce güncel veri görünsün diye odakta yenileniyor
   // (ilk yüklemeden sonra sessizce).
   const { data: product, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -61,88 +58,110 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   }, [productId, product?.hasImage, imageUrl]);
 
   useEffect(() => {
-    if (product) navigation.setOptions({ title: product.code });
+    // Taslakta başlık ürün kodu, eşit aralıklı yazıyla.
+    if (product) {
+      navigation.setOptions({
+        title: product.code,
+        headerTitleStyle: { ...typography.heading, fontFamily: fonts.monoSemibold, color: colors.primaryText },
+      });
+    }
   }, [navigation, product]);
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.screen}>
         <SkeletonDetail variant="product" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!product) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
         {error && !isNotFound(error) ? (
           <ErrorState error={error} fallback="Ürün alınamadı" onRetry={reload} />
         ) : (
           <EmptyState icon="cube-outline" title="Ürün bulunamadı" message="Ürün kaldırılmış olabilir." />
         )}
-      </SafeAreaView>
+      </View>
     );
   }
 
   const isOwnProduct = !!user?.companyId && user.companyId === product.companyId;
+  const typeLabel = PRODUCT_TYPE_LABELS[product.type] ?? product.type;
+  const company = product.company;
+  const openCompany = () => navigation.navigate('CompanyProfile', { companyId: product.companyId });
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        {/* Tasarımda sayfanın üstünde tam genişlik fotoğraf var; dokununca
-            tam ekran açılıyor. */}
-        {imageUrl ? (
-          <Pressable onPress={() => setViewerOpen(true)}>
-            <Image source={{ uri: imageUrl }} style={styles.hero} resizeMode="cover" />
-            <Text style={styles.zoomHint}>Büyütmek için dokunun</Text>
-          </Pressable>
-        ) : (
-          <View style={[styles.hero, styles.heroPlaceholder]}>
-            <Text style={styles.heroPlaceholderText}>
-              {product.hasImage ? 'Fotoğraf yükleniyor...' : 'Bu ürünün fotoğrafı yok'}
-            </Text>
+        <View style={[styles.block, styles.heroBlock]}>
+          {imageUrl ? (
+            <Pressable
+              onPress={() => setViewerOpen(true)}
+              accessibilityRole="imagebutton"
+              accessibilityLabel={`${product.code} fotoğrafı`}
+              accessibilityHint="Tam ekran büyütür"
+              style={({ pressed }) => pressed && styles.heroPressed}
+            >
+              <Image source={{ uri: imageUrl }} style={styles.hero} resizeMode="cover" />
+            </Pressable>
+          ) : (
+            <View style={[styles.hero, styles.heroPlaceholder]}>
+              <Ionicons name="image-outline" size={28} color={colors.chevron} />
+              <Text style={styles.heroPlaceholderText}>
+                {product.hasImage ? 'Fotoğraf yükleniyor' : 'Bu ürünün fotoğrafı yok'}
+              </Text>
+            </View>
+          )}
+          <View style={styles.titleRow}>
+            <View style={styles.titleTexts}>
+              <Text style={styles.code}>{product.code}</Text>
+              <Text style={styles.titleMeta}>
+                {typeLabel} · {product.useArea}
+              </Text>
+            </View>
+            <StockBadge stock={product.stock} />
           </View>
-        )}
-
-        <View style={styles.titleRow}>
-          <Text style={styles.code}>{product.code}</Text>
-          <Badge label={TYPE_LABELS[product.type]} tone="outline" />
         </View>
 
-        {product.company ? (
-          <Pressable
-            style={styles.companyCard}
-            onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
-          >
-            <CompanyAvatar
-              name={product.company.name}
-              verification={product.company.verification}
-              size={44}
-              companyId={product.company.id}
-              logoUpdatedAt={product.company.logoUpdatedAt}
-            />
-            <View style={styles.companyText}>
-              <Text style={styles.companyName}>{product.company.name}</Text>
-              <View style={styles.badgeRow}>
-                {product.company.verification === 'dogrulanmis' ? (
-                  <Badge label="Doğrulanmış Üretici" />
-                ) : null}
-                <Badge label={`Toplam ${product.companyProductCount} Ürün`} />
-              </View>
-            </View>
-          </Pressable>
-        ) : null}
-
-        <View style={styles.specCard}>
-          <Text style={styles.specTitle}>Özellikler</Text>
-          <SpecRow label="Ürün Kodu" value={product.code} />
-          <SpecRow label="Ürün Tipi" value={TYPE_LABELS[product.type]} />
+        <View style={[styles.block, styles.specBlock]}>
           <SpecRow label="Stok" value={`${formatMeasure(product.stock)} m`} />
           <SpecRow label="Ağırlık" value={`${formatMeasure(product.weightGsm)} gr/m²`} />
           <SpecRow label="Genişlik" value={`${formatMeasure(product.widthCm)} cm`} />
           <SpecRow label="İçerik" value={product.content} />
-          <SpecRow label="Kullanım Alanları" value={product.useArea} last />
+          <SpecRow label="Tip" value={typeLabel} last />
         </View>
+
+        {company ? (
+          <Pressable
+            onPress={openCompany}
+            accessibilityRole="button"
+            accessibilityLabel={`${company.name}, firma sayfasını aç`}
+            android_ripple={{ color: colors.pressed }}
+            style={({ pressed }) => [styles.block, styles.companyRow, pressed && styles.pressed]}
+          >
+            <CompanyAvatar
+              name={company.name}
+              verification={company.verification}
+              size={36}
+              companyId={company.id}
+              logoUpdatedAt={company.logoUpdatedAt}
+            />
+            <View style={styles.companyTexts}>
+              <Text style={styles.companyName} numberOfLines={1}>
+                {company.name}
+              </Text>
+              <Text style={styles.companyMeta}>
+                {company.verification === 'dogrulanmis' ? (
+                  <Text style={styles.companyVerified}>Doğrulanmış üretici · </Text>
+                ) : null}
+                <Text style={styles.companyCount}>{product.companyProductCount} ürün</Text>
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+          </Pressable>
+        ) : null}
 
         {error ? (
           <InlineError
@@ -151,46 +170,39 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             style={styles.banner}
           />
         ) : null}
+      </ScrollView>
 
+      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
+        <PrimaryButton label="Firma" variant="outline" size="lg" onPress={openCompany} />
         {isOwnProduct ? (
           <PrimaryButton
             label="Ürünü Düzenle"
+            icon="create-outline"
+            size="lg"
             onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
-            style={{ marginTop: spacing.lg }}
+            style={styles.actionMain}
           />
-        ) : user ? (
+        ) : (
           <PrimaryButton
             label="Numune Talep Et"
+            icon="cube-outline"
+            size="lg"
             onPress={() =>
-              navigation.navigate('SampleRequestForm', {
-                productId: product.id,
-                productCode: product.code,
-              })
+              navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
             }
-            style={{ marginTop: spacing.lg }}
+            style={styles.actionMain}
           />
-        ) : null}
+        )}
+      </View>
 
-        <PrimaryButton
-          label="Firma Sayfasını Aç"
-          variant="secondary"
-          onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
-          style={{ marginTop: spacing.sm }}
-        />
-      </ScrollView>
-
-      <ImageViewerModal
-        imageUrl={imageUrl}
-        visible={viewerOpen}
-        onClose={() => setViewerOpen(false)}
-      />
-    </SafeAreaView>
+      <ImageViewerModal imageUrl={imageUrl} visible={viewerOpen} onClose={() => setViewerOpen(false)} />
+    </View>
   );
 }
 
 function SpecRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
   return (
-    <View style={[styles.specRow, last && styles.specRowLast]}>
+    <View style={[styles.specRow, !last && styles.specDivider]}>
       <Text style={styles.specLabel}>{label}</Text>
       <Text style={styles.specValue}>{value}</Text>
     </View>
@@ -198,65 +210,52 @@ function SpecRow({ label, value, last }: { label: string; value: string; last?: 
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  // Tasarımdaki kalın mavi çerçeve yerine yumuşak köşe + tonlu zemin: çerçeveli
-  // fotoğraf bugünkü arayüzlerde eskimiş duruyor.
-  hero: {
-    width: '100%',
-    height: 260,
-    borderRadius: radius.lg,
-    backgroundColor: colors.surfaceTonal,
-  },
-  heroPlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { paddingBottom: spacing.md, gap: spacing.blockGap },
+  block: { backgroundColor: colors.surface },
+  heroBlock: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.gutter, gap: 12 },
+  hero: { width: '100%', height: 219, borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
+  heroPressed: { opacity: 0.9 },
+  heroPlaceholder: { alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
   heroPlaceholderText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  zoomHint: {
-    ...typography.caption,
-    textAlign: 'center',
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing.md,
-  },
-  code: { ...typography.title, color: colors.primary, flex: 1 },
-  companyCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadow.card,
-  },
-  companyText: { flex: 1, marginLeft: spacing.md },
-  companyName: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
-  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
-  specCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    ...shadow.card,
-  },
-  specTitle: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
+  titleTexts: { flex: 1, gap: 2 },
+  code: { fontFamily: fonts.monoSemibold, fontSize: 22, lineHeight: 28, color: colors.primary },
+  titleMeta: { ...typography.body, color: colors.textMuted },
+  specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    minHeight: 40,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
     gap: spacing.md,
   },
-  specRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
+  specDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  specValue: { ...typography.label, color: colors.text, flexShrink: 1, textAlign: 'right' },
-  banner: { marginTop: spacing.md },
+  specValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 14, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  companyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 10,
+  },
+  pressed: { backgroundColor: colors.pressed },
+  companyTexts: { flex: 1 },
+  companyName: { ...typography.bodyStrong, color: colors.text },
+  companyMeta: { ...typography.caption },
+  companyVerified: { fontFamily: fonts.medium, color: colors.accent },
+  companyCount: { color: colors.textMuted },
+  banner: { marginHorizontal: spacing.gutter },
+  actionBar: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 10,
+  },
+  actionMain: { flex: 1 },
 });
