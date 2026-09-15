@@ -60,6 +60,40 @@ async function call<T>(method: string, path: string, body?: unknown) {
   return { status: res.status, data };
 }
 
+// /api/health için: anahtarlar yalnızca GİRİLMİŞ mi değil, Cloudflare'de gerçekten
+// ÇALIŞIYOR mu. Video listesinden tek kayıt istemek hem Account ID'yi hem de
+// anahtarın Stream iznini tek istekte doğrular. Sonuç önbellekte: başarı 10 dk,
+// hata 1 dk (anahtar düzeltilince durum sayfası hızla güncellensin). Hata fırlatmaz.
+export type StreamAccess = 'not_configured' | 'ok' | 'unauthorized' | 'invalid_account' | 'unreachable';
+
+const ACCESS_OK_TTL_MS = 10 * 60 * 1000;
+const ACCESS_FAIL_TTL_MS = 60 * 1000;
+let accessCache: { value: StreamAccess; key: string; expiresAt: number } | null = null;
+
+export async function checkStreamAccess(): Promise<StreamAccess> {
+  const cfg = config();
+  if (!cfg) return 'not_configured';
+
+  // Değerler değişirse (yeni yayın zaten süreci yeniler ama yine de) eski sonuç kullanılmasın.
+  const key = `${cfg.accountId}:${cfg.token.length}`;
+  if (accessCache && accessCache.key === key && accessCache.expiresAt > Date.now()) {
+    return accessCache.value;
+  }
+
+  let value: StreamAccess;
+  try {
+    const { status } = await call<unknown>('GET', '?limit=1');
+    if (status === 200) value = 'ok';
+    else if (status === 401 || status === 403) value = 'unauthorized';
+    else value = 'invalid_account'; // 400/404: Account ID biçimi yanlış ya da hesap yok
+  } catch {
+    value = 'unreachable';
+  }
+
+  accessCache = { value, key, expiresAt: Date.now() + (value === 'ok' ? ACCESS_OK_TTL_MS : ACCESS_FAIL_TTL_MS) };
+  return value;
+}
+
 function failure(status: number, data: Envelope<unknown> | null, context: string): never {
   // Anahtar asla loglanmıyor; yalnızca Cloudflare'in hata mesajları.
   const messages = (data?.errors ?? []).map((e) => `${e.code ?? ''} ${e.message ?? ''}`.trim()).join('; ');
