@@ -16,12 +16,22 @@ import { usersRouter } from './routes/users';
 import { adminRouter } from './routes/admin';
 import { whatsappWebhookRouter } from './routes/whatsappWebhook';
 import { videosRouter } from './routes/videos';
+import { getStorageInfo } from './storageCheck';
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '15mb' })); // fotoğraf yükleme (base64) için
 
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+// `storage`: canlıda verinin kalıcı diske gidip gitmediği (bkz. storageCheck.ts).
+// `commit`: canlıda hangi sürümün çalıştığı — Render başarısız yayında eski
+// sürümü açık tutuyor, "status: ok" tek başına yeni kodu kanıtlamıyor.
+app.get('/api/health', (_req, res) =>
+  res.json({
+    status: 'ok',
+    commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
+    storage: getStorageInfo(),
+  })
+);
 app.use('/api/register', registerRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/companies', companiesRouter);
