@@ -10,6 +10,13 @@ Bu yüzden:
 - Yerel veritabanları ayrı olduğu için bir makinede eklenen test verisi diğerinde görünmez; ortak gerçek veri yalnızca canlı ortamdadır (Render).
 - Sunucuları başlatma: `backend`'de `npm.cmd run dev`, `mobile`'da `npx.cmd expo start --lan` (`CI=1` ile değil: o kipte Metro değişiklikleri izlemez, eski paketi sunar).
 
+## Canlı ortam (Render + Vercel)
+
+- Backend Render'da (Starter + kalıcı disk `/var/data`, `DATABASE_URL=file:/var/data/avedon.db`); web Vercel'de. Canlı veri kalıcıdır — gerçek pilot verisi, test kaydı eklerken dikkat.
+- Render servisinin Root Directory'si `backend`: **yalnızca `backend/` altındaki değişiklikler yayın tetikler**; `docs/` veya `mobile/`-yalnız push backend'i yeniden yayınlamaz.
+- Canlı sürümü `https://avedon-backend.onrender.com/api/health` ile doğrula: `commit` son push'la aynı olmalı, `storage.separateDisk` `true` olmalı. Render başarısız yayında eski sürümü açık tutar; `status: ok` tek başına yeni kodu kanıtlamaz.
+- Migration'lar canlıda açılışta (`npx prisma migrate deploy` Start Command'da) gerçek veri üzerinde çalışır: push'tan önce yerel veritabanı **kopyası** üzerinde prova et. `prisma migrate dev` bu ortamda etkileşimsiz olduğu için çalışmaz; SQL'i `prisma migrate diff --from-schema-datasource ... --to-schema-datamodel ... --script --output` ile üret.
+
 ## Kullanıcı ve çalışma tercihleri
 
 Asistanın hafızası makineye özel olduğu için kalıcı tercihler burada:
