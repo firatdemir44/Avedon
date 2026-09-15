@@ -1,66 +1,75 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import {
-  fetchIncomingConnectionRequests,
-  respondToConnectionRequest,
-  type IncomingConnectionRequest,
-} from '../../api/client';
+import { fetchIncomingConnectionRequests, respondToConnectionRequest } from '../../api/client';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
+import { useFocusLoad } from '../../features/useFocusLoad';
 import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectionRequests'>;
 
 export function ConnectionRequestsScreen({ navigation }: Props) {
-  const [requests, setRequests] = useState<IncomingConnectionRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    fetchIncomingConnectionRequests()
-      .then(({ requests: fetched }) => setRequests(fetched))
-      .catch((err) => setError(err instanceof Error ? err.message : 'İstekler alınamadı'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchIncomingConnectionRequests().then(({ requests }) => requests)
   );
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const handleRespond = async (id: string, status: 'accepted' | 'rejected') => {
+  const handleRespond = async (id: string, nextStatus: 'accepted' | 'rejected') => {
     setUpdatingId(id);
+    setActionError(null);
     try {
-      await respondToConnectionRequest(id, status);
-      load();
+      await respondToConnectionRequest(id, nextStatus);
+      await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'İşlem yapılamadı');
+      setActionError(friendlyMessage(err, 'İşlem yapılamadı'));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="request" />
       </SafeAreaView>
     );
   }
 
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={error} fallback="İstekler alınamadı" onRetry={reload} />
+      </SafeAreaView>
+    );
+  }
+
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'İstekler alınamadı') : null);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={requests}
+        data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>{error ?? 'Bekleyen bağlantı isteğiniz yok.'}</Text>}
+        refreshControl={refreshControl(refreshing, refresh)}
+        ListHeaderComponent={
+          bannerMessage ? (
+            <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
+          ) : null
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="person-add-outline"
+            title="Bekleyen istek yok"
+            message="Biri size bağlantı isteği gönderdiğinde burada kabul edebilir ya da reddedebilirsiniz."
+          />
+        }
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Pressable onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}>
@@ -94,6 +103,7 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  banner: { marginBottom: spacing.md },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -109,5 +119,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   actionButton: { flex: 1 },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

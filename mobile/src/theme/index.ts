@@ -20,6 +20,11 @@ export const colors = {
   // Liste satırları arasındaki çizgi; kenarlıktan bir ton açık.
   divider: '#E6EBF0',
   danger: '#B3261E',
+  dangerSoft: '#FBEAE9', // satır içi hata şeridi, hata ekranı ikon zemini
+  // Yükleniyor iskeleti (docs/tasarim-yonleri/CYukleniyor.dc.html):
+  // görsel/başlık kemikleri koyu, ikincil satırlar açık ton.
+  skeleton: '#E3E8ED',
+  skeletonSoft: '#EDF1F4',
   success: '#2E7D4F', // stokta
   successSoft: '#E6F2EB',
   warning: '#8A5A00', // az stok, bekleyen adım

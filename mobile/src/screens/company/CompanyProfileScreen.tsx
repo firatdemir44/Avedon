@@ -1,17 +1,26 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { fetchCompany, type CompanyEmployee } from '../../api/client';
+import { fetchCompany } from '../../api/client';
+import { useFocusLoad } from '../../features/useFocusLoad';
+import { SkeletonDetail } from '../../components/Skeleton';
+import {
+  EmptyState,
+  ErrorState,
+  InlineError,
+  friendlyMessage,
+  isNotFound,
+} from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
-import type { Company, Product, VerificationStatus } from '../../types';
+import type { Product, VerificationStatus } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 
@@ -32,28 +41,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
-  const [company, setCompany] = useState<(Company & { products: Product[]; users: CompanyEmployee[] }) | null>(
-    null
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    if (!viewedCompanyId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetchCompany(viewedCompanyId)
-      .then(({ company: fetched }) => setCompany(fetched))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Firma bilgisi alınamadı'))
-      .finally(() => setLoading(false));
-  }, [viewedCompanyId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+  // Ürün ekleyip / firmayı düzenleyip geri dönünce sayfa iskelete dönmüyor,
+  // güncel bilgi sessizce geliyor (eskiden her dönüşte tüm sayfa yeniden yükleniyordu).
+  const { data: company, status, error, refreshing, reload, refresh } = useFocusLoad(
+    () => fetchCompany(viewedCompanyId as string).then(({ company: fetched }) => fetched),
+    { enabled: !!viewedCompanyId }
   );
 
   // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
@@ -62,42 +54,56 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     navigation.setOptions({ title: isOwnCompany ? 'Firmam' : company?.name ?? 'Firma' });
   }, [navigation, isOwnCompany, company?.name]);
 
+  // Not: bu ekran başlıklı bir yığın ekranı; üst güvenli alanı başlık zaten
+  // karşılıyor. Eskiden 'top' da verildiği için başlığın altında fazladan boşluk vardı.
   if (!viewedCompanyId) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>Bireysel hesabınız bir firmaya bağlı değil.</Text>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <EmptyState
+          icon="business-outline"
+          title="Firmaya bağlı değilsiniz"
+          message="Bireysel hesabınız bir firmaya bağlı değil."
+        />
       </SafeAreaView>
     );
   }
 
-  if (loading) {
+  if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <SkeletonDetail variant="company" />
       </SafeAreaView>
     );
   }
 
-  if (error || !company) {
+  if (!company) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>{error ?? 'Firma bulunamadı'}</Text>
-        </View>
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        {error && !isNotFound(error) ? (
+          <ErrorState error={error} fallback="Firma bilgisi alınamadı" onRetry={reload} />
+        ) : (
+          <EmptyState icon="business-outline" title="Firma bulunamadı" message="Firma kaldırılmış olabilir." />
+        )}
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
         data={company.products}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <View style={styles.header}>
+            {error ? (
+              <InlineError
+                message={friendlyMessage(error, 'Firma bilgisi alınamadı')}
+                onRetry={reload}
+                style={styles.banner}
+              />
+            ) : null}
             <View style={styles.headerTopRow}>
               <View style={styles.identity}>
                 <CompanyAvatar
@@ -164,7 +170,20 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             <Text style={styles.sectionTitle}>Ürünler ({company.products.length})</Text>
           </View>
         }
-        ListEmptyComponent={<Text style={styles.emptyText}>Henüz ürün eklenmemiş.</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            compact
+            icon="cube-outline"
+            title="Henüz ürün eklenmemiş"
+            message={
+              isOwnCompany
+                ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
+                : 'Bu firma henüz ürün eklemedi.'
+            }
+            actionLabel={isOwnCompany ? 'Ürün Ekle' : undefined}
+            onAction={isOwnCompany ? () => navigation.navigate('AddProduct') : undefined}
+          />
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
@@ -204,14 +223,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
   listContent: {
     padding: spacing.lg,
+  },
+  banner: {
+    marginBottom: spacing.md,
   },
   header: {
     marginBottom: spacing.md,
@@ -317,12 +333,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text,
     marginBottom: spacing.xs,
-  },
-  emptyText: {
-    ...typography.body,
-    textAlign: 'center',
-    color: colors.textMuted,
-    marginTop: spacing.lg,
   },
   sampleButton: {
     marginTop: spacing.sm,

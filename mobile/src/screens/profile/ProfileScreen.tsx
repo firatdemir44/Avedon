@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
@@ -15,6 +15,8 @@ import {
 } from '../../api/client';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
+import { SkeletonDetail } from '../../components/Skeleton';
+import { EmptyState, ErrorState } from '../../components/StateView';
 import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'Profile'>;
@@ -91,7 +93,7 @@ export function ProfileScreen({ navigation, route }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonDetail variant="profile" />
       </SafeAreaView>
     );
   }
@@ -99,7 +101,11 @@ export function ProfileScreen({ navigation, route }: Props) {
   if (!profile) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>{loadError ?? 'Profil bulunamadı'}</Text>
+        {loadError ? (
+          <ErrorState error={loadError} onRetry={refresh} />
+        ) : (
+          <EmptyState icon="person-outline" title="Profil bulunamadı" />
+        )}
       </SafeAreaView>
     );
   }
@@ -166,5 +172,4 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1 },
   error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

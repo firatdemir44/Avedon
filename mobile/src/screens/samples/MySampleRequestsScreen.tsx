@@ -1,47 +1,35 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { useSession } from '../../context/SessionContext';
-import { fetchMySampleRequests, type SampleRequestRow } from '../../api/client';
+import { fetchMySampleRequests } from '../../api/client';
 import { Badge } from '../../components/Badge';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
+import { useFocusLoad } from '../../features/useFocusLoad';
 import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
 export function MySampleRequestsScreen({ navigation }: Props) {
-  const { user } = useSession();
-  const [requests, setRequests] = useState<SampleRequestRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!user) return;
-      let cancelled = false;
-      setLoading(true);
-      fetchMySampleRequests()
-        .then(({ sampleRequests }) => {
-          if (!cancelled) setRequests(sampleRequests);
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : 'Talepler alınamadı');
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [user])
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchMySampleRequests().then(({ sampleRequests }) => sampleRequests)
   );
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="request" />
+      </SafeAreaView>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={error} fallback="Talepler alınamadı" onRetry={reload} />
       </SafeAreaView>
     );
   }
@@ -49,11 +37,23 @@ export function MySampleRequestsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={requests}
+        data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        refreshControl={refreshControl(refreshing, refresh)}
+        ListHeaderComponent={
+          error ? (
+            <InlineError message={friendlyMessage(error, 'Talepler alınamadı')} onRetry={reload} style={styles.banner} />
+          ) : null
+        }
         ListEmptyComponent={
-          <Text style={styles.empty}>{error ?? 'Henüz numune talebiniz yok.'}</Text>
+          <EmptyState
+            icon="flask-outline"
+            title="Henüz numune talebiniz yok"
+            message="Beğendiğiniz ürünün sayfasından numune isteyebilir, süreci buradan adım adım takip edebilirsiniz."
+            actionLabel="Ürünlere göz at"
+            onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
+          />
         }
         renderItem={({ item }) => (
           <Pressable
@@ -83,6 +83,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  banner: { marginBottom: spacing.md },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -99,5 +100,4 @@ const styles = StyleSheet.create({
   code: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   trackLink: { ...typography.label, color: colors.accent, marginTop: spacing.sm },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

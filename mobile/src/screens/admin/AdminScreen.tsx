@@ -1,9 +1,12 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSession } from '../../context/SessionContext';
-import { fetchAdminCompanies, updateCompanyVerification, type CompanyWithCounts } from '../../api/client';
+import { fetchAdminCompanies, updateCompanyVerification } from '../../api/client';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
+import { useFocusLoad } from '../../features/useFocusLoad';
 import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
@@ -15,62 +18,71 @@ const STATUS_OPTIONS: { value: VerificationStatus; label: string }[] = [
 
 export function AdminScreen() {
   const { user } = useSession();
-  const [companies, setCompanies] = useState<CompanyWithCounts[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    if (!user?.isAdmin) return;
-    setLoading(true);
-    fetchAdminCompanies()
-      .then(({ companies: fetched }) => setCompanies(fetched))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Firmalar alınamadı'))
-      .finally(() => setLoading(false));
-  }, [user?.isAdmin]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+  const isAdmin = !!user?.isAdmin;
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
+    () => fetchAdminCompanies().then(({ companies }) => companies),
+    { enabled: isAdmin }
   );
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const handleSetStatus = async (companyId: string, status: VerificationStatus) => {
-    if (!user?.isAdmin) return;
+  const handleSetStatus = async (companyId: string, nextStatus: VerificationStatus) => {
+    if (!isAdmin) return;
     setUpdatingId(companyId);
+    setActionError(null);
     try {
-      await updateCompanyVerification(companyId, status);
-      load();
+      await updateCompanyVerification(companyId, nextStatus);
+      await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Durum güncellenemedi');
+      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  if (!user?.isAdmin) {
+  if (!isAdmin) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>Bu ekrana erişim yetkiniz yok.</Text>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Erişim yetkiniz yok"
+          message="Bu ekran yalnızca Avedon yöneticilerine açık."
+        />
       </SafeAreaView>
     );
   }
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="request" />
       </SafeAreaView>
     );
   }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={error} fallback="Firmalar alınamadı" onRetry={reload} />
+      </SafeAreaView>
+    );
+  }
+
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Firmalar alınamadı') : null);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={companies}
+        data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>{error ?? 'Henüz firma yok.'}</Text>}
+        refreshControl={refreshControl(refreshing, refresh)}
+        ListHeaderComponent={
+          bannerMessage ? (
+            <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
+          ) : null
+        }
+        ListEmptyComponent={<EmptyState icon="business-outline" title="Henüz firma yok" />}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={styles.cardHeaderRow}>
@@ -108,6 +120,7 @@ export function AdminScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  banner: { marginBottom: spacing.md },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -145,5 +158,4 @@ const styles = StyleSheet.create({
   statusChipTextActive: {
     color: colors.primaryText,
   },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

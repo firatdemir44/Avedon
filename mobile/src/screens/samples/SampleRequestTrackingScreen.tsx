@@ -1,15 +1,23 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   fetchSampleRequestTimeline,
   updateSampleRequestStatus,
   type SampleActor,
-  type SampleRequestTimeline,
   type SampleTimelineStep,
 } from '../../api/client';
+import { useFocusLoad } from '../../features/useFocusLoad';
+import { SkeletonDetail } from '../../components/Skeleton';
+import {
+  EmptyState,
+  ErrorState,
+  InlineError,
+  friendlyMessage,
+  isNotFound,
+} from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { TextField } from '../../components/TextField';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
@@ -20,46 +28,32 @@ type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
 export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   const { sampleRequestId } = route.params;
-  const [data, setData] = useState<SampleRequestTimeline | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchSampleRequestTimeline(sampleRequestId)
+  );
   const [advancing, setAdvancing] = useState(false);
   const [note, setNote] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    return fetchSampleRequestTimeline(sampleRequestId)
-      .then((timeline) => {
-        setData(timeline);
-        setError(null);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Takip bilgisi alınamadı'))
-      .finally(() => setLoading(false));
-  }, [sampleRequestId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
-  );
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleAdvance = async () => {
     if (!data?.nextStep) return;
     setAdvancing(true);
+    setActionError(null);
     try {
       await updateSampleRequestStatus(sampleRequestId, data.nextStep.status, note.trim() || undefined);
       setNote('');
-      await load();
+      await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Durum güncellenemedi');
+      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
     } finally {
       setAdvancing(false);
     }
   };
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonDetail variant="timeline" />
       </SafeAreaView>
     );
   }
@@ -67,10 +61,16 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   if (!data) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>{error ?? 'Talep bulunamadı.'}</Text>
+        {error && !isNotFound(error) ? (
+          <ErrorState error={error} fallback="Takip bilgisi alınamadı" onRetry={reload} />
+        ) : (
+          <EmptyState icon="flask-outline" title="Talep bulunamadı" message="Talep silinmiş ya da size ait olmayabilir." />
+        )}
       </SafeAreaView>
     );
   }
+
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Takip bilgisi yenilenemedi') : null);
 
   const { sampleRequest, steps, nextStep } = data;
   // Teslim adımında tasarım kimin teslim aldığını yazıyor ("... İrfan Bey teslim
@@ -79,7 +79,7 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
         <Pressable
           style={styles.productPill}
           onPress={() =>
@@ -101,7 +101,13 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {bannerMessage ? (
+          <InlineError
+            message={bannerMessage}
+            onRetry={actionError ? undefined : reload}
+            style={styles.banner}
+          />
+        ) : null}
 
         {nextStep ? (
           <View style={styles.actionBox}>
@@ -227,6 +233,5 @@ const styles = StyleSheet.create({
   actorName: { ...typography.label, color: colors.text },
   actorMeta: { ...typography.caption, color: colors.textMuted },
   actionBox: { marginTop: spacing.md },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  banner: { marginTop: spacing.md },
 });

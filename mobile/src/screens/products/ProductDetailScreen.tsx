@@ -1,10 +1,19 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, ScrollView, Image, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Image, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchProduct, type ProductDetail } from '../../api/client';
+import { fetchProduct } from '../../api/client';
+import { useFocusLoad } from '../../features/useFocusLoad';
+import { SkeletonDetail } from '../../components/Skeleton';
+import {
+  EmptyState,
+  ErrorState,
+  InlineError,
+  friendlyMessage,
+  isNotFound,
+} from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
@@ -25,33 +34,15 @@ const TYPE_LABELS: Record<ProductType, string> = {
 export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { user } = useSession();
-  const [product, setProduct] = useState<ProductDetail | null>(null);
+  // Düzenleme ekranından dönünce güncel veri görünsün diye odakta yenileniyor
+  // (ilk yüklemeden sonra sessizce).
+  const { data: product, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchProduct(productId).then(({ product: fetched }) => fetched)
+  );
   const [imageUrl, setImageUrl] = useState<string | null>(
     () => getCachedProductImage(productId) ?? null
   );
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Düzenleme ekranından dönünce güncel veri görünsün diye odakta yenileniyor.
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      fetchProduct(productId)
-        .then(({ product: fetched }) => {
-          if (!cancelled) setProduct(fetched);
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : 'Ürün alınamadı');
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [productId])
-  );
 
   useEffect(() => {
     if (!product?.hasImage || imageUrl) return;
@@ -72,10 +63,10 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     if (product) navigation.setOptions({ title: product.code });
   }, [navigation, product]);
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonDetail variant="product" />
       </SafeAreaView>
     );
   }
@@ -83,7 +74,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   if (!product) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>{error ?? 'Ürün bulunamadı.'}</Text>
+        {error && !isNotFound(error) ? (
+          <ErrorState error={error} fallback="Ürün alınamadı" onRetry={reload} />
+        ) : (
+          <EmptyState icon="cube-outline" title="Ürün bulunamadı" message="Ürün kaldırılmış olabilir." />
+        )}
       </SafeAreaView>
     );
   }
@@ -92,7 +87,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
         {/* Tasarımda sayfanın üstünde tam genişlik fotoğraf var; dokununca
             tam ekran açılıyor. */}
         {imageUrl ? (
@@ -148,7 +143,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           <SpecRow label="Kullanım Alanları" value={product.useArea} last />
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <InlineError
+            message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')}
+            onRetry={reload}
+            style={styles.banner}
+          />
+        ) : null}
 
         {isOwnProduct ? (
           <PrimaryButton
@@ -256,6 +257,5 @@ const styles = StyleSheet.create({
   specRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
   specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   specValue: { ...typography.label, color: colors.text, flexShrink: 1, textAlign: 'right' },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
+  banner: { marginTop: spacing.md },
 });

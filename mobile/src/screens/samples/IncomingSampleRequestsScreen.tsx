@@ -1,7 +1,6 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
@@ -11,74 +10,92 @@ import {
 } from '../../api/client';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Badge } from '../../components/Badge';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
+import { useFocusLoad } from '../../features/useFocusLoad';
 import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
 export function IncomingSampleRequestsScreen({ navigation }: Props) {
   const { user } = useSession();
-  const [requests, setRequests] = useState<SampleRequestRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    if (!user?.companyId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetchIncomingSampleRequests()
-      .then(({ sampleRequests }) => setRequests(sampleRequests))
-      .catch((err) => setError(err instanceof Error ? err.message : 'Talepler alınamadı'))
-      .finally(() => setLoading(false));
-  }, [user?.companyId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+  const hasCompany = !!user?.companyId;
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
+    () => fetchIncomingSampleRequests().then(({ sampleRequests }) => sampleRequests),
+    { enabled: hasCompany }
   );
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleAdvance = async (request: SampleRequestRow) => {
     // Hangi adımın kime açık olduğuna sunucu karar veriyor; burada sadece
     // sunucunun verdiği bir sonraki adım uygulanıyor.
     if (!request.nextStep) return;
     setUpdatingId(request.id);
+    setActionError(null);
     try {
       await updateSampleRequestStatus(request.id, request.nextStep.status);
-      load();
+      // Liste ekranda kalır, yeni durum sessizce gelir (eskiden tüm ekran
+      // yükleniyor çemberine dönüyordu).
+      await reload();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Durum güncellenemedi');
+      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  if (!user?.companyId) {
+  if (!hasCompany) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <Text style={styles.empty}>Bir firmaya bağlı değilsiniz.</Text>
+        <EmptyState
+          icon="business-outline"
+          title="Bir firmaya bağlı değilsiniz"
+          message="Gelen numune talepleri firma hesaplarında görünür."
+        />
       </SafeAreaView>
     );
   }
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="request" />
       </SafeAreaView>
     );
   }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={error} fallback="Talepler alınamadı" onRetry={reload} />
+      </SafeAreaView>
+    );
+  }
+
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={requests}
+        data={data ?? []}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<Text style={styles.empty}>{error ?? 'Henüz gelen numune talebi yok.'}</Text>}
+        refreshControl={refreshControl(refreshing, refresh)}
+        ListHeaderComponent={
+          bannerMessage ? (
+            <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
+          ) : null
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="file-tray-outline"
+            title="Henüz gelen talep yok"
+            message="Ürünlerinize numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsiniz."
+          />
+        }
         renderItem={({ item }) => (
           <Pressable
             style={styles.card}
@@ -125,6 +142,7 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  banner: { marginBottom: spacing.md },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -142,5 +160,4 @@ const styles = StyleSheet.create({
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
   link: { color: colors.accent, fontFamily: fonts.semibold },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

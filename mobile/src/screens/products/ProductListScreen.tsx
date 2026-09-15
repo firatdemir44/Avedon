@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TextInput, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { fetchProducts, searchCompanies } from '../../api/client';
@@ -7,6 +7,9 @@ import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import type { Company, Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
@@ -26,11 +29,14 @@ export function ProductListScreen({ navigation }: Props) {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const queryRef = useRef(query);
   queryRef.current = query;
 
-  const loadProducts = useCallback((search: string, signal: { cancelled: boolean }) => {
-    setLoading(true);
+  // pull: aşağı çekip yenileme — liste yerinde kalır, üstte gösterge döner.
+  const loadProducts = useCallback((search: string, signal: { cancelled: boolean }, pull = false) => {
+    if (pull) setRefreshing(true);
+    else setLoading(true);
     fetchProducts(search)
       .then(({ products: fetched }) => {
         if (signal.cancelled) return;
@@ -51,7 +57,9 @@ export function ProductListScreen({ navigation }: Props) {
         setOffline(true);
       })
       .finally(() => {
-        if (!signal.cancelled) setLoading(false);
+        if (signal.cancelled) return;
+        setLoading(false);
+        setRefreshing(false);
       });
 
     if (search.trim()) {
@@ -109,12 +117,16 @@ export function ProductListScreen({ navigation }: Props) {
         {offline ? <Text style={styles.offlineNotice}>API'ye ulaşılamadı, örnek veriler gösteriliyor</Text> : null}
       </View>
       {loading && products.length === 0 ? (
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="product" style={styles.skeleton} />
       ) : (
       <FlatList
         data={products}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={refreshControl(refreshing, () =>
+          loadProducts(queryRef.current, { cancelled: false }, true)
+        )}
         ListHeaderComponent={
           companies.length > 0 ? (
             <View style={styles.companySection}>
@@ -132,7 +144,27 @@ export function ProductListScreen({ navigation }: Props) {
             </View>
           ) : null
         }
-        ListEmptyComponent={<Text style={styles.empty}>Sonuç bulunamadı</Text>}
+        ListEmptyComponent={
+          query.trim() ? (
+            <EmptyState
+              icon="search-outline"
+              title="Sonuç bulunamadı"
+              message={
+                companies.length > 0
+                  ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
+                  : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, gramaj veya kullanım alanıyla deneyin.`
+              }
+              actionLabel="Aramayı temizle"
+              onAction={() => setQuery('')}
+            />
+          ) : (
+            <EmptyState
+              icon="cube-outline"
+              title="Henüz ürün yok"
+              message="Üreticiler ürün ekledikçe katalog burada dolacak."
+            />
+          )
+        }
         renderItem={({ item }) => (
           // Kartın tamamı (fotoğraf dahil) ürün sayfasını açıyor; fotoğraf
           // orada tam genişlikte ve dokununca tam ekran büyüyor.
@@ -298,12 +330,8 @@ const styles = StyleSheet.create({
     ...typography.bodyStrong,
     color: colors.text,
   },
-  empty: {
-    ...typography.body,
-    textAlign: 'center',
-    color: colors.textMuted,
-    marginTop: spacing.xl,
-  },
+  // Arama kutusu zaten üstte boşluk bırakıyor; iskelet listeyle aynı hizada başlasın.
+  skeleton: { paddingTop: 0 },
   offlineNotice: {
     ...typography.caption,
     color: colors.danger,

@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ScrollView, StyleSheet } from 'react-native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { MenuRow } from '../../components/MenuRow';
+import { SkeletonDetail } from '../../components/Skeleton';
+import { InlineError } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
-import { colors, spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
 
 type Props = MainTabScreenProps<'MyProfile'>;
 
@@ -13,26 +15,22 @@ type Props = MainTabScreenProps<'MyProfile'>;
 // karşılığı: ikincil hedefler (firmam, taleplerim, bağlantılar, çıkış) burada.
 export function MyProfileScreen({ navigation }: Props) {
   const { user, logout } = useSession();
-  const { profile, loading, error } = useUserProfile(user?.id ?? '');
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </View>
-    );
-  }
+  const { profile, loading, error, reload } = useUserProfile(user?.id ?? '');
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {profile ? (
+        {/* Menü profil yüklenirken ya da yüklenemese de hep erişilebilir
+            (özellikle Çıkış): eskiden yükleme sürerken ekran tamamen boştu. */}
+        {loading ? (
+          <SkeletonDetail variant="profile" style={styles.skeleton} />
+        ) : profile ? (
           <ProfileIdentity
             profile={profile}
             onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
           />
         ) : (
-          <Text style={styles.error}>{error ?? 'Profil alınamadı'}</Text>
+          <InlineError message={error ?? 'Profil alınamadı'} onRetry={reload} />
         )}
 
         <View style={styles.menu}>
@@ -55,6 +53,6 @@ export function MyProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { padding: spacing.lg },
+  skeleton: { padding: 0 },
   menu: { marginTop: spacing.xl },
-  error: { ...typography.body, color: colors.danger },
 });

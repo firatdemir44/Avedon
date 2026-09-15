@@ -1,10 +1,14 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, FlatList, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchConversations, type ConversationSummary } from '../../api/client';
+import { fetchConversations } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
+import { useFocusLoad } from '../../features/useFocusLoad';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Conversations'>;
@@ -13,32 +17,18 @@ const REFRESH_INTERVAL_MS = 15000;
 
 export function ConversationsListScreen({ navigation }: Props) {
   const { user } = useSession();
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback((silent = false) => {
-    if (!silent) setLoading(true);
-    return fetchConversations()
-      .then(({ conversations: fetched }) => {
-        setConversations(fetched);
-        setError(null);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Mesajlar alınamadı'))
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, []);
+  // Sohbetten geri dönünce liste artık yükleniyor çemberine dönmüyor; yeni
+  // okunmamış sayıları sessizce geliyor (bkz. useFocusLoad).
+  const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchConversations().then(({ conversations }) => conversations)
+  );
 
   useFocusEffect(
     useCallback(() => {
-      load();
-      const timer = setInterval(() => load(true), REFRESH_INTERVAL_MS);
+      const timer = setInterval(reload, REFRESH_INTERVAL_MS);
       return () => clearInterval(timer);
-    }, [load])
+    }, [reload])
   );
 
   useLayoutEffect(() => {
@@ -54,6 +44,7 @@ export function ConversationsListScreen({ navigation }: Props) {
   // Sunucu tarafı mesaj araması yok (SQLite'ta büyük/küçük harf duyarsız arama
   // desteklenmiyor, Türkçe İ/ı sorunu da cabası) — yüklü liste üzerinde filtreliyoruz.
   const filtered = useMemo(() => {
+    const conversations = data ?? [];
     const q = query.trim().toLocaleLowerCase('tr-TR');
     if (!q) return conversations;
     return conversations.filter((c) =>
@@ -62,12 +53,20 @@ export function ConversationsListScreen({ navigation }: Props) {
         .toLocaleLowerCase('tr-TR')
         .includes(q)
     );
-  }, [conversations, query]);
+  }, [data, query]);
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <View style={styles.container}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="row" />
+      </View>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <View style={styles.container}>
+        <ErrorState error={error} fallback="Mesajlar alınamadı" onRetry={reload} />
       </View>
     );
   }
@@ -87,15 +86,31 @@ export function ConversationsListScreen({ navigation }: Props) {
         data={filtered}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshing={refreshing}
-        onRefresh={() => {
-          setRefreshing(true);
-          load(true);
-        }}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={refreshControl(refreshing, refresh)}
+        ListHeaderComponent={
+          error ? (
+            <InlineError message={friendlyMessage(error, 'Mesajlar alınamadı')} onRetry={reload} style={styles.banner} />
+          ) : null
+        }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {error ?? (query ? 'Sonuç bulunamadı.' : 'Henüz mesajınız yok. "+ Yeni" ile sohbet başlatın.')}
-          </Text>
+          query ? (
+            <EmptyState
+              icon="search-outline"
+              title="Sonuç bulunamadı"
+              message={`"${query.trim()}" ile eşleşen sohbet yok.`}
+              actionLabel="Aramayı temizle"
+              onAction={() => setQuery('')}
+            />
+          ) : (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="Henüz mesajınız yok"
+              message="Bağlantıda olduğunuz kişilerle buradan sohbet başlatabilirsiniz."
+              actionLabel="Yeni sohbet"
+              onAction={() => navigation.navigate('NewConversation')}
+            />
+          )
         }
         renderItem={({ item }) => {
           const isMine = item.lastMessage?.senderId === user?.id;
@@ -154,6 +169,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   listContent: { padding: spacing.lg },
+  banner: { marginBottom: spacing.md },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -183,9 +199,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: radius.pill,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.notification,
     alignItems: 'center',
   },
   unreadBadgeText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primaryText },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

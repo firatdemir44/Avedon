@@ -13,6 +13,9 @@ import {
   type FeedPost,
 } from '../../api/client';
 import { PostCard } from './PostCard';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -30,6 +33,8 @@ export function FeedScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const loadingMoreRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
+  const hasPostsRef = useRef(false);
+  hasPostsRef.current = posts.length > 0;
 
   const loadFirstPage = useCallback((silent = false) => {
     if (!silent) setLoading(true);
@@ -40,7 +45,7 @@ export function FeedScreen({ navigation }: Props) {
         setError(null);
         lastLoadedAtRef.current = Date.now();
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Akış alınamadı'))
+      .catch((err) => setError(friendlyMessage(err, 'Akış alınamadı')))
       .finally(() => {
         setLoading(false);
         setRefreshing(false);
@@ -55,9 +60,11 @@ export function FeedScreen({ navigation }: Props) {
     useCallback(() => {
       const stale = consumeFeedStale();
       const isFresh = Date.now() - lastLoadedAtRef.current < REFRESH_THROTTLE_MS;
-      if (!stale && isFresh && posts.length > 0) return;
-      loadFirstPage();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // `posts` bu kapanışta hep ilk değeri ([]) görüyordu, kısıtlama hiç
+      // devreye girmiyordu; güncel durum ref'ten okunuyor.
+      if (!stale && isFresh && hasPostsRef.current) return;
+      // Liste ekrandayken iskelete dönmeden sessizce yenile.
+      loadFirstPage(hasPostsRef.current);
     }, [loadFirstPage])
   );
 
@@ -151,7 +158,7 @@ export function FeedScreen({ navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="post" />
       </View>
     );
   }
@@ -162,18 +169,29 @@ export function FeedScreen({ navigation }: Props) {
         data={posts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        refreshing={refreshing}
-        onRefresh={() => {
+        refreshControl={refreshControl(refreshing, () => {
           setRefreshing(true);
           loadFirstPage(true);
-        }}
+        })}
         onEndReached={loadMore}
         onEndReachedThreshold={0.4}
+        ListHeaderComponent={
+          error && posts.length > 0 ? (
+            <InlineError message={error} onRetry={() => loadFirstPage(true)} style={styles.banner} />
+          ) : null
+        }
         ListEmptyComponent={
-          <Text style={styles.empty}>
-            {error ??
-              'Henüz gönderi yok. İlk gönderiyi siz paylaşın veya bağlantı kurarak akışınızı zenginleştirin.'}
-          </Text>
+          error ? (
+            <ErrorState error={error} onRetry={() => loadFirstPage()} />
+          ) : (
+            <EmptyState
+              icon="newspaper-outline"
+              title="Akış henüz boş"
+              message="İlk gönderiyi siz paylaşın ya da bağlantı kurarak akışınızı zenginleştirin."
+              actionLabel="+ Paylaş"
+              onAction={() => navigation.navigate('CreatePost')}
+            />
+          )
         }
         ListFooterComponent={
           cursor ? <ActivityIndicator style={{ marginVertical: spacing.md }} color={colors.primary} /> : null
@@ -198,7 +216,6 @@ export function FeedScreen({ navigation }: Props) {
           />
         )}
       />
-      {error && posts.length > 0 ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
 }
@@ -209,12 +226,5 @@ const styles = StyleSheet.create({
   headerAction: { ...typography.bodyStrong, color: colors.primaryText },
   headerLeftButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   listContent: { padding: spacing.lg },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
+  banner: { marginBottom: spacing.md },
 });

@@ -1,18 +1,16 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   Pressable,
   FlatList,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Alert,
   Platform,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -23,6 +21,10 @@ import {
   type FeedPostComment,
 } from '../../api/client';
 import { formatRelativeTime } from '../../features/time';
+import { useFocusLoad } from '../../features/useFocusLoad';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { refreshControl } from '../../components/refresh';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
@@ -30,42 +32,29 @@ type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
 export function PostCommentsScreen({ route, navigation }: Props) {
   const { postId } = route.params;
   const { user } = useSession();
-  const [comments, setComments] = useState<FeedPostComment[]>([]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const listRef = useRef<FlatList<FeedPostComment>>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    return fetchPostComments(postId)
-      .then(({ comments: fetched }) => {
-        setComments(fetched);
-        setError(null);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Yorumlar alınamadı'))
-      .finally(() => setLoading(false));
-  }, [postId]);
-
-  useFocusEffect(
-    useCallback(() => {
-      load();
-    }, [load])
+  // Bir yorumcunun profiline gidip geri dönünce liste artık yükleniyor
+  // çemberine dönmüyor (bkz. useFocusLoad).
+  const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
+    fetchPostComments(postId).then(({ comments }) => comments)
   );
+  const comments = data ?? [];
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const listRef = useRef<FlatList<FeedPostComment>>(null);
 
   const handleSend = async () => {
     const body = input.trim();
     if (!body || sending) return;
     setSending(true);
-    setError(null);
+    setActionError(null);
     try {
       const { comment } = await createPostComment(postId, body);
-      setComments((prev) => [...prev, comment]);
+      setData((prev) => [...(prev ?? []), comment]);
       setInput('');
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Yorum gönderilemedi');
+      setActionError(friendlyMessage(err, 'Yorum gönderilemedi'));
     } finally {
       setSending(false);
     }
@@ -80,22 +69,32 @@ export function PostCommentsScreen({ route, navigation }: Props) {
         onPress: async () => {
           try {
             await deletePostComment(postId, comment.id);
-            setComments((prev) => prev.filter((c) => c.id !== comment.id));
+            setData((prev) => (prev ?? []).filter((c) => c.id !== comment.id));
           } catch (err) {
-            setError(err instanceof Error ? err.message : 'Yorum silinemedi');
+            setActionError(friendlyMessage(err, 'Yorum silinemedi'));
           }
         },
       },
     ]);
   };
 
-  if (loading) {
+  if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="comment" />
       </SafeAreaView>
     );
   }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={error} fallback="Yorumlar alınamadı" onRetry={reload} />
+      </SafeAreaView>
+    );
+  }
+
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Yorumlar alınamadı') : null);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -109,7 +108,16 @@ export function PostCommentsScreen({ route, navigation }: Props) {
           data={comments}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<Text style={styles.empty}>{error ?? 'Henüz yorum yok. İlk yorumu siz yazın.'}</Text>}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl(refreshing, refresh)}
+          ListEmptyComponent={
+            <EmptyState
+              compact
+              icon="chatbubble-outline"
+              title="Henüz yorum yok"
+              message="İlk yorumu siz yazın."
+            />
+          }
           renderItem={({ item }) => (
             <Pressable
               style={styles.card}
@@ -127,7 +135,14 @@ export function PostCommentsScreen({ route, navigation }: Props) {
             </Pressable>
           )}
         />
-        {error && comments.length > 0 ? <Text style={styles.error}>{error}</Text> : null}
+        {/* Gönderme hatası yazma alanının hemen üstünde: gözün olduğu yer. */}
+        {bannerMessage ? (
+          <InlineError
+            message={bannerMessage}
+            onRetry={actionError ? undefined : reload}
+            style={styles.banner}
+          />
+        ) : null}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.input}
@@ -149,6 +164,7 @@ export function PostCommentsScreen({ route, navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { padding: spacing.lg },
+  banner: { marginHorizontal: spacing.lg, marginBottom: spacing.sm },
   card: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
@@ -196,12 +212,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   sendButtonText: { ...typography.label, color: colors.primaryText },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });

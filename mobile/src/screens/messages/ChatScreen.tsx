@@ -6,7 +6,6 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   KeyboardAvoidingView,
   AppState,
   Platform,
@@ -25,6 +24,8 @@ import {
   type ChatMessage,
 } from '../../api/client';
 import { formatClockTime } from '../../features/time';
+import { SkeletonList } from '../../components/Skeleton';
+import { EmptyState, ErrorState } from '../../components/StateView';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
@@ -73,8 +74,14 @@ export function ChatScreen({ route }: Props) {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // İlk yükleme hatası ayrı: mesaj gönderme hatası sohbeti kapatmamalı, ama
+  // hiç mesaj gelmediyse ekranın tamamı "Tekrar dene" olmalı.
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const listRef = useRef<FlatList<LocalMessage>>(null);
+  const loadTokenRef = useRef(0);
+  const hasMessagesRef = useRef(false);
+  hasMessagesRef.current = messages.length > 0;
   const sinceRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
   const isNearBottomRef = useRef(true);
@@ -114,33 +121,40 @@ export function ChatScreen({ route }: Props) {
     }
   }, [conversationId, meId]);
 
+  const loadInitial = useCallback(() => {
+    const token = ++loadTokenRef.current;
+    // Mesajlar ekrandayken yeniden odaklanınca iskelete dönülmüyor.
+    if (!hasMessagesRef.current) setLoading(true);
+    setLoadError(null);
+    sinceRef.current = null;
+
+    fetchMessages(conversationId)
+      .then(({ messages: initial }) => {
+        if (token !== loadTokenRef.current) return;
+        setMessages(initial);
+        rememberSince(initial);
+        markConversationRead(conversationId).catch(() => {});
+        scrollToEnd();
+      })
+      .catch((err: unknown) => {
+        if (token === loadTokenRef.current) setLoadError(err);
+      })
+      .finally(() => {
+        if (token === loadTokenRef.current) setLoading(false);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      sinceRef.current = null;
-
-      fetchMessages(conversationId)
-        .then(({ messages: initial }) => {
-          if (cancelled) return;
-          setMessages(initial);
-          rememberSince(initial);
-          markConversationRead(conversationId).catch(() => {});
-          scrollToEnd();
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : 'Mesajlar alınamadı');
-        })
-        .finally(() => {
-          if (!cancelled) setLoading(false);
-        });
-
+      loadInitial();
       const timer = setInterval(poll, POLL_INTERVAL_MS);
       return () => {
-        cancelled = true;
+        // Ekrandan çıkınca yarıda kalan ilk yüklemenin sonucu yazılmasın.
+        loadTokenRef.current++;
         clearInterval(timer);
       };
-    }, [conversationId, poll])
+    }, [loadInitial, poll])
   );
 
   const deliver = async (body: string, tempId: string) => {
@@ -192,7 +206,15 @@ export function ChatScreen({ route }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
+        <SkeletonList variant="chat" />
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError && messages.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <ErrorState error={loadError} fallback="Mesajlar alınamadı" onRetry={loadInitial} />
       </SafeAreaView>
     );
   }
@@ -211,7 +233,15 @@ export function ChatScreen({ route }: Props) {
           contentContainerStyle={styles.listContent}
           onScroll={handleScroll}
           scrollEventThrottle={100}
-          ListEmptyComponent={<Text style={styles.empty}>Henüz mesaj yok. İlk mesajı siz yazın.</Text>}
+          keyboardShouldPersistTaps="handled"
+          ListEmptyComponent={
+            <EmptyState
+              compact
+              icon="chatbubbles-outline"
+              title="Henüz mesaj yok"
+              message="İlk mesajı siz yazın."
+            />
+          }
           renderItem={({ item }) => {
             const isMine = item.senderId === meId;
             return (
@@ -315,5 +345,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,
   },
-  empty: { ...typography.body, textAlign: 'center', color: colors.textMuted, marginTop: spacing.xl },
 });
