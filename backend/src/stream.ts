@@ -82,7 +82,24 @@ export interface StreamAccessReport {
   cloudflareErrors: string[];
   accountIdShape: { length: number; hex32: boolean } | null;
   tokenLength: number | null;
+  tokenFormat: TokenFormat | null;
 }
+
+// Cloudflare anahtar biçimleri (developers.cloudflare.com/fundamentals/api/get-started/token-formats,
+// 2026-09-15'te doğrulandı): yeni biçim "cfut_" (kullanıcı) / "cfat_" (hesap) + 40 karakter +
+// sağlama; 2026 öncesi anahtarlar öneksiz 40 karakter. Başka her şey — ör. panel listesindeki
+// 32 hanelik anahtar ID'si ya da Account ID — anahtar DEĞİLDİR.
+type TokenFormat = 'scannable' | 'legacy' | 'unrecognized';
+
+function tokenFormat(token: string): TokenFormat {
+  if (/^cf(ut|at)_[A-Za-z0-9_-]{40,}$/.test(token)) return 'scannable';
+  if (/^[A-Za-z0-9_-]{40}$/.test(token)) return 'legacy';
+  return 'unrecognized';
+}
+
+// Cloudflare kimlik doğrulama hataları bazen 400 ile dönüyor (ör. 9106 "Missing X-Auth-Key,
+// X-Auth-Email or Authorization headers"); HTTP koduna değil hata koduna bakılmalı.
+const AUTH_ERROR_CODES = new Set([9106, 9109, 10000, 10001, 6003, 6111]);
 
 const ACCESS_OK_TTL_MS = 10 * 60 * 1000;
 const ACCESS_FAIL_TTL_MS = 60 * 1000;
@@ -91,7 +108,14 @@ let accessCache: { report: StreamAccessReport; key: string; expiresAt: number } 
 export async function checkStreamAccess(): Promise<StreamAccessReport> {
   const cfg = config();
   if (!cfg) {
-    return { access: 'not_configured', httpStatus: null, cloudflareErrors: [], accountIdShape: null, tokenLength: null };
+    return {
+      access: 'not_configured',
+      httpStatus: null,
+      cloudflareErrors: [],
+      accountIdShape: null,
+      tokenLength: null,
+      tokenFormat: null,
+    };
   }
 
   // Değerler değişirse eski sonuç kullanılmasın.
@@ -103,15 +127,18 @@ export async function checkStreamAccess(): Promise<StreamAccessReport> {
   const shape = {
     accountIdShape: { length: cfg.accountId.length, hex32: /^[0-9a-f]{32}$/.test(cfg.accountId) },
     tokenLength: cfg.token.length,
+    tokenFormat: tokenFormat(cfg.token),
   };
 
   let report: StreamAccessReport;
   try {
     const { status, data } = await call<unknown>('GET', '?limit=1');
-    const cloudflareErrors = (data?.errors ?? []).map((e) => `${e.code ?? ''} ${e.message ?? ''}`.trim());
+    const errors = data?.errors ?? [];
+    const cloudflareErrors = errors.map((e) => `${e.code ?? ''} ${e.message ?? ''}`.trim());
+    const isAuthError = errors.some((e) => e.code !== undefined && AUTH_ERROR_CODES.has(e.code));
     let access: StreamAccess;
     if (status === 200) access = 'ok';
-    else if (status === 401 || status === 403) access = 'unauthorized';
+    else if (status === 401 || status === 403 || isAuthError) access = 'unauthorized';
     else if (status === 400 || status === 404) access = 'invalid_account';
     else access = 'cloudflare_error';
     report = { access, httpStatus: status, cloudflareErrors, ...shape };
