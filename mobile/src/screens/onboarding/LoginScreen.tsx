@@ -202,8 +202,9 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     justifyContent: 'flex-end',
   },
-  // Logo dosyası 900x145; genişlik ekrana göre, en-boy oranı sabit.
-  brandLogo: { width: '72%', maxWidth: 280, aspectRatio: 900 / 145 },
+  // Logo dosyası 900x145 → 280x45. Yüzde genişlik + aspectRatio web'de
+  // uygulanmadı (tarayıcıda kutu 280x145 ölçüldü, logonun üstü/altı boştu).
+  brandLogo: { width: 280, height: 45, maxWidth: '100%' },
   brandTagline: { ...typography.body, color: colors.onPrimaryMuted, marginTop: spacing.sm },
   content: { paddingHorizontal: spacing.lg, paddingTop: 28 },
   title: { ...typography.title, color: colors.text },
