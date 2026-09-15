@@ -19,6 +19,7 @@ import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { Badge } from '../../components/Badge';
+import { formatMeasure } from '../../features/calculators/parse';
 import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
@@ -136,9 +137,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           <Text style={styles.specTitle}>Özellikler</Text>
           <SpecRow label="Ürün Kodu" value={product.code} />
           <SpecRow label="Ürün Tipi" value={TYPE_LABELS[product.type]} />
-          <SpecRow label="Stok" value={`${product.stock} m`} />
-          <SpecRow label="Ağırlık" value={`${product.weightGsm} gr/m²`} />
-          <SpecRow label="Genişlik" value={`${product.widthCm} cm`} />
+          <SpecRow label="Stok" value={`${formatMeasure(product.stock)} m`} />
+          <SpecRow label="Ağırlık" value={`${formatMeasure(product.weightGsm)} gr/m²`} />
+          <SpecRow label="Genişlik" value={`${formatMeasure(product.widthCm)} cm`} />
           <SpecRow label="İçerik" value={product.content} />
           <SpecRow label="Kullanım Alanları" value={product.useArea} last />
         </View>

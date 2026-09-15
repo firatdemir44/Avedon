@@ -81,9 +81,11 @@ model Product {
   company        Company         @relation(fields: [companyId], references: [id])
   code           String
   type           String
-  stock          Int
-  weightGsm      Int
-  widthCm        Int
+  // Float: form "220,5" gibi ondalık kabul ediyor; Int iken sunucu 201 dönüp
+  // değeri sessizce 220'ye kesiyordu.
+  stock          Float
+  weightGsm      Float
+  widthCm        Float
   content        String
   useArea        String
   imageUrl       String?

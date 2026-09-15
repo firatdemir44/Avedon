@@ -10,6 +10,7 @@ import { Badge } from '../../components/Badge';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
+import { formatMeasure } from '../../features/calculators/parse';
 import type { Company, Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 
@@ -181,9 +182,9 @@ export function ProductListScreen({ navigation }: Props) {
               {item.company ? <Text style={styles.company}>{item.company.name}</Text> : null}
               <Text style={styles.content}>{item.content}</Text>
               <View style={styles.metaRow}>
-                <Text style={styles.meta}>{item.weightGsm} gr/m²</Text>
-                <Text style={styles.meta}>{item.widthCm} cm en</Text>
-                <Text style={styles.meta}>{item.stock} m stok</Text>
+                <Text style={styles.meta}>{formatMeasure(item.weightGsm)} gr/m²</Text>
+                <Text style={styles.meta}>{formatMeasure(item.widthCm)} cm en</Text>
+                <Text style={styles.meta}>{formatMeasure(item.stock)} m stok</Text>
               </View>
               <Text style={styles.useArea}>{item.useArea}</Text>
               {user ? (

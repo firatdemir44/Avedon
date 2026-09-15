@@ -19,6 +19,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { Badge } from '../../components/Badge';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { formatMeasure } from '../../features/calculators/parse';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { Product, VerificationStatus } from '../../types';
 
@@ -199,7 +200,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               </View>
               <Text style={styles.content}>{item.content}</Text>
               <Text style={styles.meta}>
-                {item.weightGsm} gr/m² · {item.widthCm} cm en · {item.stock} m stok
+                {formatMeasure(item.weightGsm)} gr/m² · {formatMeasure(item.widthCm)} cm en ·{' '}
+                {formatMeasure(item.stock)} m stok
               </Text>
               {isOwnCompany ? <Text style={styles.editHint}>Detay için dokunun</Text> : null}
               {!isOwnCompany && user ? (

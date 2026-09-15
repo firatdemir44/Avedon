@@ -9,7 +9,7 @@ import { useSession } from '../../context/SessionContext';
 import { createProduct, updateProduct, deleteProduct, fetchProduct } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { loadProductImage, setCachedProductImage } from '../../features/products/productImageCache';
-import { parseNumber } from '../../features/calculators/parse';
+import { parseNumber, toInputNumber } from '../../features/calculators/parse';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 import type { ProductType } from '../../types';
 
@@ -51,9 +51,9 @@ export function AddProductScreen({ navigation, route }: Props) {
         if (cancelled) return;
         setType(product.type);
         setCode(product.code);
-        setStock(String(product.stock));
-        setWeightGsm(String(product.weightGsm));
-        setWidthCm(String(product.widthCm));
+        setStock(toInputNumber(product.stock));
+        setWeightGsm(toInputNumber(product.weightGsm));
+        setWidthCm(toInputNumber(product.widthCm));
         setContent(product.content);
         setUseArea(product.useArea);
         // Fotoğraf artık ürün yanıtında gelmiyor, ayrı uçtan çekiliyor
