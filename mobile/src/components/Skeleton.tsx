@@ -294,7 +294,7 @@ function ProductRowBones({ lineWidth, last, noCompany }: { lineWidth: DimensionV
 export type SkeletonDetailVariant = 'product' | 'profile' | 'company' | 'timeline';
 
 // Yeni düzene geçmiş sayfalar kenardan kenara bloklarla çiziliyor (iç boşluk yok).
-const FLUSH_DETAILS: SkeletonDetailVariant[] = ['product', 'company', 'timeline'];
+const FLUSH_DETAILS: SkeletonDetailVariant[] = ['product', 'company', 'timeline', 'profile'];
 
 export function SkeletonDetail({
   variant,
@@ -342,15 +342,22 @@ function renderDetail(variant: SkeletonDetailVariant) {
         </>
       );
     case 'profile':
+      // ProfileIdentity bloğu: 56px avatar; ad, unvan, firma; altında telefon satırı.
       return (
-        <>
-          <Bone width={200} height={26} />
-          <Bone width={150} height={14} soft style={styles.mtSm} />
-          <Bone width={130} height={16} style={styles.mtSm} />
-          <View style={styles.divider} />
-          <Bone width={60} height={11} soft />
-          <Bone width={170} height={14} style={styles.mtXs} />
-        </>
+        <View style={[styles.block, styles.profileBlock]}>
+          <View style={styles.inlineGap}>
+            <Bone width={56} height={56} rounded={radius.md} />
+            <View style={[styles.flex, styles.gapXs]}>
+              <Bone width={160} height={19} />
+              <Bone width={130} height={12} soft />
+              <Bone width={110} height={12} />
+            </View>
+          </View>
+          <View style={[styles.spread, styles.profilePhoneRow]}>
+            <Bone width={60} height={12} soft />
+            <Bone width={120} height={13} />
+          </View>
+        </View>
       );
     case 'company':
       return (
@@ -421,6 +428,8 @@ const styles = StyleSheet.create({
   commentRow: { paddingHorizontal: spacing.gutter, paddingVertical: 12, gap: 8 },
   personRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: spacing.gutter, paddingVertical: 12 },
   personRowCompact: { paddingVertical: 10 },
+  profileBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
+  profilePhoneRow: { minHeight: 48, borderTopWidth: 1, borderTopColor: colors.divider, marginTop: 14 },
   detail: { padding: spacing.lg },
   detailFlush: { gap: spacing.blockGap },
   // Henüz yeni düzene geçmemiş kartlarla aynı kutu: beyaz, 6px köşe, 16px iç boşluk.

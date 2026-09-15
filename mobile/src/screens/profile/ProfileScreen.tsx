@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -13,14 +14,17 @@ import {
   startConversation,
   type ConnectionStatusResult,
 } from '../../api/client';
+import { haptics } from '../../features/haptics';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState } from '../../components/StateView';
+import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'Profile'>;
 
+// Başkasının profili: kimlik bloğu (ProfileIdentity) ve bağlantı durumuna göre
+// eylem bloğu. Eylem sonuçları titreşimle: kurma/kabul başarı, hata hata.
 export function ProfileScreen({ navigation, route }: Props) {
   const { userId } = route.params;
   const { user: currentUser } = useSession();
@@ -49,46 +53,43 @@ export function ProfileScreen({ navigation, route }: Props) {
     loadStatus();
   };
 
-  const handleConnect = async () => {
+  const runAction = async (action: () => Promise<void>, fallback: string) => {
     setActionLoading(true);
+    setActionError(null);
     try {
-      await sendConnectionRequest(userId);
-      refresh();
+      await action();
     } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'İstek gönderilemedi');
+      haptics.error();
+      setActionError(err instanceof ApiError ? err.message : fallback);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleOpenChat = async () => {
-    if (!profile) return;
-    setActionLoading(true);
-    try {
+  const handleConnect = () =>
+    runAction(async () => {
+      await sendConnectionRequest(userId);
+      haptics.success();
+      refresh();
+    }, 'İstek gönderilemedi');
+
+  const handleOpenChat = () =>
+    runAction(async () => {
+      if (!profile) return;
       const { conversation } = await startConversation(userId);
       navigation.navigate('Chat', {
         conversationId: conversation.id,
         title: `${profile.firstName} ${profile.lastName}`,
       });
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'Sohbet açılamadı');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    }, 'Sohbet açılamadı');
 
-  const handleRespond = async (nextStatus: 'accepted' | 'rejected') => {
-    if (!status?.connectionId) return;
-    setActionLoading(true);
-    try {
+  const handleRespond = (nextStatus: 'accepted' | 'rejected') =>
+    runAction(async () => {
+      if (!status?.connectionId) return;
       await respondToConnectionRequest(status.connectionId, nextStatus);
+      if (nextStatus === 'accepted') haptics.success();
       refresh();
-    } catch (err) {
-      setActionError(err instanceof ApiError ? err.message : 'İşlem yapılamadı');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    }, 'İşlem yapılamadı');
 
   if (loading) {
     return (
@@ -114,62 +115,101 @@ export function ProfileScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         <ProfileIdentity
           profile={profile}
           onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <View style={styles.bannerWrap}>
+            <InlineError message={error} />
+          </View>
+        ) : null}
 
         {!isSelf && status ? (
           <View style={styles.actions}>
             {status.status === 'none' ? (
-              <PrimaryButton label="Bağlantı Kur" onPress={handleConnect} disabled={actionLoading} />
+              <PrimaryButton
+                label="Bağlantı Kur"
+                icon="person-add-outline"
+                size="lg"
+                onPress={handleConnect}
+                disabled={actionLoading}
+              />
             ) : null}
+
             {status.status === 'pending_sent' ? (
-              <PrimaryButton label="İstek Gönderildi" onPress={() => {}} disabled />
+              <StateLine icon="time-outline" color={colors.warning} text="Bağlantı isteği gönderildi, yanıt bekleniyor." />
             ) : null}
+
             {status.status === 'pending_received' ? (
-              <View style={styles.actionRow}>
-                <PrimaryButton
-                  label="Kabul Et"
-                  onPress={() => handleRespond('accepted')}
-                  disabled={actionLoading}
-                  style={styles.actionButton}
-                />
-                <PrimaryButton
-                  label="Reddet"
-                  variant="secondary"
-                  onPress={() => handleRespond('rejected')}
-                  disabled={actionLoading}
-                  style={styles.actionButton}
-                />
-              </View>
+              <>
+                <StateLine icon="person-add-outline" color={colors.primary} text="Size bağlantı isteği gönderdi." />
+                <View style={styles.actionRow}>
+                  <PrimaryButton
+                    label="Kabul Et"
+                    icon="checkmark"
+                    size="lg"
+                    onPress={() => handleRespond('accepted')}
+                    disabled={actionLoading}
+                    style={styles.actionButton}
+                  />
+                  <PrimaryButton
+                    label="Reddet"
+                    variant="outline"
+                    size="lg"
+                    onPress={() => handleRespond('rejected')}
+                    disabled={actionLoading}
+                    style={styles.actionButton}
+                  />
+                </View>
+              </>
             ) : null}
+
             {status.status === 'accepted' ? (
               <>
-                <Text style={styles.connectedNote}>Bağlantıdasınız</Text>
-                <PrimaryButton label="Mesaj Gönder" onPress={handleOpenChat} disabled={actionLoading} />
+                <StateLine icon="checkmark-circle" color={colors.success} text="Bağlantıdasınız." />
+                <PrimaryButton
+                  label="Mesaj Gönder"
+                  icon="chatbubble-outline"
+                  size="lg"
+                  onPress={handleOpenChat}
+                  disabled={actionLoading}
+                />
               </>
             ) : null}
           </View>
         ) : null}
-      </View>
+      </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function StateLine({
+  icon,
+  color,
+  text,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  text: string;
+}) {
+  return (
+    <View style={styles.stateLine}>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={styles.stateText}>{text}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  actions: { marginTop: spacing.lg },
-  connectedNote: {
-    ...typography.label,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
-  },
+  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
+  bannerWrap: { paddingHorizontal: spacing.gutter },
+  actions: { backgroundColor: colors.surface, padding: spacing.gutter, gap: spacing.sm },
+  stateLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  stateText: { ...typography.body, fontFamily: fonts.medium, color: colors.text, flex: 1 },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1 },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
 });

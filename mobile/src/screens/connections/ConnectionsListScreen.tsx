@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, Pressable, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
@@ -7,20 +7,24 @@ import { fetchConnections } from '../../api/client';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
+import { ListRow } from '../../components/ListRow';
+import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Connections'>;
 
+// Yeni düzen (5. aşama): kabul edilmiş bağlantılar çizgili kişi satırları olarak.
 export function ConnectionsListScreen({ navigation }: Props) {
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
   );
+  const connections = data ?? [];
 
   if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="row" />
+        <SkeletonList variant="person" />
       </SafeAreaView>
     );
   }
@@ -36,13 +40,15 @@ export function ConnectionsListScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={data ?? []}
+        data={connections}
         keyExtractor={(item) => item.connectionId}
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           error ? (
-            <InlineError message={friendlyMessage(error, 'Bağlantılar alınamadı')} onRetry={reload} style={styles.banner} />
+            <View style={styles.bannerWrap}>
+              <InlineError message={friendlyMessage(error, 'Bağlantılar alınamadı')} onRetry={reload} />
+            </View>
           ) : null
         }
         ListEmptyComponent={
@@ -54,13 +60,14 @@ export function ConnectionsListScreen({ navigation }: Props) {
             onAction={() => navigation.navigate('MainTabs', { screen: 'Feed' })}
           />
         }
-        renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => navigation.navigate('Profile', { userId: item.user.id })}>
-            <Text style={styles.name}>
-              {item.user.firstName} {item.user.lastName}
-            </Text>
-            <Text style={styles.meta}>{item.user.position}</Text>
-          </Pressable>
+        renderItem={({ item, index }) => (
+          <ListRow
+            title={`${item.user.firstName} ${item.user.lastName}`}
+            subtitle={item.user.position}
+            left={<CompanyAvatar name={item.user.firstName} size={36} />}
+            divider={index < connections.length - 1}
+            onPress={() => navigation.navigate('Profile', { userId: item.user.id })}
+          />
         )}
       />
     </SafeAreaView>
@@ -69,15 +76,6 @@ export function ConnectionsListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
-  },
-  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
 });
