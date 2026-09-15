@@ -63,12 +63,15 @@ productsRouter.get(
     if (!req.user!.companyId) {
       return res.json({ products: [] });
     }
+    // Gönderi ekranındaki seçici satırları küçük resim ve çeşitle çiziyor.
     const products = await prisma.product.findMany({
       where: { companyId: req.user!.companyId },
-      select: { id: true, code: true, type: true },
+      select: { id: true, code: true, type: true, subtype: true, _count: { select: { images: true } } },
       orderBy: { code: 'asc' },
     });
-    res.json({ products });
+    res.json({
+      products: products.map(({ _count, ...p }) => ({ ...p, hasImage: _count.images > 0 })),
+    });
   })
 );
 

@@ -56,8 +56,9 @@ export type RootStackParamList = {
   ConnectionRequests: undefined;
   Chat: { conversationId: string; title: string };
   NewConversation: undefined;
-  // postId verilirse ekran düzenleme modunda açılır.
-  CreatePost: { postId?: string } | undefined;
+  // postId verilirse ekran düzenleme modunda açılır. productId: ürün sayfasındaki
+  // "Gönderide Paylaş"tan gelindiğinde o ürün seçili açılır.
+  CreatePost: { postId?: string; productId?: string } | undefined;
   PostComments: { postId: string };
 };
 

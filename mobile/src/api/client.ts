@@ -386,7 +386,7 @@ export function deletePostComment(postId: string, commentId: string) {
   return request<void>(`/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
 }
 
-export type MyProductOption = { id: string; code: string; type: ProductType };
+export type MyProductOption = { id: string; code: string; type: ProductType; subtype: string; hasImage: boolean };
 
 export function fetchMyProducts() {
   return request<{ products: MyProductOption[] }>('/products/mine');

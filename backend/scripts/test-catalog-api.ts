@@ -126,6 +126,13 @@ async function main() {
     check('hatalı istekte hiçbir şey değişmez', afterBad?.imageCount === 2 && afterBad?.code === base.code, afterBad);
     check('başka firma düzenleyemez 403', (await api('PATCH', `/products/${p1.id}`, O, { code: 'X' })).status === 403);
 
+    console.log('Gönderi ekranı ürün seçici');
+    const mine = (await api('GET', '/products/mine', S)).json?.products ?? [];
+    const mineP1 = mine.find((p: any) => p.id === p1.id);
+    check('/products/mine alt çeşit ve fotoğraf bilgisi', mineP1?.subtype === 'suprem' && mineP1?.hasImage === true, mineP1);
+    check('/products/mine başka firmanın ürününü içermez', mine.every((p: any) => !String(p.code).startsWith(`T${suffix}-2`)));
+    check('/products/mine firmasız kullanıcıya boş', ((await api('GET', '/products/mine', B)).json?.products ?? []).length === 0);
+
     console.log('Çeşit / alt çeşit güncelleme');
     const typeChanged = await api('PATCH', `/products/${p1.id}`, S, { type: 'dokuma' });
     check('çeşit değişince alt çeşit boşalır', typeChanged.json?.product?.subtype === '', typeChanged);

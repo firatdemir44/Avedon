@@ -184,7 +184,19 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       </ScrollView>
 
       <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        <PrimaryButton label="Firma" variant="outline" size="lg" onPress={openCompany} />
+        {isOwnProduct ? (
+          // Kendi ürününde "Firma" kendi firması; yerine ürünü akışta paylaşma.
+          <PrimaryButton
+            label="Paylaş"
+            icon="share-social-outline"
+            variant="outline"
+            size="lg"
+            accessibilityLabel="Bu ürünü gönderide paylaş"
+            onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
+          />
+        ) : (
+          <PrimaryButton label="Firma" variant="outline" size="lg" onPress={openCompany} />
+        )}
         {isOwnProduct ? (
           <PrimaryButton
             label="Ürünü Düzenle"
