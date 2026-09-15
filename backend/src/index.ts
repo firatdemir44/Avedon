@@ -33,7 +33,7 @@ app.get('/api/health', async (_req, res) => {
     status: 'ok',
     commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
     storage: getStorageInfo(),
-    video: { configured: isStreamConfigured(), access: await checkStreamAccess() },
+    video: { configured: isStreamConfigured(), ...(await checkStreamAccess()) },
   });
 });
 app.use('/api/register', registerRouter);

@@ -64,34 +64,67 @@ async function call<T>(method: string, path: string, body?: unknown) {
 // ÇALIŞIYOR mu. Video listesinden tek kayıt istemek hem Account ID'yi hem de
 // anahtarın Stream iznini tek istekte doğrular. Sonuç önbellekte: başarı 10 dk,
 // hata 1 dk (anahtar düzeltilince durum sayfası hızla güncellensin). Hata fırlatmaz.
-export type StreamAccess = 'not_configured' | 'ok' | 'unauthorized' | 'invalid_account' | 'unreachable';
+// `cloudflare_error`: 429/5xx gibi hesap/anahtarla ilgisi olmayan yanıtlar —
+// önceki sürüm bunları da "invalid_account" sayıyordu, yanlış teşhise yol açar.
+export type StreamAccess =
+  | 'not_configured'
+  | 'ok'
+  | 'unauthorized'
+  | 'invalid_account'
+  | 'cloudflare_error'
+  | 'unreachable';
+
+// Teşhis için; hiçbiri gizli değil: değerlerin KENDİSİ değil yalnızca biçimi,
+// ve Cloudflare'in hata kodu/mesajı (anahtar içermez).
+export interface StreamAccessReport {
+  access: StreamAccess;
+  httpStatus: number | null;
+  cloudflareErrors: string[];
+  accountIdShape: { length: number; hex32: boolean } | null;
+  tokenLength: number | null;
+}
 
 const ACCESS_OK_TTL_MS = 10 * 60 * 1000;
 const ACCESS_FAIL_TTL_MS = 60 * 1000;
-let accessCache: { value: StreamAccess; key: string; expiresAt: number } | null = null;
+let accessCache: { report: StreamAccessReport; key: string; expiresAt: number } | null = null;
 
-export async function checkStreamAccess(): Promise<StreamAccess> {
+export async function checkStreamAccess(): Promise<StreamAccessReport> {
   const cfg = config();
-  if (!cfg) return 'not_configured';
+  if (!cfg) {
+    return { access: 'not_configured', httpStatus: null, cloudflareErrors: [], accountIdShape: null, tokenLength: null };
+  }
 
-  // Değerler değişirse (yeni yayın zaten süreci yeniler ama yine de) eski sonuç kullanılmasın.
+  // Değerler değişirse eski sonuç kullanılmasın.
   const key = `${cfg.accountId}:${cfg.token.length}`;
   if (accessCache && accessCache.key === key && accessCache.expiresAt > Date.now()) {
-    return accessCache.value;
+    return accessCache.report;
   }
 
-  let value: StreamAccess;
+  const shape = {
+    accountIdShape: { length: cfg.accountId.length, hex32: /^[0-9a-f]{32}$/.test(cfg.accountId) },
+    tokenLength: cfg.token.length,
+  };
+
+  let report: StreamAccessReport;
   try {
-    const { status } = await call<unknown>('GET', '?limit=1');
-    if (status === 200) value = 'ok';
-    else if (status === 401 || status === 403) value = 'unauthorized';
-    else value = 'invalid_account'; // 400/404: Account ID biçimi yanlış ya da hesap yok
+    const { status, data } = await call<unknown>('GET', '?limit=1');
+    const cloudflareErrors = (data?.errors ?? []).map((e) => `${e.code ?? ''} ${e.message ?? ''}`.trim());
+    let access: StreamAccess;
+    if (status === 200) access = 'ok';
+    else if (status === 401 || status === 403) access = 'unauthorized';
+    else if (status === 400 || status === 404) access = 'invalid_account';
+    else access = 'cloudflare_error';
+    report = { access, httpStatus: status, cloudflareErrors, ...shape };
   } catch {
-    value = 'unreachable';
+    report = { access: 'unreachable', httpStatus: null, cloudflareErrors: [], ...shape };
   }
 
-  accessCache = { value, key, expiresAt: Date.now() + (value === 'ok' ? ACCESS_OK_TTL_MS : ACCESS_FAIL_TTL_MS) };
-  return value;
+  accessCache = {
+    report,
+    key,
+    expiresAt: Date.now() + (report.access === 'ok' ? ACCESS_OK_TTL_MS : ACCESS_FAIL_TTL_MS),
+  };
+  return report;
 }
 
 function failure(status: number, data: Envelope<unknown> | null, context: string): never {

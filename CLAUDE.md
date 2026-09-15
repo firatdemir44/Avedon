@@ -20,6 +20,7 @@ Bu yüzden:
 ## Kullanıcı ve çalışma tercihleri
 
 Asistanın hafızası makineye özel olduğu için kalıcı tercihler burada:
+- **ÖNCE PLAN, SONRA KULLANICIYA İŞ (kullanıcı talebi, 2026-09-15):** "Bu proje sürekli büyüyen bir proje; bir daha geriye dönüp tekrar ileri yapmayalım. En başta planlamayı doğru yürütelim." O gün Render/Cloudflare kurulumunda kullanıcı defalarca panele gönderildi: önerilen yol araştırılmadan verildi (Postgres → vazgeçildi), menü yeri doğrulanmadan tarif edildi, kanıt olmadan "çözüldü" denildi, doc-only push'un yayın tetiklemeyeceği önceden kontrol edilmedi, anahtarlar girildikten sonra teşhis eklendi. **Kural:** kullanıcıya bir panel/hesap işi yaptırmadan ÖNCE (1) seçeneği ve koşullarını (fiyat, sınır, silinme vb.) resmi dokümandan doğrula, (2) sonucu kullanıcıya sormadan ölçebilecek teşhisi (ör. `/api/health`) HAZIRLA ve canlıya çıkar, (3) tüm adımları doğrulanmış tıklama yollarıyla TEK SEFERDE ver, (4) "tamam" demeden önce gerçek testle kanıtla. Emin olunmayan bir tarif verilmez; bilinmiyorsa önce araştırılır.
 - Kullanıcı yazılımcı değil ve Türkçe konuşuyor. Açıklamalar sade Türkçe; teknik ayrıntı gerekmedikçe verilmez.
 - **Windows PowerShell'de script çalıştırma kapalı:** `npm`/`npx` yerine `npm.cmd`/`npx.cmd` kullanılır.
 - **Adım adım onay isteme:** karar gerektirmeyen işler doğrudan yapılır; yalnızca gerçekten kullanıcıya ait kararlar sorulur.
