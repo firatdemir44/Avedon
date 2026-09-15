@@ -1,5 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, Alert, Share, StyleSheet } from 'react-native';
+import { View, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
@@ -17,7 +17,9 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { confirmAction } from '../../features/confirm';
+import { haptics } from '../../features/haptics';
+import { MIN_TOUCH, colors, radius, spacing } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
 
@@ -69,24 +71,19 @@ export function FeedScreen({ navigation }: Props) {
   );
 
   useLayoutEffect(() => {
+    // Taslakta iki başlık eylemi de ikon düğmesi (denetim FINDING-016: biri
+    // ikon + yazı, diğeri düz metindi). AI Danışman bir hesaplama aracı
+    // değil, bu yüzden ana ekranda duruyor.
     navigation.setOptions({
-      // AI Danışman bir hesaplama aracı değil, o yüzden Hesaplamalar sekmesinde
-      // değil ana ekranda duruyor — her zaman tek dokunuş uzakta.
       headerLeft: () => (
-        <Pressable
+        <HeaderIconButton
+          icon="sparkles-outline"
+          label="AI Tekstil Danışmanı"
           onPress={() => navigation.navigate('Advisor')}
-          hitSlop={8}
-          accessibilityLabel="AI Tekstil Danışmanı"
-          style={styles.headerLeftButton}
-        >
-          <Ionicons name="sparkles" size={18} color={colors.primaryText} />
-          <Text style={styles.headerAction}>Danışman</Text>
-        </Pressable>
+        />
       ),
       headerRight: () => (
-        <Pressable onPress={() => navigation.navigate('CreatePost')} hitSlop={8}>
-          <Text style={styles.headerAction}>+ Paylaş</Text>
-        </Pressable>
+        <HeaderIconButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
       ),
     });
   }, [navigation]);
@@ -110,6 +107,7 @@ export function FeedScreen({ navigation }: Props) {
 
   const handleToggleLike = async (post: FeedPost) => {
     const wasLiked = post.likedByMe;
+    haptics.light();
     // İyimser güncelleme, sunucudan dönen kesin sayıyla düzeltiliyor.
     setPosts((prev) =>
       prev.map((p) =>
@@ -137,22 +135,22 @@ export function FeedScreen({ navigation }: Props) {
     Share.share({ message: `${author} (Avedon):\n\n${post.body}` }).catch(() => {});
   };
 
-  const handleDelete = (post: FeedPost) => {
-    Alert.alert('Gönderiyi sil', 'Bu gönderi kalıcı olarak silinecek.', [
-      { text: 'Vazgeç', style: 'cancel' },
-      {
-        text: 'Sil',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await deletePost(post.id);
-            setPosts((prev) => prev.filter((p) => p.id !== post.id));
-          } catch (err) {
-            setError(err instanceof Error ? err.message : 'Gönderi silinemedi');
-          }
-        },
-      },
-    ]);
+  const handleDelete = async (post: FeedPost) => {
+    const confirmed = await confirmAction({
+      title: 'Gönderiyi sil',
+      message: 'Bu gönderi kalıcı olarak silinecek.',
+      confirmLabel: 'Sil',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    try {
+      await deletePost(post.id);
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      haptics.success();
+    } catch (err) {
+      haptics.error();
+      setError(friendlyMessage(err, 'Gönderi silinemedi'));
+    }
   };
 
   if (loading) {
@@ -169,6 +167,7 @@ export function FeedScreen({ navigation }: Props) {
         data={posts}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ItemSeparatorComponent={BlockGap}
         refreshControl={refreshControl(refreshing, () => {
           setRefreshing(true);
           loadFirstPage(true);
@@ -188,7 +187,7 @@ export function FeedScreen({ navigation }: Props) {
               icon="newspaper-outline"
               title="Akış henüz boş"
               message="İlk gönderiyi siz paylaşın ya da bağlantı kurarak akışınızı zenginleştirin."
-              actionLabel="+ Paylaş"
+              actionLabel="Gönderi paylaş"
               onAction={() => navigation.navigate('CreatePost')}
             />
           )
@@ -203,7 +202,8 @@ export function FeedScreen({ navigation }: Props) {
             onToggleLike={handleToggleLike}
             onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
             onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
-            onOpenProduct={(post) =>
+            onOpenProduct={(post) => post.product && navigation.navigate('ProductDetail', { productId: post.product.id })}
+            onRequestSample={(post) =>
               post.product &&
               navigation.navigate('SampleRequestForm', {
                 productId: post.product.id,
@@ -220,11 +220,43 @@ export function FeedScreen({ navigation }: Props) {
   );
 }
 
+function BlockGap() {
+  return <View style={styles.blockGap} />;
+}
+
+function HeaderIconButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
+    >
+      <Ionicons name={icon} size={22} color={colors.primaryText} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  // Lacivert üst bant üzerinde beyaz.
-  headerAction: { ...typography.bodyStrong, color: colors.primaryText },
-  headerLeftButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
+  headerButton: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+  },
+  // Lacivert bant üzerinde basılı durum: hafif açık zemin.
+  headerButtonPressed: { backgroundColor: 'rgba(255,255,255,0.14)' },
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  blockGap: { height: spacing.blockGap },
+  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
 });

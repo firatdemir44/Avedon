@@ -295,7 +295,8 @@ export type FeedPost = {
   // Yazar metni, görünürlüğü ya da ürünü değiştirdiyse dolu.
   editedAt: string | null;
   author: PostAuthor;
-  product: { id: string; code: string } | null;
+  // Ölçüler akış kartındaki ürün şeridi için (backend POST_PRODUCT_SELECT).
+  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number } | null;
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;

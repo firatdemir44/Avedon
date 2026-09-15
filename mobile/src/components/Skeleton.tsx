@@ -123,9 +123,12 @@ const DEFAULT_COUNT: Record<SkeletonListVariant, number> = {
   chat: 6,
 };
 
-// Yeni düzene (5. aşama) geçmiş listeler: kutu değil, gri aralıktan sonra
-// beyaz blok içinde çizgili satırlar. Diğerleri kendi ekranları geçene kadar kart.
-const FLUSH_VARIANTS: SkeletonListVariant[] = ['product'];
+// Yeni düzene (5. aşama) geçmiş listeler:
+//   blok  → gri aralıktan sonra tek beyaz blok içinde çizgili satırlar (ürünler, yorumlar)
+//   yığın → gri aralıklarla ayrılmış kenardan kenara beyaz bloklar (akış)
+// Diğerleri kendi ekranları geçene kadar köşeli kart.
+const BLOCK_VARIANTS: SkeletonListVariant[] = ['product', 'comment'];
+const STACK_VARIANTS: SkeletonListVariant[] = ['post'];
 
 // Aynı genişlikte kemikler yapay duruyor; satırdan satıra hafif değişiyor.
 const LINE_WIDTHS: DimensionValue[] = ['72%', '58%', '84%', '64%', '78%', '52%', '90%'];
@@ -140,32 +143,40 @@ export function SkeletonList({
   style?: StyleProp<ViewStyle>;
 }) {
   const items = Array.from({ length: count }, (_, i) => i);
-  const flush = FLUSH_VARIANTS.includes(variant);
+  const containerStyle = BLOCK_VARIANTS.includes(variant)
+    ? styles.listFlush
+    : STACK_VARIANTS.includes(variant)
+      ? styles.listStack
+      : styles.list;
   return (
-    <SkeletonPulse style={[flush ? styles.listFlush : styles.list, style]}>
+    <SkeletonPulse style={[containerStyle, style]}>
       {items.map((i) => {
         const w = LINE_WIDTHS[i % LINE_WIDTHS.length];
         switch (variant) {
           case 'product':
             return <ProductRowBones key={i} lineWidth={w} last={i === count - 1} />;
           case 'post':
+            // PostCard ile aynı sıra: yazar → görsel → ölçü şeridi → metin → eylem çubuğu.
             return (
-              <View key={i} style={[styles.card, styles.gapSm]}>
-                <View style={styles.spread}>
+              <View key={i} style={styles.postBlock}>
+                <View style={styles.inlineGap}>
+                  <Bone width={36} height={36} rounded={radius.md} />
                   <View style={[styles.flex, styles.gapXs]}>
-                    <Bone width={140} height={15} />
-                    <Bone width={190} height={11} soft />
-                    <Bone width={110} height={11} soft />
+                    <Bone width={190} height={13} />
+                    <Bone width={130} height={11} soft />
                   </View>
-                  <Bone width={40} height={40} rounded={radius.md} />
                 </View>
-                {i === 0 ? <Bone height={180} rounded={radius.md} soft /> : null}
+                {i === 0 ? <Bone height={190} rounded={radius.md} soft /> : null}
+                {i === 0 ? <Bone height={40} rounded={radius.md} soft /> : null}
                 <Bone width="100%" height={12} soft />
                 <Bone width={w} height={12} soft />
-                <View style={[styles.spread, styles.postActions]}>
-                  <Bone width={52} height={12} soft />
-                  <Bone width={64} height={12} soft />
-                  <Bone width={52} height={12} soft />
+                <View style={[styles.spread, styles.postActionBar]}>
+                  <View style={styles.inlineGap}>
+                    <Bone width={40} height={14} soft />
+                    <Bone width={36} height={14} soft />
+                    <Bone width={20} height={14} soft />
+                  </View>
+                  {i === 0 ? <Bone width={96} height={36} rounded={radius.md} /> : null}
                 </View>
               </View>
             );
@@ -192,11 +203,12 @@ export function SkeletonList({
               </View>
             );
           case 'comment':
+            // PostCommentsScreen satırı: ad · firma + saat, altında yorum.
             return (
-              <View key={i} style={[styles.card, styles.gapXs, styles.compactGap]}>
+              <View key={i} style={[styles.commentRow, i < count - 1 && styles.rowDivider]}>
                 <View style={styles.spread}>
-                  <Bone width={120} height={13} />
-                  <Bone width={40} height={11} soft />
+                  <Bone width={160} height={13} />
+                  <Bone width={36} height={11} soft />
                 </View>
                 <Bone width={w} height={12} soft />
               </View>
@@ -352,6 +364,16 @@ function renderDetail(variant: SkeletonDetailVariant) {
 const styles = StyleSheet.create({
   list: { padding: spacing.lg },
   listFlush: { marginTop: spacing.blockGap, backgroundColor: colors.surface },
+  listStack: { paddingTop: spacing.blockGap },
+  postBlock: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 12,
+    gap: 10,
+    marginBottom: spacing.blockGap,
+  },
+  postActionBar: { borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: 12, minHeight: 40 },
+  commentRow: { paddingHorizontal: spacing.gutter, paddingVertical: 12, gap: 8 },
   detail: { padding: spacing.lg },
   detailFlush: { gap: spacing.blockGap },
   // Henüz yeni düzene geçmemiş kartlarla aynı kutu: beyaz, 6px köşe, 16px iç boşluk.

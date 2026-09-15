@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
+import { confirmAction } from '../../features/confirm';
+import { haptics } from '../../features/haptics';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
@@ -103,8 +105,10 @@ export function EditCompanyScreen({ route, navigation }: Props) {
       if (typeof logoChange === 'string' && company.logoUpdatedAt) {
         setCachedCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt), logoChange);
       }
+      haptics.success();
       navigation.goBack();
     } catch (err) {
+      haptics.error();
       if (err instanceof ApiError && err.code === 'invalid_body') {
         setError('Bilgileri kontrol edin: firma adı en az 2 karakter olmalı, e-posta geçerli bir adres olmalı.');
       } else {
@@ -115,20 +119,20 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nameChanged = name.trim() !== originalName;
     // Onaylı rozetin kaybolması kullanıcı açısından geri alınamaz bir sonuç;
-    // kaydetmeden önce haber veriyoruz.
+    // kaydetmeden önce haber veriyoruz. (Alert.alert web'de hiçbir şey
+    // göstermediği için bu uyarı web'de hiç çıkmıyor ve kayıt hiç yapılmıyordu.)
     if (nameChanged && verification === 'dogrulanmis') {
-      Alert.alert(
-        'Firma adı değişiyor',
-        'Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.',
-        [
-          { text: 'Vazgeç', style: 'cancel' },
-          { text: 'Devam et', style: 'destructive', onPress: save },
-        ]
-      );
-      return;
+      const confirmed = await confirmAction({
+        title: 'Firma adı değişiyor',
+        message:
+          'Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.',
+        confirmLabel: 'Devam et',
+        destructive: true,
+      });
+      if (!confirmed) return;
     }
     save();
   };

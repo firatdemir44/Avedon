@@ -3,29 +3,38 @@ import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PostVideo } from '../../components/PostVideo';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { StockValue } from '../../components/StockIndicator';
 import { formatRelativeTime } from '../../features/time';
+import { formatMeasure } from '../../features/calculators/parse';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import type { FeedPost } from '../../api/client';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 interface Props {
   post: FeedPost;
   isMine: boolean;
   onToggleLike: (post: FeedPost) => void;
   onOpenComments: (post: FeedPost) => void;
+  // Ölçü şeridi → ürün sayfası; "Talep Et" → numune talep formu.
   onOpenProduct: (post: FeedPost) => void;
+  onRequestSample: (post: FeedPost) => void;
   onOpenAuthor: (post: FeedPost) => void;
   onShare: (post: FeedPost) => void;
   onEdit: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
 }
 
+// Taslak: docs/tasarim-yonleri/Main.dc.html. Kenardan kenara beyaz blok:
+// yazar satırı → görsel → ürün ölçü şeridi → metin → eylem çubuğu (solda beğeni,
+// yorum ve paylaş sayaçları, sağda "Talep Et").
 function PostCardComponent({
   post,
   isMine,
   onToggleLike,
   onOpenComments,
   onOpenProduct,
+  onRequestSample,
   onOpenAuthor,
   onShare,
   onEdit,
@@ -34,6 +43,7 @@ function PostCardComponent({
   const [imageUrl, setImageUrl] = useState<string | null>(
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
   );
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!post.hasImage || imageUrl) return;
@@ -49,136 +59,187 @@ function PostCardComponent({
   }, [post.id, post.hasImage, imageUrl]);
 
   const company = post.author.company;
+  const authorName = `${post.author.firstName} ${post.author.lastName}`;
+  const product = post.product;
+  const meta = [
+    post.author.position,
+    formatRelativeTime(post.createdAt),
+    post.visibility === 'connections' ? 'Bağlantılarım' : null,
+    post.editedAt ? 'düzenlendi' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Pressable style={styles.headerText} onPress={() => onOpenAuthor(post)}>
-          {/* Tasarımda yazar adı mavi ve kalın — akışta en çok tıklanan hedef. */}
-          <Text style={styles.name} numberOfLines={1}>
-            {post.author.firstName} {post.author.lastName}
-          </Text>
-          <Text style={styles.meta} numberOfLines={1}>
-            {company ? `${post.author.position} · ${company.name}` : post.author.position}
-          </Text>
-          <Text style={styles.meta}>
-            {formatRelativeTime(post.createdAt)} ·{' '}
-            {post.visibility === 'public' ? 'Herkese açık' : 'Bağlantılarım'}
-            {post.editedAt ? ' · düzenlendi' : ''}
-          </Text>
-        </Pressable>
-        {company ? (
+        <Pressable
+          onPress={() => onOpenAuthor(post)}
+          accessibilityRole="button"
+          accessibilityLabel={`${authorName}${company ? `, ${company.name}` : ''}, profili aç`}
+          style={({ pressed }) => [styles.author, pressed && styles.pressedFade]}
+        >
           <CompanyAvatar
-            name={company.name}
-            verification={company.verification}
-            companyId={company.id}
-            logoUpdatedAt={company.logoUpdatedAt}
+            name={company?.name ?? post.author.firstName}
+            verification={company?.verification}
+            companyId={company?.id}
+            logoUpdatedAt={company?.logoUpdatedAt}
+            size={36}
           />
+          <View style={styles.authorTexts}>
+            <Text style={styles.authorLine} numberOfLines={1}>
+              <Text style={styles.authorName}>{authorName}</Text>
+              {company ? <Text style={styles.authorCompany}> · {company.name}</Text> : null}
+            </Text>
+            <Text style={styles.meta} numberOfLines={1}>
+              {meta}
+            </Text>
+          </View>
+        </Pressable>
+        {isMine ? (
+          <Pressable
+            onPress={() => setMenuOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel="Gönderi seçenekleri"
+            accessibilityState={{ expanded: menuOpen }}
+            style={({ pressed }) => [styles.menuButton, pressed && styles.pressedBg]}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
+          </Pressable>
         ) : null}
       </View>
 
-      {/* Tasarımdaki sıra: FOTOĞRAF → sayaçlar → metin. Fotoğrafı metnin altına
-          koymak kaydırırken görseli geciktiriyordu; her sosyal uygulamada da
-          görsel önce geliyor. */}
+      {menuOpen ? (
+        <View style={styles.ownerMenu}>
+          <OwnerAction icon="create-outline" label="Düzenle" onPress={() => onEdit(post)} />
+          <OwnerAction icon="trash-outline" label="Sil" danger onPress={() => onDelete(post)} />
+        </View>
+      ) : null}
+
+      {/* Görsel metinden önce: kaydırırken görsel gecikmesin. */}
       {post.video ? (
         <PostVideo key={post.video.id} video={post.video} />
       ) : post.hasImage ? (
         imageUrl ? (
-          <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.image}
+            resizeMode="cover"
+            accessibilityLabel={`${authorName} gönderisinin fotoğrafı`}
+          />
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
-            <Text style={styles.meta}>Fotoğraf yükleniyor...</Text>
+            <Ionicons name="image-outline" size={24} color={colors.chevron} />
           </View>
         )
       ) : null}
 
-      {post.likeCount > 0 || post.commentCount > 0 ? (
-        <View style={styles.countRow}>
-          {post.likeCount > 0 ? (
-            <Text style={styles.countText}>♥ {post.likeCount}</Text>
-          ) : null}
-          {post.commentCount > 0 ? (
-            <Pressable onPress={() => onOpenComments(post)} hitSlop={8}>
-              <Text style={styles.countText}>{post.commentCount} yorum</Text>
-            </Pressable>
-          ) : null}
-        </View>
+      {product ? (
+        <Pressable
+          onPress={() => onOpenProduct(post)}
+          accessibilityRole="button"
+          accessibilityLabel={`${product.code}, ${formatMeasure(product.weightGsm)} gram metrekare, ${formatMeasure(product.widthCm)} santim en, ürün sayfasını aç`}
+          style={({ pressed }) => [styles.specStrip, pressed && styles.pressedBg]}
+        >
+          <Text style={[styles.specCell, styles.specCode]} numberOfLines={1}>
+            {product.code}
+          </Text>
+          <View style={styles.specDivider} />
+          <Text style={styles.specCell} numberOfLines={1}>
+            {formatMeasure(product.weightGsm)} gr/m²
+          </Text>
+          <View style={styles.specDivider} />
+          <Text style={styles.specCell} numberOfLines={1}>
+            {formatMeasure(product.widthCm)} cm
+          </Text>
+          <View style={styles.specDivider} />
+          <StockValue stock={product.stock} style={styles.specStock} />
+        </Pressable>
       ) : null}
 
       {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
-      {post.product ? (
-        <Pressable style={styles.productTag} onPress={() => onOpenProduct(post)}>
-          <Ionicons name="pricetag-outline" size={13} color={colors.primary} />
-          <Text style={styles.productTagText}>{post.product.code}</Text>
-        </Pressable>
-      ) : null}
-
-      {/* Tasarımdaki eşit sütunlu, ikon + etiket aksiyon satırı. Önceki hâli
-          ikonsuz ve sola yaslıydı; dokunma hedefleri de 48px altındaydı. */}
-      <View style={styles.actionRow}>
-        <Action
-          icon={post.likedByMe ? 'heart' : 'heart-outline'}
-          label="Beğen"
-          active={post.likedByMe}
-          onPress={() => onToggleLike(post)}
-        />
-        <Action icon="chatbubble-outline" label="Yorum Yap" onPress={() => onOpenComments(post)} />
-        <Action icon="arrow-redo-outline" label="Paylaş" onPress={() => onShare(post)} />
-        {post.product ? (
-          <Action icon="cube-outline" label="Talep Et" active onPress={() => onOpenProduct(post)} />
+      <View style={styles.actionBar}>
+        <View style={styles.actionGroup}>
+          <CountAction
+            icon={post.likedByMe ? 'heart' : 'heart-outline'}
+            count={post.likeCount}
+            active={post.likedByMe}
+            label={post.likedByMe ? 'Beğeniyi geri al' : 'Beğen'}
+            onPress={() => onToggleLike(post)}
+          />
+          <CountAction
+            icon="chatbubble-outline"
+            count={post.commentCount}
+            label="Yorumlar"
+            onPress={() => onOpenComments(post)}
+          />
+          <CountAction icon="arrow-redo-outline" label="Paylaş" onPress={() => onShare(post)} />
+        </View>
+        {product ? (
+          <PrimaryButton
+            label="Talep Et"
+            icon="cube-outline"
+            onPress={() => onRequestSample(post)}
+            accessibilityLabel={`${product.code} için numune talep et`}
+            style={styles.requestButton}
+          />
         ) : null}
       </View>
-
-      {isMine ? (
-        <View style={styles.ownerRow}>
-          <Pressable
-            onPress={() => onEdit(post)}
-            hitSlop={8}
-            style={styles.ownerAction}
-            accessibilityRole="button"
-            accessibilityLabel="Gönderiyi düzenle"
-          >
-            <Ionicons name="create-outline" size={16} color={colors.accent} />
-            <Text style={styles.editText}>Düzenle</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => onDelete(post)}
-            hitSlop={8}
-            style={styles.ownerAction}
-            accessibilityRole="button"
-            accessibilityLabel="Gönderiyi sil"
-          >
-            <Ionicons name="trash-outline" size={16} color={colors.danger} />
-            <Text style={styles.deleteText}>Sil</Text>
-          </Pressable>
-        </View>
-      ) : null}
     </View>
   );
 }
 
-function Action({
+function CountAction({
   icon,
+  count,
   label,
   active,
   onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
+  count?: number;
   label: string;
   active?: boolean;
   onPress: () => void;
 }) {
   const color = active ? colors.accent : colors.textMuted;
+  const showCount = count !== undefined && count > 0;
   return (
     <Pressable
-      style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={showCount ? `${label}, ${count}` : label}
+      accessibilityState={active !== undefined ? { selected: active } : undefined}
+      style={({ pressed }) => [styles.countAction, pressed && styles.pressedFade]}
     >
-      <Ionicons name={icon} size={19} color={color} />
-      <Text style={[styles.actionText, { color }]} numberOfLines={1}>
-        {label}
-      </Text>
+      <Ionicons name={icon} size={20} color={color} />
+      {showCount ? <Text style={[styles.countText, { color }]}>{count}</Text> : null}
+    </Pressable>
+  );
+}
+
+function OwnerAction({
+  icon,
+  label,
+  danger,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  danger?: boolean;
+  onPress: () => void;
+}) {
+  const color = danger ? colors.danger : colors.primary;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Gönderiyi ${label.toLocaleLowerCase('tr-TR')}`}
+      style={({ pressed }) => [styles.ownerAction, pressed && styles.pressedBg]}
+    >
+      <Ionicons name={icon} size={16} color={color} />
+      <Text style={[styles.ownerActionText, { color }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -188,72 +249,85 @@ export const PostCard = React.memo(PostCardComponent);
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 12,
+    paddingBottom: spacing.xs,
+    gap: 10,
+  },
+  pressedFade: { opacity: 0.6 },
+  pressedBg: { backgroundColor: colors.pressed },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  author: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: MIN_TOUCH },
+  authorTexts: { flex: 1, minWidth: 0 },
+  authorLine: { ...typography.bodyStrong, color: colors.text },
+  authorName: { fontFamily: fonts.semibold },
+  authorCompany: { fontFamily: fonts.regular, color: colors.textMuted },
+  meta: { ...typography.caption, color: colors.textMuted },
+  menuButton: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
+    marginRight: -10,
   },
-  headerRow: {
+  ownerMenu: { flexDirection: 'row', gap: spacing.sm },
+  ownerAction: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
   },
-  headerText: { flex: 1, minWidth: 0 },
-  name: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.accent },
-  meta: { ...typography.caption, color: colors.textMuted, marginTop: 1 },
-  body: {
-    ...typography.body,
-    color: colors.text,
-    marginTop: spacing.sm,
-  },
+  ownerActionText: { ...typography.label, fontFamily: fonts.semibold },
   image: {
     width: '100%',
-    aspectRatio: 4 / 3,
+    aspectRatio: 16 / 9,
     borderRadius: radius.md,
-    marginTop: spacing.sm,
     backgroundColor: colors.surfaceTonal,
   },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-  },
-  countText: { ...typography.caption, color: colors.textMuted },
-  productTag: {
+  imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  specStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    backgroundColor: colors.accentSoft,
+    minHeight: 40,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 4,
+    overflow: 'hidden',
   },
-  productTagText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.primary },
-  actionRow: {
+  specCell: {
+    ...typography.mono,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.text,
+    paddingHorizontal: 10,
+    flexShrink: 1,
+  },
+  specCode: { fontFamily: fonts.monoSemibold, fontSize: 13, color: colors.primary },
+  specDivider: { width: 1, alignSelf: 'stretch', backgroundColor: colors.border },
+  specStock: { paddingHorizontal: 10, flexShrink: 0 },
+  body: { ...typography.body, color: colors.text },
+  actionBar: {
     flexDirection: 'row',
-    marginTop: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 52,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: spacing.xs,
   },
-  action: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
+  actionGroup: { flexDirection: 'row', alignItems: 'center' },
+  countAction: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 5,
+    minHeight: MIN_TOUCH,
+    minWidth: MIN_TOUCH,
+    paddingRight: spacing.gutter,
   },
-  actionPressed: { opacity: 0.6 },
-  actionText: { ...typography.caption, fontFamily: fonts.semibold },
-  ownerRow: { flexDirection: 'row', gap: spacing.lg, marginTop: spacing.sm },
-  ownerAction: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 },
-  editText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
-  deleteText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.danger },
+  countText: { ...typography.label, fontFamily: fonts.semibold },
+  requestButton: { paddingHorizontal: spacing.gutter },
 });

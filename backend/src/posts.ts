@@ -13,7 +13,16 @@ export const POST_AUTHOR_SELECT = {
   company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } },
 } satisfies Prisma.UserSelect;
 
-export const POST_PRODUCT_SELECT = { id: true, code: true } satisfies Prisma.ProductSelect;
+// Ölçüler akış kartındaki ürün şeridi için (tasarım 5. aşama, taslak
+// docs/tasarim-yonleri/Main.dc.html: kod | gramaj | en | stok). Fotoğraf yok:
+// liste yanıtlarını şişirmesin diye ürün fotoğrafı ayrı uçtan çekiliyor.
+export const POST_PRODUCT_SELECT = {
+  id: true,
+  code: true,
+  weightGsm: true,
+  widthCm: true,
+  stock: true,
+} satisfies Prisma.ProductSelect;
 
 export const POST_INCLUDE = {
   author: { select: POST_AUTHOR_SELECT },
@@ -60,7 +69,7 @@ type PostWithIncludes = {
   createdAt: Date;
   editedAt: Date | null;
   author: unknown;
-  product: { id: string; code: string } | null;
+  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number } | null;
   video: VideoRecord | null;
   _count: { likes: number; comments: number };
 };

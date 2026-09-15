@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 16 / 9,
     borderRadius: radius.md,
-    marginTop: spacing.sm,
+    // Üst boşluk yok: kart öğeleri arasındaki boşluğu PostCard `gap` ile veriyor.
     overflow: 'hidden',
     backgroundColor: colors.text,
   },
