@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, TextInput, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { OtpCodeField } from '../../components/OtpCodeField';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, requestOtp, verifyOtp } from '../../api/client';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { haptics } from '../../features/haptics';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
+// Taslak: docs/tasarim-yonleri/CGiris.dc.html. Üstte lacivert marka bloğu,
+// altında beyaz zeminde başlık, eşit aralıklı telefon alanı ve 48px düğmeler.
 export function LoginScreen({ navigation }: Props) {
   const { login } = useSession();
+  const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
@@ -34,6 +38,7 @@ export function LoginScreen({ navigation }: Props) {
         setStep('code');
         setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
       } else {
+        haptics.error();
         setError('Kod gönderilemedi, lütfen tekrar deneyin.');
       }
     } finally {
@@ -52,6 +57,7 @@ export function LoginScreen({ navigation }: Props) {
       if (err instanceof ApiError && err.code === 'cooldown') {
         setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
       } else {
+        haptics.error();
         setError('Kod gönderilemedi, lütfen tekrar deneyin.');
       }
     } finally {
@@ -65,19 +71,22 @@ export function LoginScreen({ navigation }: Props) {
     try {
       const result = await verifyOtp(phone.trim(), code.trim());
       if (result.purpose === 'login') {
+        haptics.success();
         // Gezinme çağrısı gerekmiyor: user dolunca RootNavigator ana sekmelere geçiyor.
         login(result.token, result.user);
       } else {
+        haptics.error();
         setError('Bu telefon numarasıyla kayıtlı hesap bulunamadı. Önce kayıt olmanız gerekiyor.');
       }
     } catch (err) {
-      const code = err instanceof ApiError ? err.code : undefined;
+      haptics.error();
+      const errorCode = err instanceof ApiError ? err.code : undefined;
       setError(
-        code === 'mismatch'
+        errorCode === 'mismatch'
           ? 'Kod hatalı, tekrar deneyin.'
-          : code === 'expired'
+          : errorCode === 'expired'
             ? 'Kodun süresi doldu, yeni kod isteyin.'
-            : code === 'max_attempts'
+            : errorCode === 'max_attempts'
               ? 'Çok fazla yanlış deneme yapıldı, yeni kod isteyin.'
               : 'Doğrulama başarısız, lütfen tekrar deneyin.'
       );
@@ -87,64 +96,121 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Giriş Yap</Text>
-        <Text style={styles.subtitle}>
-          {step === 'phone'
-            ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
-            : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
-        </Text>
+    <View style={styles.screen}>
+      {/* Lacivert bloğun üstünde saat ve pil beyaz görünsün. */}
+      <StatusBar style="light" />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.lg }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.brand, { paddingTop: insets.top }]}>
+            <Text style={styles.brandText} accessibilityRole="header">
+              Avedon
+            </Text>
+          </View>
 
-        {step === 'phone' ? (
-          <TextField
-            label="Telefon"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="05XX XXX XX XX"
-            keyboardType="phone-pad"
-          />
-        ) : (
-          <OtpCodeField
-            code={code}
-            onChangeCode={setCode}
-            onResend={handleResend}
-            resendCooldownSeconds={cooldown}
-            resending={resending}
-          />
-        )}
+          <View style={styles.content}>
+            <Text style={styles.title}>Giriş Yap</Text>
+            <Text style={styles.subtitle}>
+              {step === 'phone'
+                ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
+                : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
+            </Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+            {step === 'phone' ? (
+              <>
+                <Text style={styles.label} nativeID="phoneLabel">
+                  Telefon
+                </Text>
+                <TextInput
+                  style={styles.phoneInput}
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="05XX XXX XX XX"
+                  placeholderTextColor={colors.chevron}
+                  keyboardType="phone-pad"
+                  // Telefonun otomatik doldurması (denetim FINDING-014).
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  returnKeyType="send"
+                  onSubmitEditing={() => phone.trim().length >= 10 && !submitting && sendCode()}
+                  accessibilityLabel="Telefon"
+                  accessibilityLabelledBy="phoneLabel"
+                />
+              </>
+            ) : (
+              <OtpCodeField
+                code={code}
+                onChangeCode={setCode}
+                onResend={handleResend}
+                resendCooldownSeconds={cooldown}
+                resending={resending}
+              />
+            )}
 
-        {step === 'phone' ? (
-          <PrimaryButton
-            label={submitting ? 'Gönderiliyor...' : 'Kod Gönder'}
-            disabled={submitting || phone.trim().length < 10}
-            onPress={sendCode}
-          />
-        ) : (
-          <PrimaryButton
-            label={submitting ? 'Doğrulanıyor...' : 'Giriş Yap'}
-            disabled={submitting || code.trim().length !== 6}
-            onPress={handleVerify}
-          />
-        )}
+            {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <PrimaryButton
-          label="Hesabım Yok, Kayıt Ol"
-          variant="secondary"
-          onPress={() => navigation.replace('RoleSelection')}
-          style={{ marginTop: spacing.sm }}
-        />
-      </View>
-    </SafeAreaView>
+            {step === 'phone' ? (
+              <PrimaryButton
+                label={submitting ? 'Gönderiliyor' : 'Kod Gönder'}
+                size="lg"
+                disabled={submitting || phone.trim().length < 10}
+                onPress={sendCode}
+                style={styles.primaryAction}
+              />
+            ) : (
+              <PrimaryButton
+                label={submitting ? 'Doğrulanıyor' : 'Giriş Yap'}
+                size="lg"
+                disabled={submitting || code.trim().length !== 6}
+                onPress={handleVerify}
+                style={styles.primaryAction}
+              />
+            )}
+
+            <PrimaryButton
+              label="Hesabım Yok, Kayıt Ol"
+              variant="outline"
+              size="lg"
+              onPress={() => navigation.replace('RoleSelection')}
+              style={styles.secondaryAction}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { flex: 1, padding: spacing.lg, justifyContent: 'center' },
-  title: { ...typography.title, fontSize: 26, lineHeight: 32, color: colors.primary, marginBottom: spacing.xs },
-  subtitle: { ...typography.body, color: colors.textMuted, marginBottom: spacing.lg },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.md },
+  screen: { flex: 1, backgroundColor: colors.surface },
+  flex: { flex: 1 },
+  scroll: { flexGrow: 1 },
+  brand: {
+    minHeight: 280,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 28,
+    justifyContent: 'flex-end',
+  },
+  brandText: { fontFamily: fonts.bold, fontSize: 34, lineHeight: 40, color: colors.primaryText },
+  content: { paddingHorizontal: spacing.lg, paddingTop: 28 },
+  title: { ...typography.title, color: colors.text },
+  subtitle: { ...typography.body, color: colors.textMuted, marginTop: 6 },
+  label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginTop: spacing.lg, marginBottom: 6 },
+  phoneInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.gutter,
+    fontFamily: fonts.mono,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
+  primaryAction: { marginTop: spacing.md },
+  secondaryAction: { marginTop: spacing.sm },
 });
