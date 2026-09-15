@@ -137,7 +137,7 @@ const DEFAULT_COUNT: Record<SkeletonListVariant, number> = {
 //   blok  → gri aralıktan sonra tek beyaz blok içinde çizgili satırlar (ürünler, yorumlar)
 //   yığın → gri aralıklarla ayrılmış kenardan kenara beyaz bloklar (akış)
 // Diğerleri kendi ekranları geçene kadar köşeli kart.
-const BLOCK_VARIANTS: SkeletonListVariant[] = ['product', 'comment', 'conversation', 'person'];
+const BLOCK_VARIANTS: SkeletonListVariant[] = ['product', 'comment', 'conversation', 'person', 'request'];
 const STACK_VARIANTS: SkeletonListVariant[] = ['post'];
 
 // Aynı genişlikte kemikler yapay duruyor; satırdan satıra hafif değişiyor.
@@ -202,14 +202,15 @@ export function SkeletonList({
               </View>
             );
           case 'request':
+            // Talep satırı: kod + durum rozeti, firma / talep eden, teslimat · zaman.
             return (
-              <View key={i} style={[styles.card, styles.gapXs]}>
+              <View key={i} style={[styles.commentRow, i < count - 1 && styles.rowDivider]}>
                 <View style={styles.spread}>
-                  <Bone width={96} height={16} />
-                  <Bone width={84} height={20} rounded={radius.sm} soft />
+                  <Bone width={96} height={15} />
+                  <Bone width={76} height={20} rounded={radius.sm} soft />
                 </View>
+                <Bone width={130} height={12} />
                 <Bone width={w} height={12} soft />
-                <Bone width={150} height={12} soft />
               </View>
             );
           case 'comment':
@@ -293,7 +294,7 @@ function ProductRowBones({ lineWidth, last, noCompany }: { lineWidth: DimensionV
 export type SkeletonDetailVariant = 'product' | 'profile' | 'company' | 'timeline';
 
 // Yeni düzene geçmiş sayfalar kenardan kenara bloklarla çiziliyor (iç boşluk yok).
-const FLUSH_DETAILS: SkeletonDetailVariant[] = ['product', 'company'];
+const FLUSH_DETAILS: SkeletonDetailVariant[] = ['product', 'company', 'timeline'];
 
 export function SkeletonDetail({
   variant,
@@ -377,17 +378,25 @@ function renderDetail(variant: SkeletonDetailVariant) {
         </>
       );
     case 'timeline':
+      // SampleRequestTrackingScreen: özet bloğu (kod + durum, firma, teslimat) ve adımlar bloğu.
       return (
         <>
-          <Bone width={150} height={48} rounded={radius.md} soft />
-          <Bone width={190} height={14} style={styles.mtMd} />
-          <View style={styles.mtLg}>
+          <View style={[styles.block, styles.blockPad, styles.gapXs]}>
+            <View style={styles.spread}>
+              <Bone width={110} height={18} />
+              <Bone width={80} height={20} rounded={radius.sm} soft />
+            </View>
+            <Bone width={130} height={12} />
+            <Bone width={170} height={12} soft />
+          </View>
+          <View style={[styles.block, styles.blockPad]}>
             {[0, 1, 2, 3].map((i) => (
               <View key={i} style={styles.timelineRow}>
                 <Bone width={22} height={22} rounded={11} />
                 <View style={[styles.flex, styles.gapXs]}>
-                  <Bone width={LINE_WIDTHS[i]} height={16} />
-                  <Bone width={100} height={11} soft />
+                  <Bone width={LINE_WIDTHS[i]} height={15} />
+                  <Bone width={120} height={11} soft />
+                  <Bone width={150} height={12} soft />
                 </View>
               </View>
             ))}

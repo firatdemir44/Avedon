@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   fetchSampleRequestTimeline,
   updateSampleRequestStatus,
-  type SampleActor,
   type SampleTimelineStep,
 } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
+import { haptics } from '../../features/haptics';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
   EmptyState,
@@ -19,15 +20,18 @@ import {
 } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { TextField } from '../../components/TextField';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { SampleStatusBadge } from '../../components/SampleStatusBadge';
 import { formatDateTime } from '../../features/time';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
+// Taslak: docs/tasarim-yonleri/CTakip.dc.html. Özet bloğu (kod + durum, firma,
+// teslimat), adım çizelgesi bloğu; bir sonraki adımı işaretleme alanı ekranın
+// altına sabit.
 export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   const { sampleRequestId } = route.params;
+  const insets = useSafeAreaInsets();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchSampleRequestTimeline(sampleRequestId)
   );
@@ -42,8 +46,10 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
     try {
       await updateSampleRequestStatus(sampleRequestId, data.nextStep.status, note.trim() || undefined);
       setNote('');
+      haptics.success();
       await reload();
     } catch (err) {
+      haptics.error();
       setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
     } finally {
       setAdvancing(false);
@@ -52,128 +58,135 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.screen}>
         <SkeletonDetail variant="timeline" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!data) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
         {error && !isNotFound(error) ? (
           <ErrorState error={error} fallback="Takip bilgisi alınamadı" onRetry={reload} />
         ) : (
           <EmptyState icon="flask-outline" title="Talep bulunamadı" message="Talep silinmiş ya da size ait olmayabilir." />
         )}
-      </SafeAreaView>
+      </View>
     );
   }
 
   const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Takip bilgisi yenilenemedi') : null);
 
   const { sampleRequest, steps, nextStep } = data;
-  // Teslim adımında tasarım kimin teslim aldığını yazıyor ("... İrfan Bey teslim
-  // aldı"); sadece o adımda not alanı gösteriliyor, ara adımlarda anlamı yok.
+  const product = sampleRequest.product;
+  // Teslim adımında kimin teslim aldığı yazılabiliyor ("Giriş ofisinde teslim
+  // alındı"); not alanı yalnızca o adımda, ara adımlarda anlamı yok.
   const asksForNote = nextStep?.status === 'teslim_edildi';
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        <Pressable
-          style={styles.productPill}
-          onPress={() =>
-            navigation.navigate('CompanyProfile', { companyId: sampleRequest.product.companyId })
-          }
-        >
-          <Text style={styles.productCode}>{sampleRequest.product.code}</Text>
-          <Text style={styles.productCompany}>{sampleRequest.product.company.name}</Text>
-        </Pressable>
+        <View style={[styles.block, styles.summary]}>
+          <View style={styles.summaryTop}>
+            <Pressable
+              onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`${product.code}, ürün sayfasını aç`}
+              hitSlop={6}
+              style={({ pressed }) => pressed && styles.pressedFade}
+            >
+              <Text style={styles.code}>{product.code}</Text>
+            </Pressable>
+            <SampleStatusBadge status={sampleRequest.status} label={sampleRequest.statusLabel} />
+          </View>
+          <Pressable
+            onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
+            accessibilityRole="button"
+            accessibilityLabel={`${product.company.name}, firma sayfasını aç`}
+            hitSlop={6}
+            style={({ pressed }) => [styles.companyLink, pressed && styles.pressedFade]}
+          >
+            <Text style={styles.company}>{product.company.name}</Text>
+          </Pressable>
+          <Text style={styles.summaryMeta}>Teslimat: {sampleRequest.deliveryModeLabel}</Text>
+          {sampleRequest.note ? <Text style={styles.requestNote}>“{sampleRequest.note}”</Text> : null}
+        </View>
 
-        <Text style={styles.deliveryMode}>{sampleRequest.deliveryModeLabel}</Text>
-        {sampleRequest.note ? (
-          <Text style={styles.requestNote}>“{sampleRequest.note}”</Text>
-        ) : null}
-
-        <View style={styles.timeline}>
+        <View style={[styles.block, styles.timeline]}>
           {steps.map((step, index) => (
-            <TimelineStep key={step.status} step={step} isLast={index === steps.length - 1} />
+            <TimelineStep
+              key={step.status}
+              step={step}
+              isLast={index === steps.length - 1}
+              nextDone={steps[index + 1]?.state === 'done'}
+            />
           ))}
         </View>
 
         {bannerMessage ? (
-          <InlineError
-            message={bannerMessage}
-            onRetry={actionError ? undefined : reload}
-            style={styles.banner}
-          />
-        ) : null}
-
-        {nextStep ? (
-          <View style={styles.actionBox}>
-            {asksForNote ? (
-              <TextField
-                label="Teslim notu (isteğe bağlı)"
-                value={note}
-                onChangeText={setNote}
-                placeholder="Örn. Giriş ofisinde İrfan Bey teslim aldı"
-                multiline
-              />
-            ) : null}
-            <PrimaryButton
-              label={advancing ? 'Güncelleniyor...' : `${nextStep.label} olarak işaretle`}
-              disabled={advancing}
-              onPress={handleAdvance}
-            />
-          </View>
+          <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
         ) : null}
       </ScrollView>
-    </SafeAreaView>
-  );
-}
 
-function TimelineStep({ step, isLast }: { step: SampleTimelineStep; isLast: boolean }) {
-  const done = step.state === 'done';
-  return (
-    <View style={styles.stepRow}>
-      {/* Sol sütun: tamamlanan adım dolu daire, bekleyen adım içi boş daire;
-          aralarında bağlantı çizgisi (tasarımdaki dikey çizelge). */}
-      <View style={styles.rail}>
-        <View style={[styles.dot, done ? styles.dotDone : styles.dotPending]}>
-          {done ? <Text style={styles.dotCheck}>✓</Text> : null}
+      {nextStep ? (
+        <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
+          {asksForNote ? (
+            <>
+              <Text style={styles.noteLabel}>
+                Teslim notu <Text style={styles.noteOptional}>(isteğe bağlı)</Text>
+              </Text>
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Örn. Giriş ofisinde teslim alındı"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="Teslim notu, isteğe bağlı"
+              />
+            </>
+          ) : null}
+          <PrimaryButton
+            label={advancing ? 'Güncelleniyor' : `${nextStep.label} olarak işaretle`}
+            size="lg"
+            disabled={advancing}
+            onPress={handleAdvance}
+          />
         </View>
-        {!isLast ? <View style={[styles.line, done && styles.lineDone]} /> : null}
-      </View>
-
-      <View style={styles.stepBody}>
-        <Text style={[styles.stepLabel, !done && styles.stepLabelPending]}>{step.label}</Text>
-        {step.occurredAt ? (
-          <Text style={styles.stepTime}>{formatDateTime(step.occurredAt)}</Text>
-        ) : null}
-        {step.note ? <Text style={styles.stepNote}>{step.note}</Text> : null}
-        {step.description ? <Text style={styles.stepDescription}>{step.description}</Text> : null}
-        {step.actor ? <StepActor actor={step.actor} /> : null}
-      </View>
+      ) : null}
     </View>
   );
 }
 
-function StepActor({ actor }: { actor: SampleActor }) {
+function TimelineStep({ step, isLast, nextDone }: { step: SampleTimelineStep; isLast: boolean; nextDone: boolean }) {
+  const done = step.state === 'done';
+  const actor = step.actor;
   return (
-    <View style={styles.actorRow}>
-      <CompanyAvatar
-        name={actor.company?.name ?? actor.firstName}
-        size={32}
-        companyId={actor.company?.id}
-        logoUpdatedAt={actor.company?.logoUpdatedAt}
-      />
-      <View style={styles.actorText}>
-        <Text style={styles.actorName}>
-          {actor.firstName} {actor.lastName}
-        </Text>
-        <Text style={styles.actorMeta}>
-          {[actor.company?.name, actor.position].filter(Boolean).join(' · ')}
-        </Text>
+    <View style={styles.stepRow} accessible accessibilityLabel={`${step.label}, ${done ? 'tamamlandı' : 'bekleniyor'}`}>
+      {/* Sol sütun: tamamlanan adım lacivert dolu daire + onay ikonu, bekleyen
+          adım içi boş daire. İki tamamlanmış adım arası çizgi lacivert, bekleyen
+          adıma giden çizgi gri. (Eskiden onay işareti ✓ karakteriydi, FINDING-012.) */}
+      <View style={styles.rail}>
+        <View style={[styles.dot, done ? styles.dotDone : styles.dotPending]}>
+          {done ? <Ionicons name="checkmark" size={14} color={colors.primaryText} /> : null}
+        </View>
+        {!isLast ? <View style={[styles.line, done && nextDone && styles.lineDone]} /> : null}
+      </View>
+
+      <View style={[styles.stepBody, isLast && styles.stepBodyLast]}>
+        <Text style={[styles.stepLabel, !done && styles.stepLabelPending]}>{step.label}</Text>
+        {step.occurredAt ? (
+          <Text style={styles.stepTime}>{formatDateTime(step.occurredAt)}</Text>
+        ) : !done ? (
+          <Text style={styles.stepMuted}>Bekleniyor</Text>
+        ) : null}
+        {step.description ? <Text style={styles.stepMuted}>{step.description}</Text> : null}
+        {step.note ? <Text style={styles.stepText}>{step.note}</Text> : null}
+        {actor ? (
+          <Text style={styles.stepText}>
+            {[`${actor.firstName} ${actor.lastName}`, actor.company?.name].filter(Boolean).join(' · ')}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
@@ -182,56 +195,59 @@ function StepActor({ actor }: { actor: SampleActor }) {
 const DOT_SIZE = 22;
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  // Tasarımda ürün adı açık mavi bir hapın içinde duruyor.
-  productPill: {
-    alignSelf: 'flex-start',
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm,
-  },
-  productCode: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
-  productCompany: { ...typography.caption, color: colors.textMuted },
-  deliveryMode: { ...typography.body, color: colors.text, marginTop: spacing.md },
-  requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: spacing.xs },
-  timeline: { marginTop: spacing.lg },
-  stepRow: { flexDirection: 'row' },
-  rail: { width: DOT_SIZE + spacing.md, alignItems: 'center' },
+  screen: { flex: 1, backgroundColor: colors.background },
+  content: { gap: spacing.blockGap, paddingBottom: spacing.md },
+  block: { backgroundColor: colors.surface },
+  pressedFade: { opacity: 0.6 },
+  summary: { padding: spacing.gutter, gap: 3 },
+  summaryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  code: { fontFamily: fonts.monoSemibold, fontSize: 18, lineHeight: 24, color: colors.primary },
+  companyLink: { alignSelf: 'flex-start' },
+  company: { ...typography.label, color: colors.accent },
+  summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
+  timeline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md, paddingBottom: spacing.xs },
+  stepRow: { flexDirection: 'row', gap: 12 },
+  rail: { width: DOT_SIZE, alignItems: 'center' },
   dot: {
     width: DOT_SIZE,
     height: DOT_SIZE,
     borderRadius: DOT_SIZE / 2,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dotDone: { backgroundColor: colors.accent, borderColor: colors.accent },
-  dotPending: { backgroundColor: colors.surface, borderColor: colors.border },
-  dotCheck: { color: colors.primaryText, fontSize: 12, fontFamily: fonts.bold },
-  // Çizgi, bir sonraki adımın dairesine kadar uzasın diye esner.
-  line: { flex: 1, width: 2, backgroundColor: colors.border, marginVertical: 2 },
-  lineDone: { backgroundColor: colors.accent },
-  stepBody: { flex: 1, paddingBottom: spacing.lg },
-  stepLabel: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
+  dotDone: { backgroundColor: colors.primary },
+  dotPending: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.borderStrong },
+  // Çizgi bir sonraki adımın dairesine kadar uzasın diye esner.
+  line: { flex: 1, width: 2, backgroundColor: colors.borderStrong, marginVertical: 2 },
+  lineDone: { backgroundColor: colors.primary },
+  stepBody: { flex: 1, gap: 2, paddingBottom: 18 },
+  stepBodyLast: { paddingBottom: spacing.gutter },
+  stepLabel: { ...typography.subtitle, color: colors.text },
   stepLabelPending: { color: colors.textMuted },
-  stepTime: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  stepNote: { ...typography.body, color: colors.text, marginTop: spacing.xs },
-  stepDescription: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
-  actorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    padding: spacing.sm,
+  stepTime: { ...typography.mono, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  stepMuted: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  stepText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
+  banner: { marginHorizontal: spacing.gutter },
+  actionBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 10,
+    gap: spacing.sm,
   },
-  actorText: { marginLeft: spacing.sm, flex: 1 },
-  actorName: { ...typography.label, color: colors.text },
-  actorMeta: { ...typography.caption, color: colors.textMuted },
-  actionBox: { marginTop: spacing.md },
-  banner: { marginTop: spacing.md },
+  noteLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  noteOptional: { fontFamily: fonts.regular, color: colors.textMuted },
+  noteInput: {
+    minHeight: MIN_TOUCH,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTonal,
+    paddingHorizontal: 12,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.text,
+  },
 });

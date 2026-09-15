@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -9,16 +9,19 @@ import {
   type SampleRequestRow,
 } from '../../api/client';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { Badge } from '../../components/Badge';
+import { SampleStatusBadge } from '../../components/SampleStatusBadge';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { haptics } from '../../features/haptics';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
+// Yeni düzen (5. aşama): çizgili talep satırları. Satıra dokununca takip
+// ekranı; satır içinde talep edenin profili ve bir sonraki adım düğmesi.
 export function IncomingSampleRequestsScreen({ navigation }: Props) {
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
@@ -28,19 +31,21 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
   );
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const requests = data ?? [];
 
   const handleAdvance = async (request: SampleRequestRow) => {
-    // Hangi adımın kime açık olduğuna sunucu karar veriyor; burada sadece
-    // sunucunun verdiği bir sonraki adım uygulanıyor.
+    // Hangi adımın kime açık olduğuna sunucu karar veriyor; nextStep yalnızca
+    // bu kullanıcı ilerletebiliyorsa geliyor.
     if (!request.nextStep) return;
     setUpdatingId(request.id);
     setActionError(null);
     try {
       await updateSampleRequestStatus(request.id, request.nextStep.status);
-      // Liste ekranda kalır, yeni durum sessizce gelir (eskiden tüm ekran
-      // yükleniyor çemberine dönüyordu).
+      haptics.success();
+      // Liste ekranda kalır, yeni durum sessizce gelir.
       await reload();
     } catch (err) {
+      haptics.error();
       setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
     } finally {
       setUpdatingId(null);
@@ -80,7 +85,7 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={data ?? []}
+        data={requests}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
@@ -96,44 +101,50 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
             message="Ürünlerinize numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsiniz."
           />
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() =>
-              navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })
-            }
-          >
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.code}>{item.product.code}</Text>
-              <Badge label={item.statusLabel} />
-            </View>
-            <Pressable onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}>
-              <Text style={styles.meta}>
-                Talep eden:{' '}
-                <Text style={styles.link}>
-                  {item.requester.firstName} {item.requester.lastName}
-                </Text>
+        renderItem={({ item, index }) => {
+          const requesterName = `${item.requester.firstName} ${item.requester.lastName}`;
+          return (
+            <Pressable
+              onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
+              // Satırın içinde düğmeler var: web'de rol verilirse iç içe
+              // <button> oluşur (bkz. ProductRow).
+              accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
+              accessibilityLabel={`${item.product.code}, ${requesterName}, ${item.statusLabel}. Takibi aç`}
+              android_ripple={{ color: colors.pressed }}
+              style={({ pressed }) => [styles.row, index < requests.length - 1 && styles.rowDivider, pressed && styles.pressed]}
+            >
+              <View style={styles.topLine}>
+                <Text style={styles.code}>{item.product.code}</Text>
+                <SampleStatusBadge status={item.status} label={item.statusLabel} />
+              </View>
+              <View style={styles.requesterLine}>
+                <Text style={styles.meta}>Talep eden: </Text>
+                <Pressable
+                  onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${requesterName}, profili aç`}
+                  hitSlop={8}
+                  style={({ pressed }) => pressed && styles.pressedFade}
+                >
+                  <Text style={styles.requesterName}>{requesterName}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.meta} numberOfLines={1}>
+                {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
               </Text>
+              {item.note ? <Text style={styles.note}>“{item.note}”</Text> : null}
+              {item.nextStep ? (
+                <PrimaryButton
+                  label={updatingId === item.id ? 'Güncelleniyor' : `${item.nextStep.label} olarak işaretle`}
+                  variant="outline"
+                  disabled={updatingId === item.id}
+                  onPress={() => handleAdvance(item)}
+                  style={styles.advanceButton}
+                />
+              ) : null}
             </Pressable>
-            <Text style={styles.meta}>
-              {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
-            </Text>
-            {item.note ? <Text style={styles.note}>“{item.note}”</Text> : null}
-            {item.nextStep ? (
-              <PrimaryButton
-                label={
-                  updatingId === item.id
-                    ? 'Güncelleniyor...'
-                    : `${item.nextStep.label} olarak işaretle`
-                }
-                disabled={updatingId === item.id}
-                onPress={() => handleAdvance(item)}
-                variant="secondary"
-                style={{ marginTop: spacing.sm }}
-              />
-            ) : null}
-          </Pressable>
-        )}
+          );
+        }}
       />
     </SafeAreaView>
   );
@@ -141,23 +152,22 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
-  card: {
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
+  row: {
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 12,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
+    gap: 2,
   },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  code: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  pressed: { backgroundColor: colors.pressed },
+  pressedFade: { opacity: 0.6 },
+  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  code: { ...typography.monoStrong, color: colors.primary },
+  requesterLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
+  requesterName: { ...typography.label, color: colors.accent },
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
-  link: { color: colors.accent, fontFamily: fonts.semibold },
+  note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: 2 },
+  advanceButton: { marginTop: spacing.sm },
 });

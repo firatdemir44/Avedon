@@ -1,22 +1,27 @@
 import React from 'react';
 import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchMySampleRequests } from '../../api/client';
-import { Badge } from '../../components/Badge';
+import { SampleStatusBadge } from '../../components/SampleStatusBadge';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
+// Yeni düzen (5. aşama): çizgili talep satırları; dokununca takip ekranı.
+// Eskiden kart içinde "Takibi görüntüle →" metni vardı; satırın kendisi
+// dokunulabilir ve sonunda ok ikonu var.
 export function MySampleRequestsScreen({ navigation }: Props) {
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchMySampleRequests().then(({ sampleRequests }) => sampleRequests)
   );
+  const requests = data ?? [];
 
   if (status === 'loading') {
     return (
@@ -37,7 +42,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={data ?? []}
+        data={requests}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
@@ -55,24 +60,27 @@ export function MySampleRequestsScreen({ navigation }: Props) {
             onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
           />
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable
-            style={styles.card}
-            onPress={() =>
-              navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })
-            }
+            onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
+            accessibilityRole="button"
+            accessibilityLabel={`${item.product.code}, ${item.product.company.name}, ${item.statusLabel}. Takibi aç`}
+            android_ripple={{ color: colors.pressed }}
+            style={({ pressed }) => [styles.row, index < requests.length - 1 && styles.rowDivider, pressed && styles.pressed]}
           >
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.code}>{item.product.code}</Text>
-              {/* Etiket sunucudan geliyor: son adımın adı teslimat moduna göre
-                  değişiyor, istemcide ikinci bir eşleme tutulmuyor. */}
-              <Badge label={item.statusLabel} />
+            <View style={styles.texts}>
+              <View style={styles.topLine}>
+                <Text style={styles.code}>{item.product.code}</Text>
+                <SampleStatusBadge status={item.status} label={item.statusLabel} />
+              </View>
+              <Text style={styles.company} numberOfLines={1}>
+                {item.product.company.name}
+              </Text>
+              <Text style={styles.meta} numberOfLines={1}>
+                {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
+              </Text>
             </View>
-            <Text style={styles.meta}>{item.product.company.name}</Text>
-            <Text style={styles.meta}>
-              {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
-            </Text>
-            <Text style={styles.trackLink}>Takibi görüntüle →</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
           </Pressable>
         )}
       />
@@ -82,22 +90,21 @@ export function MySampleRequestsScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
-  },
-  cardHeaderRow: {
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xs,
+    gap: 12,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
   },
-  code: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.primary },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  pressed: { backgroundColor: colors.pressed },
+  texts: { flex: 1, gap: 2 },
+  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  code: { ...typography.monoStrong, color: colors.primary },
+  company: { ...typography.label, color: colors.accent },
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  trackLink: { ...typography.label, color: colors.accent, marginTop: spacing.sm },
 });
