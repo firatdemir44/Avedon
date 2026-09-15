@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SecureStore from 'expo-secure-store';
 import type { User } from '../types';
 import { ApiError, fetchMe, setAuthToken } from '../api/client';
+import { deleteStoredToken, getStoredToken, setStoredToken } from '../features/tokenStorage';
 
 const USER_STORAGE_KEY = 'avedon_session_user';
 const TOKEN_STORAGE_KEY = 'avedon_session_token';
@@ -25,7 +25,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       try {
         const [storedUser, storedToken] = await Promise.all([
           AsyncStorage.getItem(USER_STORAGE_KEY),
-          SecureStore.getItemAsync(TOKEN_STORAGE_KEY),
+          getStoredToken(TOKEN_STORAGE_KEY),
         ]);
 
         if (!storedToken) {
@@ -49,11 +49,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             await Promise.all([
               AsyncStorage.removeItem(USER_STORAGE_KEY),
-              SecureStore.deleteItemAsync(TOKEN_STORAGE_KEY),
+              deleteStoredToken(TOKEN_STORAGE_KEY),
             ]);
           }
           // Ağ hatası/timeout ise önbellekteki kullanıcıyla devam et.
         }
+      } catch {
+        // Depo okunamadı: oturumsuz açılır, kullanıcı yeniden giriş yapar.
       } finally {
         setIsRestoring(false);
       }
@@ -64,14 +66,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(token);
     setUser(nextUser);
     AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(nextUser)).catch(() => {});
-    SecureStore.setItemAsync(TOKEN_STORAGE_KEY, token).catch(() => {});
+    setStoredToken(TOKEN_STORAGE_KEY, token).catch(() => {});
   };
 
   const logout = () => {
     setAuthToken(null);
     setUser(null);
     AsyncStorage.removeItem(USER_STORAGE_KEY).catch(() => {});
-    SecureStore.deleteItemAsync(TOKEN_STORAGE_KEY).catch(() => {});
+    deleteStoredToken(TOKEN_STORAGE_KEY).catch(() => {});
   };
 
   const value = useMemo<SessionContextValue>(() => ({ user, isRestoring, login, logout }), [user, isRestoring]);
