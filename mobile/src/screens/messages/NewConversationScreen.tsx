@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, Pressable, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
@@ -7,11 +7,16 @@ import { fetchConnections, startConversation, type ConnectionSummary } from '../
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
+import { ListRow } from '../../components/ListRow';
+import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { haptics } from '../../features/haptics';
+import { colors, spacing } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewConversation'>;
 
+// Yeni düzen (5. aşama): bağlantılar çizgili kişi satırları olarak; dokununca
+// sohbet açılır (varsa mevcut sohbet).
 export function NewConversationScreen({ navigation }: Props) {
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
@@ -20,8 +25,11 @@ export function NewConversationScreen({ navigation }: Props) {
   // Eskiden sohbet başlatma hatası yalnızca liste BOŞKEN görünüyordu, yani
   // kişiye dokunup hata alan kullanıcı hiçbir şey görmüyordu.
   const [startError, setStartError] = useState<string | null>(null);
+  const connections = data ?? [];
 
   const handleStart = async (item: ConnectionSummary) => {
+    // Bir sohbet açılırken ikinci dokunuş ikinci istek göndermesin.
+    if (startingId) return;
     setStartingId(item.user.id);
     setStartError(null);
     try {
@@ -31,6 +39,7 @@ export function NewConversationScreen({ navigation }: Props) {
         title: `${item.user.firstName} ${item.user.lastName}`,
       });
     } catch (err) {
+      haptics.error();
       setStartError(friendlyMessage(err, 'Sohbet başlatılamadı'));
       setStartingId(null);
     }
@@ -39,7 +48,7 @@ export function NewConversationScreen({ navigation }: Props) {
   if (status === 'loading') {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="row" />
+        <SkeletonList variant="person" />
       </SafeAreaView>
     );
   }
@@ -57,13 +66,15 @@ export function NewConversationScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
-        data={data ?? []}
+        data={connections}
         keyExtractor={(item) => item.connectionId}
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           bannerMessage ? (
-            <InlineError message={bannerMessage} onRetry={startError ? undefined : reload} style={styles.banner} />
+            <View style={styles.bannerWrap}>
+              <InlineError message={bannerMessage} onRetry={startError ? undefined : reload} />
+            </View>
           ) : null
         }
         ListEmptyComponent={
@@ -73,19 +84,14 @@ export function NewConversationScreen({ navigation }: Props) {
             message="Mesaj göndermek için kişiyle bağlantıda olmanız gerekir. Profiline girip bağlantı isteği gönderebilirsiniz."
           />
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            disabled={startingId !== null}
+        renderItem={({ item, index }) => (
+          <ListRow
+            title={`${item.user.firstName} ${item.user.lastName}`}
+            subtitle={startingId === item.user.id ? 'Sohbet açılıyor' : item.user.position}
+            left={<CompanyAvatar name={item.user.firstName} size={36} />}
+            divider={index < connections.length - 1}
             onPress={() => handleStart(item)}
-          >
-            <Text style={styles.name}>
-              {item.user.firstName} {item.user.lastName}
-            </Text>
-            <Text style={styles.meta}>
-              {startingId === item.user.id ? 'Açılıyor...' : item.user.position}
-            </Text>
-          </Pressable>
+          />
         )}
       />
     </SafeAreaView>
@@ -94,15 +100,6 @@ export function NewConversationScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
-  },
-  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
 });

@@ -1,6 +1,5 @@
 import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { View, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -15,11 +14,12 @@ import {
 import { PostCard } from './PostCard';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { HeaderButton } from '../../components/HeaderButton';
 import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { MIN_TOUCH, colors, radius, spacing } from '../../theme';
+import { colors, spacing } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
 
@@ -76,14 +76,10 @@ export function FeedScreen({ navigation }: Props) {
     // değil, bu yüzden ana ekranda duruyor.
     navigation.setOptions({
       headerLeft: () => (
-        <HeaderIconButton
-          icon="sparkles-outline"
-          label="AI Tekstil Danışmanı"
-          onPress={() => navigation.navigate('Advisor')}
-        />
+        <HeaderButton icon="sparkles-outline" label="AI Tekstil Danışmanı" onPress={() => navigation.navigate('Advisor')} />
       ),
       headerRight: () => (
-        <HeaderIconButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
+        <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
       ),
     });
   }, [navigation]);
@@ -224,38 +220,8 @@ function BlockGap() {
   return <View style={styles.blockGap} />;
 }
 
-function HeaderIconButton({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.headerButton, pressed && styles.headerButtonPressed]}
-    >
-      <Ionicons name={icon} size={22} color={colors.primaryText} />
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  headerButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-  },
-  // Lacivert bant üzerinde basılı durum: hafif açık zemin.
-  headerButtonPressed: { backgroundColor: 'rgba(255,255,255,0.14)' },
   listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
   blockGap: { height: spacing.blockGap },
   banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },

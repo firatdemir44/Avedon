@@ -58,7 +58,6 @@ export function PostCommentsScreen({ route, navigation }: Props) {
       const { comment } = await createPostComment(postId, body);
       setData((prev) => [...(prev ?? []), comment]);
       setInput('');
-      haptics.success();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
     } catch (err) {
       haptics.error();

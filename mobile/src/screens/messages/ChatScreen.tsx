@@ -12,7 +12,8 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
@@ -23,10 +24,11 @@ import {
   sendMessage,
   type ChatMessage,
 } from '../../api/client';
-import { formatClockTime } from '../../features/time';
+import { formatClockTime, formatDayLabel, isSameCalendarDay } from '../../features/time';
+import { haptics } from '../../features/haptics';
 import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState } from '../../components/StateView';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -64,9 +66,12 @@ function newestServerTimestamp(messages: ChatMessage[]): string | null {
   return newest;
 }
 
+// Taslak: docs/tasarim-yonleri/CSohbet.dc.html. Gün ayraç çipi, gönderen tarafı
+// sivri köşeli baloncuklar, eşit aralıklı saat; altta yazma alanı + kare gönder.
 export function ChatScreen({ route }: Props) {
   const { conversationId } = route.params;
   const { user } = useSession();
+  const insets = useSafeAreaInsets();
   const meId = user?.id ?? '';
 
   const [messages, setMessages] = useState<LocalMessage[]>([]);
@@ -85,6 +90,7 @@ export function ChatScreen({ route }: Props) {
   const sinceRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
   const isNearBottomRef = useRef(true);
+  const canSend = !sending && input.trim().length > 0;
 
   const scrollToEnd = () => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
@@ -164,6 +170,8 @@ export function ChatScreen({ route }: Props) {
       rememberSince([message]);
       setError(null);
     } catch (err) {
+      // Mesaj sık yapılan bir işlem: başarıda titreşim yok, yalnızca hatada.
+      haptics.error();
       setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m)));
       setError(err instanceof Error ? err.message : 'Mesaj gönderilemedi');
     } finally {
@@ -205,24 +213,24 @@ export function ChatScreen({ route }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.screen}>
         <SkeletonList variant="chat" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (loadError && messages.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
         <ErrorState error={loadError} fallback="Mesajlar alınamadı" onRetry={loadInitial} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.screen}>
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
@@ -235,114 +243,151 @@ export function ChatScreen({ route }: Props) {
           scrollEventThrottle={100}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <EmptyState
-              compact
-              icon="chatbubbles-outline"
-              title="Henüz mesaj yok"
-              message="İlk mesajı siz yazın."
-            />
+            <EmptyState compact icon="chatbubbles-outline" title="Henüz mesaj yok" message="İlk mesajı siz yazın." />
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const isMine = item.senderId === meId;
+            const previous = messages[index - 1];
+            const startsNewDay =
+              !previous || !isSameCalendarDay(new Date(previous.createdAt), new Date(item.createdAt));
             return (
-              <Pressable
-                disabled={!item.failed}
-                onPress={() => handleRetry(item)}
-                style={[styles.bubble, isMine ? styles.myBubble : styles.otherBubble]}
-              >
-                <Text style={isMine ? styles.myText : styles.otherText}>{item.body}</Text>
-                <Text style={[styles.timeText, isMine ? styles.myTimeText : styles.otherTimeText]}>
-                  {item.failed
-                    ? 'Gönderilemedi — tekrar denemek için dokunun'
-                    : item.pending
-                      ? 'Gönderiliyor...'
-                      : formatClockTime(item.createdAt)}
-                </Text>
-              </Pressable>
+              <>
+                {startsNewDay ? (
+                  <View style={styles.dayChip}>
+                    <Text style={styles.dayChipText}>{formatDayLabel(item.createdAt)}</Text>
+                  </View>
+                ) : null}
+                <Pressable
+                  disabled={!item.failed}
+                  onPress={() => handleRetry(item)}
+                  accessibilityRole={item.failed ? 'button' : undefined}
+                  accessibilityLabel={
+                    item.failed ? `Gönderilemedi: ${item.body}. Tekrar denemek için dokunun.` : undefined
+                  }
+                  style={({ pressed }) => [
+                    styles.bubble,
+                    isMine ? styles.myBubble : styles.otherBubble,
+                    item.failed && styles.failedBubble,
+                    pressed && item.failed && styles.pressedFade,
+                  ]}
+                >
+                  <Text style={isMine ? styles.myText : styles.otherText}>{item.body}</Text>
+                  {item.failed ? (
+                    <View style={styles.failedRow}>
+                      <Ionicons name="alert-circle" size={13} color={isMine ? colors.primaryText : colors.danger} />
+                      <Text style={[styles.failedText, isMine ? styles.myMeta : styles.dangerText]}>
+                        Gönderilemedi. Tekrar denemek için dokunun.
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={[styles.time, isMine ? styles.myMeta : styles.otherMeta]}>
+                      {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
+                    </Text>
+                  )}
+                </Pressable>
+              </>
             );
           }}
         />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <View style={styles.inputRow}>
+        {error ? <InlineError message={error} style={styles.banner} /> : null}
+        <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
           <TextInput
             style={styles.input}
-            placeholder="Mesaj yazın..."
+            placeholder="Mesaj yazın"
             placeholderTextColor={colors.textMuted}
             value={input}
             onChangeText={setInput}
             multiline
+            accessibilityLabel="Mesaj"
           />
-          <Pressable style={styles.sendButton} onPress={handleSend} disabled={sending || !input.trim()}>
-            <Text style={styles.sendButtonText}>Gönder</Text>
+          <Pressable
+            onPress={handleSend}
+            disabled={!canSend}
+            accessibilityRole="button"
+            accessibilityLabel="Mesajı gönder"
+            accessibilityState={{ disabled: !canSend }}
+            style={({ pressed }) => [styles.sendButton, !canSend && styles.sendDisabled, pressed && canSend && styles.pressedFade]}
+          >
+            <Ionicons name="send" size={18} color={colors.primaryText} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { padding: spacing.lg },
-  // Baloncuklar: gönderenin tarafındaki köşe sivri kalıyor (konuşma yönü
-  // okunsun diye), diğer üç köşe yumuşak.
-  bubble: {
-    borderRadius: radius.lg,
-    padding: spacing.md,
+  screen: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  listContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, paddingBottom: spacing.sm },
+  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.sm },
+  dayChip: {
+    alignSelf: 'center',
+    backgroundColor: colors.chip,
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     marginBottom: spacing.sm,
-    maxWidth: '85%',
   },
-  myBubble: {
-    backgroundColor: colors.primary,
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: radius.sm,
+  dayChipText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
+  // Gönderenin tarafındaki alt köşe sivri: konuşmanın yönü okunsun.
+  bubble: {
+    maxWidth: '78%',
+    borderRadius: radius.lg,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginBottom: spacing.sm,
+    gap: 4,
   },
+  myBubble: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 2 },
   otherBubble: {
-    backgroundColor: colors.surface,
     alignSelf: 'flex-start',
-    borderBottomLeftRadius: radius.sm,
-    ...shadow.card,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderBottomLeftRadius: 2,
   },
+  failedBubble: { opacity: 0.75 },
+  pressedFade: { opacity: 0.6 },
   myText: { ...typography.body, color: colors.primaryText },
   otherText: { ...typography.body, color: colors.text },
-  timeText: { fontFamily: fonts.regular, fontSize: 11, marginTop: 4 },
-  myTimeText: { color: colors.primaryText, opacity: 0.8, textAlign: 'right' },
-  otherTimeText: { color: colors.textMuted },
-  inputRow: {
+  time: { ...typography.mono, fontSize: 11, lineHeight: 14, alignSelf: 'flex-end' },
+  myMeta: { color: colors.onPrimaryMuted },
+  otherMeta: { color: colors.textMuted },
+  dangerText: { color: colors.danger },
+  failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
+  failedText: { ...typography.caption, fontSize: 11, lineHeight: 14 },
+  composer: {
     flexDirection: 'row',
-    padding: spacing.md,
+    alignItems: 'flex-end',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    backgroundColor: colors.background,
-    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: 10,
   },
   input: {
-    fontFamily: fonts.regular,
     flex: 1,
     minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm + 4,
-    fontSize: 15,
     backgroundColor: colors.surfaceTonal,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontFamily: fonts.regular,
+    fontSize: 14,
     color: colors.text,
   },
   sendButton: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md + 2,
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
     borderRadius: radius.md,
     backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  sendButtonText: { ...typography.label, color: colors.primaryText },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
+  sendDisabled: { opacity: 0.4 },
 });

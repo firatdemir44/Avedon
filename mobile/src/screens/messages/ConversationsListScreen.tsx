@@ -1,20 +1,26 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, Platform, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchConversations } from '../../api/client';
-import { formatRelativeTime } from '../../features/time';
+import { formatListTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { HeaderButton } from '../../components/HeaderButton';
+import { SearchField } from '../../components/SearchField';
+import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Conversations'>;
 
 const REFRESH_INTERVAL_MS = 15000;
 
+// Taslak: docs/tasarim-yonleri/CMesajlar.dc.html. Arama çubuğu; altında
+// çizgili sohbet satırları. Okunmamış sohbette saat ve son mesaj vurgulu,
+// sağda mavi sayı rozeti.
 export function ConversationsListScreen({ navigation }: Props) {
   const { user } = useSession();
   const [query, setQuery] = useState('');
@@ -34,9 +40,7 @@ export function ConversationsListScreen({ navigation }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <Pressable onPress={() => navigation.navigate('NewConversation')} hitSlop={8}>
-          <Text style={styles.headerAction}>+ Yeni</Text>
-        </Pressable>
+        <HeaderButton icon="add" label="Yeni" showLabel onPress={() => navigation.navigate('NewConversation')} />
       ),
     });
   }, [navigation]);
@@ -58,7 +62,7 @@ export function ConversationsListScreen({ navigation }: Props) {
   if (status === 'loading') {
     return (
       <View style={styles.container}>
-        <SkeletonList variant="row" />
+        <SkeletonList variant="conversation" />
       </View>
     );
   }
@@ -73,13 +77,12 @@ export function ConversationsListScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchWrap}>
-        <TextInput
-          style={styles.search}
-          placeholder="Mesajlarda ara..."
-          placeholderTextColor={colors.textMuted}
+      <View style={styles.searchBar}>
+        <SearchField
           value={query}
           onChangeText={setQuery}
+          placeholder="Mesajlarda ara"
+          accessibilityLabel="Mesajlarda ara"
         />
       </View>
       <FlatList
@@ -112,36 +115,60 @@ export function ConversationsListScreen({ navigation }: Props) {
             />
           )
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
+          const name = `${item.user.firstName} ${item.user.lastName}`;
+          const company = item.user.company;
+          const unread = item.unreadCount > 0;
           const isMine = item.lastMessage?.senderId === user?.id;
+          const timeLabel = formatListTime(item.lastMessageAt);
           return (
             <Pressable
-              style={styles.card}
-              onPress={() =>
-                navigation.navigate('Chat', {
-                  conversationId: item.id,
-                  title: `${item.user.firstName} ${item.user.lastName}`,
-                })
-              }
+              onPress={() => navigation.navigate('Chat', { conversationId: item.id, title: name })}
+              accessibilityRole={Platform.OS === 'web' ? 'link' : 'button'}
+              accessibilityLabel={[name, company?.name, unread ? `${item.unreadCount} okunmamış mesaj` : null]
+                .filter(Boolean)
+                .join(', ')}
+              android_ripple={{ color: colors.pressed }}
+              style={({ pressed }) => [
+                styles.row,
+                index < filtered.length - 1 && styles.rowDivider,
+                pressed && styles.pressed,
+              ]}
             >
-              <View style={styles.cardHeaderRow}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {item.user.firstName} {item.user.lastName}
+              <CompanyAvatar
+                name={company?.name ?? item.user.firstName}
+                companyId={company?.id}
+                logoUpdatedAt={company?.logoUpdatedAt}
+                size={44}
+              />
+              <View style={styles.texts}>
+                <View style={styles.topLine}>
+                  <Text style={styles.name} numberOfLines={1}>
+                    {name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.time,
+                      timeLabel !== 'dün' && styles.timeMono,
+                      unread && styles.timeUnread,
+                    ]}
+                  >
+                    {timeLabel}
+                  </Text>
+                </View>
+                <Text style={styles.company} numberOfLines={1}>
+                  {company?.name ?? item.user.position}
                 </Text>
-                <Text style={styles.time}>{formatRelativeTime(item.lastMessageAt)}</Text>
-              </View>
-              <Text style={styles.meta} numberOfLines={1}>
-                {item.user.company?.name ?? item.user.position}
-              </Text>
-              <View style={styles.previewRow}>
-                <Text style={[styles.preview, item.unreadCount > 0 && styles.previewUnread]} numberOfLines={1}>
-                  {item.lastMessage ? `${isMine ? 'Siz: ' : ''}${item.lastMessage.body}` : 'Henüz mesaj yok'}
-                </Text>
-                {item.unreadCount > 0 ? (
-                  <View style={styles.unreadBadge}>
-                    <Text style={styles.unreadBadgeText}>{item.unreadCount}</Text>
-                  </View>
-                ) : null}
+                <View style={styles.previewLine}>
+                  <Text style={[styles.preview, unread && styles.previewUnread]} numberOfLines={1}>
+                    {item.lastMessage ? `${isMine ? 'Siz: ' : ''}${item.lastMessage.body}` : 'Henüz mesaj yok'}
+                  </Text>
+                  {unread ? (
+                    <View style={styles.unreadBadge}>
+                      <Text style={styles.unreadText}>{item.unreadCount}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
             </Pressable>
           );
@@ -153,54 +180,42 @@ export function ConversationsListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  // Lacivert üst bant üzerinde beyaz.
-  headerAction: { ...typography.bodyStrong, color: colors.primaryText },
-  searchWrap: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
-  search: {
-    fontFamily: fonts.regular,
-    minHeight: MIN_TOUCH,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm + 4,
-    fontSize: 15,
-    backgroundColor: colors.surfaceTonal,
-    color: colors.text,
-  },
-  listContent: { padding: spacing.lg },
-  banner: { marginBottom: spacing.md },
-  card: {
+  searchBar: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadow.card,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  cardHeaderRow: {
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.sm,
+    gap: 12,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 12,
+    backgroundColor: colors.surface,
   },
-  name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text, flexShrink: 1 },
+  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  pressed: { backgroundColor: colors.pressed },
+  texts: { flex: 1, minWidth: 0, gap: 1 },
+  topLine: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm },
+  name: { ...typography.subtitle, color: colors.text, flexShrink: 1 },
   time: { ...typography.caption, color: colors.textMuted },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
+  timeMono: { fontFamily: fonts.mono },
+  timeUnread: { fontFamily: fonts.monoSemibold, color: colors.accent },
+  company: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  previewLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   preview: { ...typography.body, color: colors.textMuted, flex: 1 },
-  previewUnread: { color: colors.text, fontFamily: fonts.semibold },
+  previewUnread: { fontFamily: fonts.semibold, color: colors.text },
   unreadBadge: {
-    minWidth: 22,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    minWidth: 20,
+    height: 20,
     borderRadius: radius.pill,
-    backgroundColor: colors.notification,
+    backgroundColor: colors.accent,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 5,
   },
-  unreadBadgeText: { ...typography.caption, fontFamily: fonts.bold, color: colors.primaryText },
+  unreadText: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, color: colors.primaryText },
 });

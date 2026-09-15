@@ -5,7 +5,9 @@ import * as Haptics from 'expo-haptics';
 // titreşimini seçmesin diye anlamlar burada sabit:
 //   selection → seçim değişti (çip, sekme, birim değiştirme)
 //   light     → hafif, anında onay (beğen)
-//   success   → bir işlem sunucuda başarıyla tamamlandı (kaydet, gönder, talep et)
+//   success   → önemli bir işlem sunucuda tamamlandı (kaydet, talep et, sil).
+//               Sohbet mesajı ve yorum gibi sık yapılan işlemlerde YOK: her
+//               gönderişte titreşim rahatsız eder; onlarda yalnızca `error`.
 //   warning   → geri alınamaz bir işlemin onayı istendi (silmeden önce)
 //   error     → işlem başarısız oldu
 // Basmanın kendisi titreşmez: basma geri bildirimi görsel (basılı durum).

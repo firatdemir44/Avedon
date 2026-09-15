@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { fetchProducts, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
@@ -14,8 +13,9 @@ import { ListRow } from '../../components/ListRow';
 import { SectionHeader } from '../../components/SectionHeader';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { SearchField } from '../../components/SearchField';
 import type { Company, Product } from '../../types';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
@@ -96,24 +96,13 @@ export function ProductListScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.searchBar}>
-        <View style={styles.searchField}>
-          <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="İçerik, gramaj, kullanım alanı ara"
-            placeholderTextColor={colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            returnKeyType="search"
-            autoCorrect={false}
-            accessibilityLabel="Ürün ve firma ara"
-          />
-          {query ? (
-            <Pressable onPress={() => setQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Aramayı temizle">
-              <Ionicons name="close-circle" size={18} color={colors.chevron} />
-            </Pressable>
-          ) : null}
-        </View>
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          placeholder="İçerik, gramaj, kullanım alanı ara"
+          accessibilityLabel="Ürün ve firma ara"
+          style={styles.searchField}
+        />
         {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
             doğrudan ilgili kısayol kalıyor. */}
         {user?.companyId ? (
@@ -208,26 +197,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  searchField: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: MIN_TOUCH,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.text,
-    paddingVertical: 0,
-    minHeight: MIN_TOUCH - 2,
-  },
+  searchField: { flex: 1 },
   myCompany: { paddingHorizontal: spacing.gutter },
   offlineNotice: {
     ...typography.caption,

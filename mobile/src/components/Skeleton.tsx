@@ -112,7 +112,15 @@ export function Bone({
 
 // ---- Liste iskeletleri: her biri gerçek satırın/kartın boyunu ve dizilişini taklit ediyor.
 
-export type SkeletonListVariant = 'product' | 'post' | 'row' | 'request' | 'comment' | 'chat';
+export type SkeletonListVariant =
+  | 'product'
+  | 'post'
+  | 'row'
+  | 'request'
+  | 'comment'
+  | 'chat'
+  | 'conversation'
+  | 'person';
 
 const DEFAULT_COUNT: Record<SkeletonListVariant, number> = {
   product: 6,
@@ -121,13 +129,15 @@ const DEFAULT_COUNT: Record<SkeletonListVariant, number> = {
   request: 5,
   comment: 5,
   chat: 6,
+  conversation: 7,
+  person: 7,
 };
 
 // Yeni düzene (5. aşama) geçmiş listeler:
 //   blok  → gri aralıktan sonra tek beyaz blok içinde çizgili satırlar (ürünler, yorumlar)
 //   yığın → gri aralıklarla ayrılmış kenardan kenara beyaz bloklar (akış)
 // Diğerleri kendi ekranları geçene kadar köşeli kart.
-const BLOCK_VARIANTS: SkeletonListVariant[] = ['product', 'comment'];
+const BLOCK_VARIANTS: SkeletonListVariant[] = ['product', 'comment', 'conversation', 'person'];
 const STACK_VARIANTS: SkeletonListVariant[] = ['post'];
 
 // Aynı genişlikte kemikler yapay duruyor; satırdan satıra hafif değişiyor.
@@ -211,6 +221,32 @@ export function SkeletonList({
                   <Bone width={36} height={11} soft />
                 </View>
                 <Bone width={w} height={12} soft />
+              </View>
+            );
+          case 'conversation':
+            // Mesajlar satırı: 44px avatar; ad + saat, firma, son mesaj.
+            return (
+              <View key={i} style={[styles.personRow, i < count - 1 && styles.rowDivider]}>
+                <Bone width={44} height={44} rounded={radius.md} />
+                <View style={[styles.flex, styles.gapXs]}>
+                  <View style={styles.spread}>
+                    <Bone width={130} height={14} />
+                    <Bone width={36} height={11} soft />
+                  </View>
+                  <Bone width={100} height={11} soft />
+                  <Bone width={w} height={12} soft />
+                </View>
+              </View>
+            );
+          case 'person':
+            // Kişi seçme satırı: 36px avatar; ad, unvan.
+            return (
+              <View key={i} style={[styles.personRow, styles.personRowCompact, i < count - 1 && styles.rowDivider]}>
+                <Bone width={36} height={36} rounded={radius.md} />
+                <View style={[styles.flex, styles.gapXs]}>
+                  <Bone width={140} height={14} />
+                  <Bone width={100} height={11} soft />
+                </View>
               </View>
             );
           case 'chat': {
@@ -374,6 +410,8 @@ const styles = StyleSheet.create({
   },
   postActionBar: { borderTopWidth: 1, borderTopColor: colors.divider, paddingTop: 12, minHeight: 40 },
   commentRow: { paddingHorizontal: spacing.gutter, paddingVertical: 12, gap: 8 },
+  personRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: spacing.gutter, paddingVertical: 12 },
+  personRowCompact: { paddingVertical: 10 },
   detail: { padding: spacing.lg },
   detailFlush: { gap: spacing.blockGap },
   // Henüz yeni düzene geçmemiş kartlarla aynı kutu: beyaz, 6px köşe, 16px iç boşluk.
