@@ -1,14 +1,14 @@
 # Avedon — çalışma düzeni
 
-Proje **iki makinede** geliştiriliyor (2026-09-14'ten itibaren): ev PC'si ve iş PC'si. Ortak olan tek şey GitHub deposu — `.env` dosyaları ve yerel SQLite veritabanı (`backend/prisma/dev.db`) git'e girmediği için **her makinede ayrıdır**.
+**TEK MAKİNE, TEK OTURUM (kullanıcı kararı, 2026-09-15):** Geliştirme yalnızca **iş PC'sinde** yapılır. İş PC'si sürekli açık kalır; kullanıcı evden ve telefondan bu makinedeki oturuma **Remote Control** ile bağlanır (Claude mobil uygulamasının Code sekmesi veya claude.ai/code). Gerekçe: 2026-09-14/15'te iki makinede çalışmak ayrı `.env`, ayrı veritabanı ve senkron kaymasıyla sürekli sorun çıkardı.
 
-Bu yüzden:
-- **Oturuma başlarken önce `git pull`** — diğer makinede çalışılmış olabilir.
-- **İş bitince push et** — diğer makine devam edebilsin.
-- **`git pull` sonrası:** yeni paket geldiyse ilgili klasörde `npm.cmd install`; yeni migration geldiyse `backend`'de `npx.cmd prisma migrate deploy` + `npx.cmd prisma generate`.
-- Yeni bir makinede ilk kurulum: her iki klasörde `npm install`, `backend/.env` oluştur (şablon: `backend/.env.example` — `DATABASE_URL`, `JWT_SECRET`, `ANTHROPIC_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_STREAM_API_TOKEN`), `mobile/.env` oluştur (şablon: `mobile/.env.example` — `EXPO_PUBLIC_API_URL` o makinenin IPv4 adresi), `npx prisma migrate deploy` + `npm run seed`. `JWT_SECRET` makineye özel olabilir; production'daki (Render) değerle aynı olmak zorunda değil — sadece o makinede üretilen oturum jetonları o makinede geçerli olur. Gizli değerler kullanıcı tarafından makineler arasında taşınır; sohbete yazılmaz.
-- Yerel veritabanları ayrı olduğu için bir makinede eklenen test verisi diğerinde görünmez; ortak gerçek veri yalnızca canlı ortamdadır (Render).
+- **Ev PC'sinde geliştirme yapılmaz.** Oradaki Claude oturumu ("Avedon projesini ilk çalıştırma") kullanılmaz. Ev PC'sinde bu projeyle ilgili bir istek gelirse: işi yapma, kullanıcıya iş PC'sindeki oturumu hatırlat.
+- Canlı veri kalıcı olduğu için (Render diski) hiçbir makinenin yerel veritabanı "gerçek veri" değildir; iş PC'sindeki `backend/prisma/dev.db` yalnızca geliştirme/test içindir.
+- İş PC'si: kablolu ağ, `mobile/.env` → `EXPO_PUBLIC_API_URL=http://192.168.1.30:4000/api`. Telefon **iş yerindeki ağdayken** Expo Go ile `exp://192.168.1.30:8081` üzerinden bağlanır (2026-09-15'te doğrulandı). **Evdeyken telefon bu adrese ulaşamaz** — evden telefon testi için çözüm henüz kurulmadı, bkz. `docs/yapilacaklar.md`.
+- **Remote Control riskleri:** PC uyur/ağ koparsa oturum ağ gelince kendiliğinden bağlanır. Ama **Windows yeniden başlarsa oturum kapanır** ve biri PC başına gidip Claude masaüstü uygulamasını açana kadar uzaktan erişim olmaz. Windows etkin saatleri 2026-09-15'te 08:00–17:00 idi (yeniden başlatma bu saatlerin dışında olabilir); kullanıcıya en fazla 18 saatlik etkin saat önerildi. Asistan sistem/güncelleme ayarlarını değiştirmez.
+- `git pull` alışkanlığı zararsızdır, sürer; yeni paket geldiyse `npm.cmd install`, yeni migration geldiyse `backend`'de `npx.cmd prisma migrate deploy` + `npx.cmd prisma generate`.
 - Sunucuları başlatma: `backend`'de `npm.cmd run dev`, `mobile`'da `npx.cmd expo start --lan` (`CI=1` ile değil: o kipte Metro değişiklikleri izlemez, eski paketi sunar).
+- Yeni makinede kurulum (yalnızca iş PC'si değişirse): her iki klasörde `npm.cmd install`, `backend/.env` (şablon `backend/.env.example`), `mobile/.env` (şablon `mobile/.env.example`), `npx.cmd prisma migrate deploy` + `npm.cmd run seed`. Gizli değerler sohbete yazılmaz.
 
 ## Canlı ortam (Render + Vercel)
 
