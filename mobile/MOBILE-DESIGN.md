@@ -15,7 +15,7 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 | Etkileşim | `pressed` #E4E9EE (basılı satır zemini), `chevron`, `chip`, `onPrimaryMuted` | |
 | Boşluk | `gutter` 14 (satır/blok yatay iç boşluğu), `blockGap` 8 (bloklar arası gri aralık), `xs/sm/md/lg/xl` 4/8/16/24/32 | |
 | Köşe | `md` 6 (düğme, alan, görsel, avatar), `sm` 4 (etiket/rozet), `lg` 8 (baloncuk), `pill` yalnızca sayı rozeti ve nokta | Hap biçimli düğme yok. |
-| Yazı | IBM Plex Sans (metin) + **IBM Plex Mono** (ürün kodu, gramaj/en/stok, saat, tarih, telefon, VKN) | `fontWeight` kullanılmaz; kalınlık ayrı yazı tipi dosyasıyla (`fonts.semibold` vb.). |
+| Yazı | IBM Plex Sans (metin) + **IBM Plex Mono** (ürün kodu, gramaj/en/stok, saat, tarih, telefon, VKN) | `fontWeight` kullanılmaz; kalınlık ayrı yazı tipi dosyasıyla (`fonts.semibold` vb.). **Ölçek (2026-09-15, kullanıcı "yazı küçük" dedi, taslaktan ~2px büyük):** title 24 · heading 19 · subtitle 17 · body 16 · label 15 · caption 13 · mono 15 · monoStrong 17. En küçük metin 11 (rozet/etiket). |
 | Dokunma | `MIN_TOUCH` 44 | Her dokunulabilir öğe en az 44px (ya da `hitSlop`). |
 
 ## Düzen kalıpları
@@ -24,6 +24,7 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 - **Bölüm başlığı:** `SectionHeader` — bloğun üstünde küçük gri başlık, isteğe bağlı eşit aralıklı sayı: "Ürünler (12)".
 - **Çizgili satır:** `ListRow` (başlık, alt başlık, sol öğe, sağ ek bilgi, ok). Son satırda çizgi yok (`divider={index < n - 1}`).
 - **Arama çubuğu:** beyaz şerit içinde `SearchField` (Ürünler, Mesajlar).
+- **Görünüm seçimi (Ürünler):** arama şeridinin altında iki eşit düğme, seçili olan lacivert dolu. "Tümü" tek akış, "Çeşitler" kumaş çeşidi klasörleri (klasör satırı: açık mavi kare içinde klasör ikonu + "N ürün"); açık klasörün üstünde geri satırı. Seçim cihazda hatırlanır. Arama yazılınca klasörler yerine sonuçlar gelir.
 - **Başlık eylemleri:** `HeaderButton` — lacivert bantta yalnızca ikon (Akış: danışman, paylaş) ya da ikon + kısa etiket (Mesajlar: + Yeni). Düz metin eylem yok.
 - **Sabit eylem çubuğu:** ekranın altında beyaz, üst çizgili, `PrimaryButton size="lg"` (Ürün sayfası: Firma + Numune Talep Et; Numune takibi: adımı işaretle). Alt güvenli alan `useSafeAreaInsets` ile çubuğun kendisine eklenir.
 - **Yazma alanı:** tonlu giriş kutusu + 44px kare lacivert gönder düğmesi (Sohbet, Yorumlar).
