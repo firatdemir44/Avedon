@@ -18,6 +18,15 @@ async function main() {
   });
   console.log('Admin kullanıcı hazır (telefon: 05000000000).');
 
+  // Canlı ortamda (Render, RENDER="true" her serviste otomatik tanımlı) örnek
+  // firma/ürün/gönderi EKLENMEZ: pilot kullanıcılar sahte firmaları gerçek
+  // sanmasın. Start Command her açılışta seed çalıştırdığı için bu kontrol
+  // şart — kalıcı diskteki boş bir veritabanına ilk açılışta demo dolardı.
+  if (process.env.RENDER === 'true') {
+    console.log('Canlı ortam: örnek veri atlandı.');
+    return;
+  }
+
   const existing = await prisma.company.count();
   if (existing > 0) {
     console.log('Firma/ürün seed atlandı: veri zaten mevcut.');
