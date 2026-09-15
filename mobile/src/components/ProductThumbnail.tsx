@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontFamily: fonts.regular,
-    fontSize: 10,
+    fontSize: 11,
     color: colors.textMuted,
     textAlign: 'center',
   },

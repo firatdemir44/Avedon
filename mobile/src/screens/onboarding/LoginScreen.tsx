@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.gutter,
     fontFamily: fonts.mono,
-    fontSize: 16,
+    fontSize: 17,
     color: colors.text,
     backgroundColor: colors.surface,
   },

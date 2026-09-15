@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   heroPlaceholderText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   titleTexts: { flex: 1, gap: 2 },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 22, lineHeight: 28, color: colors.primary },
+  code: { fontFamily: fonts.monoSemibold, fontSize: 24, lineHeight: 30, color: colors.primary },
   titleMeta: { ...typography.body, color: colors.textMuted },
   specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
   specRow: {
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   },
   specDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  specValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 14, color: colors.text, flexShrink: 1, textAlign: 'right' },
+  specValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text, flexShrink: 1, textAlign: 'right' },
   companyRow: {
     flexDirection: 'row',
     alignItems: 'center',

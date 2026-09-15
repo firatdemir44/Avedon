@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
   },
-  typeTagText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 14, color: colors.textMuted },
+  typeTagText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, color: colors.textMuted },
   company: { ...typography.label, color: colors.accent },
   content: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
   bottomRow: {
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     minHeight: MIN_TOUCH,
   },
   measures: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', flexShrink: 1 },
-  measureText: { ...typography.mono, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  measureText: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   requestAction: {
     minHeight: MIN_TOUCH,
     justifyContent: 'center',

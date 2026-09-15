@@ -77,17 +77,19 @@ export const fonts = {
   monoSemibold: 'IBMPlexMono_600SemiBold',
 } as const;
 
+// 2026-09-15 kullanıcı telefonda "yazı küçük" dedi: taslaktaki ölçek (gövde 14)
+// her basamakta ~2px büyütüldü (gövde 16, telefonların varsayılan metin boyu).
 export const typography = {
-  title: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28 },
-  heading: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 22 },
-  subtitle: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20 },
-  body: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20 },
-  bodyStrong: { fontFamily: fonts.semibold, fontSize: 14, lineHeight: 20 },
-  label: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
-  caption: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16 },
+  title: { fontFamily: fonts.semibold, fontSize: 24, lineHeight: 30 },
+  heading: { fontFamily: fonts.semibold, fontSize: 19, lineHeight: 25 },
+  subtitle: { fontFamily: fonts.semibold, fontSize: 17, lineHeight: 23 },
+  body: { fontFamily: fonts.regular, fontSize: 16, lineHeight: 23 },
+  bodyStrong: { fontFamily: fonts.semibold, fontSize: 16, lineHeight: 23 },
+  label: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 21 },
+  caption: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   // Ürün kodları, gramaj/en/stok, saat ve tarih.
-  mono: { fontFamily: fonts.mono, fontSize: 13, lineHeight: 18 },
-  monoStrong: { fontFamily: fonts.monoSemibold, fontSize: 15, lineHeight: 20 },
+  mono: { fontFamily: fonts.mono, fontSize: 15, lineHeight: 21 },
+  monoStrong: { fontFamily: fonts.monoSemibold, fontSize: 17, lineHeight: 23 },
 } as const;
 
 // Dokunulabilir her şeyin en küçük yüksekliği (Apple 44pt). Yoğun düzende

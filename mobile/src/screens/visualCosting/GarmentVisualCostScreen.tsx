@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   },
   removeBadgeText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: fonts.bold,
     lineHeight: 16,
   },

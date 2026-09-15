@@ -111,5 +111,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 5,
   },
-  countBadgeText: { fontFamily: fonts.bold, fontSize: 11, lineHeight: 14, color: colors.primaryText },
+  countBadgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
 });

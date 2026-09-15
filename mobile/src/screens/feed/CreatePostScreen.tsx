@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.md,
     padding: spacing.md,
-    fontSize: 15,
+    fontSize: 17,
     backgroundColor: colors.surfaceTonal,
     color: colors.text,
     textAlignVertical: 'top',

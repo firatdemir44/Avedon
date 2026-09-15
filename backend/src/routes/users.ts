@@ -26,7 +26,13 @@ usersRouter.get('/:id', async (req, res) => {
       position: user.position,
       accountType: user.accountType,
       company: user.company
-        ? { id: user.company.id, name: user.company.name, verification: user.company.verification }
+        ? {
+            id: user.company.id,
+            name: user.company.name,
+            verification: user.company.verification,
+            // Profil avatarında firma logosu gösterilsin (önbellek anahtarı).
+            logoUpdatedAt: user.company.logoUpdatedAt,
+          }
         : null,
       ...(isSelf || (state && isConnectedAccepted(state)) ? { phone: user.phone } : {}),
     },

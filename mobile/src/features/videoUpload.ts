@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File, UploadType } from 'expo-file-system';
 import { fetchVideo, requestVideoUploadUrl, type VideoRef } from '../api/client';
@@ -14,6 +15,8 @@ export interface PickedVideo {
   durationSeconds: number | null;
   sizeBytes: number | null;
   mimeType: string;
+  // Yalnızca web: tarayıcının seçtiği dosya (FormData ile gönderilir).
+  webFile?: Blob;
 }
 
 export class VideoPickError extends Error {
@@ -42,7 +45,13 @@ export async function pickVideo(): Promise<PickedVideo | null> {
     throw new VideoPickError('too_large');
   }
 
-  return { uri: asset.uri, durationSeconds, sizeBytes, mimeType: asset.mimeType ?? 'video/mp4' };
+  return {
+    uri: asset.uri,
+    durationSeconds,
+    sizeBytes,
+    mimeType: asset.mimeType ?? asset.file?.type ?? 'video/mp4',
+    webFile: asset.file,
+  };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,26 +83,60 @@ interface UploadOptions {
   onReserved?: (ref: VideoRef) => void;
 }
 
-// Video sunucumuza değil doğrudan Cloudflare'e gidiyor; sunucu yalnızca tek
-// kullanımlık yükleme adresini veriyor.
-export async function uploadVideo(video: PickedVideo, options: UploadOptions = {}): Promise<VideoRef> {
-  const { video: ref, uploadURL } = await requestVideoUploadUrl();
-  options.onReserved?.(ref);
-
+async function uploadFromDevice(
+  video: PickedVideo,
+  uploadURL: string,
+  onProgress?: (fraction: number) => void
+): Promise<boolean> {
   const task = new File(video.uri).createUploadTask(uploadURL, {
     httpMethod: 'POST',
     uploadType: UploadType.MULTIPART,
     fieldName: 'file',
     mimeType: video.mimeType,
     onProgress: ({ bytesSent, totalBytes }) => {
-      if (totalBytes > 0) options.onProgress?.(Math.min(1, bytesSent / totalBytes));
+      if (totalBytes > 0) onProgress?.(Math.min(1, bytesSent / totalBytes));
     },
   });
+  const result = await task.uploadAsync();
+  return result.status >= 200 && result.status < 300;
+}
+
+// expo-file-system'in web sürümü boş (yükleme görevi hiçbir şey yapmıyor);
+// 2026-09-15'te tarayıcıdan video yüklemesi bu yüzden hep başarısızdı.
+// Tarayıcıda dosya FormData ile, ilerleme için XMLHttpRequest ile gönderiliyor.
+async function uploadFromBrowser(
+  video: PickedVideo,
+  uploadURL: string,
+  onProgress?: (fraction: number) => void
+): Promise<boolean> {
+  const blob = video.webFile ?? (await (await fetch(video.uri)).blob());
+  const form = new FormData();
+  form.append('file', blob);
+  return new Promise<boolean>((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', uploadURL);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(Math.min(1, event.loaded / event.total));
+    };
+    xhr.onload = () => resolve(xhr.status >= 200 && xhr.status < 300);
+    xhr.onerror = () => resolve(false);
+    xhr.ontimeout = () => resolve(false);
+    xhr.send(form);
+  });
+}
+
+// Video sunucumuza değil doğrudan Cloudflare'e gidiyor; sunucu yalnızca tek
+// kullanımlık yükleme adresini veriyor.
+export async function uploadVideo(video: PickedVideo, options: UploadOptions = {}): Promise<VideoRef> {
+  const { video: ref, uploadURL } = await requestVideoUploadUrl();
+  options.onReserved?.(ref);
 
   let uploadOk = false;
   try {
-    const result = await task.uploadAsync();
-    uploadOk = result.status >= 200 && result.status < 300;
+    uploadOk =
+      Platform.OS === 'web'
+        ? await uploadFromBrowser(video, uploadURL, options.onProgress)
+        : await uploadFromDevice(video, uploadURL, options.onProgress);
   } catch {
     uploadOk = false;
   }

@@ -46,7 +46,7 @@ export function StockBadge({ stock }: { stock: number }) {
 const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: radius.pill },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  value: { ...typography.mono, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  value: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   valueLow: { color: colors.warning },
   badge: {
     flexDirection: 'row',

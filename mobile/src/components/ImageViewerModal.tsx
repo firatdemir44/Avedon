@@ -53,5 +53,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  closeText: { color: '#FFFFFF', fontSize: 18, fontFamily: fonts.semibold },
+  closeText: { color: '#FFFFFF', fontSize: 20, fontFamily: fonts.semibold },
 });

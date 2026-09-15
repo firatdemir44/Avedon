@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.gutter },
   identityTexts: { flex: 1, gap: spacing.xs },
-  name: { fontFamily: fonts.semibold, fontSize: 20, lineHeight: 26, color: colors.text },
+  name: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28, color: colors.text },
   tagRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
   tag: {
     flexDirection: 'row',
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   tagOutline: { borderWidth: 1, borderColor: colors.border },
   tagText: { ...typography.caption, fontFamily: fonts.semibold },
-  taxId: { ...typography.mono, fontSize: 12, lineHeight: 16, color: colors.textMuted },
+  taxId: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   about: { ...typography.body, color: colors.text, marginTop: 12 },
   facts: { marginTop: spacing.sm },
   fact: {

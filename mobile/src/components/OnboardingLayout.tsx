@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.title,
-    fontSize: 26,
+    fontSize: 28,
     lineHeight: 32,
     color: colors.primary,
     marginBottom: spacing.sm,

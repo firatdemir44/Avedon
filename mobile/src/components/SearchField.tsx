@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 16,
     color: colors.text,
     paddingVertical: 0,
     minHeight: MIN_TOUCH - 2,

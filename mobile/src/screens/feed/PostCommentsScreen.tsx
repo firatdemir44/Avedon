@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 16,
     color: colors.text,
   },
   sendButton: {

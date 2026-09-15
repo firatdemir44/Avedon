@@ -351,12 +351,12 @@ const styles = StyleSheet.create({
   pressedFade: { opacity: 0.6 },
   myText: { ...typography.body, color: colors.primaryText },
   otherText: { ...typography.body, color: colors.text },
-  time: { ...typography.mono, fontSize: 11, lineHeight: 14, alignSelf: 'flex-end' },
+  time: { ...typography.mono, fontSize: 12, lineHeight: 16, alignSelf: 'flex-end' },
   myMeta: { color: colors.onPrimaryMuted },
   otherMeta: { color: colors.textMuted },
   dangerText: { color: colors.danger },
   failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
-  failedText: { ...typography.caption, fontSize: 11, lineHeight: 14 },
+  failedText: { ...typography.caption, fontSize: 12, lineHeight: 16 },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 11,
     fontFamily: fonts.regular,
-    fontSize: 14,
+    fontSize: 16,
     color: colors.text,
   },
   sendButton: {

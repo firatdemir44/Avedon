@@ -18,7 +18,13 @@ export function ProfileIdentity({ profile, onOpenCompany }: Props) {
   return (
     <View style={styles.block}>
       <View style={styles.identityRow}>
-        <CompanyAvatar name={profile.firstName} size={56} />
+        {/* Firmanın logosu varsa o, yoksa kişinin baş harfi. */}
+        <CompanyAvatar
+          name={profile.firstName}
+          size={56}
+          companyId={company?.id}
+          logoUpdatedAt={company?.logoUpdatedAt}
+        />
         <View style={styles.texts}>
           <Text style={styles.name} accessibilityRole="header">
             {name}
@@ -58,7 +64,7 @@ const styles = StyleSheet.create({
   block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
   identityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.gutter, paddingBottom: spacing.gutter },
   texts: { flex: 1, gap: 1 },
-  name: { fontFamily: fonts.semibold, fontSize: 19, lineHeight: 25, color: colors.text },
+  name: { fontFamily: fonts.semibold, fontSize: 21, lineHeight: 27, color: colors.text },
   position: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   companyLink: { alignSelf: 'flex-start' },
   company: { ...typography.label, color: colors.accent },
@@ -73,6 +79,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   phoneLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  phoneValue: { ...typography.mono, fontSize: 14, color: colors.text },
+  phoneValue: { ...typography.mono, fontSize: 16, color: colors.text },
   phoneHidden: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
 });

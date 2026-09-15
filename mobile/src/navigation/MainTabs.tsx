@@ -45,9 +45,9 @@ export function MainTabs() {
         tabBarHideOnKeyboard: true,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 11, fontFamily: fonts.medium },
+        tabBarLabelStyle: { fontSize: 12, fontFamily: fonts.medium },
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarBadgeStyle: { backgroundColor: colors.notification, fontFamily: fonts.semibold, fontSize: 11 },
+        tabBarBadgeStyle: { backgroundColor: colors.notification, fontFamily: fonts.semibold, fontSize: 12 },
         // C · Pazar Masası: lacivert üst bant, beyaz başlık (bkz. theme/index.ts).
         headerTitleStyle: { ...typography.heading, color: colors.primaryText },
         headerShadowVisible: false,

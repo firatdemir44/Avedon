@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.sm + 4,
-    fontSize: 15,
+    fontSize: 17,
     backgroundColor: colors.surfaceTonal,
     color: colors.text,
   },
