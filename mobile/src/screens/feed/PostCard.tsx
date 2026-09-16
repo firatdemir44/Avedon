@@ -8,6 +8,7 @@ import { StockValue } from '../../components/StockIndicator';
 import { formatRelativeTime } from '../../features/time';
 import { formatMeasure } from '../../features/calculators/parse';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import type { FeedPost } from '../../api/client';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -57,6 +58,38 @@ function PostCardComponent({
       cancelled = true;
     };
   }, [post.id, post.hasImage, imageUrl]);
+
+  // Gönderide kendi fotoğrafı ya da videosu yoksa ürünün kapak fotoğrafı
+  // gösteriliyor (kullanıcı geri bildirimi 2026-09-16: "ürün resmi akışta
+  // görünmüyor"). Fotoğraf listede gelmiyor, burada tek tek çekiliyor.
+  const productWithImage = !post.hasImage && !post.video && post.product?.hasImage ? post.product : null;
+  const [productImageUrl, setProductImageUrl] = useState<string | null>(() =>
+    productWithImage ? getCachedProductImage(productWithImage.id) ?? null : null
+  );
+
+  useEffect(() => {
+    if (!productWithImage) {
+      setProductImageUrl(null);
+      return;
+    }
+    const cached = getCachedProductImage(productWithImage.id);
+    if (cached) {
+      setProductImageUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(productWithImage.id)
+      .then((url) => {
+        if (!cancelled) setProductImageUrl(url);
+      })
+      .catch(() => {
+        // Fotoğraf gelmezse kart ölçü şeridiyle devam eder.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productWithImage?.id]);
 
   const company = post.author.company;
   const authorName = `${post.author.firstName} ${post.author.lastName}`;
@@ -127,6 +160,21 @@ function PostCardComponent({
             resizeMode="cover"
             accessibilityLabel={`${authorName} gönderisinin fotoğrafı`}
           />
+        ) : (
+          <View style={[styles.image, styles.imagePlaceholder]}>
+            <Ionicons name="image-outline" size={24} color={colors.chevron} />
+          </View>
+        )
+      ) : productWithImage ? (
+        productImageUrl ? (
+          <Pressable
+            onPress={() => onOpenProduct(post)}
+            accessibilityRole="button"
+            accessibilityLabel={`${productWithImage.code} ürün fotoğrafı, ürün sayfasını aç`}
+            style={({ pressed }) => pressed && styles.pressedImage}
+          >
+            <Image source={{ uri: productImageUrl }} style={styles.image} resizeMode="cover" />
+          </Pressable>
         ) : (
           <View style={[styles.image, styles.imagePlaceholder]}>
             <Ionicons name="image-outline" size={24} color={colors.chevron} />
@@ -255,6 +303,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   pressedFade: { opacity: 0.6 },
+  pressedImage: { opacity: 0.9 },
   pressedBg: { backgroundColor: colors.pressed },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   author: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: MIN_TOUCH },

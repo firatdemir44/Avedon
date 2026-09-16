@@ -132,6 +132,25 @@ async function main() {
     check('/products/mine alt çeşit ve fotoğraf bilgisi', mineP1?.subtype === 'suprem' && mineP1?.hasImage === true, mineP1);
     check('/products/mine başka firmanın ürününü içermez', mine.every((p: any) => !String(p.code).startsWith(`T${suffix}-2`)));
     check('/products/mine firmasız kullanıcıya boş', ((await api('GET', '/products/mine', B)).json?.products ?? []).length === 0);
+    const mineAll = (await api('GET', '/products/mine', S)).json;
+    check('/products/mine toplam sayı döner', typeof mineAll?.total === 'number' && mineAll.total >= 1, mineAll?.total);
+    const mineLimited = (await api('GET', '/products/mine?limit=1', S)).json;
+    check('/products/mine limit uygulanır, toplam değişmez', mineLimited?.products?.length === 1 && mineLimited?.total === mineAll.total, mineLimited);
+    const mineSearch = (await api('GET', `/products/mine?search=${encodeURIComponent('Süprem')}`, S)).json;
+    check('/products/mine alt çeşit etiketiyle arar', ids(mineSearch?.products).includes(p1.id), mineSearch?.products?.length);
+    const mineNoHit = (await api('GET', '/products/mine?search=zzzyok', S)).json;
+    check('/products/mine eşleşme yoksa boş', mineNoHit?.products?.length === 0 && mineNoHit?.total === 0, mineNoHit);
+    check('/products/mine geçersiz limit 400', (await api('GET', '/products/mine?limit=999', S)).status === 400);
+
+    console.log('Akışta ürün fotoğrafı');
+    const postRes = await api('POST', '/posts', S, { body: `Test gönderi ${suffix}`, productId: p1.id });
+    check('ürünlü gönderi oluşur', postRes.status === 201, postRes);
+    const feed = (await api('GET', '/posts', S)).json?.posts ?? [];
+    const feedPost = feed.find((p: any) => p.id === postRes.json?.post?.id);
+    check('akışta ürünün fotoğrafı olduğu bilgisi var', feedPost?.product?.hasImage === true, feedPost?.product);
+    check('akışta ürün fotoğrafının kendisi gönderilmez', !JSON.stringify(feedPost?.product ?? {}).includes('base64'));
+    check('gönderinin kendi fotoğrafı yok', feedPost?.hasImage === false, feedPost?.hasImage);
+    check('test gönderisi silinir', (await api('DELETE', `/posts/${postRes.json?.post?.id}`, S)).status === 204);
 
     console.log('Çeşit / alt çeşit güncelleme');
     const typeChanged = await api('PATCH', `/products/${p1.id}`, S, { type: 'dokuma' });

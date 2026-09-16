@@ -1,9 +1,10 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../db';
 import { createProductSchema, updateProductSchema, MAX_PRODUCT_IMAGES } from '../validation';
 import { makeHandle } from './handle';
 import { optionalAuth, requireAuth } from '../middleware/auth';
-import { isValidSubtype } from '../catalog';
+import { isValidSubtype, matchCatalogKeys } from '../catalog';
 import {
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
@@ -54,23 +55,56 @@ productsRouter.get(
   })
 );
 
-// Gönderi oluştururken ürün seçici için hafif liste. /:id'den ÖNCE tanımlı
-// olmalı, yoksa "mine" bir ürün id'si sanılır.
+// Gönderi ekranındaki ürün seçici. Firmanın yüzlerce ürünü olabildiği için
+// liste sunucuda aranır ve sayfa sayfa verilir; toplam sayı da dönüyor ki
+// ekran "240 üründen ilki" diyebilsin. /:id'den ÖNCE tanımlı olmalı, yoksa
+// "mine" bir ürün id'si sanılır.
+const mineQuerySchema = z.object({
+  search: z.string().trim().max(100).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 productsRouter.get(
   '/mine',
   requireAuth,
   handle(async (req, res) => {
-    if (!req.user!.companyId) {
-      return res.json({ products: [] });
+    const parsed = mineQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
     }
-    // Gönderi ekranındaki seçici satırları küçük resim ve çeşitle çiziyor.
-    const products = await prisma.product.findMany({
-      where: { companyId: req.user!.companyId },
-      select: { id: true, code: true, type: true, subtype: true, _count: { select: { images: true } } },
-      orderBy: { code: 'asc' },
-    });
+    if (!req.user!.companyId) {
+      return res.json({ products: [], total: 0 });
+    }
+
+    const search = parsed.data.search;
+    const matched = search ? matchCatalogKeys(search) : null;
+    const where = {
+      companyId: req.user!.companyId,
+      ...(search
+        ? {
+            OR: [
+              { code: { contains: search } },
+              { content: { contains: search } },
+              ...(matched!.types.length ? [{ type: { in: matched!.types } }] : []),
+              ...(matched!.subtypes.length ? [{ subtype: { in: matched!.subtypes } }] : []),
+            ],
+          }
+        : {}),
+    };
+
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        select: { id: true, code: true, type: true, subtype: true, _count: { select: { images: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: parsed.data.limit ?? 30,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
     res.json({
       products: products.map(({ _count, ...p }) => ({ ...p, hasImage: _count.images > 0 })),
+      total,
     });
   })
 );

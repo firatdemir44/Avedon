@@ -298,7 +298,7 @@ export type FeedPost = {
   editedAt: string | null;
   author: PostAuthor;
   // Ölçüler akış kartındaki ürün şeridi için (backend POST_PRODUCT_SELECT).
-  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number; stockUnit: StockUnit } | null;
+  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number; stockUnit: StockUnit; hasImage: boolean } | null;
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
@@ -388,8 +388,15 @@ export function deletePostComment(postId: string, commentId: string) {
 
 export type MyProductOption = { id: string; code: string; type: ProductType; subtype: string; hasImage: boolean };
 
-export function fetchMyProducts() {
-  return request<{ products: MyProductOption[] }>('/products/mine');
+// Gönderi ekranındaki ürün seçici: arama sunucuda yapılır, tek seferde en
+// fazla `limit` ürün gelir (varsayılan 30). `total` firmanın eşleşen toplam
+// ürün sayısı.
+export function fetchMyProducts(search?: string, limit?: number) {
+  const params: string[] = [];
+  if (search?.trim()) params.push(`search=${encodeURIComponent(search.trim())}`);
+  if (limit) params.push(`limit=${limit}`);
+  const query = params.length ? `?${params.join("&")}` : "";
+  return request<{ products: MyProductOption[]; total: number }>(`/products/mine${query}`);
 }
 
 export function searchCompanies(search: string) {

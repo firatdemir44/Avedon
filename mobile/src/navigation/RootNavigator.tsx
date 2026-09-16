@@ -41,6 +41,7 @@ import { ConnectionRequestsScreen } from '../screens/connections/ConnectionReque
 import { ChatScreen } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
+import { SelectProductScreen } from '../screens/feed/SelectProductScreen';
 import { PostCommentsScreen } from '../screens/feed/PostCommentsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -224,6 +225,11 @@ export function RootNavigator() {
               name="CreatePost"
               component={CreatePostScreen}
               options={{ headerShown: true, title: 'Gönderi Paylaş' }}
+            />
+            <Stack.Screen
+              name="SelectProduct"
+              component={SelectProductScreen}
+              options={{ headerShown: true, title: 'Ürün Seç' }}
             />
             <Stack.Screen
               name="PostComments"

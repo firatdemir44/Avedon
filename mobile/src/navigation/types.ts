@@ -58,7 +58,9 @@ export type RootStackParamList = {
   NewConversation: undefined;
   // postId verilirse ekran düzenleme modunda açılır. productId: ürün sayfasındaki
   // "Gönderide Paylaş"tan gelindiğinde o ürün seçili açılır.
-  CreatePost: { postId?: string; productId?: string } | undefined;
+  // pickedAt: aynı ürün ikinci kez seçilince de ekranın haberi olsun diye.
+  CreatePost: { postId?: string; productId?: string; pickedAt?: number } | undefined;
+  SelectProduct: { selectedId?: string } | undefined;
   PostComments: { postId: string };
 };
 

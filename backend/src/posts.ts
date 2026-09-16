@@ -23,6 +23,9 @@ export const POST_PRODUCT_SELECT = {
   widthCm: true,
   stock: true,
   stockUnit: true,
+  // Gönderide kendi fotoğrafı yoksa akış kartı ürünün kapak fotoğrafını
+  // gösteriyor; fotoğrafın kendisi yine ayrı uçtan çekiliyor.
+  _count: { select: { images: true } },
 } satisfies Prisma.ProductSelect;
 
 export const POST_INCLUDE = {
@@ -70,7 +73,17 @@ type PostWithIncludes = {
   createdAt: Date;
   editedAt: Date | null;
   author: unknown;
-  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number } | null;
+  product:
+    | {
+        id: string;
+        code: string;
+        weightGsm: number;
+        widthCm: number;
+        stock: number;
+        stockUnit: string;
+        _count: { images: number };
+      }
+    | null;
   video: VideoRecord | null;
   _count: { likes: number; comments: number };
 };
@@ -87,7 +100,9 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     createdAt: post.createdAt,
     editedAt: post.editedAt,
     author: post.author,
-    product: post.product,
+    product: post.product
+      ? (({ _count, ...product }) => ({ ...product, hasImage: _count.images > 0 }))(post.product)
+      : null,
     video: post.video ? toVideoRow(post.video) : null,
     likeCount: post._count.likes,
     commentCount: post._count.comments,

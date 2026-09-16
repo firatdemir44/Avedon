@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, ScrollView, ActivityIndicator, Platform, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Image, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -14,8 +13,8 @@ import {
   deleteVideo,
   fetchMyProducts,
   fetchPost,
+  fetchProduct,
   updatePost,
-  type MyProductOption,
   type PostVisibility,
   type VideoRef,
 } from '../../api/client';
@@ -35,6 +34,15 @@ const MAX_BODY = 3000;
 type VideoState =
   | { phase: 'uploading'; progress: number; durationSeconds: number | null }
   | { phase: 'uploaded'; ref: VideoRef; durationSeconds: number | null };
+
+// Seçili ürünün ekranda gösterilen özeti.
+interface SelectedProduct {
+  id: string;
+  code: string;
+  type: string;
+  subtype: string;
+  hasImage: boolean;
+}
 
 function formatDuration(seconds: number | null) {
   if (seconds == null) return '';
@@ -58,10 +66,9 @@ function videoErrorMessage(err: unknown) {
 // Aynı ekran hem yeni gönderi hem düzenleme için. Düzenlemede yalnızca yazı,
 // görünürlük ve ürün değişir; fotoğraf ve video sabit kalır (sunucu da izin vermez).
 //
-// 2026-09-15 kullanıcı "gönderiye ürün ekleyemiyorum" dedi: seçici çalışıyordu
-// ama sayfanın en altında, yalnızca ürün kodlarıyla duruyordu. Ürün bölümü
-// yazının hemen altına, fotoğraflı satırlarla taşındı; seçilen ürünün kapak
-// fotoğrafı tek dokunuşla gönderiye eklenebiliyor.
+// Ürün seçimi ayrı ekranda (SelectProduct): firmaların yüzlerce kumaşı olacağı
+// için ürünleri burada listelemek ekranı kullanılmaz hale getiriyordu (kullanıcı
+// geri bildirimi 2026-09-16). Burada yalnızca seçilen ürünün tek satırı duruyor.
 export function CreatePostScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const editingPostId = route.params?.postId ?? null;
@@ -72,8 +79,10 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [video, setVideo] = useState<VideoState | null>(null);
   const [visibility, setVisibility] = useState<PostVisibility>('public');
-  const [products, setProducts] = useState<MyProductOption[] | null>(null);
   const [productId, setProductId] = useState<string | null>(route.params?.productId ?? null);
+  const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
+  // Firmanın hiç ürünü var mı (yalnızca sayı çekiliyor, liste değil).
+  const [productTotal, setProductTotal] = useState<number | null>(null);
   const [existingMedia, setExistingMedia] = useState<'image' | 'video' | null>(null);
   const [loadingPost, setLoadingPost] = useState(isEditing);
   const [pickingImage, setPickingImage] = useState(false);
@@ -115,13 +124,62 @@ export function CreatePostScreen({ navigation, route }: Props) {
     };
   }, [editingPostId, navigation]);
 
-  // Odakta yenileniyor: "Ürün Ekle"ye gidip dönünce yeni ürün listede olsun.
+  // Seçim ekranından (ya da ürün sayfasındaki "Paylaş"tan) dönüş. pickedAt
+  // olmadan aynı ürün ikinci kez seçilince parametre değişmezdi.
+  const paramProductId = route.params?.productId;
+  const paramPickedAt = route.params?.pickedAt;
+  const appliedPickRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!paramProductId) return;
+    const stamp = paramPickedAt ?? 0;
+    if (appliedPickRef.current === stamp) return;
+    appliedPickRef.current = stamp;
+    setProductId(paramProductId);
+  }, [paramProductId, paramPickedAt]);
+
+  // Seçili ürünün özeti (kod, çeşit, fotoğrafı var mı).
+  useEffect(() => {
+    if (!productId) {
+      setSelectedProduct(null);
+      return;
+    }
+    if (selectedProduct?.id === productId) return;
+    let cancelled = false;
+    fetchProduct(productId)
+      .then(({ product }) => {
+        if (cancelled) return;
+        setSelectedProduct({
+          id: product.id,
+          code: product.code,
+          type: product.type,
+          subtype: product.subtype ?? '',
+          hasImage: product.hasImage,
+        });
+      })
+      .catch(() => {
+        // Ürün silinmiş olabilir: seçim düşer, gönderi ürünsüz paylaşılır.
+        if (!cancelled) setProductId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, selectedProduct?.id]);
+
+  // "Ürün Seç" mi yoksa "önce ürün ekleyin" mi gösterileceğini belirler.
   useFocusEffect(
     useCallback(() => {
       if (!user?.companyId) return;
-      fetchMyProducts()
-        .then(({ products: fetched }) => setProducts(fetched))
-        .catch(() => setProducts((prev) => prev ?? []));
+      let cancelled = false;
+      fetchMyProducts(undefined, 1)
+        .then(({ total }) => {
+          if (!cancelled) setProductTotal(total);
+        })
+        .catch(() => {
+          if (!cancelled) setProductTotal((prev) => prev ?? 0);
+        });
+      return () => {
+        cancelled = true;
+      };
     }, [user?.companyId])
   );
 
@@ -147,7 +205,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
   };
 
   // Seçilen ürünün kapak fotoğrafı gönderi fotoğrafı olur (ürün fotoğrafı
-  // sunucuda zaten sıkıştırılmış data URL; yeniden yüklemek gerekmiyor).
+  // zaten sıkıştırılmış data URL; yeniden yüklemek gerekmiyor).
   const useProductPhoto = async () => {
     if (!productId) return;
     setUsingProductPhoto(true);
@@ -200,15 +258,18 @@ export function CreatePostScreen({ navigation, route }: Props) {
     setVideo(null);
   };
 
-  const toggleProduct = (id: string) => {
+  const openProductPicker = () =>
+    navigation.navigate('SelectProduct', { selectedId: productId ?? undefined });
+
+  const clearProduct = () => {
     haptics.selection();
-    setProductId((prev) => (prev === id ? null : id));
+    appliedPickRef.current = null;
+    setProductId(null);
   };
 
   const uploadingVideo = video?.phase === 'uploading';
   const videoRef = video?.phase === 'uploaded' ? video.ref : null;
   const hasMedia = !!imageDataUrl || !!video;
-  const selectedProduct = products?.find((p) => p.id === productId) ?? null;
   const canSubmit = isEditing
     ? (body.trim().length > 0 || !!existingMedia) && !submitting && !loadingPost
     : (body.trim().length > 0 || !!imageDataUrl || !!videoRef) && !submitting && !uploadingVideo;
@@ -261,51 +322,33 @@ export function CreatePostScreen({ navigation, route }: Props) {
       <Text style={styles.hint}>
         Ürün eklerseniz gönderinizde ürünün ölçüleri ve "Talep Et" düğmesi çıkar; alıcılar doğrudan numune isteyebilir.
       </Text>
-      {products === null ? (
-        <ActivityIndicator color={colors.primary} style={styles.productsLoading} />
-      ) : products.length === 0 ? (
+      {selectedProduct ? (
+        <View style={styles.selectedBox}>
+          <View style={styles.selectedRow}>
+            <ProductThumbnail productId={selectedProduct.id} hasImage={selectedProduct.hasImage} size={44} />
+            <View style={styles.selectedTexts}>
+              <Text style={styles.selectedCode}>{selectedProduct.code}</Text>
+              <Text style={styles.selectedMeta}>{categoryLabel(selectedProduct.type, selectedProduct.subtype)}</Text>
+            </View>
+          </View>
+          <View style={styles.selectedActions}>
+            <PrimaryButton
+              label="Değiştir"
+              variant="outline"
+              onPress={openProductPicker}
+              style={styles.flexButton}
+              accessibilityLabel="Başka ürün seç"
+            />
+            <PrimaryButton label="Kaldır" variant="secondary" onPress={clearProduct} style={styles.flexButton} />
+          </View>
+        </View>
+      ) : productTotal === 0 ? (
         <View style={styles.emptyProducts}>
           <Text style={styles.emptyProductsText}>Firmanızın henüz ürünü yok.</Text>
-          <PrimaryButton
-            label="Ürün Ekle"
-            icon="add"
-            variant="outline"
-            onPress={() => navigation.navigate('AddProduct')}
-          />
+          <PrimaryButton label="Ürün Ekle" icon="add" variant="outline" onPress={() => navigation.navigate('AddProduct')} />
         </View>
       ) : (
-        <View style={styles.productList}>
-          {products.map((product, index) => {
-            const selected = productId === product.id;
-            return (
-              <Pressable
-                key={product.id}
-                onPress={() => toggleProduct(product.id)}
-                accessibilityRole={Platform.OS === 'web' ? undefined : 'radio'}
-                accessibilityState={{ selected }}
-                aria-checked={selected}
-                accessibilityLabel={`${product.code}, ${categoryLabel(product.type, product.subtype ?? '')}${selected ? ', seçili' : ''}`}
-                style={({ pressed }) => [
-                  styles.productRow,
-                  index < products.length - 1 && styles.productDivider,
-                  selected && styles.productRowSelected,
-                  pressed && !selected && styles.productRowPressed,
-                ]}
-              >
-                <ProductThumbnail productId={product.id} hasImage={product.hasImage} size={44} />
-                <View style={styles.productTexts}>
-                  <Text style={styles.productCode}>{product.code}</Text>
-                  <Text style={styles.productMeta}>{categoryLabel(product.type, product.subtype ?? '')}</Text>
-                </View>
-                <Ionicons
-                  name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={24}
-                  color={selected ? colors.primary : colors.chevron}
-                />
-              </Pressable>
-            );
-          })}
-        </View>
+        <PrimaryButton label="Ürün Seç" icon="cube-outline" variant="outline" onPress={openProductPicker} />
       )}
       {!isEditing && selectedProduct?.hasImage && !hasMedia ? (
         <PrimaryButton
@@ -479,29 +522,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  productsLoading: { marginVertical: spacing.sm },
-  productList: {
+  selectedBox: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
     overflow: 'hidden',
   },
-  productRow: {
+  selectedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    minHeight: 60,
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
   },
-  productDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  productRowSelected: { backgroundColor: colors.accentSoft },
-  productRowPressed: { backgroundColor: colors.pressed },
-  productTexts: { flex: 1, gap: 1 },
-  productCode: { ...typography.monoStrong, color: colors.primary },
-  productMeta: { ...typography.caption, color: colors.textMuted },
+  selectedTexts: { flex: 1, gap: 1 },
+  selectedCode: { ...typography.monoStrong, color: colors.primary },
+  selectedMeta: { ...typography.caption, color: colors.textMuted },
+  selectedActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.sm,
+  },
   productPhotoButton: { marginTop: spacing.sm },
   emptyProducts: {
     borderWidth: 1,
