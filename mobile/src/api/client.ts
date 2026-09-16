@@ -322,6 +322,14 @@ export function fetchFeed(cursor?: FeedCursor | null, limit = 10) {
   return request<{ posts: FeedPost[]; nextCursor: FeedCursor | null }>(`/posts?${params.toString()}`);
 }
 
+// Firma sayfasındaki "Firma Akışı" sekmesi: o firmanın çalışanlarının
+// gönderileri. Görünürlük kuralları akışla aynı (bağlantıya özel gönderiler
+// yalnızca bağlantılara görünür).
+export function fetchCompanyFeed(companyId: string, limit = 10) {
+  const params = new URLSearchParams({ limit: String(limit), companyId });
+  return request<{ posts: FeedPost[]; nextCursor: FeedCursor | null }>(`/posts?${params.toString()}`);
+}
+
 export interface NewPostInput {
   body?: string;
   imageUrl?: string;

@@ -150,6 +150,11 @@ async function main() {
     check('akışta ürünün fotoğrafı olduğu bilgisi var', feedPost?.product?.hasImage === true, feedPost?.product);
     check('akışta ürün fotoğrafının kendisi gönderilmez', !JSON.stringify(feedPost?.product ?? {}).includes('base64'));
     check('gönderinin kendi fotoğrafı yok', feedPost?.hasImage === false, feedPost?.hasImage);
+    const companyFeed = (await api('GET', `/posts?companyId=${sellerCo.id}`, S)).json?.posts ?? [];
+    check('firma akışı yalnızca o firmanın gönderilerini verir', companyFeed.every((p: any) => p.author?.company?.id === sellerCo.id), companyFeed.length);
+    check('firma akışında test gönderisi var', ids(companyFeed).includes(postRes.json?.post?.id));
+    const otherFeed = (await api('GET', `/posts?companyId=${otherCo.id}`, S)).json?.posts ?? [];
+    check('başka firmanın akışında yok', !ids(otherFeed).includes(postRes.json?.post?.id));
     check('test gönderisi silinir', (await api('DELETE', `/posts/${postRes.json?.post?.id}`, S)).status === 204);
 
     console.log('Çeşit / alt çeşit güncelleme');

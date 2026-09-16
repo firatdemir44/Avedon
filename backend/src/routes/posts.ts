@@ -41,6 +41,9 @@ const feedQuerySchema = z.object({
   before: z.string().datetime().optional(),
   beforeId: z.string().min(1).optional(),
   authorId: z.string().min(1).optional(),
+  // Firma sayfasındaki "Firma Akışı" sekmesi: o firmanın çalışanlarının
+  // gönderileri (görünürlük kuralları aynen geçerli).
+  companyId: z.string().min(1).optional(),
 });
 
 postsRouter.get(
@@ -50,7 +53,7 @@ postsRouter.get(
     if (!parsed.success) {
       return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
     }
-    const { limit = DEFAULT_LIMIT, before, beforeId, authorId } = parsed.data;
+    const { limit = DEFAULT_LIMIT, before, beforeId, authorId, companyId } = parsed.data;
     const me = req.user!.id;
 
     const connectedIds = await getAcceptedConnectionIds(me);
@@ -60,6 +63,7 @@ postsRouter.get(
         OR: feedVisibilityWhere(me, connectedIds),
         AND: cursorWhere(before, beforeId),
         ...(authorId ? { authorId } : {}),
+        ...(companyId ? { author: { companyId } } : {}),
       },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit,
