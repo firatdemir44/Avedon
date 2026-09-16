@@ -2,7 +2,6 @@
 
 > Bu dosya deponun tek yetkili ürün yol haritasıdır. Claude Code oturumları yeni bir işe başlamadan önce `docs/yapilacaklar.md` ile birlikte bu dosyayı okur; mevcut kodla çelişen bir ürün kararı gerekirse önce bu dosya güncellenir.
 > Kaynak: 2021 Takyon Ai "Avedon" ürün belgesi + Eylül 2026 yeniden tasarım görüşmeleri.
-> Faz 1 için sıralı uygulama planı: `docs/faz1-plani.md`.
 
 ## 1. Tek cümle
 
@@ -91,9 +90,9 @@ Bu kod **yeniden yazılmaz, genişletilir**.
 - Pasaport çıkarım servisi (etiket/kartela/test raporu/fiyat listesi → JSON + güven skoru) ve onay ekranı; `AddProductScreen`'e "fotoğraftan doldur" girişi
 - Sözlük ve birim dönüşüm katmanı (backend'de tek yer; hesaplayıcılar ve arama bunu kullanır)
 - Firma asistanı: `advisor` uç noktasını araç kullanan bir orkestratöre dönüştürme; hesap motorlarını backend'e taşıyıp araç olarak kaydetme (beceri 1–9); firma hafızası
-- Ürün akışı ekranı: bağlantıdaki firmaların pasaport kartları, "numune talep et" ve "takibe al" düğmeleri (mevcut kullanıcı düzeyi bağlantı modeli kullanılır; firma düzeyi bağlantı Faz 2 sorusu)
+- Ürün akışı ekranı: bağlantıdaki firmaların pasaport kartları, "numune talep et" ve "takibe al" düğmeleri; bağlantı (connection) modeli
 - WhatsApp: webhook'u asistana bağlama (gelen soru → asistan cevabı), numune talebi bildirimleri (mevcut)
-- SMS sağlayıcısının bağlanması (kimlik doğrulama kodda hazır: telefon doğrulamalı tek kullanımlık kod + 30 günlük imzalı oturum, sahiplik kontrolleri sunucuda; kodlar şu an yalnızca sunucu kayıtlarına düşüyor) — pilot öncesi şart
+- Gerçek kimlik doğrulama (SMS + imzalı oturum) — `docs/durum.md`'de işaretli güvenlik açığı, pilot öncesi şart
 - Ücretsiz kanca: hesaplayıcılar ve bilgi asistanı ücretsiz kalır
 
 ### Faz 2 — Ağ
