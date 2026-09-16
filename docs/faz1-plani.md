@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 tamamlandı (2026-09-16, tarayıcıda doğrulandı; telefonda denenmedi); sıradaki Adım 4. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 ve Adım 4 tamamlandı (2026-09-16); sıradaki Adım 5 (firma asistanı). Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.
@@ -181,6 +181,13 @@ Düşük. Tek risk kopyaların ayrışması; eşitlik kontrolü bunu yakalar (co
 - Her hesap için 2-3 gerçek örnek ve doğru sonuç (girdi listesiyle).
 - Fire ve randıman varsayılanları (beceri açıklamasında "tipik değer" olarak gösterilecek; hesaba otomatik girmez).
 - Beceri 1 ve 2 formül teyidi (yol haritası §5'te açık: girdi kalemleri, fire uygulama noktası, kg mi metre mi bazlı çıktı). Mevcut kod 2026-09-15'te "hesapları kontrol ettim, doğru" onayı aldı; değişiklik yoksa mevcut formül aynen taşınır.
+
+### Uygulama notu (2026-09-16, tamamlandı)
+- `backend/src/domain/calc/formulas.ts` mobil dosyanın **birebir kopyası** (kendi `toTex` kopyası dahil; `units.ts`'ten içe alma yapılmadı ki metin eşitliği korunabilsin). `scripts/check-formulas.ts` (`npm run check:formulas`) satır sonu dışında aynı metni doğrular; testler `units.ts` ile aynı sonucu verdiğini de kontrol eder.
+- Beceri sözleşmesi `backend/src/skills/types.ts`: `name, title, description (asistan için: ne yapar / ne zaman / neyi yapmaz), formula, inputSchema (zod/v4, Türkçe describe), run (saf), summarize (yalnızca çıktıdaki sayılar)`. Şemalar **zod/v4** ile: Adım 5'te `betaZodTool` aynı nesneyi kullanır, `z.toJSONSchema` ile listelenir. Kayıt `skills/index.ts` (`SKILLS`, `getSkill`, `listSkills`, `runSkill`). Pasaport çıkarımı eşzamansız/LLM'li olduğu için bu kayda girmez.
+- 10 beceri: `fabricPricing, knitProduction, yarnCount, yarnCountFromSample, yarnUsageRatio, fabricGsmSample, fabricGsmKnit, garmentCost, yarnUsage, fabricLengthWeight` (plandaki `fabricGsm` ikiye, `unitConvert` → `fabricLengthWeight`). Uçlar: `GET /api/skills` (JSON şemalarla liste), `POST /api/skills/:name/run` → `{ skill, title, output, summary, formula }`; 404 `unknown_skill`, 400 `invalid_input`.
+- Testler: `npm test` 100/100 (formüller 23, beceriler 39), `scripts/test-skills-api.ts` 38/38. Mobil hesaplayıcılar değişmedi (karar: cihazda kalır).
+- Fırat'a açık sorular (beceri açıklamalarını netleştirmek için; hesap doğruluğunu etkilemez): randıman/günlük saat için tipik varsayılan mı sorulsun mu; tüp ende metretül için en iki katı mı alınıyor; konfeksiyon maliyetinde nakliye/yıkama/paketleme ayrı kalem mi; iplik ihtiyacı firesi örme mi kesim mi; ham örgü gramajının boya/apre sonrası tipik sapması; iplik satırlarına ad (ana/ilave/ekstra) girilsin mi; her hesap için 2-3 gerçek örnek (testlere eklenecek).
 
 ---
 

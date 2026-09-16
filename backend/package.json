@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
-    "check:catalog": "tsx scripts/check-catalog.ts"
+    "check:catalog": "tsx scripts/check-catalog.ts",
+    "check:formulas": "tsx scripts/check-formulas.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",
