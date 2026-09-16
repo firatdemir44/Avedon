@@ -2,11 +2,10 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
+import { LLM_MODELS, getAnthropic } from '../llm';
 
 export const garmentAnalysisRouter = Router();
 garmentAnalysisRouter.use(requireAuth);
-
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 
 const SYSTEM_PROMPT = `Sen bir konfeksiyon ürününün fotoğraflarını inceleyip görünen bileşenleri tespit eden bir yardımcısın.
 
@@ -39,6 +38,7 @@ const componentSchema = z.array(
 );
 
 garmentAnalysisRouter.post('/detect', async (req, res) => {
+  const client = getAnthropic();
   if (!client) {
     return res.status(503).json({ error: 'analysis_not_configured' });
   }
@@ -50,7 +50,7 @@ garmentAnalysisRouter.post('/detect', async (req, res) => {
 
   try {
     const response = await client.messages.create({
-      model: 'claude-opus-5',
+      model: LLM_MODELS.chat,
       max_tokens: 1536,
       output_config: { effort: 'low' },
       system: SYSTEM_PROMPT,

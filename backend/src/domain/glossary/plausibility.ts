@@ -5,9 +5,11 @@ import type { CompositionItem } from './composition';
 // Makullük aralıkları. Kayıt ENGELLENMEZ; yalnızca "şüpheli" işareti üretilir
 // (yol haritası §3.2: belirsizlik kullanıcıya gösterilir, onaylatılır).
 //
-// !!! Aşağıdaki değerler BAŞLANGIÇ tahminidir; Fırat'ın vereceği gerçek
-// aralıklarla değiştirilecek (Faz 1 planı, Adım 1 "Fırat'tan gerekenler").
-// Değer değişikliği koda dokunmaz, yalnızca bu tabloya.
+// Aralıklar Fırat'ın verdiği sektör bilgisine göre (2026-09-16):
+// - Kumaş üretimleri genelde 60-400 gr/m²; tül/raschel kaliteleri 25-200 gr/m².
+// - En genelde 90-200 cm; çoğunluk 145-165 cm (TYPICAL_WIDTH).
+// Alt çeşit daraltmaları hâlâ başlangıç değeri; gerçek etiketlerden öğrenildikçe
+// bu tabloya işlenir. Değer değişikliği koda dokunmaz, yalnızca tablolara.
 
 export interface Range {
   min: number;
@@ -16,22 +18,26 @@ export interface Range {
 
 // Çeşit düzeyi varsayılanlar
 const TYPE_GSM: Record<ProductType, Range> = {
-  orme: { min: 80, max: 450 },
-  raschel: { min: 30, max: 350 },
-  dokuma: { min: 60, max: 600 },
-  dantel: { min: 40, max: 300 },
+  orme: { min: 60, max: 400 },
+  raschel: { min: 25, max: 200 },
+  dokuma: { min: 60, max: 400 },
+  dantel: { min: 25, max: 200 },
   triko: { min: 150, max: 800 },
   diger: { min: 20, max: 1200 },
 };
 
 const TYPE_WIDTH: Record<ProductType, Range> = {
-  orme: { min: 90, max: 260 },
-  raschel: { min: 100, max: 320 },
-  dokuma: { min: 90, max: 330 },
-  dantel: { min: 10, max: 200 },
-  triko: { min: 60, max: 220 },
+  orme: { min: 90, max: 200 },
+  raschel: { min: 90, max: 200 },
+  dokuma: { min: 90, max: 200 },
+  dantel: { min: 10, max: 200 }, // dantel şerit olarak dar da olur
+  triko: { min: 60, max: 200 },
   diger: { min: 10, max: 400 },
 };
+
+// Enlerin çoğunluğu bu banttadır; çıkarımda (Adım 3) bandın dışı güveni düşürür,
+// aralığın dışı ise şüpheli işareti üretir.
+export const TYPICAL_WIDTH: Range = { min: 145, max: 165 };
 
 // Alt çeşit düzeyi daraltmalar (yoksa çeşit varsayılanı geçerli)
 const SUBTYPE_GSM: Record<string, Range> = {
@@ -40,16 +46,16 @@ const SUBTYPE_GSM: Record<string, Range> = {
   ribana: { min: 160, max: 320 },
   kaskorse: { min: 180, max: 340 },
   iki_iplik: { min: 200, max: 320 },
-  uc_iplik: { min: 260, max: 420 },
+  uc_iplik: { min: 240, max: 400 },
   pike: { min: 160, max: 260 },
-  scuba: { min: 220, max: 400 },
+  scuba: { min: 200, max: 400 },
   polar: { min: 180, max: 380 },
-  elastanli_tul: { min: 60, max: 220 },
-  elastansiz_tul: { min: 30, max: 120 },
+  elastanli_tul: { min: 40, max: 200 },
+  elastansiz_tul: { min: 25, max: 120 },
   astarlik: { min: 40, max: 120 },
   poplin: { min: 90, max: 160 },
   gabardin: { min: 180, max: 320 },
-  denim: { min: 200, max: 500 },
+  denim: { min: 200, max: 400 },
   sifon: { min: 40, max: 110 },
 };
 

@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); sıradaki Adım 3. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 sunucu tarafı tamamlandı (2026-09-16), mobil onay ekranı yapılıyor. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.
@@ -148,6 +148,13 @@ Yeni tablolar:
 ### Fırat'tan gerekenler
 - 10-20 gerçek etiket/kartela/test raporu fotoğrafı (test seti).
 - Etiketlerde sık görülen yazım biçimleri (hangi bilgiler nerede durur).
+
+### Uygulama notu (2026-09-16, sunucu tarafı bitti)
+- **Şema değişti:** alan başına iç içe nesne/enum/dizi içeren şema API'nin gramer sınırını aştı (`compiled grammar is too large`; ayrıca en fazla 16 nullable/union alan). Ham çıktıda her alan **metin** (`{ value: string|null, confidence, evidence }`): model yalnızca etiketi okuyup yazdığı gibi aktarır; lif anahtarı, sayı, birim, tarih, sertifika numarası **Adım 1 ayrıştırıcılarıyla** (`parseComposition`, `parseMeasures`, `matchKnit`, `matchCertificate`) `finalize.ts`'te çözülür. Bu, "model hesap yapmaz" ilkesini teknik olarak da zorunlu kıldı. API yanıtı (mobilin gördüğü) planlandığı gibi yapılı: `extraction` (alan → `{ value, confidence, evidence }`), `warnings`, `rejected` (okundu ama aktarılmadı: bilinmeyen lif/alt çeşit/sertifika/birim, geçersiz değer, düşük güven), `meta` (model, sahte mi, süre, jeton).
+- Güven: model işareti × sözlük eşleşme gücü; kanıt metni ayrıştırılıp aynı değeri veriyorsa en az 0,95; makullük dışı gramaj/en ×0,6, kompozisyon toplamı ×0,7; 145-165 cm bandı dışı en ×0,9 (uyarısız). Eşik 0,4: altı boş kalır ve `rejected`'a düşer.
+- Alt çeşit çeşitten daha özgül: model "dokuma" dese de "süprem" okunmuşsa çeşit `orme` olur. Formda seçili çeşide ait olmayan alt çeşit aktarılmaz (`subtype_not_in_type`).
+- Dosyalar: `backend/src/llm.ts` (tek istemci, `LLM_MODELS`, `ANTHROPIC_MOCK`), `backend/src/skills/passportExtract/{schema,prompt,finalize,mock,run}.ts`, `backend/src/routes/passport.ts`. `advisor.ts` ve `garmentAnalysis.ts` ortak istemciye geçti. Sınırlar: 4 fotoğraf (ham 5 MB), 1 PDF (10 MB), metin 4000 karakter.
+- Testler: `npm test` 38/38 (çıkarım 18 test); `scripts/test-passport-extract-api.ts` 36/36 (`ANTHROPIC_MOCK=1` sunucuya karşı); `scripts/try-passport-extract.ts` gerçek modelle el denemesi. Gerçek model (claude-opus-5, orta çaba): çizilmiş etiket fotoğrafı 8 sn / 3,3k giriş jetonu, 11 alanın 11'i doğru, "yumuşak tuşe" doğru biçimde `rejected`; dağınık metin ("82 PA 18 EA, 118 gr, 152 cm açık en, fiyat 3.2 usd, moq 500") 6 sn, fiyat/MOQ aktarılmadı.
 
 ---
 

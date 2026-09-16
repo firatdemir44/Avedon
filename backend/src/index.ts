@@ -16,6 +16,7 @@ import { usersRouter } from './routes/users';
 import { adminRouter } from './routes/admin';
 import { whatsappWebhookRouter } from './routes/whatsappWebhook';
 import { videosRouter } from './routes/videos';
+import { passportRouter } from './routes/passport';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
@@ -50,6 +51,7 @@ app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/passport', passportRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;

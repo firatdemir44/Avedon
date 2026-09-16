@@ -2,11 +2,10 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
+import { LLM_MODELS, getAnthropic } from '../llm';
 
 export const advisorRouter = Router();
 advisorRouter.use(requireAuth);
-
-const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
 
 const SYSTEM_PROMPT = `Sen Avedon platformunun AI Tekstil Danışmanısın. Tekstil sektöründe (kumaş üretimi, örme, dokuma, boyama, terbiye, iplik numaralandırma sistemleri, kalite kontrol, üretim süreçleri) deneyimli bir uzman gibi davran.
 
@@ -31,6 +30,7 @@ const askSchema = z.object({
 });
 
 advisorRouter.post('/ask', async (req, res) => {
+  const client = getAnthropic();
   if (!client) {
     return res.status(503).json({ error: 'advisor_not_configured' });
   }
@@ -43,7 +43,7 @@ advisorRouter.post('/ask', async (req, res) => {
 
   try {
     const response = await client.messages.create({
-      model: 'claude-opus-5',
+      model: LLM_MODELS.chat,
       max_tokens: 2048,
       output_config: { effort: 'medium' },
       system: SYSTEM_PROMPT,
