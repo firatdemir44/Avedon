@@ -4,7 +4,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchProduct, setProductFavorite } from '../../api/client';
+import {
+  confirmProductFields,
+  fetchCertificateImage,
+  fetchProduct,
+  fetchTestReportImage,
+  setProductFavorite,
+} from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
@@ -17,15 +23,63 @@ import {
 import { refreshControl } from '../../components/refresh';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { SectionHeader } from '../../components/SectionHeader';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductGallery } from '../../components/ProductGallery';
 import { StockBadge, formatStock } from '../../components/StockIndicator';
-import { categoryLabel, subtypeLabel, typeLabel, usageLabel } from '../../features/products/catalog';
+import {
+  STOCK_UNIT_LABELS,
+  categoryLabel,
+  finishTagLabel,
+  subtypeLabel,
+  typeLabel,
+  usageLabel,
+  yarnRoleLabel,
+  yarnTypeLabel,
+  yarnUnitLabel,
+} from '../../features/products/catalog';
+import { certificateLabel, fiberLabel, widthTypeLabel } from '../../features/products/glossaryLabels';
 import { formatMeasure } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
+
+// Onay bekleyen alanların Türkçe adı (sunucudaki fieldMeta.field anahtarları).
+const FIELD_LABELS: Record<string, string> = {
+  composition: 'içerik',
+  yarns: 'iplik',
+  certificates: 'sertifika',
+  widthType: 'en tipi',
+  moq: 'en az sipariş',
+  leadTimeDays: 'termin',
+  finishTags: 'apre',
+  weightGsm: 'gramaj',
+  widthCm: 'en',
+};
+
+const fieldLabel = (field: string) => FIELD_LABELS[field] ?? field;
+
+// Belge tarihleri: "2027-03-01T00:00:00.000Z" → "01.03.2027".
+function formatDocDate(iso: string | null) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('tr-TR');
+}
+
+// "4,50 USD / kg"
+function formatPrice(price: { value: number; currency: string; unit: string }) {
+  const unit = price.unit === 'm' || price.unit === 'kg' ? ` / ${STOCK_UNIT_LABELS[price.unit].short}` : '';
+  return `${formatMeasure(price.value)} ${price.currency}${unit}`;
+}
+
+// "30 Ne · 2 kat · Penye (ring)" (rol varsa başta).
+function formatYarn(yarn: { role: string; count: number; unit: string; ply: number; yarnType: string }) {
+  const parts = [`${formatMeasure(yarn.count)} ${yarnUnitLabel(yarn.unit)}`];
+  if (yarn.ply > 1) parts.push(`${yarn.ply} kat`);
+  if (yarn.yarnType) parts.push(yarnTypeLabel(yarn.yarnType));
+  return parts.join(' · ');
+}
 
 // Taslak: docs/tasarim-yonleri/CUrun.dc.html + orijinal tasarım "Ürün Sayfası"
 // (kaydırmalı galeri, favori yıldızı). Galeri + kod bloğu, çizgili özellik
@@ -42,10 +96,17 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [favorite, setFavorite] = useState(false);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  // Onaylandıktan sonra şerit hemen kalkar (yeniden yüklemeyi beklemeden).
+  const [fieldsConfirmed, setFieldsConfirmed] = useState(false);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   useEffect(() => {
     if (product) setFavorite(!!product.isFavorite);
   }, [product]);
+
+  useEffect(() => {
+    setFieldsConfirmed(false);
+  }, [productId]);
 
   useEffect(() => {
     // Taslakta başlık ürün kodu, eşit aralıklı yazıyla.
@@ -83,6 +144,80 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const subtype = subtypeLabel(product.type, product.subtype ?? '');
   const usages = (product.usages ?? []).map(usageLabel).join(', ');
 
+  // --- Kumaş pasaportu ---
+  const composition = product.composition ?? [];
+  const compositionTotal = composition.reduce((sum, item) => sum + item.percent, 0);
+  const finishTags = product.finishTags ?? [];
+  const yarns = product.yarns ?? [];
+  const testReports = product.testReports ?? [];
+  // Detay yanıtı sertifikaların tamamını taşır; liste yanıtında yalnızca adlar var.
+  const certificates =
+    product.certificates ??
+    (product.certificateNames ?? []).map((name, index) => ({
+      position: index,
+      name,
+      number: '',
+      validUntil: null as string | null,
+      hasImage: false,
+    }));
+  // Çıkarımdan gelip henüz onaylanmayan alanlar (yalnızca sahibine geliyor).
+  const pendingFields = fieldsConfirmed
+    ? []
+    : (product.fieldMeta ?? []).filter((meta) => !meta.confirmedAt).map((meta) => meta.field);
+
+  const specs: { label: string; value: string; sans?: boolean }[] = [
+    { label: 'Çeşit', value: typeLabel(product.type) },
+    ...(subtype ? [{ label: 'Alt çeşit', value: subtype }] : []),
+    ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
+    { label: 'Stok', value: formatStock(product.stock, product.stockUnit) },
+    { label: 'Ağırlık', value: `${formatMeasure(product.weightGsm)} gr/m²` },
+    { label: 'Genişlik', value: `${formatMeasure(product.widthCm)} cm` },
+    ...(product.widthType ? [{ label: 'En tipi', value: widthTypeLabel(product.widthType), sans: true }] : []),
+    // Kompozisyon satırları varsa içerik metni ayrı blokta gösteriliyor.
+    ...(composition.length ? [] : [{ label: 'İçerik', value: product.content }]),
+    ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
+  ];
+
+  const commercial: { label: string; value: string }[] = [
+    ...(product.moq != null
+      ? [
+          {
+            label: 'En az sipariş',
+            value: `${formatMeasure(product.moq)}${product.moqUnit ? ` ${STOCK_UNIT_LABELS[product.moqUnit].short}` : ''}`,
+          },
+        ]
+      : []),
+    ...(product.leadTimeDays != null ? [{ label: 'Termin', value: `${product.leadTimeDays} gün` }] : []),
+    // Fiyat yanıtta yalnızca sahibine geliyor; başkasına alan hiç gelmiyor.
+    ...(product.price ? [{ label: 'Fiyat', value: formatPrice(product.price) }] : []),
+  ];
+
+  const openDocImage = async (kind: 'certificate' | 'report', position: number) => {
+    try {
+      const { imageUrl } =
+        kind === 'certificate'
+          ? await fetchCertificateImage(product.id, position)
+          : await fetchTestReportImage(product.id, position);
+      setViewerUrl(imageUrl);
+    } catch {
+      haptics.error();
+    }
+  };
+
+  const confirmFields = async () => {
+    if (confirmBusy || !pendingFields.length) return;
+    setConfirmBusy(true);
+    try {
+      await confirmProductFields(product.id, pendingFields);
+      haptics.success();
+      setFieldsConfirmed(true);
+    } catch {
+      haptics.error();
+    } finally {
+      setConfirmBusy(false);
+    }
+  };
+
   // İyimser: yıldız hemen değişir, sunucu reddederse geri döner.
   const toggleFavorite = async () => {
     if (favoriteBusy) return;
@@ -117,6 +252,31 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
+        {isOwnProduct && pendingFields.length ? (
+          <View style={styles.pendingBanner} accessibilityRole="alert">
+            <View style={styles.pendingTextWrap}>
+              <Ionicons name="sparkles-outline" size={18} color={colors.warning} />
+              <Text style={styles.pendingText}>
+                Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
+              </Text>
+            </View>
+            <View style={styles.pendingActions}>
+              <PrimaryButton
+                label={confirmBusy ? 'Onaylanıyor...' : 'Onayla'}
+                onPress={confirmFields}
+                disabled={confirmBusy}
+                style={styles.pendingButton}
+              />
+              <PrimaryButton
+                label="Düzenle"
+                variant="outline"
+                onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
+                style={styles.pendingButton}
+              />
+            </View>
+          </View>
+        ) : null}
+
         <View style={[styles.block, styles.heroBlock]}>
           <ProductGallery
             productId={product.id}
@@ -134,15 +294,168 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         </View>
 
         <View style={[styles.block, styles.specBlock]}>
-          <SpecRow label="Çeşit" value={typeLabel(product.type)} />
-          {subtype ? <SpecRow label="Alt çeşit" value={subtype} /> : null}
-          {usages ? <SpecRow label="Kullanım" value={usages} sans /> : null}
-          <SpecRow label="Stok" value={formatStock(product.stock, product.stockUnit)} />
-          <SpecRow label="Ağırlık" value={`${formatMeasure(product.weightGsm)} gr/m²`} />
-          <SpecRow label="Genişlik" value={`${formatMeasure(product.widthCm)} cm`} />
-          <SpecRow label="İçerik" value={product.content} last={!product.useArea} />
-          {product.useArea ? <SpecRow label="Not" value={product.useArea} sans last /> : null}
+          {specs.map((spec, index) => (
+            <SpecRow
+              key={spec.label}
+              label={spec.label}
+              value={spec.value}
+              sans={spec.sans}
+              last={index === specs.length - 1}
+            />
+          ))}
         </View>
+
+        {composition.length ? (
+          <View>
+            <SectionHeader title="Kompozisyon" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              {composition.map((item) => (
+                <View key={`${item.fiber}-${item.percent}`} style={styles.fiberRow}>
+                  <View style={styles.fiberTexts}>
+                    <Text style={styles.fiberName}>{fiberLabel(item.fiber)}</Text>
+                    <Text style={styles.fiberPercent}>%{formatMeasure(item.percent)}</Text>
+                  </View>
+                  <View style={styles.fiberTrack}>
+                    <View style={[styles.fiberFill, { width: `${Math.min(100, item.percent)}%` }]} />
+                  </View>
+                </View>
+              ))}
+              {compositionTotal !== 100 ? (
+                <Text style={styles.passportNote}>Toplam %{formatMeasure(compositionTotal)}</Text>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
+
+        {commercial.length ? (
+          <View>
+            <SectionHeader title="Ticari" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.specBlock]}>
+              {commercial.map((row, index) => (
+                <SpecRow key={row.label} label={row.label} value={row.value} last={index === commercial.length - 1} />
+              ))}
+              {product.price ? <Text style={styles.passportNote}>Fiyatı yalnızca siz görüyorsunuz.</Text> : null}
+            </View>
+          </View>
+        ) : null}
+
+        {finishTags.length ? (
+          <View>
+            <SectionHeader title="Apre / boya" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              <View style={styles.tagRow}>
+                {finishTags.map((tag) => (
+                  <View key={tag} style={styles.tag}>
+                    <Text style={styles.tagText}>{finishTagLabel(tag)}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {certificates.length ? (
+          <View>
+            <SectionHeader title="Sertifikalar" count={certificates.length} style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              {certificates.map((certificate, index) => {
+                const meta = [
+                  certificate.number ? `No ${certificate.number}` : '',
+                  certificate.validUntil ? `${formatDocDate(certificate.validUntil)} tarihine kadar` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                const body = (
+                  <>
+                    <Ionicons name="ribbon-outline" size={18} color={colors.success} />
+                    <View style={styles.docTexts}>
+                      <Text style={styles.docTitle}>{certificateLabel(certificate.name)}</Text>
+                      {meta ? <Text style={styles.docMeta}>{meta}</Text> : null}
+                    </View>
+                    {certificate.hasImage ? <Ionicons name="image-outline" size={18} color={colors.chevron} /> : null}
+                  </>
+                );
+                const divider = index < certificates.length - 1;
+                return certificate.hasImage ? (
+                  <Pressable
+                    key={`${certificate.position}-${certificate.name}`}
+                    onPress={() => openDocImage('certificate', certificate.position)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${certificateLabel(certificate.name)} belgesini aç`}
+                    android_ripple={{ color: colors.pressed }}
+                    style={({ pressed }) => [styles.docRow, divider && styles.docDivider, pressed && styles.pressed]}
+                  >
+                    {body}
+                  </Pressable>
+                ) : (
+                  <View
+                    key={`${certificate.position}-${certificate.name}`}
+                    style={[styles.docRow, divider && styles.docDivider]}
+                  >
+                    {body}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {yarns.length ? (
+          <View>
+            <SectionHeader title="İplik" count={yarns.length} style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              {yarns.map((yarn, index) => (
+                <View
+                  key={yarn.position}
+                  style={[styles.docRow, index < yarns.length - 1 && styles.docDivider]}
+                >
+                  <View style={styles.docTexts}>
+                    <Text style={styles.docTitle}>{yarn.role ? yarnRoleLabel(yarn.role) : `${index + 1}. iplik`}</Text>
+                    <Text style={styles.yarnValue}>{formatYarn(yarn)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {testReports.length ? (
+          <View>
+            <SectionHeader title="Test raporları" count={testReports.length} style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              {testReports.map((report, index) => {
+                const meta = [report.result, formatDocDate(report.testedAt)].filter(Boolean).join(' · ');
+                const divider = index < testReports.length - 1;
+                const body = (
+                  <>
+                    <Ionicons name="document-text-outline" size={18} color={colors.accent} />
+                    <View style={styles.docTexts}>
+                      <Text style={styles.docTitle}>{report.kind}</Text>
+                      {meta ? <Text style={styles.docMeta}>{meta}</Text> : null}
+                    </View>
+                    {report.hasImage ? <Ionicons name="image-outline" size={18} color={colors.chevron} /> : null}
+                  </>
+                );
+                return report.hasImage ? (
+                  <Pressable
+                    key={report.position}
+                    onPress={() => openDocImage('report', report.position)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${report.kind} raporunu aç`}
+                    android_ripple={{ color: colors.pressed }}
+                    style={({ pressed }) => [styles.docRow, divider && styles.docDivider, pressed && styles.pressed]}
+                  >
+                    {body}
+                  </Pressable>
+                ) : (
+                  <View key={report.position} style={[styles.docRow, divider && styles.docDivider]}>
+                    {body}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
 
         {company ? (
           <Pressable
@@ -255,6 +568,45 @@ const styles = StyleSheet.create({
   code: { fontFamily: fonts.monoSemibold, fontSize: 24, lineHeight: 30, color: colors.primary },
   titleMeta: { ...typography.body, color: colors.textMuted },
   specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
+  // Pasaport bölümleri: blok aralığı zaten gri boşluk, başlık üstü kısaltıldı.
+  sectionHeader: { paddingTop: spacing.sm },
+  passportBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm },
+  // Kompozisyon: lif adı + oran, altında oranı gösteren ince çubuk.
+  fiberRow: { paddingVertical: 6, gap: 4 },
+  fiberTexts: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  fiberName: { ...typography.body, color: colors.text, flexShrink: 1 },
+  fiberPercent: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text },
+  fiberTrack: { height: 4, borderRadius: radius.sm, backgroundColor: colors.surfaceTonal, overflow: 'hidden' },
+  fiberFill: { height: 4, borderRadius: radius.sm, backgroundColor: colors.accent },
+  passportNote: { ...typography.caption, color: colors.textMuted, paddingTop: spacing.xs },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: spacing.xs },
+  tag: {
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  tagText: { ...typography.caption, fontFamily: fonts.medium, color: colors.primary },
+  // Sertifika, iplik ve test raporu satırları.
+  docRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH, paddingVertical: 6 },
+  docDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  docTexts: { flex: 1, gap: 1 },
+  docTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  docMeta: { ...typography.caption, color: colors.textMuted },
+  yarnValue: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
+  // Çıkarımdan gelen alanlar için onay şeridi (yalnızca ürünün sahibine).
+  pendingBanner: {
+    backgroundColor: colors.warningSoft,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.sm,
+  },
+  pendingTextWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  pendingText: { ...typography.label, fontFamily: fonts.regular, color: colors.text, flex: 1 },
+  pendingActions: { flexDirection: 'row', gap: spacing.sm },
+  pendingButton: { flex: 1 },
   specRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',

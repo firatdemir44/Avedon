@@ -5,6 +5,7 @@ import { ProductThumbnail } from './ProductThumbnail';
 import { StockValue } from './StockIndicator';
 import { formatMeasure } from '../features/calculators/parse';
 import { TYPE_LABELS, categoryLabel, usageLabel } from '../features/products/catalog';
+import { formatComposition } from '../features/products/glossaryLabels';
 import type { Product } from '../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
 
@@ -19,6 +20,36 @@ function usageSummary(product: Product) {
   const shown = product.usages.slice(0, MAX_ROW_USAGES).map(usageLabel).join(', ');
   const rest = product.usages.length - MAX_ROW_USAGES;
   return rest > 0 ? `${shown} +${rest}` : shown;
+}
+
+// Kompozisyon satırları varsa onlardan üretilir (pasaportun asıl verisi),
+// yoksa eski serbest içerik metni.
+function contentSummary(product: Product) {
+  const composition = product.composition ?? [];
+  return composition.length ? formatComposition(composition) : product.content;
+}
+
+// Sertifika rozeti satırda yer kaplamasın diye kısa ad + fazlası sayı.
+const CERTIFICATE_SHORT_LABELS: Record<string, string> = {
+  oeko_tex_100: 'OEKO-TEX',
+  oeko_tex_made_in_green: 'OEKO-TEX MiG',
+  gots: 'GOTS',
+  grs: 'GRS',
+  rcs: 'RCS',
+  ocs: 'OCS',
+  bci: 'BCI',
+  bluesign: 'bluesign',
+  iso_9001: 'ISO 9001',
+  iso_14001: 'ISO 14001',
+  reach: 'REACH',
+  zdhc: 'ZDHC',
+  higg: 'Higg',
+  diger: 'Sertifika',
+};
+
+function certificateBadgeText(names: string[]) {
+  const first = CERTIFICATE_SHORT_LABELS[names[0]] ?? names[0];
+  return names.length > 1 ? `${first} +${names.length - 1}` : first;
 }
 
 // Ürün listesi satırı (taslak: docs/tasarim-yonleri/CUrunler.dc.html, CFirma.dc.html).
@@ -42,6 +73,8 @@ export function ProductRow({
 }) {
   const category = categoryLabel(product.type, product.subtype ?? '');
   const usage = usageSummary(product);
+  const summary = contentSummary(product);
+  const certificates = product.certificateNames ?? [];
   return (
     <Pressable
       onPress={onPress}
@@ -50,7 +83,9 @@ export function ProductRow({
       // tarayıcıda tıklama karışabilir). Web'de satır rolsüz, telefonda ekran
       // okuyucu için düğme.
       accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-      accessibilityLabel={`${product.code}, ${category}, ${product.content}${product.isFavorite ? ', favorilerde' : ''}`}
+      accessibilityLabel={`${product.code}, ${category}, ${summary}${
+        certificates.length ? `, ${certificates.length} sertifika` : ''
+      }${product.isFavorite ? ', favorilerde' : ''}`}
       android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, divider && styles.divider, pressed && styles.pressed]}
     >
@@ -72,9 +107,19 @@ export function ProductRow({
             {product.company.name}
           </Text>
         ) : null}
-        <Text style={styles.content} numberOfLines={1}>
-          {usage ? `${product.content} · ${usage}` : product.content}
-        </Text>
+        <View style={styles.contentRow}>
+          <Text style={styles.content} numberOfLines={1}>
+            {usage ? `${summary} · ${usage}` : summary}
+          </Text>
+          {certificates.length ? (
+            <View style={styles.certBadge}>
+              <Ionicons name="ribbon-outline" size={11} color={colors.success} />
+              <Text style={styles.certBadgeText} numberOfLines={1}>
+                {certificateBadgeText(certificates)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
         <View style={styles.bottomRow}>
           <View style={styles.measures}>
             <Text style={styles.measureText}>
@@ -123,7 +168,19 @@ const styles = StyleSheet.create({
   },
   typeTagText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, color: colors.textMuted },
   company: { ...typography.label, color: colors.accent },
-  content: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
+  contentRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  content: { ...typography.label, fontFamily: fonts.regular, color: colors.text, flexShrink: 1 },
+  certBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    flexShrink: 0,
+    borderRadius: radius.sm,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  certBadgeText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 15, color: colors.success },
   bottomRow: {
     flexDirection: 'row',
     alignItems: 'center',

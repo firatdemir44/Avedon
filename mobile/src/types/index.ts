@@ -1,8 +1,26 @@
 // Avedon MVP - temel veri modeli
 // Bkz. avedon-mvp-spec.md bölüm 4.1 - 4.4
 import type { ProductType, StockUnit } from '../features/products/catalog';
+import type { WidthType } from '../features/products/glossaryLabels';
 
 export type { ProductType, StockUnit };
+
+// --- Kumaş pasaportu (Faz 1) ---
+// Sunucu sözleşmesi: backend/src/passport.ts toPassportRow.
+
+// Lif anahtarı features/products/glossaryLabels.ts FIBERS içinde.
+export interface CompositionItem {
+  fiber: string;
+  percent: number;
+}
+
+// Fiyat YALNIZCA ürünün sahibi firmaya döner; başkasının yanıtında alan hiç
+// gelmez (null bile değil), o yüzden Product'ta isteğe bağlı.
+export interface ProductPrice {
+  value: number;
+  currency: string; // catalog.ts PRICE_CURRENCIES
+  unit: string; // '' | 'm' | 'kg'
+}
 
 export type AccountType = 'konfeksiyon' | 'uretici' | 'bireysel';
 
@@ -69,6 +87,25 @@ export interface Product {
   // Giriş yapılmış isteklerde dolu.
   isFavorite?: boolean;
   company?: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null };
+
+  // --- Pasaport alanları (liste ve detay yanıtlarında gelir) ---
+  // Eski sunucuya ya da yerel örnek veriye karşı dayanıklı olsun diye hepsi
+  // isteğe bağlı; ekranlar boş değerle çalışmalı.
+  widthType?: '' | WidthType;
+  moq?: number | null;
+  // Stok biriminden BAĞIMSIZ (kullanıcı kararı 2026-09-16).
+  moqUnit?: '' | StockUnit;
+  leadTimeDays?: number | null;
+  // catalog.ts FINISH_TAGS anahtarları
+  finishTags?: string[];
+  passportUpdatedAt?: string | null;
+  composition?: CompositionItem[];
+  // glossaryLabels.ts CERTIFICATES anahtarları
+  certificateNames?: string[];
+  // Çıkarımdan gelip henüz onaylanmamış alan sayısı (sahibi için uyarı şeridi).
+  pendingFieldCount?: number;
+  // Yalnızca sahibine gelir.
+  price?: ProductPrice | null;
 }
 
 export type SampleRequestStatus = 'talep_edildi' | 'onaylandi' | 'hazirlandi' | 'teslim_edildi';

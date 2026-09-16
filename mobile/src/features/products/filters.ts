@@ -7,6 +7,7 @@ import {
   type ProductType,
   type StockUnit,
 } from './catalog';
+import { certificateLabel, fiberLabel, widthTypeLabel, type WidthType } from './glossaryLabels';
 
 // Ürün filtreleri (tasarımdaki "Filtreleme Seçenekleri"). Sunucuda
 // GET /api/products sorgu parametrelerine birebir karşılık gelir
@@ -23,9 +24,19 @@ export interface ProductFilters {
   widthMin?: number;
   widthMax?: number;
   content?: string;
+  // --- Kumaş pasaportu filtreleri (Faz 1) ---
+  // Herhangi birini içeren ürün gelir (glossaryLabels.ts FIBERS anahtarları).
+  fibers: string[];
+  // Yalnızca lif seçiliyken anlamlı: o lif en az bu oranda olsun.
+  fiberMinPercent?: number;
+  // Herhangi birine sahip ürün gelir (glossaryLabels.ts CERTIFICATES).
+  certificates: string[];
+  moqMax?: number;
+  leadTimeMax?: number;
+  widthType?: WidthType;
 }
 
-export const EMPTY_FILTERS: ProductFilters = { usages: [] };
+export const EMPTY_FILTERS: ProductFilters = { usages: [], fibers: [], certificates: [] };
 
 export function productQueryString(search: string, filters: ProductFilters) {
   const params: [string, string][] = [];
@@ -44,6 +55,13 @@ export function productQueryString(search: string, filters: ProductFilters) {
   add('widthMin', filters.widthMin);
   add('widthMax', filters.widthMax);
   add('content', filters.content?.trim());
+  // Pasaport filtreleri (virgülle ayrılmış listeler sunucuda ayrıştırılıyor).
+  add('fiber', (filters.fibers ?? []).join(','));
+  if ((filters.fibers ?? []).length) add('fiberMinPercent', filters.fiberMinPercent);
+  add('certificate', (filters.certificates ?? []).join(','));
+  add('moqMax', filters.moqMax);
+  add('leadTimeMax', filters.leadTimeMax);
+  add('widthType', filters.widthType);
   return params.length ? `?${params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}` : '';
 }
 
@@ -115,6 +133,46 @@ export function activeFilterChips(filters: ProductFilters): FilterChip[] {
       key: 'content',
       label: `İçerik: ${filters.content.trim()}`,
       remove: (f) => ({ ...f, content: undefined }),
+    });
+  }
+  for (const fiber of filters.fibers ?? []) {
+    // Oran yalnızca tek çipte tekrarlanmasın diye ilk life yazılıyor.
+    const min = filters.fiberMinPercent;
+    chips.push({
+      key: `fiber:${fiber}`,
+      label: min !== undefined ? `${fiberLabel(fiber)} en az %${formatMeasure(min)}` : fiberLabel(fiber),
+      remove: (f) => {
+        const rest = f.fibers.filter((v) => v !== fiber);
+        return { ...f, fibers: rest, fiberMinPercent: rest.length ? f.fiberMinPercent : undefined };
+      },
+    });
+  }
+  for (const certificate of filters.certificates ?? []) {
+    chips.push({
+      key: `certificate:${certificate}`,
+      label: certificateLabel(certificate),
+      remove: (f) => ({ ...f, certificates: f.certificates.filter((v) => v !== certificate) }),
+    });
+  }
+  if (filters.moqMax !== undefined) {
+    chips.push({
+      key: 'moqMax',
+      label: `MOQ en çok ${formatMeasure(filters.moqMax)}`,
+      remove: (f) => ({ ...f, moqMax: undefined }),
+    });
+  }
+  if (filters.leadTimeMax !== undefined) {
+    chips.push({
+      key: 'leadTimeMax',
+      label: `Termin en çok ${formatMeasure(filters.leadTimeMax)} gün`,
+      remove: (f) => ({ ...f, leadTimeMax: undefined }),
+    });
+  }
+  if (filters.widthType) {
+    chips.push({
+      key: 'widthType',
+      label: widthTypeLabel(filters.widthType),
+      remove: (f) => ({ ...f, widthType: undefined }),
     });
   }
   return chips;

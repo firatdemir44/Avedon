@@ -203,3 +203,11 @@ export function finishTagLabel(key: string) {
 export function yarnTypeLabel(key: string) {
   return YARN_TYPES.find((t) => t.key === key)?.label ?? key;
 }
+
+export function yarnRoleLabel(key: string) {
+  return YARN_ROLES.find((r) => r.key === key)?.label ?? key;
+}
+
+export function yarnUnitLabel(key: string) {
+  return YARN_UNITS.find((u) => u.key === key)?.label ?? key;
+}

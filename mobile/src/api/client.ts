@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import type {
   Company,
+  CompositionItem,
   DeliveryMode,
   Product,
   ProductType,
@@ -437,7 +438,59 @@ export function fetchProductList(search: string, filters: ProductFilters) {
   return request<{ products: Product[] }>(`/products${productQueryString(search, filters)}`);
 }
 
-export interface NewProductInput {
+// --- Kumaş pasaportu (Faz 1) ---
+// Sunucu sözleşmesi: backend/src/passport.ts passportFieldsSchema.
+
+// Belge fotoğrafı: yeni data URL · mevcut belgenin eski sırası · null (yok).
+export type DocImageInput = string | { existing: number } | null;
+
+export interface YarnInput {
+  role?: string; // catalog.ts YARN_ROLES, boş olabilir
+  count: number;
+  unit: string; // catalog.ts YARN_UNITS
+  ply?: number;
+  yarnType?: string; // catalog.ts YARN_TYPES, boş olabilir
+}
+
+export interface CertificateInput {
+  name: string; // glossaryLabels.ts CERTIFICATES
+  number?: string;
+  // ISO tarih ("2027-03-01") ya da null (geçerlilik yok).
+  validUntil?: string | null;
+  image?: DocImageInput;
+}
+
+export interface TestReportInput {
+  kind: string;
+  result?: string;
+  testedAt?: string | null;
+  image?: DocImageInput;
+}
+
+// Hepsi isteğe bağlı: gönderilmeyen alana sunucu dokunmaz.
+export interface PassportInput {
+  composition?: CompositionItem[];
+  yarns?: YarnInput[];
+  certificates?: CertificateInput[];
+  testReports?: TestReportInput[];
+  widthType?: string;
+  // null: temizle
+  moq?: number | null;
+  moqUnit?: string;
+  leadTimeDays?: number | null;
+  priceValue?: number | null;
+  priceCurrency?: string;
+  priceUnit?: string;
+  finishTags?: string[];
+}
+
+// Makullük uyarıları: kaydı ENGELLEMEZ, ekranda gösterilir. notes Türkçe.
+export interface ProductWarnings {
+  codes: string[];
+  notes: string[];
+}
+
+export interface NewProductInput extends PassportInput {
   code: string;
   type: Product['type'];
   subtype: string;
@@ -446,22 +499,65 @@ export interface NewProductInput {
   stockUnit: StockUnit;
   weightGsm: number;
   widthCm: number;
-  content: string;
+  // Kompozisyon satırları gönderilirse metne gerek yok (sunucu üretir);
+  // kompozisyon boşsa metin zorunlu (ikisi de yoksa 400).
+  content?: string;
   useArea: string;
   // data URL'ler; ilki kapak.
   images: string[];
 }
 
 export function createProduct(payload: NewProductInput) {
-  return request<{ product: Product }>('/products', {
+  return request<{ product: Product; warnings?: ProductWarnings }>('/products', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
 
+// Detay yanıtındaki pasaport ilişkileri (liste yanıtında gelmez).
+export interface ProductYarn {
+  position: number;
+  role: string;
+  count: number;
+  unit: string;
+  ply: number;
+  yarnType: string;
+}
+
+export interface ProductCertificate {
+  position: number;
+  name: string;
+  number: string;
+  validUntil: string | null;
+  // Belgenin kendisi yanıtta gelmez; fetchCertificateImage ile çekilir.
+  hasImage: boolean;
+}
+
+export interface ProductTestReport {
+  position: number;
+  kind: string;
+  result: string;
+  testedAt: string | null;
+  hasImage: boolean;
+}
+
+// Alanın nereden geldiği ve onaylanıp onaylanmadığı; YALNIZCA sahibine gelir.
+export interface ProductFieldMeta {
+  field: string;
+  confidence: number;
+  source: string;
+  confirmedAt: string | null;
+}
+
 // Detay yanıtı listeye göre bir alan fazla taşıyor: firmanın toplam ürün sayısı
-// (tasarımdaki "Toplam N Ürün" rozeti).
-export type ProductDetail = Product & { companyProductCount: number };
+// (tasarımdaki "Toplam N Ürün" rozeti) + pasaportun tamamı.
+export type ProductDetail = Product & {
+  companyProductCount: number;
+  yarns?: ProductYarn[];
+  certificates?: ProductCertificate[];
+  testReports?: ProductTestReport[];
+  fieldMeta?: ProductFieldMeta[];
+};
 
 export function fetchProduct(id: string) {
   return request<{ product: ProductDetail }>(`/products/${id}`);
@@ -485,9 +581,27 @@ export type UpdateProductInput = Partial<Omit<NewProductInput, 'images'>> & {
 };
 
 export function updateProduct(id: string, payload: UpdateProductInput) {
-  return request<{ product: Product }>(`/products/${id}`, {
+  return request<{ product: Product; warnings?: ProductWarnings }>(`/products/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  });
+}
+
+// Sertifika belgesi ve test raporu fotoğrafı: ürün galerisiyle aynı kural,
+// liste/detay yanıtında gelmez, görünür olunca tek tek çekilir.
+export function fetchCertificateImage(productId: string, position: number) {
+  return request<{ imageUrl: string }>(`/products/${productId}/certificates/${position}/image`);
+}
+
+export function fetchTestReportImage(productId: string, position: number) {
+  return request<{ imageUrl: string }>(`/products/${productId}/test-reports/${position}/image`);
+}
+
+// Metinden otomatik çıkarılan alanları sahibi onaylar.
+export function confirmProductFields(productId: string, fields: string[]) {
+  return request<{ confirmed: number; pendingFieldCount: number }>(`/products/${productId}/fields/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ fields }),
   });
 }
 

@@ -16,6 +16,13 @@ import {
   type ProductType,
   type StockUnit,
 } from '../../features/products/catalog';
+import {
+  CERTIFICATES,
+  FIBERS,
+  WIDTH_TYPE_LABELS,
+  WIDTH_TYPES,
+  type WidthType,
+} from '../../features/products/glossaryLabels';
 import type { ProductFilters } from '../../features/products/filters';
 import { toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
@@ -31,6 +38,10 @@ const UNIT_OPTIONS: { value: StockUnit | ''; label: string }[] = [
   { value: '', label: 'Hepsi' },
   { value: 'm', label: 'Metre' },
   { value: 'kg', label: 'Kilogram' },
+];
+const WIDTH_TYPE_OPTIONS: { value: WidthType | ''; label: string }[] = [
+  { value: '', label: 'Hepsi' },
+  ...WIDTH_TYPES.map((value) => ({ value, label: WIDTH_TYPE_LABELS[value] })),
 ];
 
 // parseNumber geçersiz metni 0 sayıyor; filtrede "abc" sessizce 0 olmasın.
@@ -61,16 +72,28 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
   const [widthMin, setWidthMin] = useState(toText(initial.widthMin));
   const [widthMax, setWidthMax] = useState(toText(initial.widthMax));
   const [content, setContent] = useState(initial.content ?? '');
+  const [fibers, setFibers] = useState<string[]>(initial.fibers ?? []);
+  const [fiberMinPercent, setFiberMinPercent] = useState(toText(initial.fiberMinPercent));
+  const [certificates, setCertificates] = useState<string[]>(initial.certificates ?? []);
+  const [moqMax, setMoqMax] = useState(toText(initial.moqMax));
+  const [leadTimeMax, setLeadTimeMax] = useState(toText(initial.leadTimeMax));
+  const [widthType, setWidthType] = useState<WidthType | ''>(initial.widthType ?? '');
 
   const stock = readNumber(stockMin);
   const gsmLow = readNumber(gsmMin);
   const gsmHigh = readNumber(gsmMax);
   const widthLow = readNumber(widthMin);
   const widthHigh = readNumber(widthMax);
+  const fiberPercent = readNumber(fiberMinPercent);
+  const moq = readNumber(moqMax);
+  const leadTime = readNumber(leadTimeMax);
 
   const errors: string[] = [];
-  if ([stock, gsmLow, gsmHigh, widthLow, widthHigh].some((n) => n.invalid)) {
+  if ([stock, gsmLow, gsmHigh, widthLow, widthHigh, fiberPercent, moq, leadTime].some((n) => n.invalid)) {
     errors.push('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).');
+  }
+  if (fiberPercent.value !== undefined && fiberPercent.value > 100) {
+    errors.push('Lif oranı en fazla 100 olabilir.');
   }
   if (gsmLow.value !== undefined && gsmHigh.value !== undefined && gsmLow.value > gsmHigh.value) {
     errors.push('Gramajda en az değer en çok değerden büyük olamaz.');
@@ -96,6 +119,12 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
     setWidthMin('');
     setWidthMax('');
     setContent('');
+    setFibers([]);
+    setFiberMinPercent('');
+    setCertificates([]);
+    setMoqMax('');
+    setLeadTimeMax('');
+    setWidthType('');
   };
 
   const apply = () => {
@@ -114,6 +143,13 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
       widthMin: widthLow.value,
       widthMax: widthHigh.value,
       content: content.trim() || undefined,
+      fibers,
+      // Oran yalnızca lif seçiliyken sunucuya gidiyor (tek başına anlamsız).
+      fiberMinPercent: fibers.length ? fiberPercent.value : undefined,
+      certificates,
+      moqMax: moq.value,
+      leadTimeMax: leadTime.value,
+      widthType: widthType || undefined,
     };
     haptics.selection();
     navigation.navigate('MainTabs', { screen: 'ProductList', params: { filters, appliedAt: Date.now() } });
@@ -176,6 +212,53 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
             </View>
             <View style={styles.half}>
               <TextField label="En en çok" value={widthMax} onChangeText={setWidthMax} placeholder="cm" keyboardType="numeric" />
+            </View>
+          </View>
+          <Text style={styles.label}>En tipi</Text>
+          <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} compact />
+        </View>
+
+        <SectionHeader title="Lif" />
+        <View style={styles.block}>
+          <Text style={styles.hint}>Seçtiklerinizden herhangi birini içeren kumaşlar gelir.</Text>
+          <MultiChipSelect options={FIBERS} values={fibers} onChange={setFibers} />
+          {fibers.length ? (
+            <TextField
+              label="Seçilen lif en az (%)"
+              value={fiberMinPercent}
+              onChangeText={setFiberMinPercent}
+              placeholder="Örn. 5"
+              keyboardType="numeric"
+            />
+          ) : null}
+        </View>
+
+        <SectionHeader title="Sertifika" />
+        <View style={styles.block}>
+          <Text style={styles.hint}>Seçtiklerinizden herhangi birine sahip kumaşlar gelir.</Text>
+          <MultiChipSelect options={CERTIFICATES} values={certificates} onChange={setCertificates} />
+        </View>
+
+        <SectionHeader title="Ticari" />
+        <View style={styles.block}>
+          <View style={styles.row}>
+            <View style={styles.half}>
+              <TextField
+                label="MOQ en çok"
+                value={moqMax}
+                onChangeText={setMoqMax}
+                placeholder="Örn. 500"
+                keyboardType="numeric"
+              />
+            </View>
+            <View style={styles.half}>
+              <TextField
+                label="Termin en çok (gün)"
+                value={leadTimeMax}
+                onChangeText={setLeadTimeMax}
+                placeholder="Örn. 15"
+                keyboardType="numeric"
+              />
             </View>
           </View>
         </View>
