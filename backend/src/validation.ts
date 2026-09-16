@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PRODUCT_TYPES, STOCK_UNITS, USAGES } from './catalog';
+import { passportFieldsSchema } from './passport';
 
 export const accountTypeSchema = z.enum(['konfeksiyon', 'uretici', 'bireysel']);
 export const productTypeSchema = z.enum(PRODUCT_TYPES);
@@ -41,42 +42,49 @@ const stock = z.number().nonnegative();
 const stockUnit = z.enum(STOCK_UNITS);
 const weightGsm = z.number().positive();
 const widthCm = z.number().positive();
-const content = z.string().trim().min(1).max(200);
+// İçerik metni: kompozisyon satırları (passport.composition) verildiyse sunucu
+// metni ondan üretir; yalnızca metin verildiyse ayrıştırmayı dener. İkisi de
+// yoksa rota 400 döner (content_or_composition_required).
+const content = z.string().trim().max(200);
 // Serbest kullanım notu; kullanım amaçları artık `usages` etiketlerinde.
 const useArea = z.string().trim().max(200);
 
 // Alt çeşidin çeşide uyup uymadığı rotada kontrol ediliyor (güncellemede
 // çeşidin mevcut değeri veritabanından geliyor).
-export const createProductSchema = z.object({
-  code,
-  type: productTypeSchema,
-  subtype: subtype.default(''),
-  usages: usages.default([]),
-  stock,
-  stockUnit: stockUnit.default('m'),
-  weightGsm,
-  widthCm,
-  content,
-  useArea: useArea.default(''),
-  images: z.array(imageDataUrl).max(MAX_PRODUCT_IMAGES).optional(),
-  // Eski uygulama sürümleri tek fotoğrafı bu alanla gönderiyor.
-  imageUrl: imageDataUrl.optional(),
-});
+export const createProductSchema = z
+  .object({
+    code,
+    type: productTypeSchema,
+    subtype: subtype.default(''),
+    usages: usages.default([]),
+    stock,
+    stockUnit: stockUnit.default('m'),
+    weightGsm,
+    widthCm,
+    content: content.optional(),
+    useArea: useArea.default(''),
+    images: z.array(imageDataUrl).max(MAX_PRODUCT_IMAGES).optional(),
+    // Eski uygulama sürümleri tek fotoğrafı bu alanla gönderiyor.
+    imageUrl: imageDataUrl.optional(),
+  })
+  .merge(passportFieldsSchema);
 
-export const updateProductSchema = z.object({
-  code: code.optional(),
-  type: productTypeSchema.optional(),
-  subtype: subtype.optional(),
-  usages: usages.optional(),
-  stock: stock.optional(),
-  stockUnit: stockUnit.optional(),
-  weightGsm: weightGsm.optional(),
-  widthCm: widthCm.optional(),
-  content: content.optional(),
-  useArea: useArea.optional(),
-  // Verilirse fotoğrafların TAMAMI bu liste olur (sırası = gösterim sırası,
-  // ilki kapak). Verilmezse fotoğraflara dokunulmaz.
-  images: z.array(productImageItemSchema).max(MAX_PRODUCT_IMAGES).optional(),
-  // Eski sürümler: data URL = tek fotoğrafla değiştir, null = fotoğrafı kaldır.
-  imageUrl: imageDataUrl.nullable().optional(),
-});
+export const updateProductSchema = z
+  .object({
+    code: code.optional(),
+    type: productTypeSchema.optional(),
+    subtype: subtype.optional(),
+    usages: usages.optional(),
+    stock: stock.optional(),
+    stockUnit: stockUnit.optional(),
+    weightGsm: weightGsm.optional(),
+    widthCm: widthCm.optional(),
+    content: content.optional(),
+    useArea: useArea.optional(),
+    // Verilirse fotoğrafların TAMAMI bu liste olur (sırası = gösterim sırası,
+    // ilki kapak). Verilmezse fotoğraflara dokunulmaz.
+    images: z.array(productImageItemSchema).max(MAX_PRODUCT_IMAGES).optional(),
+    // Eski sürümler: data URL = tek fotoğrafla değiştir, null = fotoğrafı kaldır.
+    imageUrl: imageDataUrl.nullable().optional(),
+  })
+  .merge(passportFieldsSchema);

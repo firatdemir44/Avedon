@@ -117,6 +117,59 @@ export const COMPANY_TYPE_KEYS = new Set(COMPANY_TYPES.map((t) => t.key));
 export function isValidCompanyType(value: string) {
   return value === "" || COMPANY_TYPE_KEYS.has(value as (typeof COMPANY_TYPES)[number]['key']);
 }
+
+// --- Kumaş pasaportu listeleri (Faz 1, Adım 2) ---
+// BAŞLANGIÇ değerleri; Fırat'ın listesiyle güncellenecek. Anahtar silinmez.
+export const YARN_TYPES = [
+  { key: 'penye', label: 'Penye (ring)' },
+  { key: 'karde', label: 'Karde' },
+  { key: 'open_end', label: 'Open End' },
+  { key: 'kompakt', label: 'Kompakt' },
+  { key: 'dty', label: 'DTY' },
+  { key: 'fdy', label: 'FDY' },
+  { key: 'poy', label: 'POY' },
+  { key: 'vortex', label: 'Vortex' },
+  { key: 'diger', label: 'Diğer' },
+] as const;
+
+export const YARN_ROLES = [
+  { key: 'ana', label: 'Ana iplik' },
+  { key: 'ilave', label: 'İlave iplik' },
+  { key: 'ekstra', label: 'Ekstra iplik' },
+] as const;
+
+export const YARN_UNITS = [
+  { key: 'ne', label: 'Ne' },
+  { key: 'nm', label: 'Nm' },
+  { key: 'tex', label: 'tex' },
+  { key: 'dtex', label: 'dtex' },
+  { key: 'denye', label: 'Denye' },
+] as const;
+
+// Boya / apre etiketleri (çoklu seçim, usages ile aynı desen).
+export const FINISH_TAGS = [
+  { key: 'sardonlu', label: 'Şardonlu' },
+  { key: 'yikamali', label: 'Yıkamalı' },
+  { key: 'peach', label: 'Peach (şeftali tuşe)' },
+  { key: 'silikonlu', label: 'Silikonlu' },
+  { key: 'antipilling', label: 'Anti-pilling' },
+  { key: 'su_itici', label: 'Su itici' },
+  { key: 'alev_almaz', label: 'Alev almaz' },
+  { key: 'antibakteriyel', label: 'Antibakteriyel' },
+  { key: 'uv_koruma', label: 'UV koruma' },
+  { key: 'merserize', label: 'Merserize' },
+  { key: 'sanforlu', label: 'Sanforlu' },
+  { key: 'baskili', label: 'Baskılı' },
+  { key: 'duz_boya', label: 'Düz boya' },
+  { key: 'melanj', label: 'Melanj' },
+] as const;
+
+export const PRICE_CURRENCIES = ['TRY', 'USD', 'EUR'] as const;
+
+export const FINISH_TAG_KEYS = new Set<string>(FINISH_TAGS.map((t) => t.key));
+export const YARN_TYPE_KEYS = new Set<string>(YARN_TYPES.map((t) => t.key));
+export const YARN_ROLE_KEYS = new Set<string>(YARN_ROLES.map((t) => t.key));
+export const YARN_UNIT_KEYS = new Set<string>(YARN_UNITS.map((t) => t.key));
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
 export const USAGE_KEYS = new Set(USAGES.map((u) => u.key));

@@ -130,12 +130,109 @@ model Product {
   /// ProductImage'a (sıra 0) kopyaladı; artık okunmuyor ve yazılmıyor. Ayrı bir
   /// temizlik migration'ında silinecek.
   imageUrl       String?
+  // --- Kumaş pasaportu (Faz 1, Adım 2; docs/faz1-plani.md) ---
+  // Hepsi isteğe bağlı; eski istemciler bu alanlar olmadan çalışır.
+  // widthType: "" | acik | tup
+  widthType         String    @default("")
+  // MOQ değeri ve birimi stok biriminden bağımsız (kullanıcı kararı 2026-09-16).
+  moq               Float?
+  moqUnit           String    @default("")
+  leadTimeDays      Int?
+  // Fiyat yalnızca ürünün sahibi firmaya döner (API katmanı süzer).
+  priceValue        Float?
+  priceCurrency     String    @default("")
+  priceUnit         String    @default("")
+  // Boya/apre etiketleri: JSON dizi metni (usages ile aynı desen).
+  finishTags        String    @default("[]")
+  passportUpdatedAt DateTime?
+  compositions      ProductComposition[]
+  yarns             ProductYarn[]
+  certificates      ProductCertificate[]
+  testReports       ProductTestReport[]
+  fieldMeta         ProductFieldMeta[]
   images         ProductImage[]
   favorites      ProductFavorite[]
   views          ProductView[]
   sampleRequests SampleRequest[]
   posts          Post[]
   createdAt      DateTime        @default(now())
+}
+
+// Kumaş pasaportu alt tabloları (Faz 1, Adım 2). Kompozisyon doğruluk
+// kaynağıdır; Product.content metni kompozisyon varsa sunucuda ondan üretilir.
+// Sıralar (position) her zaman 0..n-1 sıkışık (replacePassportRelations).
+model ProductComposition {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position  Int
+  // Lif anahtarı (src/domain/glossary/fibers.ts)
+  fiber     String
+  percent   Float
+
+  @@unique([productId, position])
+  @@index([fiber, percent])
+}
+
+// role: "" | ana | ilave | ekstra · unit: ne | nm | tex | dtex | denye
+// yarnType: catalog.ts YARN_TYPES anahtarı ya da boş
+model ProductYarn {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position  Int
+  role      String  @default("")
+  count     Float
+  unit      String
+  ply       Int     @default(1)
+  yarnType  String  @default("")
+
+  @@unique([productId, position])
+}
+
+// name: sertifika anahtarı (src/domain/glossary/certificates.ts). Belge
+// fotoğrafı isteğe bağlı; liste yanıtlarında dönmez, ayrı uçtan çekilir.
+model ProductCertificate {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position   Int
+  name       String
+  number     String    @default("")
+  validUntil DateTime?
+  imageUrl   String?
+
+  @@unique([productId, position])
+  @@index([name])
+}
+
+// Test raporu üstverisi; Faz 1'de belge yalnızca isteğe bağlı fotoğraf.
+model ProductTestReport {
+  id        String    @id @default(cuid())
+  productId String
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  position  Int
+  kind      String
+  result    String    @default("")
+  testedAt  DateTime?
+  imageUrl  String?
+
+  @@unique([productId, position])
+}
+
+// "Her alan değer + güven + kaynak taşır" (yol haritası §4). Yalnızca çıkarım
+// ya da ayrıştırma ile gelen alanlar satır alır; elle girilen alan = güven 1,
+// kaynak manual, satır yok. source: manual | parsed_content | extracted | whatsapp
+model ProductFieldMeta {
+  id          String    @id @default(cuid())
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  field       String
+  confidence  Float
+  source      String
+  confirmedAt DateTime?
+
+  @@unique([productId, field])
 }
 
 // Ürün fotoğrafları: position 0 kapak. Sıralar her zaman 0..n-1 (bkz.

@@ -11,6 +11,11 @@ const pick = (c: typeof server | typeof mobile) =>
     usages: c.USAGES,
     units: c.STOCK_UNITS,
     companyTypes: c.COMPANY_TYPES,
+    yarnTypes: c.YARN_TYPES,
+    yarnRoles: c.YARN_ROLES,
+    yarnUnits: c.YARN_UNITS,
+    finishTags: c.FINISH_TAGS,
+    currencies: c.PRICE_CURRENCIES,
   });
 
 if (pick(server) !== pick(mobile)) {

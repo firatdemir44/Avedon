@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { makeHandle } from './handle';
-import { requireAuth } from '../middleware/auth';
+import { optionalAuth, requireAuth } from '../middleware/auth';
 import { PRODUCT_SELECT, toProductRow } from '../products';
 import { isValidCompanyType } from '../catalog';
 import {
@@ -80,6 +80,7 @@ companiesRouter.get(
 
 companiesRouter.get(
   '/:id',
+  optionalAuth,
   handle(async (req, res) => {
     const company = await prisma.company.findUnique({
       where: { id: req.params.id },
@@ -97,7 +98,11 @@ companiesRouter.get(
     }
     const { photos, ...rest } = company;
     res.json({
-      company: { ...rest, products: company.products.map(toProductRow), ...photoCounts(photos) },
+      company: {
+        ...rest,
+        products: company.products.map((p) => toProductRow(p, req.user?.companyId ?? null)),
+        ...photoCounts(photos),
+      },
     });
   })
 );

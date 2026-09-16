@@ -2,14 +2,16 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { STOCK_UNITS, USAGE_KEYS, matchCatalogKeys } from './catalog';
 import { productTypeSchema } from './validation';
-import { knitSearchKeys } from './domain/glossary';
+import { WIDTH_TYPES, isValidCertificate, isValidFiber, knitSearchKeys } from './domain/glossary';
+import { PASSPORT_LIST_SELECT, toPassportRow } from './passport';
 
 // Ürün fotoğrafları ProductImage tablosunda (base64 data URL). LİSTE ve DETAY
 // yanıtlarında ASLA dönmez — katalog büyüdükçe tek bir liste isteği megabaytlara
 // çıkardı. Yanıtlar imageCount/hasImage diyor; istemci kapak için
 // GET /api/products/:id/image, galeri için GET /api/products/:id/images/:position
 // ile fotoğrafları tek tek çekip önbelleğe alıyor. Gönderi fotoğraflarında da
-// aynı kural geçerli (bkz. src/posts.ts).
+// aynı kural geçerli (bkz. src/posts.ts). Sertifika/test raporu belgeleri de
+// aynı kuralla ayrı uçtan gelir (passport.ts).
 export const PRODUCT_COMPANY_SELECT = {
   id: true,
   name: true,
@@ -32,7 +34,9 @@ export const PRODUCT_SELECT = {
   useArea: true,
   createdAt: true,
   company: { select: PRODUCT_COMPANY_SELECT },
-  _count: { select: { images: true } },
+  ...PASSPORT_LIST_SELECT,
+  // fieldMeta sayısı: onay bekleyen (confirmedAt boş) alanlar.
+  _count: { select: { images: true, fieldMeta: { where: { confirmedAt: null } } } },
 } satisfies Prisma.ProductSelect;
 
 type ProductRow = Prisma.ProductGetPayload<{ select: typeof PRODUCT_SELECT }>;
@@ -52,8 +56,47 @@ export function serializeUsages(keys: readonly string[]) {
   return JSON.stringify([...new Set(keys)]);
 }
 
-export function toProductRow({ _count, usages, ...product }: ProductRow) {
-  return { ...product, usages: parseUsages(usages), imageCount: _count.images, hasImage: _count.images > 0 };
+// viewerCompanyId: fiyat yalnızca ürünün sahibi firmaya döner. Verilmezse
+// (oturumsuz ya da firmasız kullanıcı) fiyat hiç yazılmaz.
+export function toProductRow(row: ProductRow, viewerCompanyId?: string | null) {
+  const {
+    _count,
+    usages,
+    widthType,
+    moq,
+    moqUnit,
+    leadTimeDays,
+    priceValue,
+    priceCurrency,
+    priceUnit,
+    finishTags,
+    passportUpdatedAt,
+    compositions,
+    certificates,
+    ...product
+  } = row;
+  return {
+    ...product,
+    usages: parseUsages(usages),
+    imageCount: _count.images,
+    hasImage: _count.images > 0,
+    ...toPassportRow(
+      {
+        widthType,
+        moq,
+        moqUnit,
+        leadTimeDays,
+        priceValue,
+        priceCurrency,
+        priceUnit,
+        finishTags,
+        passportUpdatedAt,
+        compositions,
+        certificates,
+      },
+      { viewerCompanyId, ownerCompanyId: row.companyId, pendingFieldCount: _count.fieldMeta }
+    ),
+  };
 }
 
 export class ProductImageError extends Error {}
@@ -88,7 +131,7 @@ export async function replaceProductImages(
 
 const optionalNumber = z.coerce.number().nonnegative().optional();
 
-// GET /api/products filtreleri (tasarımdaki "Filtreleme Seçenekleri").
+// GET /api/products filtreleri (tasarımdaki "Filtreleme Seçenekleri" + pasaport).
 export const productQuerySchema = z.object({
   search: z.string().trim().max(100).optional(),
   type: productTypeSchema.optional(),
@@ -103,6 +146,16 @@ export const productQuerySchema = z.object({
   widthMax: optionalNumber,
   content: z.string().trim().max(100).optional(),
   companyId: z.string().trim().max(40).optional(),
+  // Pasaport filtreleri (Faz 1, Adım 2)
+  // Virgülle ayrılmış lif anahtarları; herhangi birini içeren ürün gelir.
+  fiber: z.string().max(300).optional(),
+  // fiber ile birlikte: o lif en az bu oranda olsun (ör. elastan ≥ 5).
+  fiberMinPercent: optionalNumber,
+  // Virgülle ayrılmış sertifika anahtarları.
+  certificate: z.string().max(300).optional(),
+  moqMax: optionalNumber,
+  leadTimeMax: optionalNumber,
+  widthType: z.enum(WIDTH_TYPES).optional(),
 });
 
 export type ProductQuery = z.infer<typeof productQuerySchema>;
@@ -152,6 +205,29 @@ export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput
   if (query.widthMax !== undefined) and.push({ widthCm: { lte: query.widthMax } });
   if (query.content) and.push({ content: { contains: query.content } });
   if (query.companyId) and.push({ companyId: query.companyId });
+
+  // Pasaport filtreleri: kompozisyon ve sertifika ayrı tablolarda; ilişki
+  // süzgeci ("bu lif şu oranın üstünde") JSON metinle mümkün olmazdı.
+  if (query.fiber) {
+    const fibers = query.fiber.split(',').filter(isValidFiber);
+    if (fibers.length) {
+      and.push({
+        compositions: {
+          some: {
+            fiber: { in: fibers },
+            ...(query.fiberMinPercent !== undefined ? { percent: { gte: query.fiberMinPercent } } : {}),
+          },
+        },
+      });
+    }
+  }
+  if (query.certificate) {
+    const names = query.certificate.split(',').filter(isValidCertificate);
+    if (names.length) and.push({ certificates: { some: { name: { in: names } } } });
+  }
+  if (query.moqMax !== undefined) and.push({ moq: { lte: query.moqMax } });
+  if (query.leadTimeMax !== undefined) and.push({ leadTimeDays: { lte: query.leadTimeMax } });
+  if (query.widthType) and.push({ widthType: query.widthType });
 
   return and.length ? { AND: and } : {};
 }

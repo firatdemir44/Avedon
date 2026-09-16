@@ -48,7 +48,7 @@ export const FIBER_SYNONYMS: Record<FiberKey, readonly string[]> = {
   polipropilen: ['polypropylene', 'pp', 'polipropilen'],
   kasmir: ['kaşmir', 'cashmere', 'ws', 'kasmir'],
   metalik: ['metallic', 'lurex', 'me', 'sim', 'simli'],
-  diger: ['other', 'karisim', 'karışım', 'diger lif'],
+  diger: ['other', 'diger lif', 'other fiber'],
 };
 
 // Serbest metinde başka anlama gelebilecek kısaltmalar (ISO 1833 ve yaygın
