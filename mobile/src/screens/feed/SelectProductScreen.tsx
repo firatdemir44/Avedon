@@ -58,11 +58,9 @@ export function SelectProductScreen({ navigation, route }: Props) {
   // metin ve eklenen fotoğraf korunuyor (merge: true).
   const select = (product: MyProductOption) => {
     haptics.selection();
-    navigation.navigate({
-      name: 'CreatePost',
-      params: { productId: product.id, pickedAt: Date.now() },
-      merge: true,
-    });
+    // popTo: React Navigation 7'de navigate geri gitmez, CreatePost'un ikinci
+    // kopyasını açar.
+    navigation.popTo('CreatePost', { productId: product.id, pickedAt: Date.now() }, { merge: true });
   };
 
   const searching = !!query.trim();

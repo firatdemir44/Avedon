@@ -16,6 +16,7 @@ import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
+import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
 import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
@@ -108,6 +109,11 @@ export function RootNavigator() {
               name="AddProduct"
               component={AddProductScreen}
               options={{ headerShown: true, title: 'Ürün Ekle' }}
+            />
+            <Stack.Screen
+              name="PassportReview"
+              component={PassportReviewScreen}
+              options={{ headerShown: true, title: 'Etiketten Okunanlar' }}
             />
             <Stack.Screen
               name="ProductDetail"

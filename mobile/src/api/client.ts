@@ -26,6 +26,8 @@ const API_BASE_URL =
   });
 
 const REQUEST_TIMEOUT_MS = 30000;
+// Model çağrısı içeren uçlar (etiket okuma): fotoğraf + PDF ile 30 sn yetmiyor.
+const LLM_REQUEST_TIMEOUT_MS = 120000;
 
 export class ApiError extends Error {
   status: number;
@@ -50,9 +52,9 @@ export function setAuthToken(token: string | null) {
   authToken = token;
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options?: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS): Promise<T> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   let res: Response;
   try {
@@ -467,8 +469,19 @@ export interface TestReportInput {
   image?: DocImageInput;
 }
 
+// Alanın nereden geldiğini kayıt isteğiyle birlikte bildirir (Adım 3):
+// çıkarımdan gelip onay ekranında aktarılan alanlar için bir satır. Elle
+// girilen (ya da aktarıldıktan sonra elle değiştirilen) alan için satır yok.
+export interface FieldMetaInput {
+  field: string;
+  confidence: number;
+  source: 'manual' | 'parsed_content' | 'extracted' | 'whatsapp';
+  confirmed: boolean;
+}
+
 // Hepsi isteğe bağlı: gönderilmeyen alana sunucu dokunmaz.
 export interface PassportInput {
+  fieldMeta?: FieldMetaInput[];
   composition?: CompositionItem[];
   yarns?: YarnInput[];
   certificates?: CertificateInput[];
@@ -742,6 +755,109 @@ export function detectGarmentComponents(images: GarmentImageInput[]) {
     method: 'POST',
     body: JSON.stringify({ images }),
   });
+}
+
+// --- Etiketten pasaport çıkarımı (Faz 1, Adım 3) ---
+// Sunucu sözleşmesi: backend/src/skills/passportExtract/schema.ts.
+// Uç kaydetmez, yalnızca öneri döner; kullanıcı onay ekranında seçtiği alanları
+// forma aktarır, kayıt normal createProduct/updateProduct ile olur.
+
+// value null ise "etikette bulunamadı". confidence 0-1, evidence etikette
+// birebir okunan parça (yoksa null).
+export interface ExtractedField<T> {
+  value: T | null;
+  confidence: number;
+  evidence: string | null;
+}
+
+export interface ExtractedYarn {
+  role: '';
+  count: number;
+  unit: string; // catalog.ts YARN_UNITS
+  ply: number;
+  yarnType: string; // catalog.ts YARN_TYPES, boş olabilir
+}
+
+export interface ExtractedCertificate {
+  name: string; // glossaryLabels.ts CERTIFICATES
+  number: string;
+  validUntil: string | null;
+}
+
+export interface PassportExtraction {
+  type: ExtractedField<ProductType>;
+  subtype: ExtractedField<string>;
+  code: ExtractedField<string>;
+  composition: ExtractedField<CompositionItem[]>;
+  weightGsm: ExtractedField<number>;
+  widthCm: ExtractedField<number>;
+  widthType: ExtractedField<'acik' | 'tup'>;
+  yarns: ExtractedField<ExtractedYarn[]>;
+  certificates: ExtractedField<ExtractedCertificate[]>;
+  finishTags: ExtractedField<string[]>;
+  usages: ExtractedField<string[]>;
+  // Modelin serbest gözlemleri (renk, desen, okunamayan yerler); boş olabilir.
+  notes: string;
+}
+
+// Çıkarımdaki alan adları; forma aktarım ve fieldMeta bunlarla çalışır.
+export type ExtractionFieldName = Exclude<keyof PassportExtraction, 'notes'>;
+
+// Okundu ama aktarılmadı: sözlükte karşılığı yok ya da güven eşiğin altında.
+export interface ExtractRejected {
+  field: string;
+  reason:
+    | 'unknown_fiber'
+    | 'unknown_subtype'
+    | 'subtype_not_in_type'
+    | 'unknown_certificate'
+    | 'unknown_yarn_unit'
+    | 'invalid_value'
+    | 'low_confidence';
+  raw: string;
+}
+
+export interface ExtractOutcome {
+  extraction: PassportExtraction;
+  // Makullük uyarıları: kaydı engellemez, ekranda gösterilir.
+  warnings: ProductWarnings;
+  rejected: ExtractRejected[];
+  meta: {
+    model: string;
+    // true: gerçek model çağrılmadı (sunucu test kipinde).
+    mock: boolean;
+    durationMs: number;
+    inputTokens: number | null;
+    outputTokens: number | null;
+  };
+}
+
+export interface ExtractImageInput {
+  // data URL ("data:image/jpeg;base64,...") ya da çıplak base64.
+  imageBase64: string;
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+}
+
+export interface ExtractDocumentInput {
+  dataBase64: string;
+  mediaType: 'application/pdf';
+}
+
+// images / document / text'ten en az biri gerekli (yoksa 400).
+export interface PassportExtractInput {
+  images?: ExtractImageInput[];
+  document?: ExtractDocumentInput | null;
+  text?: string;
+  hints?: { type?: ProductType };
+}
+
+export function extractPassport(input: PassportExtractInput) {
+  return request<ExtractOutcome>(
+    '/passport/extract',
+    { method: 'POST', body: JSON.stringify(input) },
+    // Model çağrısı: fotoğraf + PDF ile varsayılan 30 sn yetmiyor.
+    LLM_REQUEST_TIMEOUT_MS
+  );
 }
 
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };

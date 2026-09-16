@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 sunucu tarafı tamamlandı (2026-09-16), mobil onay ekranı yapılıyor. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 tamamlandı (2026-09-16, tarayıcıda doğrulandı; telefonda denenmedi); sıradaki Adım 4. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.

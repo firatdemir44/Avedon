@@ -12,17 +12,24 @@ import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { ListRow } from '../../components/ListRow';
 import { useSession } from '../../context/SessionContext';
 import {
+  ApiError,
   createProduct,
   deleteProduct,
+  extractPassport,
   fetchCertificateImage,
   fetchProduct,
   updateProduct,
   type CertificateInput,
+  type ExtractionFieldName,
+  type FieldMetaInput,
+  type PassportExtractInput,
   type PassportInput,
   type ProductImageInput,
   type YarnInput,
 } from '../../api/client';
-import { pickCompressedImage } from '../../features/imagePicker';
+import { captureCompressedImage, pickCompressedImage, pickCompressedImages } from '../../features/imagePicker';
+import { DocumentPickError, pickPdf } from '../../features/documentPicker';
+import type { PassportImport } from '../../features/products/passportImport';
 import {
   getCachedGalleryImage,
   loadGalleryImage,
@@ -137,6 +144,21 @@ const PRICE_UNIT_OPTIONS: { value: StockUnit; label: string }[] = [
 const PHOTO_SIZE = 96;
 const DOC_PHOTO_SIZE = 64;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+// Sunucudaki MAX_EXTRACT_IMAGES ile aynı.
+const MAX_EXTRACT_IMAGES = 4;
+// Sunucudaki MAX_TEXT_CHARS ile aynı.
+const MAX_EXTRACT_TEXT = 4000;
+
+// Etiket okuma hataları (sunucu kodları) → ekranda görünen Türkçe metin.
+function extractErrorMessage(err: unknown) {
+  const code = err instanceof ApiError ? err.code : undefined;
+  if (code === 'extract_not_configured') return 'Fotoğraftan doldurma bu sunucuda etkin değil.';
+  if (code === 'image_too_large') return 'Fotoğraf çok büyük. Daha küçük bir fotoğraf seçin.';
+  if (code === 'document_too_large') return 'PDF çok büyük (en fazla 10 MB).';
+  if (code === 'extract_input_required') return 'Okunacak bir fotoğraf, PDF ya da metin seçin.';
+  if (err instanceof ApiError && err.status === 0) return 'Etiket okuma zaman aşımına uğradı, tekrar deneyin.';
+  return 'Etiket okunamadı, tekrar deneyin ya da elle girin.';
+}
 
 let rowSeq = 0;
 const newKey = (prefix: string) => `${prefix}-${++rowSeq}`;
@@ -224,6 +246,21 @@ export function AddProductScreen({ navigation, route }: Props) {
   const [certificateOpen, setCertificateOpen] = useState(false);
   const [pickingDoc, setPickingDoc] = useState<string | null>(null);
 
+  // --- Etiketten doldur (Adım 3) ---
+  // Kaynak seçimi ekran içinde açılan beyaz blok (web'de Alert.alert yok).
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  // Çıkarımdan gelip forma aktarılan alanlar: alan → güven. Kullanıcı alanı
+  // elle değiştirirse satır düşer (artık çıkarım değeri değil).
+  const [extractedFields, setExtractedFields] = useState<Partial<Record<ExtractionFieldName, number>>>({});
+  // Çeşit ipucu sunucuya yalnızca kullanıcı gerçekten seçtiyse (ya da mevcut
+  // ürün yüklendiyse) gider: varsayılan "Örme" yüzünden etiketteki alt çeşit
+  // ("poplin") boşuna elenmesin.
+  const [typeChosen, setTypeChosen] = useState(false);
+
   useLayoutEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Ürünü Düzenle' : 'Ürün Ekle' });
   }, [navigation, isEditing]);
@@ -235,6 +272,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       .then(({ product }) => {
         if (cancelled) return;
         setType(product.type);
+        setTypeChosen(true);
         setSubtype(product.subtype ?? '');
         setUsages(product.usages ?? []);
         setCode(product.code);
@@ -347,10 +385,222 @@ export function AddProductScreen({ navigation, route }: Props) {
     };
   }, [productId]);
 
+  // Alan elle değiştirildi: artık çıkarımdan gelen değer değil, kayıt isteğinde
+  // fieldMeta satırı gönderilmez.
+  const forgetExtracted = (...fields: ExtractionFieldName[]) =>
+    setExtractedFields((prev) => {
+      if (!fields.some((field) => field in prev)) return prev;
+      const next = { ...prev };
+      for (const field of fields) delete next[field];
+      return next;
+    });
+
   const changeType = (next: ProductType) => {
     setType(next);
+    setTypeChosen(true);
+    forgetExtracted('type');
     // Alt çeşit yalnızca kendi çeşidinde geçerli.
-    if (!SUBTYPES[next].some((s) => s.key === subtype)) setSubtype('');
+    if (!SUBTYPES[next].some((s) => s.key === subtype)) {
+      setSubtype('');
+      forgetExtracted('subtype');
+    }
+  };
+
+  const changeSubtype = (next: string) => {
+    setSubtype(next);
+    forgetExtracted('subtype');
+  };
+
+  const changeCode = (next: string) => {
+    setCode(next);
+    forgetExtracted('code');
+  };
+
+  const changeWeightGsm = (next: string) => {
+    setWeightGsm(next);
+    forgetExtracted('weightGsm');
+  };
+
+  const changeWidthCm = (next: string) => {
+    setWidthCm(next);
+    forgetExtracted('widthCm');
+  };
+
+  const changeWidthType = (next: string) => {
+    setWidthType(next);
+    forgetExtracted('widthType');
+  };
+
+  const changeUsages = (next: string[]) => {
+    setUsages(next);
+    forgetExtracted('usages');
+  };
+
+  const changeFinishTags = (next: string[]) => {
+    setFinishTags(next);
+    forgetExtracted('finishTags');
+  };
+
+  // --- Etiketten doldur ---
+  const runExtract = async (input: PassportExtractInput) => {
+    setSourceOpen(false);
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const outcome = await extractPassport({ ...input, ...(typeChosen ? { hints: { type } } : {}) });
+      haptics.success();
+      setPasteOpen(false);
+      setPasteText('');
+      navigation.navigate('PassportReview', { productId: productId ?? undefined, outcome });
+    } catch (err) {
+      haptics.error();
+      setExtractError(extractErrorMessage(err));
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const extractFromCamera = async () => {
+    setExtractError(null);
+    try {
+      const picked = await captureCompressedImage();
+      if (!picked) return;
+      await runExtract({ images: [{ imageBase64: picked.dataUrl, mediaType: 'image/jpeg' }] });
+    } catch (err) {
+      setExtractError(
+        err instanceof Error && err.message === 'camera_permission_denied'
+          ? 'Kameraya erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen tekrar deneyin.'
+      );
+    }
+  };
+
+  const extractFromGallery = async () => {
+    setExtractError(null);
+    try {
+      const picked = await pickCompressedImages(MAX_EXTRACT_IMAGES);
+      if (!picked.length) return;
+      await runExtract({
+        images: picked.map((image) => ({ imageBase64: image.dataUrl, mediaType: 'image/jpeg' as const })),
+      });
+    } catch (err) {
+      setExtractError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    }
+  };
+
+  const extractFromPdf = async () => {
+    setExtractError(null);
+    try {
+      const picked = await pickPdf();
+      if (!picked) return;
+      await runExtract({ document: { dataBase64: picked.dataBase64, mediaType: 'application/pdf' } });
+    } catch (err) {
+      setExtractError(
+        err instanceof DocumentPickError && err.code === 'too_large'
+          ? 'PDF çok büyük (en fazla 10 MB).'
+          : 'PDF okunamadı, lütfen başka bir dosya deneyin.'
+      );
+    }
+  };
+
+  const extractFromText = async () => {
+    const trimmed = pasteText.trim();
+    if (!trimmed) return;
+    await runExtract({ text: trimmed.slice(0, MAX_EXTRACT_TEXT) });
+  };
+
+  // Onay ekranından dönen alanları forma yazar. importKey her aktarımda
+  // değiştiği için aynı öneri ikinci kez aktarılsa da çalışır.
+  const appliedImportKey = useRef<number | null>(null);
+  const importKey = route.params?.importKey ?? null;
+  const passportImport = route.params?.passportImport ?? null;
+
+  useEffect(() => {
+    if (!passportImport || importKey == null || appliedImportKey.current === importKey) return;
+    appliedImportKey.current = importKey;
+    applyPassportImport(passportImport);
+    // applyPassportImport yalnızca setState çağırıyor; importKey yeterli.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importKey]);
+
+  const applyPassportImport = (imported: PassportImport) => {
+    const { values } = imported;
+    const nextType = values.type ?? type;
+    const applied = new Set<ExtractionFieldName>(imported.fields.map((item) => item.field));
+
+    if (values.type) {
+      setType(values.type);
+      setTypeChosen(true);
+    }
+
+    // Alt çeşit yalnızca kendi çeşidinde geçerli; değilse aktarılmaz.
+    if (values.subtype !== undefined) {
+      if (SUBTYPES[nextType].some((s) => s.key === values.subtype)) setSubtype(values.subtype);
+      else applied.delete('subtype');
+    } else if (values.type && !SUBTYPES[nextType].some((s) => s.key === subtype)) {
+      setSubtype('');
+    }
+
+    if (values.code !== undefined) setCode(values.code);
+
+    if (values.composition?.length) {
+      // Kompozisyon geldiyse form satır kipine geçer.
+      setCompositionRowMode(true);
+      setCompositionRows(
+        values.composition.slice(0, MAX_COMPOSITION_ROWS).map((item) => ({
+          key: newKey('lif'),
+          fiber: item.fiber,
+          percent: toInputNumber(item.percent),
+        }))
+      );
+    }
+
+    if (values.weightGsm != null) setWeightGsm(toInputNumber(values.weightGsm));
+    if (values.widthCm != null) setWidthCm(toInputNumber(values.widthCm));
+    if (values.widthType) setWidthType(values.widthType);
+
+    if (values.yarns?.length) {
+      setYarnRows(
+        values.yarns.slice(0, MAX_YARNS).map((yarn) => ({
+          key: newKey('iplik'),
+          role: yarn.role,
+          count: toInputNumber(yarn.count),
+          unit: yarn.unit,
+          ply: String(yarn.ply || 1),
+          yarnType: yarn.yarnType,
+        }))
+      );
+      setYarnOpen(true);
+    }
+
+    if (values.certificates?.length) {
+      setCertificateRows(
+        values.certificates.slice(0, MAX_CERTIFICATES).map((certificate) => ({
+          key: newKey('sertifika'),
+          name: certificate.name,
+          number: certificate.number,
+          validUntil: toDateInput(certificate.validUntil),
+          image: { kind: 'none' },
+        }))
+      );
+      setCertificateOpen(true);
+    }
+
+    if (values.finishTags) setFinishTags(values.finishTags);
+    if (values.usages) setUsages(values.usages);
+
+    setExtractedFields((prev) => {
+      const next = { ...prev };
+      for (const item of imported.fields) {
+        if (applied.has(item.field)) next[item.field] = item.confidence;
+      }
+      return next;
+    });
+    haptics.success();
   };
 
   const addPhoto = async () => {
@@ -389,18 +639,22 @@ export function AddProductScreen({ navigation, route }: Props) {
   };
 
   // --- Kompozisyon satırları ---
-  const updateCompositionRow = (key: string, patch: Partial<CompositionRow>) =>
+  const updateCompositionRow = (key: string, patch: Partial<CompositionRow>) => {
     setCompositionRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+    forgetExtracted('composition');
+  };
 
   const addCompositionRow = () => {
     if (compositionRows.length >= MAX_COMPOSITION_ROWS) return;
     haptics.selection();
     setCompositionRows((prev) => [...prev, emptyCompositionRow()]);
+    forgetExtracted('composition');
   };
 
   const removeCompositionRow = (key: string) => {
     haptics.selection();
     setCompositionRows((prev) => prev.filter((row) => row.key !== key));
+    forgetExtracted('composition');
   };
 
   const switchToCompositionRows = () => {
@@ -408,26 +662,46 @@ export function AddProductScreen({ navigation, route }: Props) {
     const parsed = splitCompositionText(content);
     setCompositionRows(parsed.length ? parsed : [emptyCompositionRow()]);
     setCompositionRowMode(true);
+    forgetExtracted('composition');
   };
 
   // --- İplik satırları ---
-  const updateYarnRow = (key: string, patch: Partial<YarnRow>) =>
+  const updateYarnRow = (key: string, patch: Partial<YarnRow>) => {
     setYarnRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+    forgetExtracted('yarns');
+  };
 
   const addYarnRow = () => {
     if (yarnRows.length >= MAX_YARNS) return;
     haptics.selection();
     setYarnRows((prev) => [...prev, emptyYarnRow()]);
+    forgetExtracted('yarns');
+  };
+
+  const removeYarnRow = (key: string) => {
+    haptics.selection();
+    setYarnRows((prev) => prev.filter((row) => row.key !== key));
+    forgetExtracted('yarns');
   };
 
   // --- Sertifika satırları ---
-  const updateCertificateRow = (key: string, patch: Partial<CertificateRow>) =>
+  const updateCertificateRow = (key: string, patch: Partial<CertificateRow>) => {
     setCertificateRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+    // Belge fotoğrafı eklemek çıkarım değerini değiştirmez.
+    if (!('image' in patch)) forgetExtracted('certificates');
+  };
 
   const addCertificateRow = () => {
     if (certificateRows.length >= MAX_CERTIFICATES) return;
     haptics.selection();
     setCertificateRows((prev) => [...prev, emptyCertificateRow()]);
+    forgetExtracted('certificates');
+  };
+
+  const removeCertificateRow = (key: string) => {
+    haptics.selection();
+    setCertificateRows((prev) => prev.filter((row) => row.key !== key));
+    forgetExtracted('certificates');
   };
 
   const addCertificatePhoto = async (key: string) => {
@@ -512,6 +786,14 @@ export function AddProductScreen({ navigation, route }: Props) {
               ? { existing: row.image.position }
               : null,
       }));
+    // Çıkarımdan gelip forma aktarılan ve elle değiştirilmemiş alanlar; sunucu
+    // ProductFieldMeta satırını onaylanmış olarak yazar. Boşsa gönderilmez.
+    const fieldMeta: FieldMetaInput[] = (Object.keys(extractedFields) as ExtractionFieldName[]).map((field) => ({
+      field,
+      confidence: extractedFields[field]!,
+      source: 'extracted',
+      confirmed: true,
+    }));
     const moqNum = moq.trim() ? parseNumber(moq) : null;
     const leadTimeNum = leadTimeDays.trim() ? Math.round(parseNumber(leadTimeDays)) : null;
     const priceNum = priceValue.trim() ? parseNumber(priceValue) : null;
@@ -535,6 +817,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       priceCurrency: priceNum == null ? '' : priceCurrency,
       priceUnit: priceNum == null ? '' : priceUnit,
       finishTags,
+      ...(fieldMeta.length ? { fieldMeta } : {}),
     };
   };
 
@@ -706,6 +989,96 @@ export function AddProductScreen({ navigation, route }: Props) {
           </Text>
         </View>
 
+        <SectionHeader title="Etiketten doldur" />
+        <View style={[styles.block, styles.extractBlock]}>
+          <Text style={styles.labelHint}>
+            Etiket, kartela ya da test raporundan bilgileri okuyup forma dolduralım. Aktarmadan önce siz onaylarsınız.
+          </Text>
+          <View style={styles.extractRow}>
+            <PrimaryButton
+              label={extracting ? 'Etiket okunuyor...' : 'Etiketten doldur'}
+              variant="outline"
+              icon="scan-outline"
+              disabled={extracting}
+              onPress={() => {
+                haptics.selection();
+                setExtractError(null);
+                setSourceOpen((v) => !v);
+              }}
+              style={styles.extractButton}
+            />
+            {extracting ? <ActivityIndicator color={colors.primary} /> : null}
+          </View>
+
+          {sourceOpen && !extracting ? (
+            <View style={styles.sourceBox}>
+              {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
+              {Platform.OS !== 'web' ? (
+                <ListRow
+                  title="Fotoğraf çek"
+                  left={<Ionicons name="camera-outline" size={20} color={colors.primary} />}
+                  onPress={extractFromCamera}
+                />
+              ) : null}
+              <ListRow
+                title="Galeriden seç"
+                subtitle={`En fazla ${MAX_EXTRACT_IMAGES} fotoğraf`}
+                left={<Ionicons name="images-outline" size={20} color={colors.primary} />}
+                onPress={extractFromGallery}
+              />
+              <ListRow
+                title="PDF seç"
+                subtitle="Test raporu ya da kartela belgesi"
+                left={<Ionicons name="document-text-outline" size={20} color={colors.primary} />}
+                onPress={extractFromPdf}
+              />
+              <ListRow
+                title="Metin yapıştır"
+                subtitle="WhatsApp'tan gelen etiket bilgisi"
+                left={<Ionicons name="clipboard-outline" size={20} color={colors.primary} />}
+                divider={false}
+                onPress={() => {
+                  haptics.selection();
+                  setSourceOpen(false);
+                  setPasteOpen(true);
+                }}
+              />
+            </View>
+          ) : null}
+
+          {pasteOpen ? (
+            <View style={styles.pasteBox}>
+              <TextField
+                label="Etiket metni"
+                value={pasteText}
+                onChangeText={setPasteText}
+                placeholder="Örn. 95% CO 5% EA, 220 gsm, 180 cm tubular"
+                multiline
+                maxLength={MAX_EXTRACT_TEXT}
+              />
+              <View style={styles.pasteActions}>
+                <PrimaryButton
+                  label="Oku"
+                  disabled={!pasteText.trim() || extracting}
+                  onPress={extractFromText}
+                  style={styles.pasteAction}
+                />
+                <PrimaryButton
+                  label="Kapat"
+                  variant="outline"
+                  onPress={() => {
+                    haptics.selection();
+                    setPasteOpen(false);
+                  }}
+                  style={styles.pasteAction}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {extractError ? <Text style={styles.extractError}>{extractError}</Text> : null}
+        </View>
+
         <SectionHeader title="Kumaş" />
         <View style={[styles.block, styles.formBlock]}>
           <Text style={styles.label}>Çeşit</Text>
@@ -713,22 +1086,22 @@ export function AddProductScreen({ navigation, route }: Props) {
           {SUBTYPES[type].length > 0 ? (
             <>
               <Text style={styles.label}>Alt çeşit</Text>
-              <ChipSelect options={subtypeOptions} value={subtype} onChange={setSubtype} compact />
+              <ChipSelect options={subtypeOptions} value={subtype} onChange={changeSubtype} compact />
             </>
           ) : null}
           <Text style={styles.label}>En tipi</Text>
-          <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} compact />
+          <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={changeWidthType} compact />
           <Text style={styles.label}>Kullanım amaçları</Text>
           <Text style={styles.labelHint}>Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.</Text>
-          <MultiChipSelect options={USAGES} values={usages} onChange={setUsages} />
+          <MultiChipSelect options={USAGES} values={usages} onChange={changeUsages} />
           <Text style={styles.label}>Apre / boya</Text>
           <Text style={styles.labelHint}>Kumaşa uygulanan işlemler.</Text>
-          <MultiChipSelect options={FINISH_TAGS} values={finishTags} onChange={setFinishTags} />
+          <MultiChipSelect options={FINISH_TAGS} values={finishTags} onChange={changeFinishTags} />
         </View>
 
         <SectionHeader title="Bilgiler" />
         <View style={[styles.block, styles.formBlock]}>
-          <TextField label="Ürün Kodu" value={code} onChangeText={setCode} placeholder="Örn. ORM-1042" />
+          <TextField label="Ürün Kodu" value={code} onChangeText={changeCode} placeholder="Örn. ORM-1042" />
 
           <Text style={styles.label}>Kompozisyon</Text>
           {compositionRowMode ? (
@@ -785,6 +1158,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                 onPress={() => {
                   haptics.selection();
                   setCompositionRowMode(false);
+                  forgetExtracted('composition');
                 }}
                 accessibilityRole="button"
                 accessibilityLabel="İçeriği metin olarak yaz"
@@ -821,13 +1195,13 @@ export function AddProductScreen({ navigation, route }: Props) {
               <TextField
                 label="Gramaj (gr/m²)"
                 value={weightGsm}
-                onChangeText={setWeightGsm}
+                onChangeText={changeWeightGsm}
                 placeholder="Örn. 220"
                 keyboardType="numeric"
               />
             </View>
             <View style={styles.fieldHalf}>
-              <TextField label="En (cm)" value={widthCm} onChangeText={setWidthCm} placeholder="Örn. 150" keyboardType="numeric" />
+              <TextField label="En (cm)" value={widthCm} onChangeText={changeWidthCm} placeholder="Örn. 150" keyboardType="numeric" />
             </View>
           </View>
           <Text style={styles.label}>Stok birimi</Text>
@@ -895,10 +1269,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <View style={styles.rowCardHead}>
                   <Text style={styles.rowCardTitle}>{index + 1}. iplik</Text>
                   <Pressable
-                    onPress={() => {
-                      haptics.selection();
-                      setYarnRows((prev) => prev.filter((r) => r.key !== row.key));
-                    }}
+                    onPress={() => removeYarnRow(row.key)}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel={`${index + 1}. iplik satırını kaldır`}
@@ -979,10 +1350,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <View style={styles.rowCardHead}>
                   <Text style={styles.rowCardTitle}>{index + 1}. sertifika</Text>
                   <Pressable
-                    onPress={() => {
-                      haptics.selection();
-                      setCertificateRows((prev) => prev.filter((r) => r.key !== row.key));
-                    }}
+                    onPress={() => removeCertificateRow(row.key)}
                     hitSlop={8}
                     accessibilityRole="button"
                     accessibilityLabel={`${index + 1}. sertifika satırını kaldır`}
@@ -1156,6 +1524,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.sm,
   },
+  // Etiketten doldur bloğu (Adım 3): açıklama + çerçeveli düğme, altında
+  // ekran içinde açılan kaynak listesi (web'de Alert.alert çalışmıyor).
+  extractBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, paddingBottom: spacing.sm },
+  extractRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  extractButton: { flex: 1 },
+  sourceBox: {
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  pasteBox: { marginTop: spacing.sm },
+  pasteActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  pasteAction: { flex: 1 },
+  extractError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
   label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
   labelHint: { ...typography.caption, color: colors.textMuted, marginTop: -2, marginBottom: spacing.sm },
   fieldRow: { flexDirection: 'row', gap: spacing.sm },

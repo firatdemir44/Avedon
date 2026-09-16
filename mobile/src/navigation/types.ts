@@ -2,6 +2,8 @@ import type { CompositeScreenProps, NavigatorScreenParams } from '@react-navigat
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProductFilters } from '../features/products/filters';
+import type { PassportImport } from '../features/products/passportImport';
+import type { ExtractOutcome } from '../api/client';
 
 // ÖNEMLİ: Hiçbir rota adı hem sekme hem yığın listesinde bulunamaz.
 // React Navigation, navigate çağrısını önce çağıran ekranın KENDİ navigatörüne
@@ -33,7 +35,11 @@ export type RootStackParamList = {
   Admin: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   EditCompany: { companyId: string };
-  AddProduct: { productId?: string } | undefined;
+  // passportImport: etiket okuma onay ekranından aktarılan alanlar. importKey
+  // her aktarımda değişir; aynı öneri ikinci kez aktarılsa da formun haberi olur.
+  AddProduct: { productId?: string; passportImport?: PassportImport; importKey?: number } | undefined;
+  // Etiketten okunanların onay ekranı (ürün formundan açılır, forma geri döner).
+  PassportReview: { productId?: string; outcome: ExtractOutcome };
   ProductDetail: { productId: string };
   ProductFilters: { filters: ProductFilters };
   FavoriteProducts: undefined;

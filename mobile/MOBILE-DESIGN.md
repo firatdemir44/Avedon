@@ -28,6 +28,7 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 - **Klasör içi alt çeşit çipleri:** klasör geri satırının altında yatay çipler "Süprem 3"; sayı eşit aralıklı yazıyla.
 - **Logo:** `assets/brand/avedon-logo-light.png` (harfler beyaz) lacivert zeminde, `avedon-logo.png` açık zeminde, `avedon-mark.png` yalnızca girdap işareti. Kaynak: `docs/orijinal-tasarim/logo` (repoya girmez). Logo metinle yeniden çizilmez, dosya kullanılır.
 - **Kumaş pasaportu formu (Faz 1):** kompozisyon satırları (lif çipi + oran alanı, satır ekle/sil, toplam 100 değilse turuncu not; kaydı engellemez); Ticari bölümü (MOQ + birimi stok biriminden bağımsız, termin gün, fiyat + para birimi + birim; "yalnızca size görünür" notu); İplik ve Sertifikalar bölümleri `CollapsibleSection` ile kapalı gelir. Sunucu uyarısı (makullük) varsa kayıt biter ama ekranda kalınır: sarı kutu "Kaydedildi. Dikkat:" + notlar, kaydet düğmesi "Devam" olur (web'de Alert yok). Ürün sayfasında sahibine sarı onay şeridi: "... alanı metinden otomatik çıkarıldı. Doğru mu?" + Onayla / Düzenle.
+- **Etiketten doldur (Faz 1, Adım 3):** ürün formunda fotoğraf bölümünün altında outline düğme (`scan-outline`), basınca ekran içinde `ListRow` kaynak listesi (Fotoğraf çek · Galeriden seç · PDF seç · Metin yapıştır; web'de pencere yok). Sürerken düğme "Etiket okunuyor..." + ActivityIndicator, form kilitlenmez. Sonuç `PassportReviewScreen` ("Etiketten Okunanlar"): her okunan alan bir satır, sol onay kutusu, alan adı, okunabilir değer, güven rozeti (≥0,9 yeşil "Etikette yazıyor" · 0,6-0,89 turuncu "Kontrol edin" · <0,6 kırmızı "Şüpheli", varsayılan işaretsiz), altında gri "Okunan: ..." kanıtı; "Okundu ama aktarılmadı" bölümü (ham değer + neden), "Notlar", sarı "Dikkat" kutusu. Altta sabit çubuk: "Vazgeç" + "Forma aktar (N)". Aktarım `navigation.popTo('AddProduct', ..., { merge: true })` ile forma GERİ döner; aktarılan alanlar kayıtta `fieldMeta` (source `extracted`, confirmed) olarak gider, kullanıcı elle değiştirirse satır düşer.
 - **Görünüm seçimi (Ürünler):** arama şeridinin altında iki eşit düğme, seçili olan lacivert dolu. "Tümü" tek akış, "Çeşitler" kumaş çeşidi klasörleri (klasör satırı: açık mavi kare içinde klasör ikonu + "N ürün"); açık klasörün üstünde geri satırı. Seçim cihazda hatırlanır. Arama yazılınca klasörler yerine sonuçlar gelir.
 - **Başlık eylemleri:** `HeaderButton` — lacivert bantta yalnızca ikon (Akış: danışman, paylaş) ya da ikon + kısa etiket (Mesajlar: + Yeni). Düz metin eylem yok.
 - **Sabit eylem çubuğu:** ekranın altında beyaz, üst çizgili, `PrimaryButton size="lg"` (Ürün sayfası: Firma + Numune Talep Et; Numune takibi: adımı işaretle). Alt güvenli alan `useSafeAreaInsets` ile çubuğun kendisine eklenir.
@@ -47,6 +48,7 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 | `StateView` | `EmptyState`, `ErrorState`, `InlineError` |
 | `ProductGallery` | Ürün sayfası kaydırmalı fotoğraf galerisi: yalnızca görünen ve komşu fotoğraflar çekilir; sayaç "2/4", noktalar, `overlay` ile üstte düğme (favori yıldızı) |
 | `MultiChipSelect` | Çoklu seçim çipleri (kullanım amaçları); seçili çip lacivert + onay işareti. Tek seçim için `ChipSelect` |
+| `PassportReviewScreen` satırı | Onay kutulu alan satırı + güven rozeti + "Okunan:" kanıtı (yalnızca bu ekranda; ikinci kullanımda ortak bileşene çıkarılır) |
 | `CollapsibleSection` | SectionHeader görünümünde dokunulabilir başlık + chevron; varsayılan kapalı gelen form bölümleri (ürün formunda İplik, Sertifikalar; içinde veri varsa açık gelir) |
 
 ## Basma geri bildirimi (4. aşama)
@@ -70,6 +72,7 @@ Basmanın kendisi titreşmez. Sohbet mesajı ve yorum gibi **sık** işlemlerde 
 
 ## Web kuralları
 
+- **Yığında geri dönüş `popTo` ile.** React Navigation 7'de `navigate` var olan ekrana geri gitmez, ikinci kopyasını açar (2026-09-16'da onay ekranı → form ve ürün seç → gönderi akışlarında görüldü). Bir alt ekrandan üst ekrana sonuç taşımak için `navigation.popTo('Ekran', params, { merge: true })`.
 - **İç içe düğme yok.** İçinde başka dokunulabilir öğe olan satırda web'de rol verilmez: `accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}` (react-native-web "button" rolünü gerçek `<button>` yapıyor).
 - **`Alert.alert` kullanılmaz.** react-native-web'de boş bir fonksiyon (hiçbir şey göstermez). Onay için `src/features/confirm.ts` → `confirmAction()` (web'de tarayıcı onayı, telefonda sistem penceresi).
 - `expo-secure-store` web'de yok; oturum jetonu `src/features/tokenStorage.ts` üzerinden.
