@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** plan, Fırat'ın onayını bekliyor. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 + 2 uygulanıyor (2026-09-16). Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.
@@ -264,6 +264,18 @@ Sağlayıcı seçimi ve hesap açılışı, gönderici başlığı başvurusu.
 **Adım 1 + Adım 2 birlikte** (sözlük + pasaport şeması + form/detay/filtre), tek migration ile. Sıra içinde: önce sözlük dosyaları ve testleri, sonra şema ve API (test scriptiyle), sonra mobil form, sonra migration provası ve canlı. Ardından **Adım 3** (fotoğraftan doldur): ilk görünür "vizyon" kazanımı. Adım 4 küçük olduğu için Adım 3 ile paralel yürütülebilir; Adım 5 ikisinin ardından gelir.
 
 Adım 8 (SMS) sıradan bağımsızdır: Fırat sağlayıcıyı seçtiği gün yapılır.
+
+## Fırat'ın kararları (2026-09-16)
+
+1. **Fiyat alanı:** şimdi eklenir, yalnızca ürünün sahibi firma görür.
+2. **MOQ:** stok biriminden bağımsız; MOQ değeri ve birimi (m / kg) ayrıca girilir.
+3. **Termin:** gün.
+4. **Formda açık bölümler:** Kumaş, Bilgiler, Ticari açık; İplik, Sertifika kapalı gelir.
+5. **Akış:** ürünlü gönderilerde beğeni "Takibe Al"a dönüşür, yorum kalır (Adım 6).
+6. **Asistan tonu:** arkadaş gibi; ne çok resmi ne atölye ağzı (Adım 5).
+7. **Başlangıç:** Adım 1 + 2 başladı (2026-09-16).
+
+Açık kalan: SMS sağlayıcısı ve WhatsApp Business hesabı (hangisi önce), "Takibe Al" etiketi.
 
 ## Fırat'ın karar vermesi gereken noktalar
 
