@@ -287,6 +287,40 @@ async function main() {
     check('kuruluş yılı null ile temizlenir', (await api('PATCH', `/companies/${sellerCo.id}`, S, { foundedYear: null })).json?.company?.foundedYear === null);
     check('başka firmanın bilgileri düzenlenemez', (await api('PATCH', `/companies/${otherCo.id}`, S, { city: 'Bursa' })).status === 403);
 
+    console.log('Firma galerileri (ofis / sertifika)');
+    const gallerySet = await api('PATCH', `/companies/${sellerCo.id}`, S, { officePhotos: [img('o1'), img('o2')] });
+    check('ofis fotoğrafları kaydedilir', gallerySet.status === 200, gallerySet.json);
+    const withPhotos = (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company;
+    check('firma yanıtında sayı döner', withPhotos?.officePhotoCount === 2 && withPhotos?.certificatePhotoCount === 0, {
+      office: withPhotos?.officePhotoCount,
+      certificate: withPhotos?.certificatePhotoCount,
+    });
+    check('firma yanıtında fotoğrafın kendisi yok', !JSON.stringify(withPhotos ?? {}).includes('base64'));
+    check('ilk ofis fotoğrafı', (await api('GET', `/companies/${sellerCo.id}/photos/office/0`)).json?.imageUrl === img('o1'));
+    check('ikinci ofis fotoğrafı', (await api('GET', `/companies/${sellerCo.id}/photos/office/1`)).json?.imageUrl === img('o2'));
+    check('olmayan sıra 404', (await api('GET', `/companies/${sellerCo.id}/photos/office/2`)).status === 404);
+    check('bilinmeyen galeri türü 404', (await api('GET', `/companies/${sellerCo.id}/photos/tuhaf/0`)).status === 404);
+    const reordered = await api('PATCH', `/companies/${sellerCo.id}`, S, { officePhotos: [{ existing: 1 }] });
+    check('yeniden sıralama/silme çalışır', reordered.status === 200);
+    const afterReorder = (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company;
+    check('kalan tek fotoğraf eski ikinci', afterReorder?.officePhotoCount === 1 && (await api('GET', `/companies/${sellerCo.id}/photos/office/0`)).json?.imageUrl === img('o2'), afterReorder?.officePhotoCount);
+    const badPhoto = await api('PATCH', `/companies/${sellerCo.id}`, S, { officePhotos: [{ existing: 5 }], city: 'DEGISMEMELI' });
+    check('olmayan mevcut fotoğraf 400', badPhoto.status === 400, badPhoto.json);
+    const afterBadPhoto = (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company;
+    check('hatalı istekte firma değişmez', afterBadPhoto?.officePhotoCount === 1 && afterBadPhoto?.city !== 'DEGISMEMELI', afterBadPhoto?.city);
+    await api('PATCH', `/companies/${sellerCo.id}`, S, { certificatePhotos: [img('c1')] });
+    const both = (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company;
+    check('iki galeri birbirinden bağımsız', both?.officePhotoCount === 1 && both?.certificatePhotoCount === 1, {
+      office: both?.officePhotoCount,
+      certificate: both?.certificatePhotoCount,
+    });
+    check('sertifika fotoğrafı ayrı uçtan gelir', (await api('GET', `/companies/${sellerCo.id}/photos/certificate/0`)).json?.imageUrl === img('c1'));
+    check(
+      'galeri sınırı aşılırsa 400',
+      (await api('PATCH', `/companies/${sellerCo.id}`, S, { officePhotos: Array.from({ length: 13 }, (_, i) => img(`g${i}`)) })).status === 400
+    );
+    check('boş liste galeriyi temizler', (await api('PATCH', `/companies/${sellerCo.id}`, S, { officePhotos: [] })).status === 200 && (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company?.officePhotoCount === 0);
+
     console.log('Firma sayfası');
     const company = (await api('GET', `/companies/${otherCo.id}`)).json?.company;
     const cp2 = company?.products?.find((p: any) => p.id === p2.id);

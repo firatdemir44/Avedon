@@ -125,6 +125,15 @@ export function fetchCompanyLogo(id: string) {
 
 // logo: yeni logo için data URL, kaldırmak için null, dokunmamak için alan yok.
 // Vergi numarası ve şirket kodu düzenlenemez.
+// Firma galerisi: yeni fotoğraf (data URL) ya da mevcut fotoğrafın eski sırası.
+export type CompanyPhotoInput = string | { existing: number };
+
+export type CompanyPhotoKind = 'office' | 'certificate';
+
+export function fetchCompanyPhoto(companyId: string, kind: CompanyPhotoKind, position: number) {
+  return request<{ imageUrl: string }>(`/companies/${companyId}/photos/${kind}/${position}`);
+}
+
 export interface UpdateCompanyInput {
   name?: string;
   about?: string;
@@ -138,6 +147,9 @@ export interface UpdateCompanyInput {
   district?: string;
   address?: string;
   mainMarkets?: string;
+  // Verilirse o galerinin tamamı bu liste olur; verilmezse dokunulmaz.
+  officePhotos?: CompanyPhotoInput[];
+  certificatePhotos?: CompanyPhotoInput[];
   logo?: string | null;
 }
 

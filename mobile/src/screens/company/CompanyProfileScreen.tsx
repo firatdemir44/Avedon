@@ -28,6 +28,7 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { ListRow } from '../../components/ListRow';
 import { ProductRow } from '../../components/ProductRow';
 import { SectionHeader } from '../../components/SectionHeader';
+import { CompanyPhotoGallery } from '../../components/CompanyPhotoGallery';
 import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
@@ -308,6 +309,30 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Fact label="Ana pazarlar" value={company.mainMarkets || '—'} last />
       </View>
 
+      {company.certificatePhotoCount ? (
+        <>
+          <SectionHeader title="Sertifikalar ve başarılar" count={company.certificatePhotoCount} />
+          <CompanyPhotoGallery
+            companyId={company.id}
+            kind="certificate"
+            count={company.certificatePhotoCount}
+            itemLabel="Sertifika"
+          />
+        </>
+      ) : null}
+
+      {company.officePhotoCount ? (
+        <>
+          <SectionHeader title="Firmadan görseller" count={company.officePhotoCount} />
+          <CompanyPhotoGallery
+            companyId={company.id}
+            kind="office"
+            count={company.officePhotoCount}
+            itemLabel="Firma fotoğrafı"
+          />
+        </>
+      ) : null}
+
       <SectionHeader title="Özet" />
       <View style={styles.block}>
         <Fact label="Ürün sayısı" value={String(products.length)} />
@@ -326,7 +351,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       </View>
       {isOwnCompany ? (
         <Text style={styles.footNote}>
-          Eksik bilgileri "Firmayı Düzenle" ile doldurabilirsiniz. Ofis fotoğrafları bir sonraki adımda eklenecek.
+          Eksik bilgileri, ofis fotoğraflarını ve sertifikaları "Firmayı Düzenle" ile ekleyebilirsiniz.
         </Text>
       ) : null}
     </View>

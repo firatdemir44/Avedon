@@ -5,6 +5,15 @@ import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { PRODUCT_SELECT, toProductRow } from '../products';
 import { isValidCompanyType } from '../catalog';
+import {
+  COMPANY_PHOTO_KINDS,
+  CompanyPhotoError,
+  MAX_COMPANY_PHOTOS,
+  companyPhotoListSchema,
+  photoCounts,
+  replaceCompanyPhotos,
+  type CompanyPhotoKind,
+} from '../companyPhotos';
 
 export const companiesRouter = Router();
 
@@ -13,6 +22,31 @@ const handle = makeHandle('companies');
 // Logo telefonda küçültülüp gönderiliyor; bu sınır sıkıştırılmamış bir
 // fotoğrafın yanlışlıkla veritabanına girmesini engelliyor (~300 KB).
 const MAX_LOGO_CHARS = 400_000;
+
+// Galerideki tek fotoğraf (ofis ya da sertifika).
+companiesRouter.get(
+  '/:id/photos/:kind/:position',
+  handle(async (req, res) => {
+    const kind = req.params.kind as CompanyPhotoKind;
+    const position = Number(req.params.position);
+    if (
+      !COMPANY_PHOTO_KINDS.includes(kind) ||
+      !Number.isInteger(position) ||
+      position < 0 ||
+      position >= MAX_COMPANY_PHOTOS
+    ) {
+      return res.status(404).json({ error: 'photo_not_found' });
+    }
+    const photo = await prisma.companyPhoto.findUnique({
+      where: { companyId_kind_position: { companyId: req.params.id, kind, position } },
+      select: { imageUrl: true },
+    });
+    if (!photo) {
+      return res.status(404).json({ error: 'photo_not_found' });
+    }
+    res.json({ imageUrl: photo.imageUrl });
+  })
+);
 
 companiesRouter.get(
   '/',
@@ -54,12 +88,17 @@ companiesRouter.get(
         // yanıtta geldiği için en çok şişen yer burasıydı (bkz. src/products.ts).
         products: { select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' } },
         users: { select: { id: true, firstName: true, lastName: true, position: true } },
+        // Fotoğrafların kendisi değil yalnızca sayıları dönüyor.
+        photos: { select: { kind: true } },
       },
     });
     if (!company) {
       return res.status(404).json({ error: 'company_not_found' });
     }
-    res.json({ company: { ...company, products: company.products.map(toProductRow) } });
+    const { photos, ...rest } = company;
+    res.json({
+      company: { ...rest, products: company.products.map(toProductRow), ...photoCounts(photos) },
+    });
   })
 );
 
@@ -81,6 +120,9 @@ const updateSchema = z
     district: z.string().trim().max(80).optional(),
     address: z.string().trim().max(300).optional(),
     mainMarkets: z.string().trim().max(200).optional(),
+    // Verilirse o galerinin TAMAMI bu liste olur; verilmezse dokunulmaz.
+    officePhotos: companyPhotoListSchema.optional(),
+    certificatePhotos: companyPhotoListSchema.optional(),
     // data URL: yeni logo · null: logoyu kaldır · alan yok: logoya dokunma
     logo: z.string().startsWith('data:image/').max(MAX_LOGO_CHARS).nullable().optional(),
   })
@@ -111,30 +153,41 @@ companiesRouter.patch(
       return res.status(404).json({ error: 'company_not_found' });
     }
 
-    const { logo, ...fields } = parsed.data;
+    const { logo, officePhotos, certificatePhotos, ...fields } = parsed.data;
     const nameChanged = fields.name !== undefined && fields.name !== existing.name;
 
-    const company = await prisma.$transaction(async (tx) => {
-      if (logo === null) {
-        await tx.companyLogo.deleteMany({ where: { companyId: existing.id } });
-      } else if (logo !== undefined) {
-        await tx.companyLogo.upsert({
-          where: { companyId: existing.id },
-          create: { companyId: existing.id, imageUrl: logo },
-          update: { imageUrl: logo },
+    let company;
+    try {
+      company = await prisma.$transaction(async (tx) => {
+        if (logo === null) {
+          await tx.companyLogo.deleteMany({ where: { companyId: existing.id } });
+        } else if (logo !== undefined) {
+          await tx.companyLogo.upsert({
+            where: { companyId: existing.id },
+            create: { companyId: existing.id, imageUrl: logo },
+            update: { imageUrl: logo },
+          });
+        }
+        // Galeriler: verilen liste o galerinin yeni tam hali.
+        if (officePhotos) await replaceCompanyPhotos(tx, existing.id, 'office', officePhotos);
+        if (certificatePhotos) await replaceCompanyPhotos(tx, existing.id, 'certificate', certificatePhotos);
+        return tx.company.update({
+          where: { id: existing.id },
+          data: {
+            ...fields,
+            ...(logo === null ? { logoUpdatedAt: null } : logo !== undefined ? { logoUpdatedAt: new Date() } : {}),
+            // Doğrulanmış bir firma adını değiştirirse yeniden incelemeye düşer;
+            // yoksa onaylı rozet başka bir adla güven kazandırmaya devam ederdi.
+            ...(nameChanged && existing.verification === 'dogrulanmis' ? { verification: 'inceleniyor' } : {}),
+          },
         });
-      }
-      return tx.company.update({
-        where: { id: existing.id },
-        data: {
-          ...fields,
-          ...(logo === null ? { logoUpdatedAt: null } : logo !== undefined ? { logoUpdatedAt: new Date() } : {}),
-          // Doğrulanmış bir firma adını değiştirirse yeniden incelemeye düşer;
-          // yoksa onaylı rozet başka bir adla güven kazandırmaya devam ederdi.
-          ...(nameChanged && existing.verification === 'dogrulanmis' ? { verification: 'inceleniyor' } : {}),
-        },
       });
-    });
+    } catch (err) {
+      if (err instanceof CompanyPhotoError) {
+        return res.status(400).json({ error: 'invalid_body', details: { fieldErrors: { photos: [err.message] } } });
+      }
+      throw err;
+    }
 
     res.json({ company, verificationReset: nameChanged && existing.verification === 'dogrulanmis' });
   })

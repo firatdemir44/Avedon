@@ -47,6 +47,23 @@ model Company {
   users             User[]
   products          Product[]
   logo              CompanyLogo?
+  photos            CompanyPhoto[]
+}
+
+// Firma sayfasındaki galeriler (Aşama B): kind "office" (ofis/üretim
+// fotoğrafları) veya "certificate" (sertifika, başarı belgesi). Sıralar her
+// zaman 0..n-1 sıkışık (bkz. replaceCompanyPhotos). imageUrl base64 data URL;
+// liste yanıtlarında dönmez, tek tek uçtan çekilir.
+model CompanyPhoto {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  kind      String
+  position  Int
+  imageUrl  String
+  createdAt DateTime @default(now())
+
+  @@unique([companyId, kind, position])
 }
 
 // Firma logosu (base64 data URL) ayrı tabloda: giriş yanıtı, kullanıcı profili

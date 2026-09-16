@@ -4,12 +4,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { ChipSelect } from '../../components/ChipSelect';
+import { PhotoGridEditor, type EditablePhoto } from '../../components/PhotoGridEditor';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
+import {
+  getCachedCompanyPhoto,
+  loadCompanyPhoto,
+  replaceCachedCompanyPhotos,
+} from '../../features/companies/companyPhotoCache';
+import { MAX_COMPANY_PHOTOS } from '../../features/companies/limits';
+import type { CompanyPhotoInput, CompanyPhotoKind } from '../../api/client';
 import { COMPANY_TYPES } from '../../features/products/catalog';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
@@ -45,6 +53,14 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   const [district, setDistrict] = useState('');
   const [address, setAddress] = useState('');
   const [mainMarkets, setMainMarkets] = useState('');
+  // Galeriler (Aşama B): ofis/üretim fotoğrafları ve sertifikalar.
+  const [officePhotos, setOfficePhotos] = useState<EditablePhoto[]>([]);
+  const [certificatePhotos, setCertificatePhotos] = useState<EditablePhoto[]>([]);
+  const [galleryDirty, setGalleryDirty] = useState<Record<CompanyPhotoKind, boolean>>({
+    office: false,
+    certificate: false,
+  });
+  const [pickingPhoto, setPickingPhoto] = useState<CompanyPhotoKind | null>(null);
   // Ekranda görünen logo.
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // undefined: logoya dokunulmadı · string: yeni logo · null: logo kaldırıldı
@@ -68,6 +84,10 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         setDistrict(company.district ?? '');
         setAddress(company.address ?? '');
         setMainMarkets(company.mainMarkets ?? '');
+        // Mevcut galeri fotoğrafları yalnızca önizleme için çekiliyor;
+        // kaydederken sıraları gönderiliyor, kendileri yeniden yüklenmiyor.
+        loadGallery('office', company.officePhotoCount ?? 0, setOfficePhotos);
+        loadGallery('certificate', company.certificatePhotoCount ?? 0, setCertificatePhotos);
         if (company.logoUpdatedAt) {
           loadCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt))
             .then((url) => {
@@ -86,6 +106,74 @@ export function EditCompanyScreen({ route, navigation }: Props) {
       cancelled = true;
     };
   }, [companyId]);
+
+  const loadGallery = (
+    kind: CompanyPhotoKind,
+    count: number,
+    setter: React.Dispatch<React.SetStateAction<EditablePhoto[]>>
+  ) => {
+    setter(
+      Array.from({ length: count }, (_, i) => ({
+        key: `${kind}-mevcut-${i}`,
+        existing: i,
+        dataUrl: null,
+        uri: getCachedCompanyPhoto(companyId, kind, i) ?? null,
+      }))
+    );
+    for (let i = 0; i < count; i++) {
+      if (getCachedCompanyPhoto(companyId, kind, i)) continue;
+      loadCompanyPhoto(companyId, kind, i)
+        .then((url) => {
+          setter((prev) => prev.map((p) => (p.existing === i && !p.uri ? { ...p, uri: url } : p)));
+        })
+        .catch(() => {});
+    }
+  };
+
+  const galleryState = (kind: CompanyPhotoKind) =>
+    kind === 'office'
+      ? ([officePhotos, setOfficePhotos] as const)
+      : ([certificatePhotos, setCertificatePhotos] as const);
+
+  const addPhoto = async (kind: CompanyPhotoKind) => {
+    const [photos, setPhotos] = galleryState(kind);
+    if (photos.length >= MAX_COMPANY_PHOTOS) return;
+    setPickingPhoto(kind);
+    setError(null);
+    try {
+      const picked = await pickCompressedImage();
+      if (!picked) return;
+      setPhotos((prev) => [...prev, { key: `${kind}-yeni-${Date.now()}`, uri: picked.uri, dataUrl: picked.dataUrl }]);
+      setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    } finally {
+      setPickingPhoto(null);
+    }
+  };
+
+  const removePhoto = (kind: CompanyPhotoKind, key: string) => {
+    const [, setPhotos] = galleryState(kind);
+    setPhotos((prev) => prev.filter((p) => p.key !== key));
+    setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
+  };
+
+  const movePhotoFirst = (kind: CompanyPhotoKind, key: string) => {
+    const [, setPhotos] = galleryState(kind);
+    setPhotos((prev) => {
+      const target = prev.find((p) => p.key === key);
+      return target ? [target, ...prev.filter((p) => p.key !== key)] : prev;
+    });
+    setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
+  };
+
+  // Kaydederken: mevcut fotoğraf eski sırasıyla, yeni fotoğraf data URL ile.
+  const galleryPayload = (photos: EditablePhoto[]): CompanyPhotoInput[] =>
+    photos.map((p) => (p.existing !== undefined ? { existing: p.existing } : p.dataUrl!));
 
   const pickLogo = async () => {
     setPickingLogo(true);
@@ -129,12 +217,18 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         district: district.trim(),
         address: address.trim(),
         mainMarkets: mainMarkets.trim(),
+        ...(galleryDirty.office ? { officePhotos: galleryPayload(officePhotos) } : {}),
+        ...(galleryDirty.certificate ? { certificatePhotos: galleryPayload(certificatePhotos) } : {}),
         ...(logoChange !== undefined ? { logo: logoChange } : {}),
       });
       // Yeni logo zaten elimizde; firma sayfasına dönünce tekrar indirilmesin.
       if (typeof logoChange === 'string' && company.logoUpdatedAt) {
         setCachedCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt), logoChange);
       }
+      // Galeri sıraları değişmiş olabilir: önbellekteki eski sıralar atılıyor.
+      if (galleryDirty.office) replaceCachedCompanyPhotos(companyId, 'office', officePhotos.map((p) => p.dataUrl ?? p.uri));
+      if (galleryDirty.certificate)
+        replaceCachedCompanyPhotos(companyId, 'certificate', certificatePhotos.map((p) => p.dataUrl ?? p.uri));
       haptics.success();
       navigation.goBack();
     } catch (err) {
@@ -277,6 +371,30 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           otomatik çıkar.
         </Text>
 
+        <Text style={styles.label}>Firmadan görseller ({officePhotos.length}/{MAX_COMPANY_PHOTOS})</Text>
+        <Text style={styles.hint}>Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.</Text>
+        <PhotoGridEditor
+          photos={officePhotos}
+          max={MAX_COMPANY_PHOTOS}
+          busy={pickingPhoto === 'office'}
+          onAdd={() => addPhoto('office')}
+          onRemove={(key) => removePhoto('office', key)}
+          onMoveFirst={(key) => movePhotoFirst('office', key)}
+          firstBadge="İlk"
+        />
+
+        <Text style={[styles.label, styles.sectionGap]}>Sertifikalar ve başarılar ({certificatePhotos.length}/{MAX_COMPANY_PHOTOS})</Text>
+        <Text style={styles.hint}>Kalite belgeleri ve ödüller; alıcıların güveni için önemli.</Text>
+        <PhotoGridEditor
+          photos={certificatePhotos}
+          max={MAX_COMPANY_PHOTOS}
+          busy={pickingPhoto === 'certificate'}
+          onAdd={() => addPhoto('certificate')}
+          onRemove={(key) => removePhoto('certificate', key)}
+          onMoveFirst={(key) => movePhotoFirst('certificate', key)}
+          firstBadge="İlk"
+        />
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton
           label={saving ? 'Kaydediliyor...' : 'Kaydet'}
@@ -309,5 +427,6 @@ const styles = StyleSheet.create({
   logoActions: { flex: 1, gap: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
+  sectionGap: { marginTop: spacing.lg },
   error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.sm },
 });

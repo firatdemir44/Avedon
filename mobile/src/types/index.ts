@@ -40,6 +40,10 @@ export interface Company {
   district: string;
   address: string;
   mainMarkets: string;
+  // Galeri fotoğraflarının kendisi yanıtta gelmez; sayıları gelir ve
+  // fotoğraflar GET /api/companies/:id/photos/:kind/:position ile çekilir.
+  officePhotoCount?: number;
+  certificatePhotoCount?: number;
   // Logonun kendisi ayrıca çekilir; bu alan hem "logo var mı" hem önbellek anahtarı.
   logoUpdatedAt: string | null;
 }
