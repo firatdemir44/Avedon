@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 + 2 uygulanıyor (2026-09-16). Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); sıradaki Adım 3. Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.
@@ -32,7 +32,7 @@ Fırat'ın tercihi: ilk adım "ürün modelinin pasaport şemasına genişletilm
 
 ---
 
-## Adım 1 - Sözlük ve birim dönüşüm katmanı
+## Adım 1 - Sözlük ve birim dönüşüm katmanı ✅ (2026-09-16, bc7aa79)
 
 **Büyüklük:** orta. **Görünür değişiklik:** yok (altyapı).
 
@@ -66,7 +66,7 @@ Yok denecek kadar az; mevcut davranış değişmiyor. Tek dikkat: arama eşanlam
 
 ---
 
-## Adım 2 - Kumaş pasaportu veri modeli, API ve form
+## Adım 2 - Kumaş pasaportu veri modeli, API ve form ✅ (2026-09-16, 9fa7d0b + 76c464c)
 
 **Büyüklük:** büyük. **Görünür değişiklik:** ürün formu, ürün sayfası, filtreler.
 
