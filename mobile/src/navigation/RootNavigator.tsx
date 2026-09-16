@@ -131,7 +131,7 @@ export function RootNavigator() {
             <Stack.Screen
               name="FavoriteProducts"
               component={FavoriteProductsScreen}
-              options={{ headerShown: true, title: 'Favorilerim' }}
+              options={{ headerShown: true, title: 'Takip Ettiklerim' }}
             />
             <Stack.Screen
               name="RecentlyViewedProducts"

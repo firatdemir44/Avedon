@@ -1,5 +1,7 @@
-import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
-import { View, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -10,6 +12,7 @@ import {
   unlikePost,
   type FeedCursor,
   type FeedPost,
+  type FeedScope,
 } from '../../api/client';
 import { PostCard } from './PostCard';
 import { SkeletonList } from '../../components/Skeleton';
@@ -19,12 +22,16 @@ import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { colors, spacing } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Feed'>;
 
 // Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
 const REFRESH_THROTTLE_MS = 30000;
+
+// Ürünler ekranındaki görünüm seçimiyle aynı kalıp: iki eşit düğme, seçim
+// cihazda hatırlanır (Faz 1, Adım 6).
+const SCOPE_KEY = 'avedon.feedScope';
 
 export function FeedScreen({ navigation }: Props) {
   const { user } = useSession();
@@ -33,26 +40,62 @@ export function FeedScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [scope, setScope] = useState<FeedScope>('all');
+  // Kayıtlı seçim okunana kadar akışı çekmiyoruz, yoksa "Bağlantılarım"
+  // seçiliyken önce "Tümü" yükleniyor ve liste iki kez zıplıyor.
+  const [scopeReady, setScopeReady] = useState(false);
   const loadingMoreRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
   const hasPostsRef = useRef(false);
   hasPostsRef.current = posts.length > 0;
+  const scopeRef = useRef<FeedScope>(scope);
+  scopeRef.current = scope;
+
+  useEffect(() => {
+    AsyncStorage.getItem(SCOPE_KEY)
+      .then((saved) => {
+        if (saved === 'connections') setScope('connections');
+      })
+      .catch(() => {})
+      .finally(() => setScopeReady(true));
+  }, []);
 
   const loadFirstPage = useCallback((silent = false) => {
     if (!silent) setLoading(true);
-    return fetchFeed()
+    const requested = scopeRef.current;
+    return fetchFeed(null, 10, requested)
       .then(({ posts: fetched, nextCursor }) => {
+        // Kullanıcı yükleme sürerken sekme değiştirdiyse eski yanıt yazılmasın.
+        if (scopeRef.current !== requested) return;
         setPosts(fetched);
         setCursor(nextCursor);
         setError(null);
         lastLoadedAtRef.current = Date.now();
       })
-      .catch((err) => setError(friendlyMessage(err, 'Akış alınamadı')))
+      .catch((err) => {
+        if (scopeRef.current !== requested) return;
+        setError(friendlyMessage(err, 'Akış alınamadı'));
+      })
       .finally(() => {
         setLoading(false);
         setRefreshing(false);
       });
   }, []);
+
+  const changeScope = (next: FeedScope) => {
+    if (next === scope) return;
+    haptics.selection();
+    scopeRef.current = next;
+    setScope(next);
+    setPosts([]);
+    setCursor(null);
+    setError(null);
+    lastLoadedAtRef.current = 0;
+    hasPostsRef.current = false;
+    AsyncStorage.setItem(SCOPE_KEY, next).catch(() => {});
+    setLoading(true);
+    loadFirstPage();
+  };
 
   // Yorum ekranından dönünce yorum sayısı güncellensin diye odaklanmada ilk
   // sayfa yeniden yükleniyor. Ama bu sekmeli yapıda her sekme geçişinde de
@@ -60,6 +103,7 @@ export function FeedScreen({ navigation }: Props) {
   // 30 saniyeden yeni bir yükleme varsa atlıyoruz.
   useFocusEffect(
     useCallback(() => {
+      if (!scopeReady) return;
       const stale = consumeFeedStale();
       const isFresh = Date.now() - lastLoadedAtRef.current < REFRESH_THROTTLE_MS;
       // `posts` bu kapanışta hep ilk değeri ([]) görüyordu, kısıtlama hiç
@@ -67,7 +111,7 @@ export function FeedScreen({ navigation }: Props) {
       if (!stale && isFresh && hasPostsRef.current) return;
       // Liste ekrandayken iskelete dönmeden sessizce yenile.
       loadFirstPage(hasPostsRef.current);
-    }, [loadFirstPage])
+    }, [loadFirstPage, scopeReady])
   );
 
   useLayoutEffect(() => {
@@ -91,8 +135,10 @@ export function FeedScreen({ navigation }: Props) {
   const loadMore = async () => {
     if (!cursor || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
+    const requested = scopeRef.current;
     try {
-      const { posts: older, nextCursor } = await fetchFeed(cursor);
+      const { posts: older, nextCursor } = await fetchFeed(cursor, 10, requested);
+      if (scopeRef.current !== requested) return;
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         return [...prev, ...older.filter((p) => !seen.has(p.id))];
@@ -153,9 +199,44 @@ export function FeedScreen({ navigation }: Props) {
     }
   };
 
+  const scopeToggle = (
+    <View style={styles.toggleBar} accessibilityRole="tablist">
+      {(
+        [
+          { value: 'all', label: 'Tümü', icon: 'earth-outline' },
+          { value: 'connections', label: 'Bağlantılarım', icon: 'people-outline' },
+        ] as const
+      ).map((option) => {
+        const selected = scope === option.value;
+        return (
+          <Pressable
+            key={option.value}
+            onPress={() => changeScope(option.value)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={
+              option.value === 'all' ? 'Tüm gönderiler' : 'Yalnızca bağlantılarımın gönderileri'
+            }
+            style={({ pressed }) => [
+              styles.toggleOption,
+              selected && styles.toggleSelected,
+              pressed && !selected && styles.togglePressed,
+            ]}
+          >
+            <Ionicons name={option.icon} size={18} color={selected ? colors.primaryText : colors.textMuted} />
+            <Text style={[styles.toggleText, selected && styles.toggleTextSelected]} numberOfLines={1}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
+        {scopeToggle}
         <SkeletonList variant="post" />
       </View>
     );
@@ -163,6 +244,7 @@ export function FeedScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
+      {scopeToggle}
       <FlatList
         data={posts}
         keyExtractor={(item) => item.id}
@@ -182,6 +264,14 @@ export function FeedScreen({ navigation }: Props) {
         ListEmptyComponent={
           error ? (
             <ErrorState error={error} onRetry={() => loadFirstPage()} />
+          ) : scope === 'connections' ? (
+            <EmptyState
+              icon="people-outline"
+              title="Bağlantı akışı boş"
+              message="Henüz bağlantınız yok ya da bağlantılarınız paylaşım yapmadı."
+              actionLabel="Bağlantı bul"
+              onAction={() => navigation.navigate('Connections')}
+            />
           ) : (
             <EmptyState
               icon="newspaper-outline"
@@ -199,7 +289,9 @@ export function FeedScreen({ navigation }: Props) {
           <PostCard
             post={item}
             isMine={item.author.id === user?.id}
+            myCompanyId={user?.companyId ?? null}
             onToggleLike={handleToggleLike}
+            onOpenChat={(conversationId, title) => navigation.navigate('Chat', { conversationId, title })}
             onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
             onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
             onOpenProduct={(post) => post.product && navigation.navigate('ProductDetail', { productId: post.product.id })}
@@ -229,4 +321,29 @@ const styles = StyleSheet.create({
   listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
   blockGap: { height: spacing.blockGap },
   banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
+  toggleBar: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  toggleOption: {
+    flex: 1,
+    minHeight: MIN_TOUCH,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  toggleSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  togglePressed: { backgroundColor: colors.pressed },
+  toggleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted, flexShrink: 1 },
+  toggleTextSelected: { color: colors.primaryText },
 });

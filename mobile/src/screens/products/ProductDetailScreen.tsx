@@ -218,7 +218,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  // İyimser: yıldız hemen değişir, sunucu reddederse geri döner.
+  // "Takibe Al" (kayıt ProductFavorite; etiket Faz 1 Adım 6'da değişti).
+  // İyimser: işaret hemen değişir, sunucu reddederse geri döner.
   const toggleFavorite = async () => {
     if (favoriteBusy) return;
     const next = !favorite;
@@ -241,11 +242,15 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       onPress={toggleFavorite}
       accessibilityRole="button"
       accessibilityState={{ selected: favorite }}
-      accessibilityLabel={favorite ? 'Favorilerden çıkar' : 'Favorilere ekle'}
+      accessibilityLabel={favorite ? 'Takipten çık' : 'Takibe al'}
       hitSlop={4}
       style={({ pressed }) => [styles.favoriteButton, pressed && styles.favoritePressed]}
     >
-      <Ionicons name={favorite ? 'star' : 'star-outline'} size={22} color={favorite ? colors.warningDot : colors.text} />
+      <Ionicons
+        name={favorite ? 'bookmark' : 'bookmark-outline'}
+        size={22}
+        color={favorite ? colors.primary : colors.text}
+      />
     </Pressable>
   );
 

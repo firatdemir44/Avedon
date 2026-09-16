@@ -505,7 +505,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 <PostCard
                   post={post}
                   isMine={post.author.id === user?.id}
+                  myCompanyId={user?.companyId ?? null}
                   onToggleLike={toggleLike}
+                  onOpenChat={(conversationId, title) => navigation.navigate('Chat', { conversationId, title })}
                   onOpenComments={(p) => navigation.navigate('PostComments', { postId: p.id })}
                   onOpenProduct={(p) => p.product && navigation.navigate('ProductDetail', { productId: p.product.id })}
                   onRequestSample={(p) =>

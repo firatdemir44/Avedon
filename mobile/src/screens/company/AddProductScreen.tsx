@@ -223,6 +223,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   // Kayıt başarılı ama sunucu makullük uyarısı döndüyse: geri dönmeden önce
   // sarı kutuda gösterilir (web'de Alert.alert hiçbir şey göstermiyor).
   const [savedWarnings, setSavedWarnings] = useState<string[] | null>(null);
+  // Uyarı kutusuyla biten YENİ kayıtta ürünün kimliği: "Devam" bunu kullanıp
+  // "Akışta paylaşılsın mı?" sorusunu soruyor.
+  const [createdProductId, setCreatedProductId] = useState<string | null>(null);
 
   // --- Pasaport ---
   // Kompozisyon satır kipinde mi, yoksa eski serbest metin kutusunda mı.
@@ -821,6 +824,21 @@ export function AddProductScreen({ navigation, route }: Props) {
     };
   };
 
+  // Yeni ürün kaydedildikten sonra "Akışta paylaş" sorusu (Faz 1, Adım 6).
+  // Otomatik gönderi YOK: yüzlerce ürün girişi akışı doldurur. Düzenlemede
+  // hiç sorulmaz. Evet denirse CreatePost ürün seçili açılır; AddProduct
+  // yığında bırakılmaz (kayıt bitti, forma geri dönülmez).
+  const offerFeedShare = async (newProductId: string) => {
+    const share = await confirmAction({
+      title: 'Ürün kaydedildi',
+      message: 'Ürün kaydedildi. Akışta paylaşılsın mı?',
+      confirmLabel: 'Akışta paylaş',
+      cancelLabel: 'Şimdi değil',
+    });
+    if (share) navigation.replace('CreatePost', { productId: newProductId, pickedAt: Date.now() });
+    else navigation.goBack();
+  };
+
   const handleSubmit = async () => {
     if (!user?.companyId || !canSubmit) return;
     setSubmitting(true);
@@ -842,6 +860,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     };
     try {
       let notes: string[] = [];
+      // Yeni kayıtta dolu: uyarı kutusu varsa "Devam"dan sonra sorulacak.
+      let createdId: string | null = null;
       if (isEditing && productId) {
         const images: ProductImageInput[] | undefined = photosDirty
           ? photos.map((p) => (p.existing !== undefined ? { existing: p.existing } : p.dataUrl!))
@@ -853,13 +873,18 @@ export function AddProductScreen({ navigation, route }: Props) {
       } else {
         const result = await createProduct({ ...fields, images: photos.map((p) => p.dataUrl!) });
         notes = result.warnings?.notes ?? [];
+        createdId = result.product.id;
         replaceCachedProductImages(result.product.id, photos.map((p) => p.dataUrl));
       }
       haptics.success();
       if (notes.length) {
-        // Kayıt tamam; kullanıcı uyarıyı okuyup "Devam" ile geri dönüyor.
+        // Kayıt tamam; kullanıcı uyarıyı okuyup "Devam" ile ilerliyor
+        // (yeni üründe "Devam" akışta paylaşmayı sorar).
         setSavedWarnings(notes);
+        setCreatedProductId(createdId);
         scrollRef.current?.scrollTo({ y: 0, animated: true });
+      } else if (createdId) {
+        await offerFeedShare(createdId);
       } else {
         navigation.goBack();
       }
@@ -1452,7 +1477,15 @@ export function AddProductScreen({ navigation, route }: Props) {
 
       <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
         {savedWarnings ? (
-          <PrimaryButton label="Devam" size="lg" onPress={() => navigation.goBack()} style={styles.actionMain} />
+          <PrimaryButton
+            label="Devam"
+            size="lg"
+            onPress={() => {
+              if (createdProductId) void offerFeedShare(createdProductId);
+              else navigation.goBack();
+            }}
+            style={styles.actionMain}
+          />
         ) : (
           <PrimaryButton
             label={submitting ? 'Kaydediliyor...' : isEditing ? 'Değişiklikleri Kaydet' : 'Ürünü Kaydet'}

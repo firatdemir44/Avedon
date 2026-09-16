@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -12,8 +12,10 @@ interface Props {
   // primary: lacivert dolu · secondary: tonlu zemin + çerçeve
   // outline: yalnızca güçlü çerçeve (taslaktaki "Firma" / "Firmam" düğmeleri)
   variant?: 'primary' | 'secondary' | 'outline';
+  // sm: yan yana birkaç düğmenin sığması gereken yerler (akış kartının eylem
+  // çubuğu) — yüksekliği yine 44, yazısı `label` ölçeğinde ve yatay boşluğu dar.
   // lg: ekran altına sabitlenen eylem çubuğundaki düğmeler (48px).
-  size?: 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
   icon?: IconName;
   style?: ViewStyle;
   accessibilityLabel?: string;
@@ -44,6 +46,7 @@ export function PrimaryButton({
       style={({ pressed }) => [
         styles.base,
         size === 'lg' && styles.large,
+        size === 'sm' && styles.small,
         styles[variant],
         pressed && !disabled && (isPrimary ? styles.pressedPrimary : styles.pressedQuiet),
         disabled && styles.disabled,
@@ -51,8 +54,14 @@ export function PrimaryButton({
       ]}
     >
       <View style={styles.content}>
-        {icon ? <Ionicons name={icon} size={18} color={textColor} /> : null}
-        <Text style={[styles.text, { color: textColor }]}>{label}</Text>
+        {icon ? <Ionicons name={icon} size={size === 'sm' ? 16 : 18} color={textColor} /> : null}
+        <Text
+          // Dar düğmede yazı alt satıra taşıp düğmeyi büyütmesin.
+          numberOfLines={size === 'sm' ? 1 : undefined}
+          style={[styles.text, size === 'sm' && styles.textSmall, { color: textColor }]}
+        >
+          {label}
+        </Text>
       </View>
     </Pressable>
   );
@@ -69,6 +78,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   large: { minHeight: 48, paddingHorizontal: spacing.md },
+  small: { paddingHorizontal: 10, paddingVertical: spacing.sm },
   primary: { backgroundColor: colors.primary },
   secondary: {
     backgroundColor: colors.surfaceTonal,
@@ -83,6 +93,7 @@ const styles = StyleSheet.create({
   pressedPrimary: { opacity: 0.85 },
   pressedQuiet: { backgroundColor: colors.pressed },
   disabled: { opacity: 0.4 },
-  content: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  content: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 0 },
   text: { ...typography.subtitle },
+  textSmall: { ...typography.label, fontFamily: fonts.semibold, flexShrink: 1 },
 });

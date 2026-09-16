@@ -13,8 +13,9 @@ import { colors, spacing } from '../../theme';
 
 type Props = RootStackScreenProps<'FavoriteProducts'>;
 
-// Orijinal tasarımdaki "Favori Ürünler". Ürün sayfasındaki yıldızla eklenir;
-// ekrana her dönüşte yenilenir (ürün sayfasında yıldız kaldırılmış olabilir).
+// "Takip Ettiklerim" (Faz 1 Adım 6'ya kadar "Favorilerim"; kayıt yine
+// ProductFavorite, yalnızca etiket değişti). Ürün sayfasındaki ya da akış
+// kartındaki "Takibe al" ile eklenir; ekrana her dönüşte yenilenir.
 export function FavoriteProductsScreen({ navigation }: Props) {
   const { user } = useSession();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -44,12 +45,14 @@ export function FavoriteProductsScreen({ navigation }: Props) {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         refreshControl={refreshControl(refreshing, refresh)}
-        ListHeaderComponent={data.length ? <SectionHeader title="Favori kumaşlar" count={data.length} first /> : null}
+        ListHeaderComponent={
+          data.length ? <SectionHeader title="Takip edilen kumaşlar" count={data.length} first /> : null
+        }
         ListEmptyComponent={
           <EmptyState
-            icon="star-outline"
-            title="Henüz favori yok"
-            message="Ürün sayfasındaki yıldıza dokunarak beğendiğiniz kumaşları burada toplayabilirsiniz."
+            icon="bookmark-outline"
+            title="Henüz takip ettiğiniz kumaş yok"
+            message="Ürün sayfasındaki ya da akış kartındaki Takibe al düğmesiyle ilgilendiğiniz kumaşları burada toplayabilirsiniz."
             actionLabel="Ürünlere göz at"
             onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
           />

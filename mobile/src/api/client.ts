@@ -33,12 +33,17 @@ export class ApiError extends Error {
   status: number;
   code?: string;
   details?: unknown;
+  // Sunucunun hata gövdesinin tamamı. Bazı uçlar hata kodunun yanında ek alan
+  // döndürüyor (örn. teklif isteğinde 403 + `suggestedUserId`); `code` ve
+  // `details` bunları taşımıyor, çağıran buradan okur.
+  body?: Record<string, unknown>;
 
-  constructor(message: string, status: number, code?: string, details?: unknown) {
+  constructor(message: string, status: number, code?: string, details?: unknown, body?: Record<string, unknown>) {
     super(message);
     this.status = status;
     this.code = code;
     this.details = details;
+    this.body = body;
   }
 }
 
@@ -77,7 +82,13 @@ async function request<T>(path: string, options?: RequestInit, timeoutMs = REQUE
 
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new ApiError(body?.error ?? `İstek başarısız (${res.status})`, res.status, body?.error, body?.details);
+    throw new ApiError(
+      body?.error ?? `İstek başarısız (${res.status})`,
+      res.status,
+      body?.error,
+      body?.details,
+      body && typeof body === 'object' ? (body as Record<string, unknown>) : undefined
+    );
   }
   return body as T;
 }
@@ -309,6 +320,28 @@ export function deleteVideo(id: string) {
   return request<void>(`/videos/${id}`, { method: 'DELETE' });
 }
 
+// Akış kartındaki pasaport verisi (Faz 1, Adım 6).
+export type FeedProduct = {
+  id: string;
+  code: string;
+  companyId: string;
+  type: string;
+  subtype: string;
+  weightGsm: number;
+  widthCm: number;
+  widthType: '' | 'acik' | 'tup';
+  stock: number;
+  stockUnit: StockUnit;
+  moq: number | null;
+  moqUnit: string;
+  leadTimeDays: number | null;
+  composition: CompositionItem[];
+  certificateNames: string[];
+  hasImage: boolean;
+  // Görüntüleyen kullanıcı takibe almış mı (ProductFavorite kaydı).
+  isFavorite: boolean;
+};
+
 export type FeedPost = {
   id: string;
   body: string;
@@ -320,8 +353,9 @@ export type FeedPost = {
   // Yazar metni, görünürlüğü ya da ürünü değiştirdiyse dolu.
   editedAt: string | null;
   author: PostAuthor;
-  // Ölçüler akış kartındaki ürün şeridi için (backend POST_PRODUCT_SELECT).
-  product: { id: string; code: string; weightGsm: number; widthCm: number; stock: number; stockUnit: StockUnit; hasImage: boolean } | null;
+  // Akış kartındaki kumaş pasaportu (backend POST_PRODUCT_SELECT). Fiyat YOK:
+  // akış herkese açık, fiyat yalnızca ürün sayfasında sahibine geliyor.
+  product: FeedProduct | null;
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
@@ -336,12 +370,17 @@ export type FeedPostComment = {
 
 export type FeedCursor = { before: string; beforeId: string };
 
-export function fetchFeed(cursor?: FeedCursor | null, limit = 10) {
+// scope 'connections': yalnızca bağlantılı kullanıcıların ve onların
+// firmalarındaki kişilerin gönderileri (bağlantı yoksa boş liste).
+export type FeedScope = 'all' | 'connections';
+
+export function fetchFeed(cursor?: FeedCursor | null, limit = 10, scope: FeedScope = 'all') {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) {
     params.set('before', cursor.before);
     params.set('beforeId', cursor.beforeId);
   }
+  if (scope !== 'all') params.set('scope', scope);
   return request<{ posts: FeedPost[]; nextCursor: FeedCursor | null }>(`/posts?${params.toString()}`);
 }
 
@@ -622,8 +661,25 @@ export function deleteProduct(id: string) {
   return request<void>(`/products/${id}`, { method: 'DELETE' });
 }
 
+// "Takibe Al" (eski adıyla favori): kayıt ProductFavorite tablosunda, uç adı
+// değişmedi; yalnızca arayüzdeki etiket değişti (Faz 1, Adım 6).
 export function setProductFavorite(id: string, favorite: boolean) {
   return request<{ isFavorite: boolean }>(`/products/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' });
+}
+
+// "Teklif İste": ürünün firmasındaki bağlantılı bir kişiyle sohbet açar ve
+// ürün kodunu içeren hazır mesajı gönderir. Bağlantı yoksa 403 döner ve hata
+// gövdesinde `suggestedUserId` ile kime bağlantı isteği gönderileceğini söyler
+// (ApiError.body üzerinden okunur).
+export interface QuoteRequestResult {
+  conversationId: string;
+  userId: string;
+  messageId: string;
+  body: string;
+}
+
+export function requestQuote(productId: string) {
+  return request<QuoteRequestResult>(`/products/${productId}/quote-request`, { method: 'POST' });
 }
 
 export type FavoriteProduct = Product & { favoritedAt: string };

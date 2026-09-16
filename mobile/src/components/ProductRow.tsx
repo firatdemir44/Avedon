@@ -85,14 +85,15 @@ export function ProductRow({
       accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
       accessibilityLabel={`${product.code}, ${category}, ${summary}${
         certificates.length ? `, ${certificates.length} sertifika` : ''
-      }${product.isFavorite ? ', favorilerde' : ''}`}
+      }${product.isFavorite ? ', takip ediliyor' : ''}`}
       android_ripple={{ color: colors.pressed }}
       style={({ pressed }) => [styles.row, divider && styles.divider, pressed && styles.pressed]}
     >
       <ProductThumbnail productId={product.id} hasImage={product.hasImage} size={64} />
       <View style={styles.body}>
         <View style={styles.titleRow}>
-          {product.isFavorite ? <Ionicons name="star" size={14} color={colors.warningDot} /> : null}
+          {/* Takip işareti (eski yıldız): kayıt ProductFavorite, etiket "takip". */}
+          {product.isFavorite ? <Ionicons name="bookmark" size={14} color={colors.primary} /> : null}
           <Text style={styles.code} numberOfLines={1}>
             {product.code}
           </Text>
