@@ -91,6 +91,26 @@ export const USAGES: readonly CatalogOption[] = [
 ];
 
 export const STOCK_UNITS = ['m', 'kg'] as const;
+
+// Firma türü (orijinal tasarım: "Şirket Tipi"). Kullanıcı hesap türünden ayrı:
+// hesap türü kişinin rolü, bu firmanın ne iş yaptığı.
+export const COMPANY_TYPES = [
+  { key: 'kumas_uretici', label: 'Kumaş Üreticisi' },
+  { key: 'konfeksiyon', label: 'Konfeksiyon / Giyim Üreticisi' },
+  { key: 'boyahane', label: 'Boyahane / Terbiye' },
+  { key: 'iplik', label: 'İplik Üreticisi' },
+  { key: 'aksesuar', label: 'Aksesuar' },
+  { key: 'baski', label: 'Baskı / Nakış' },
+  { key: 'toptanci', label: 'Toptancı / Tedarikçi' },
+  { key: 'diger', label: 'Diğer' },
+] as const;
+
+export const COMPANY_TYPE_KEYS = new Set(COMPANY_TYPES.map((t) => t.key));
+
+// Boş = belirtilmemiş, her zaman geçerli.
+export function isValidCompanyType(value: string) {
+  return value === "" || COMPANY_TYPE_KEYS.has(value as (typeof COMPANY_TYPES)[number]['key']);
+}
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
 export const STOCK_UNIT_LABELS: Record<StockUnit, { short: string; long: string }> = {
@@ -116,4 +136,9 @@ export function usageLabel(key: string) {
 export function categoryLabel(type: string, subtype: string) {
   const sub = subtypeLabel(type, subtype);
   return sub ? `${typeLabel(type)} · ${sub}` : typeLabel(type);
+}
+
+// Sunucu bilinmeyen bir tür gönderirse anahtarın kendisi görünür.
+export function companyTypeLabel(value: string) {
+  return COMPANY_TYPES.find((t) => t.key === value)?.label ?? value;
 }

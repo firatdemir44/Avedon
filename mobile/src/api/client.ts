@@ -130,6 +130,14 @@ export interface UpdateCompanyInput {
   about?: string;
   contactEmail?: string;
   contactPhone?: string;
+  companyType?: string;
+  // null: kuruluş yılını temizle
+  foundedYear?: number | null;
+  website?: string;
+  city?: string;
+  district?: string;
+  address?: string;
+  mainMarkets?: string;
   logo?: string | null;
 }
 

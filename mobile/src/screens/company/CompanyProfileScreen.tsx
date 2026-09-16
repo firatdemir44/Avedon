@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView, ActivityIndicator, Share, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, ScrollView, ActivityIndicator, Linking, Share, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,7 +32,7 @@ import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { markFeedStale } from '../../features/feed/feedRefresh';
-import { PRODUCT_TYPES, TYPE_LABELS, USAGES, type ProductType } from '../../features/products/catalog';
+import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 import type { Product, VerificationStatus } from '../../types';
 
@@ -110,6 +110,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       ),
     [products]
   );
+
+  // Tasarımdaki "Ürün Grupları" ayrı bir alan değil: firmanın ürünlerinden
+  // hangi kumaş çeşitlerinin bulunduğu çıkarılıyor.
+  const productGroups = useMemo(() => typeGroups.map((g) => TYPE_LABELS[g.type]).join(', '), [typeGroups]);
 
   const visibleProducts = useMemo(
     () =>
@@ -284,8 +288,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       <View style={styles.block}>
         <Fact label="E-posta" value={company.contactEmail || '—'} />
         <Fact label="Telefon" value={company.contactPhone || '—'} mono />
+        {company.website ? <WebsiteFact website={company.website} /> : null}
+        {company.address || company.city || company.district ? (
+          <Fact
+            label="Adres"
+            value={[company.address, [company.district, company.city].filter(Boolean).join('/')].filter(Boolean).join(', ')}
+          />
+        ) : null}
         <Fact label="Vergi numarası" value={company.taxId} mono />
         {isOwnCompany ? <Fact label="Şirket kodu" value={company.companyCode} mono last /> : null}
+      </View>
+
+      <SectionHeader title="Şirket genel bakışı" />
+      <View style={styles.block}>
+        <Fact label="Şirket tipi" value={company.companyType ? companyTypeLabel(company.companyType) : '—'} />
+        <Fact label="Kuruluş yılı" value={company.foundedYear ? String(company.foundedYear) : '—'} mono />
+        <Fact label="Ürün grupları" value={productGroups || '—'} />
+        <Fact label="Şehir" value={[company.district, company.city].filter(Boolean).join('/') || '—'} />
+        <Fact label="Ana pazarlar" value={company.mainMarkets || '—'} last />
       </View>
 
       <SectionHeader title="Özet" />
@@ -306,7 +326,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       </View>
       {isOwnCompany ? (
         <Text style={styles.footNote}>
-          Adres, kuruluş yılı, ana pazarlar ve ofis fotoğrafları bir sonraki adımda eklenecek.
+          Eksik bilgileri "Firmayı Düzenle" ile doldurabilirsiniz. Ofis fotoğrafları bir sonraki adımda eklenecek.
         </Text>
       ) : null}
     </View>
@@ -550,6 +570,26 @@ function VerificationTag({ status }: { status: VerificationStatus }) {
   );
 }
 
+// Web sitesi satırı: dokununca tarayıcıda açılır. Adres "www" ile yazıldıysa
+// başına https:// eklenir, yoksa Linking açamaz.
+function WebsiteFact({ website }: { website: string }) {
+  const lower = website.trim().toLowerCase();
+  const url = lower.startsWith('http://') || lower.startsWith('https://') ? website.trim() : `https://${website.trim()}`;
+  return (
+    <Pressable
+      onPress={() => Linking.openURL(url).catch(() => {})}
+      accessibilityRole="link"
+      accessibilityLabel={`Web sitesi: ${website}`}
+      style={({ pressed }) => [styles.fact, styles.factDivider, pressed && styles.tabPressed]}
+    >
+      <Text style={styles.factLabel}>Web sitesi</Text>
+      <Text style={[styles.factValue, styles.factLink]} numberOfLines={1}>
+        {website}
+      </Text>
+    </Pressable>
+  );
+}
+
 function Fact({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
   return (
     <View style={[styles.fact, !last && styles.factDivider]}>
@@ -628,6 +668,7 @@ const styles = StyleSheet.create({
   factLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   factValue: { ...typography.body, color: colors.text, flexShrink: 1, textAlign: 'right' },
   factValueMono: { fontFamily: fonts.mono },
+  factLink: { color: colors.accent },
   footNote: {
     ...typography.caption,
     color: colors.textMuted,

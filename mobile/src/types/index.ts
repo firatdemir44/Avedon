@@ -31,6 +31,15 @@ export interface Company {
   employeeIds: string[];
   verification: VerificationStatus;
   companyCode: string; // kayıt sırasında çalışanların katılması için
+  // Firma sayfası "Şirket Genel Bakışı" (Aşama B). companyType anahtarı
+  // features/products/catalog.ts COMPANY_TYPES; boş = belirtilmemiş.
+  companyType: string;
+  foundedYear: number | null;
+  website: string;
+  city: string;
+  district: string;
+  address: string;
+  mainMarkets: string;
   // Logonun kendisi ayrıca çekilir; bu alan hem "logo var mı" hem önbellek anahtarı.
   logoUpdatedAt: string | null;
 }

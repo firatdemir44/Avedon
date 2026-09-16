@@ -10,6 +10,7 @@ const pick = (c: typeof server | typeof mobile) =>
     subtypes: c.SUBTYPES,
     usages: c.USAGES,
     units: c.STOCK_UNITS,
+    companyTypes: c.COMPANY_TYPES,
   });
 
 if (pick(server) !== pick(mobile)) {

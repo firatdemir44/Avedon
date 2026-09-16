@@ -269,6 +269,24 @@ async function main() {
     check('favorilerden gider', !ids((await api('GET', '/me/favorites', B)).json?.products).includes(p1.id));
     check('son bakılanlardan gider', !ids((await api('GET', '/me/recently-viewed', B)).json?.products).includes(p1.id));
 
+    console.log('Firma bilgileri (Aşama B)');
+    const companyUpdate = await api('PATCH', `/companies/${sellerCo.id}`, S, {
+      companyType: 'kumas_uretici',
+      foundedYear: 2002,
+      website: 'www.ornekfirma.com',
+      city: 'İstanbul',
+      district: 'Bağcılar',
+      address: 'Mimar Sinan Cd No:3',
+      mainMarkets: '%60 Avrupa, %40 Türkiye',
+    });
+    check('firma bilgileri kaydedilir', companyUpdate.status === 200 && companyUpdate.json?.company?.foundedYear === 2002, companyUpdate.json?.company);
+    const companyRead = (await api('GET', `/companies/${sellerCo.id}`, S)).json?.company;
+    check('firma bilgileri geri döner', companyRead?.companyType === 'kumas_uretici' && companyRead?.city === 'İstanbul' && companyRead?.mainMarkets?.includes('Avrupa'), companyRead);
+    check('bilinmeyen şirket tipi 400', (await api('PATCH', `/companies/${sellerCo.id}`, S, { companyType: 'uzay_gemisi' })).status === 400);
+    check('gelecekteki kuruluş yılı 400', (await api('PATCH', `/companies/${sellerCo.id}`, S, { foundedYear: 2999 })).status === 400);
+    check('kuruluş yılı null ile temizlenir', (await api('PATCH', `/companies/${sellerCo.id}`, S, { foundedYear: null })).json?.company?.foundedYear === null);
+    check('başka firmanın bilgileri düzenlenemez', (await api('PATCH', `/companies/${otherCo.id}`, S, { city: 'Bursa' })).status === 403);
+
     console.log('Firma sayfası');
     const company = (await api('GET', `/companies/${otherCo.id}`)).json?.company;
     const cp2 = company?.products?.find((p: any) => p.id === p2.id);

@@ -28,6 +28,16 @@ model Company {
   contactEmail      String    @default("")
   contactPhone      String    @default("")
   productCategories String    @default("")
+  // Firma sayfası "Şirket Genel Bakışı" (Aşama B). companyType anahtarları
+  // src/catalog.ts COMPANY_TYPES; boş = belirtilmemiş. Ürün grupları ayrı alan
+  // değil, firmanın ürünlerinden hesaplanıyor.
+  companyType       String    @default("")
+  foundedYear       Int?
+  website           String    @default("")
+  city              String    @default("")
+  district          String    @default("")
+  address           String    @default("")
+  mainMarkets       String    @default("")
   verification      String    @default("dogrulanmamis")
   companyCode       String    @unique
   // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:

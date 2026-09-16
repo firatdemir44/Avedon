@@ -3,18 +3,26 @@ import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
+import { ChipSelect } from '../../components/ChipSelect';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
+import { COMPANY_TYPES } from '../../features/products/catalog';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
 type Props = RootStackScreenProps<'EditCompany'>;
 
 const LOGO_SIZE = 96;
+
+// Şirket tipi seçenekleri; boş seçenek "belirtilmemiş".
+const TYPE_OPTIONS = [{ value: '', label: 'Belirtilmemiş' }, ...COMPANY_TYPES.map((t) => ({ value: t.key, label: t.label }))];
+
+// Sunucudaki sınırla aynı (backend/src/routes/companies.ts).
+const MIN_FOUNDED_YEAR = 1800;
 
 export function EditCompanyScreen({ route, navigation }: Props) {
   const { companyId } = route.params;
@@ -29,6 +37,14 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   const [about, setAbout] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
+  // Aşama B: firma sayfasındaki "Şirket genel bakışı" alanları.
+  const [companyType, setCompanyType] = useState('');
+  const [foundedYear, setFoundedYear] = useState('');
+  const [website, setWebsite] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [address, setAddress] = useState('');
+  const [mainMarkets, setMainMarkets] = useState('');
   // Ekranda görünen logo.
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // undefined: logoya dokunulmadı · string: yeni logo · null: logo kaldırıldı
@@ -45,6 +61,13 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         setAbout(company.about ?? '');
         setContactEmail(company.contactEmail ?? '');
         setContactPhone(company.contactPhone ?? '');
+        setCompanyType(company.companyType ?? '');
+        setFoundedYear(company.foundedYear ? String(company.foundedYear) : '');
+        setWebsite(company.website ?? '');
+        setCity(company.city ?? '');
+        setDistrict(company.district ?? '');
+        setAddress(company.address ?? '');
+        setMainMarkets(company.mainMarkets ?? '');
         if (company.logoUpdatedAt) {
           loadCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt))
             .then((url) => {
@@ -99,6 +122,13 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         about: about.trim(),
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
+        companyType,
+        foundedYear: foundedYear.trim() ? Number(foundedYear.trim()) : null,
+        website: website.trim(),
+        city: city.trim(),
+        district: district.trim(),
+        address: address.trim(),
+        mainMarkets: mainMarkets.trim(),
         ...(logoChange !== undefined ? { logo: logoChange } : {}),
       });
       // Yeni logo zaten elimizde; firma sayfasına dönünce tekrar indirilmesin.
@@ -119,7 +149,21 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     }
   };
 
+  // Boş bırakılabilir; doluysa 1800 ile bu yıl arasında dört haneli bir yıl.
+  const currentYear = new Date().getFullYear();
+  const foundedYearValue = foundedYear.trim();
+  const foundedYearInvalid =
+    foundedYearValue.length > 0 &&
+    (!/^\d{4}$/.test(foundedYearValue) ||
+      Number(foundedYearValue) < MIN_FOUNDED_YEAR ||
+      Number(foundedYearValue) > currentYear);
+
   const handleSave = async () => {
+    if (foundedYearInvalid) {
+      setError(`Kuruluş yılı ${MIN_FOUNDED_YEAR} ile ${currentYear} arasında dört haneli bir yıl olmalı.`);
+      haptics.error();
+      return;
+    }
     const nameChanged = name.trim() !== originalName;
     // Onaylı rozetin kaybolması kullanıcı açısından geri alınamaz bir sonuç;
     // kaydetmeden önce haber veriyoruz. (Alert.alert web'de hiçbir şey
@@ -192,12 +236,51 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           textContentType="telephoneNumber"
           placeholder="0212 000 00 00"
         />
+        <TextField
+          label="Web sitesi"
+          value={website}
+          onChangeText={setWebsite}
+          autoCapitalize="none"
+          keyboardType="url"
+          placeholder="www.firmaniz.com"
+        />
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <TextField label="Şehir" value={city} onChangeText={setCity} placeholder="İstanbul" autoCapitalize="words" />
+          </View>
+          <View style={styles.half}>
+            <TextField label="İlçe / Bölge" value={district} onChangeText={setDistrict} placeholder="Bağcılar" autoCapitalize="words" />
+          </View>
+        </View>
+        <TextField label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
         <Text style={styles.hint}>Bu iletişim bilgileri firma sayfanızda herkese görünür. Vergi numarası ve şirket kodu değiştirilemez.</Text>
+
+        <Text style={styles.label}>Şirket tipi</Text>
+        <ChipSelect options={TYPE_OPTIONS} value={companyType} onChange={setCompanyType} compact />
+        <View style={styles.row}>
+          <View style={styles.half}>
+            <TextField
+              label="Kuruluş yılı"
+              value={foundedYear}
+              onChangeText={setFoundedYear}
+              keyboardType="number-pad"
+              maxLength={4}
+              placeholder="2002"
+            />
+          </View>
+          <View style={styles.half}>
+            <TextField label="Ana pazarlar" value={mainMarkets} onChangeText={setMainMarkets} placeholder="Avrupa, Türkiye" />
+          </View>
+        </View>
+        <Text style={styles.hint}>
+          Bu bilgiler firma sayfanızdaki "Şirket genel bakışı" bölümünde görünür. Ürün gruplarınız eklediğiniz ürünlerden
+          otomatik çıkar.
+        </Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton
           label={saving ? 'Kaydediliyor...' : 'Kaydet'}
-          disabled={saving || name.trim().length < 2}
+          disabled={saving || name.trim().length < 2 || foundedYearInvalid}
           onPress={handleSave}
           style={{ marginTop: spacing.md }}
         />
@@ -224,5 +307,7 @@ const styles = StyleSheet.create({
   logoImage: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   logoInitial: { fontSize: 40, fontFamily: fonts.bold, color: colors.primaryText },
   logoActions: { flex: 1, gap: spacing.sm },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  half: { flex: 1 },
   error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.sm },
 });

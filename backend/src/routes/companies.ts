@@ -4,6 +4,7 @@ import { prisma } from '../db';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { PRODUCT_SELECT, toProductRow } from '../products';
+import { isValidCompanyType } from '../catalog';
 
 export const companiesRouter = Router();
 
@@ -70,6 +71,16 @@ const updateSchema = z
     about: z.string().trim().max(2000).optional(),
     contactEmail: z.union([z.string().trim().email().max(200), z.literal('')]).optional(),
     contactPhone: z.string().trim().max(30).optional(),
+    // Firma sayfası "Şirket Genel Bakışı" alanları (Aşama B).
+    companyType: z.string().trim().max(40).optional(),
+    // Tekstil sektöründe kurulmuş en eski firmalar 1800'lerden; üst sınır
+    // içinde bulunulan yıl (gelecekte kurulmuş firma olmaz).
+    foundedYear: z.union([z.coerce.number().int().min(1800).max(new Date().getFullYear()), z.null()]).optional(),
+    website: z.string().trim().max(200).optional(),
+    city: z.string().trim().max(80).optional(),
+    district: z.string().trim().max(80).optional(),
+    address: z.string().trim().max(300).optional(),
+    mainMarkets: z.string().trim().max(200).optional(),
     // data URL: yeni logo · null: logoyu kaldır · alan yok: logoya dokunma
     logo: z.string().startsWith('data:image/').max(MAX_LOGO_CHARS).nullable().optional(),
   })
@@ -86,6 +97,10 @@ companiesRouter.patch(
     // Firmayı yalnızca o firmanın çalışanı düzenleyebilir.
     if (req.user!.companyId !== req.params.id) {
       return res.status(403).json({ error: 'not_your_company' });
+    }
+
+    if (parsed.data.companyType !== undefined && !isValidCompanyType(parsed.data.companyType)) {
+      return res.status(400).json({ error: 'invalid_body', details: { fieldErrors: { companyType: ['invalid_company_type'] } } });
     }
 
     const existing = await prisma.company.findUnique({
