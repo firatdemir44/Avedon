@@ -1,18 +1,24 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, StyleSheet } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
   deleteCompanyMemory,
+  fetchAssistantPersona,
   fetchCompanyMemory,
+  setAssistantPersona,
   setCompanyMemory,
+  type AssistantPersonaKey,
+  type AssistantPersonaState,
   type MemoryEntry,
   type MemoryKeyDef,
 } from '../../api/client';
+import { AssistantAvatar } from '../../components/AssistantAvatar';
 import { ListRow } from '../../components/ListRow';
+import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SectionHeader } from '../../components/SectionHeader';
-import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
+import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { SkeletonList } from '../../components/Skeleton';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
@@ -24,6 +30,10 @@ type Props = RootStackScreenProps<'AssistantMemory'>;
 // Firma hafızası: asistanın hesaplarda varsayılan olarak ÖNERDİĞİ değerler
 // (kur, fason ücreti, fire, kâr oranı...). Asistan buraya kendisi yazmaz;
 // yazma ya sohbetteki öneri kartından ya da bu ekrandan olur.
+//
+// Adım 9: ekranın üstünde "Asistan" bölümü — seçili karakter (İpek / Mert) ve
+// "Değiştir". Kişilik kullanıcıya bağlı, firmaya değil: firması olmayan
+// kullanıcıda da görünür.
 
 function displayValue(value: number | string | undefined): string {
   if (value === undefined || value === null || value === '') return '';
@@ -122,32 +132,42 @@ export function AssistantMemoryScreen(_props: Props) {
     [reload]
   );
 
+  // Kişilik bölümü her durumda üstte kalır (yükleniyor, 403, hata dahil).
+  const personaSection = <PersonaSection />;
+
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="row" />
-      </View>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        {personaSection}
+        <View style={styles.memorySkeleton}>
+          <SkeletonList variant="row" />
+        </View>
+      </ScrollView>
     );
   }
 
   // Firması olmayan kullanıcıda sunucu 403 no_company döner.
   if (status === 'error' && error instanceof ApiError && error.status === 403) {
     return (
-      <View style={styles.screen}>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        {personaSection}
         <EmptyState
           icon="business-outline"
           title="Firma hafızası firmaya bağlı"
           message="Bu değerler firmanızın varsayılanlarıdır (kur, fason ücreti, fire, kâr oranı). Bir firmaya bağlandığınızda burada düzenleyebilirsiniz."
         />
-      </View>
+      </ScrollView>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
-        <ErrorState error={error} fallback="Firma hafızası alınamadı" onRetry={reload} />
-      </View>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        {personaSection}
+        <View style={styles.memorySkeleton}>
+          <ErrorState error={error} fallback="Firma hafızası alınamadı" onRetry={reload} />
+        </View>
+      </ScrollView>
     );
   }
 
@@ -155,11 +175,12 @@ export function AssistantMemoryScreen(_props: Props) {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      {personaSection}
       <Text style={styles.intro}>
         Asistan hesap yaparken bu değerleri varsayılan olarak önerir ve hangisini kullandığını söyler. Boş bırakılan
         değerleri her seferinde size sorar.
       </Text>
-      <SectionHeader title="Kayıtlı değerler" first />
+      <SectionHeader title="Kayıtlı değerler" />
       <View style={styles.block}>
         {keys.map((def, index) => {
           const entry = entryByKey.get(def.key);
@@ -236,9 +257,115 @@ export function AssistantMemoryScreen(_props: Props) {
   );
 }
 
+// Asistan karakteri: seçili yüz + "Değiştir" (aynı iki kart). Kişilik kullanıcıya
+// bağlı olduğu için firma hafızası yüklenemese de bu bölüm çalışır.
+function PersonaSection() {
+  const [state, setState] = useState<AssistantPersonaState | null>(null);
+  const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [savingKey, setSavingKey] = useState<AssistantPersonaKey | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchAssistantPersona()
+      .then((value) => {
+        if (!cancelled) setState(value);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Asistan bilgisi alınamadı.');
+      })
+      .finally(() => {
+        if (!cancelled) setReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const options = state?.options?.length ? state.options : FALLBACK_PERSONA_OPTIONS;
+  const current: AssistantPersonaKey = state?.persona ?? state?.effective ?? 'ipek';
+  const option = options.find((item) => item.key === current);
+
+  const select = useCallback(
+    async (key: AssistantPersonaKey) => {
+      setSavingKey(key);
+      setError(null);
+      try {
+        const { persona } = await setAssistantPersona(key);
+        haptics.success();
+        setState((prev) => ({ persona, effective: persona, options: prev?.options ?? FALLBACK_PERSONA_OPTIONS }));
+        setOpen(false);
+      } catch (err) {
+        haptics.error();
+        setError(friendlyMessage(err, 'Değiştirilemedi, tekrar deneyin.'));
+      } finally {
+        setSavingKey(null);
+      }
+    },
+    []
+  );
+
+  if (!ready) return null;
+
+  return (
+    <>
+      <SectionHeader title="Asistan" first />
+      <View style={styles.block}>
+        <View style={styles.personaRow}>
+          <AssistantAvatar persona={current} size={48} />
+          <View style={styles.personaText}>
+            <Text style={styles.personaName}>{option?.name ?? (current === 'mert' ? 'Mert' : 'İpek')}</Text>
+            <Text style={styles.personaTagline}>{option?.tagline ?? ''}</Text>
+          </View>
+          <PrimaryButton
+            label={open ? 'Kapat' : 'Değiştir'}
+            variant="outline"
+            size="sm"
+            onPress={() => setOpen((value) => !value)}
+            accessibilityLabel={open ? 'Karakter seçimini kapat' : 'Asistan karakterini değiştir'}
+          />
+        </View>
+        {open ? (
+          <View style={styles.personaPicker}>
+            <PersonaPicker
+              options={options}
+              value={state?.persona ?? null}
+              onSelect={(key) => void select(key)}
+              busyKey={savingKey}
+              disabled={savingKey !== null}
+              avatarSize={72}
+            />
+          </View>
+        ) : null}
+        {error ? <InlineError message={error} style={styles.personaError} /> : null}
+      </View>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: spacing.xl },
+  memorySkeleton: { minHeight: 260 },
+  personaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 12,
+  },
+  personaText: { flex: 1, minWidth: 0 },
+  personaName: { ...typography.subtitle, color: colors.text },
+  personaTagline: { ...typography.caption, color: colors.textMuted },
+  personaPicker: {
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 12,
+  },
+  personaError: { marginHorizontal: spacing.gutter, marginBottom: 12 },
   intro: {
     ...typography.label,
     fontFamily: fonts.regular,

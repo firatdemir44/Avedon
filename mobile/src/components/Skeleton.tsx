@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AccessibilityInfo,
   Animated,
   Easing,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { useReduceMotion } from '../features/useReduceMotion';
 import { colors, radius, spacing } from '../theme';
 
 // Yükleniyor iskeleti: içeriğin gelecek yerini gri kemiklerle gösterir
@@ -21,24 +21,6 @@ import { colors, radius, spacing } from '../theme';
 // Çok hızlı yüklemelerde iskeletin bir an görünüp kaybolması titreme gibi
 // algılanıyor; bu kadar kısa sürede hiçbir şey göstermiyoruz.
 const SHOW_DELAY_MS = 150;
-
-function useReduceMotion() {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((value) => {
-        if (mounted) setReduce(value);
-      })
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduce);
-    return () => {
-      mounted = false;
-      sub.remove();
-    };
-  }, []);
-  return reduce;
-}
 
 export function SkeletonPulse({
   children,

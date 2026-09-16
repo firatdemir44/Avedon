@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,17 +18,25 @@ import type { MainTabScreenProps } from '../../navigation/types';
 import {
   ApiError,
   createAssistantThread,
+  fetchAssistantGreeting,
+  fetchAssistantPersona,
   fetchAssistantThread,
   fetchCompany,
   fetchSkills,
   sendAssistantMessage,
+  setAssistantPersona,
   setCompanyMemory,
+  type AssistantGreeting,
   type AssistantMemorySuggestion,
   type AssistantMessage,
+  type AssistantPersonaKey,
+  type AssistantPersonaState,
 } from '../../api/client';
+import { AssistantAvatar, type AssistantAvatarState } from '../../components/AssistantAvatar';
+import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
 import { AssistantResultCard } from '../../components/ResultCard';
 import { HeaderButton } from '../../components/HeaderButton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { SkeletonList } from '../../components/Skeleton';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
@@ -41,10 +49,18 @@ type Props = MainTabScreenProps<'AssistantTab'>;
 
 // Sekme ekranı: firma asistanı (Faz 1, Adım 5; taslak docs/tasarim-2027/Asistan.dc.html).
 // Sohbet kaydı sunucuda; cihazda yalnızca son sohbetin kimliği durur.
-// Asistan kızılı (colors.assistant) yalnızca burada: avatar ve gönder düğmesi.
+// Asistan kızılı (colors.assistant) yalnızca burada: avatar, gönder düğmesi.
+//
+// Adım 9: asistanın adı ve yüzü var (İpek / Mert). Seçilmemişse sohbet yerine
+// seçim görünümü çıkar; karşılama sunucudan modelsiz gelir ve sohbete YAZILMAZ.
 
 // Beceri sayısı sunucudan gelene kadar gösterilecek değer (bugün 10 beceri).
 const FALLBACK_SKILL_COUNT = 10;
+
+// Sohbet balonlarının yanındaki avatar.
+const CHAT_AVATAR = 38;
+// Yanıt geldikten sonra "anlatıyor"/"sonuç" hali ne kadar kalır.
+const AVATAR_FLASH_MS = 2600;
 
 const WELCOME = 'Hesap sor, etiket metni yapıştır ya da kataloğunu sor.';
 
@@ -75,6 +91,12 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
 // Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
 let cachedCompanyName: string | null = null;
 
+function personaLabel(key: AssistantPersonaKey, state: AssistantPersonaState | null): string {
+  const option = state?.options.find((item) => item.key === key);
+  if (option) return option.name;
+  return key === 'mert' ? 'Mert' : 'İpek';
+}
+
 type ChatItem = AssistantMessage & { local?: boolean };
 
 export function AssistantScreen({ navigation }: Props) {
@@ -93,14 +115,28 @@ export function AssistantScreen({ navigation }: Props) {
   // Hafıza öneri kartının durumu: `${mesajId}:${anahtar}`.
   const [memoryState, setMemoryState] = useState<Record<string, 'saved' | 'dismissed' | 'error'>>({});
 
+  // Kişilik: null persona = kullanıcı henüz seçmedi.
+  const [persona, setPersona] = useState<AssistantPersonaState | null>(null);
+  const [personaReady, setPersonaReady] = useState(false);
+  const [savingPersona, setSavingPersona] = useState<AssistantPersonaKey | null>(null);
+  const [personaError, setPersonaError] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState<AssistantGreeting | null>(null);
+  // Yanıt sonrası avatarın kısa süreli hali.
+  const [replyState, setReplyState] = useState<'idle' | 'speaking' | 'result'>('idle');
+
   const threadIdRef = useRef<string | null>(null);
   // undefined: henüz hiç yükleme yapılmadı (ilk odak).
   const loadedIdRef = useRef<string | null | undefined>(undefined);
   const retryTextRef = useRef('');
   const listRef = useRef<FlatList<ChatItem>>(null);
   const inputRef = useRef<TextInput>(null);
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const messageCountRef = useRef(0);
 
-  const subtitle = `${companyName ? `${companyName} · ` : ''}${skillCount} beceri`;
+  const chosenPersona = persona?.persona ?? null;
+  const effectivePersona: AssistantPersonaKey = chosenPersona ?? persona?.effective ?? 'ipek';
+  const personaName = personaLabel(effectivePersona, persona);
+  const subtitle = companyName ? `${companyName} · ${personaName}` : personaName;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -126,9 +162,8 @@ export function AssistantScreen({ navigation }: Props) {
     });
   }, [navigation, subtitle]);
 
-  // Beceri sayısı ve firma adı: ekran başına bir kez, hata sessiz (üst bandın
-  // alt satırı kozmetik; yüklenemezse varsayılanla görünür).
-  React.useEffect(() => {
+  // Beceri sayısı ve firma adı: ekran başına bir kez, hata sessiz (kozmetik).
+  useEffect(() => {
     let cancelled = false;
     fetchSkills()
       .then(({ skills }) => {
@@ -147,6 +182,67 @@ export function AssistantScreen({ navigation }: Props) {
       cancelled = true;
     };
   }, [user?.companyId]);
+
+  // Kişilik her odakta okunur: "Firma hafızası" ekranından değiştirilmiş olabilir.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      fetchAssistantPersona()
+        .then((state) => {
+          if (!cancelled) setPersona(state);
+        })
+        .catch(() => {
+          // Sunucuya ulaşılamazsa seçim ekranında kilitlenmeyelim: varsayılanla devam.
+          if (!cancelled) {
+            setPersona(
+              (prev) => prev ?? { persona: 'ipek', effective: 'ipek', options: FALLBACK_PERSONA_OPTIONS }
+            );
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setPersonaReady(true);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
+  const flashAvatar = useCallback((next: 'speaking' | 'result') => {
+    if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+    setReplyState(next);
+    replyTimerRef.current = setTimeout(() => setReplyState('idle'), AVATAR_FLASH_MS);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
+    },
+    []
+  );
+
+  // Karşılama yalnızca sohbet boşken görünür; avatar da o zaman "anlatıyor" olur.
+  useEffect(() => {
+    messageCountRef.current = messages.length;
+  }, [messages.length]);
+
+  // Karşılama modelsiz ve anında; sohbet kaydına YAZILMAZ, yalnızca gösterilir.
+  useEffect(() => {
+    if (!chosenPersona) return;
+    let cancelled = false;
+    fetchAssistantGreeting(new Date().getHours())
+      .then((data) => {
+        if (cancelled) return;
+        setGreeting(data);
+        if (messageCountRef.current === 0) flashAvatar('speaking');
+      })
+      .catch(() => {
+        if (!cancelled) setGreeting(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chosenPersona, flashAvatar]);
 
   const loadThread = useCallback(async (id: string | null) => {
     setSendError(null);
@@ -202,6 +298,26 @@ export function AssistantScreen({ navigation }: Props) {
     listRef.current?.scrollToEnd({ animated: true });
   }, []);
 
+  const choosePersona = useCallback(async (key: AssistantPersonaKey) => {
+    setSavingPersona(key);
+    setPersonaError(null);
+    try {
+      const { persona: saved } = await setAssistantPersona(key);
+      haptics.success();
+      setPersona((prev) => ({
+        persona: saved,
+        effective: saved,
+        options: prev?.options ?? FALLBACK_PERSONA_OPTIONS,
+      }));
+      setGreeting(null);
+    } catch (err) {
+      haptics.error();
+      setPersonaError(friendlyMessage(err, 'Seçim kaydedilemedi, tekrar deneyin.'));
+    } finally {
+      setSavingPersona(null);
+    }
+  }, []);
+
   const send = useCallback(
     async (text: string) => {
       const question = text.trim();
@@ -234,6 +350,8 @@ export function AssistantScreen({ navigation }: Props) {
         setMessages((prev) => [...prev, turn.userMessage, turn.message]);
         setPending(null);
         retryTextRef.current = '';
+        // Hesap kartı varsa avatar "sonuç" halini alır (kart öne çıkar).
+        flashAvatar(turn.message.toolCalls.length > 0 ? 'result' : 'speaking');
       } catch (err) {
         haptics.error();
         if (err instanceof ApiError && err.code === 'assistant_not_configured') {
@@ -253,7 +371,7 @@ export function AssistantScreen({ navigation }: Props) {
         setSending(false);
       }
     },
-    [sending]
+    [flashAvatar, sending]
   );
 
   const applyStarter = useCallback((starter: string) => {
@@ -281,6 +399,13 @@ export function AssistantScreen({ navigation }: Props) {
   const data = useMemo<ChatItem[]>(() => (pending ? [...messages, pending] : messages), [messages, pending]);
   const canSend = input.trim().length > 0 && !sending;
 
+  // Avatarın hali: yazarken dinliyor, beklerken düşünüyor, yanıtta anlatıyor/sonuç.
+  const avatarState: AssistantAvatarState = sending
+    ? 'thinking'
+    : input.trim().length > 0
+      ? 'listening'
+      : replyState;
+
   const renderItem = useCallback(
     ({ item, index }: { item: ChatItem; index: number }) => {
       const previous = data[index - 1];
@@ -304,13 +429,19 @@ export function AssistantScreen({ navigation }: Props) {
         );
       }
 
+      // Yalnızca son asistan mesajının avatarı canlı; öncekiler sabit durur.
+      const isLast = index === data.length - 1;
+
       return (
         <>
           {dayChip}
           <View style={styles.assistantRow}>
-            <View style={styles.avatar}>
-              <Ionicons name="sparkles" size={16} color={colors.primaryText} />
-            </View>
+            <AssistantAvatar
+              persona={effectivePersona}
+              size={CHAT_AVATAR}
+              state={isLast ? avatarState : 'idle'}
+              accessibilityLabel={`${personaName}, asistan`}
+            />
             <View style={styles.assistantColumn}>
               {item.text ? (
                 <View style={styles.assistantBubble}>
@@ -344,7 +475,7 @@ export function AssistantScreen({ navigation }: Props) {
         </>
       );
     },
-    [data, dismissSuggestion, memoryState, saveSuggestion]
+    [avatarState, data, dismissSuggestion, effectivePersona, memoryState, personaName, saveSuggestion]
   );
 
   const composer = (
@@ -401,11 +532,39 @@ export function AssistantScreen({ navigation }: Props) {
     </View>
   );
 
-  if (status === 'loading') {
+  if (status === 'loading' || !personaReady) {
     return (
       <View style={styles.screen}>
         <SkeletonList variant="chat" />
       </View>
+    );
+  }
+
+  // Kişilik seçilmeden sohbet açılmaz: uygulama cinsiyet sormaz, yüz seçtirir.
+  if (chosenPersona === null) {
+    return (
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={styles.chooserContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.chooserTitle} accessibilityRole="header">
+          Kim yardımcı olsun?
+        </Text>
+        <Text style={styles.chooserIntro}>
+          Asistanınızın bir adı ve yüzü olsun. İkisi de aynı hesapları yapar, aynı kataloğu bilir; sonra
+          değiştirebilirsiniz.
+        </Text>
+        <PersonaPicker
+          options={persona?.options?.length ? persona.options : FALLBACK_PERSONA_OPTIONS}
+          value={null}
+          onSelect={(key) => void choosePersona(key)}
+          busyKey={savingPersona}
+          disabled={savingPersona !== null}
+          avatarSize={96}
+        />
+        {personaError ? <InlineError message={personaError} style={styles.chooserError} /> : null}
+      </ScrollView>
     );
   }
 
@@ -416,6 +575,8 @@ export function AssistantScreen({ navigation }: Props) {
       </View>
     );
   }
+
+  const greetingLine = greeting?.text ?? `Merhaba, ben ${personaName}. Ne hesaplayalım?`;
 
   return (
     <View style={styles.screen}>
@@ -434,7 +595,20 @@ export function AssistantScreen({ navigation }: Props) {
           onContentSizeChange={scrollToEnd}
           ListEmptyComponent={
             <View>
-              <EmptyState compact icon="sparkles-outline" title="Firma asistanı" message={WELCOME} />
+              <View style={styles.greeting}>
+                <AssistantAvatar
+                  persona={effectivePersona}
+                  size={112}
+                  state={avatarState}
+                  accessibilityLabel={`${personaName}, asistan`}
+                />
+                <View style={styles.greetingBubble}>
+                  <Text style={styles.assistantText}>{greetingLine}</Text>
+                </View>
+                <Text style={styles.greetingHint}>
+                  {WELCOME} {skillCount} beceri hazır.
+                </Text>
+              </View>
               <View style={styles.examples}>
                 {EXAMPLES.map((example) => (
                   <Pressable
@@ -454,9 +628,12 @@ export function AssistantScreen({ navigation }: Props) {
             <>
               {sending ? (
                 <View style={styles.assistantRow}>
-                  <View style={styles.avatar}>
-                    <Ionicons name="sparkles" size={16} color={colors.primaryText} />
-                  </View>
+                  <AssistantAvatar
+                    persona={effectivePersona}
+                    size={CHAT_AVATAR}
+                    state="thinking"
+                    accessibilityLabel={`${personaName} düşünüyor`}
+                  />
                   <View style={styles.typingBubble} accessibilityLiveRegion="polite">
                     <ActivityIndicator size="small" color={colors.assistant} />
                     <Text style={styles.typingText}>Hesaplıyor...</Text>
@@ -544,9 +721,32 @@ const styles = StyleSheet.create({
   headerSubtitle: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.onPrimaryMuted },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
 
+  chooserContent: { padding: spacing.gutter, paddingTop: spacing.lg, gap: spacing.sm },
+  chooserTitle: { ...typography.heading, color: colors.text, textAlign: 'center' },
+  chooserIntro: {
+    ...typography.label,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  chooserError: { marginTop: spacing.sm },
+
   listContent: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.md, gap: 12 },
   dayChip: { alignSelf: 'center', backgroundColor: colors.chip, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
   dayChipText: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+
+  greeting: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.md },
+  greetingBubble: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  greetingHint: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
 
   userBubble: {
     alignSelf: 'flex-end',
@@ -560,15 +760,6 @@ const styles = StyleSheet.create({
   userTime: { fontFamily: fonts.mono, fontSize: 11, lineHeight: 15, color: colors.onPrimaryMuted, textAlign: 'right', marginTop: 4 },
 
   assistantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  avatar: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.md,
-    // Asistan kızılı yalnızca burada ve gönder düğmesinde.
-    backgroundColor: colors.assistant,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   assistantColumn: { flex: 1, minWidth: 0, gap: spacing.sm },
   assistantBubble: {
     backgroundColor: colors.surface,
