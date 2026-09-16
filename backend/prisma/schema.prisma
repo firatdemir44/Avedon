@@ -87,6 +87,8 @@ model User {
   lastName             String
   phone                String          @unique
   phoneVerified        Boolean         @default(false)
+  // Asistan kişiliği: "" (seçilmedi) | ipek | mert (assistant/persona.ts).
+  assistantPersona     String          @default("")
   isAdmin              Boolean         @default(false)
   companyId            String?
   company              Company?        @relation(fields: [companyId], references: [id])

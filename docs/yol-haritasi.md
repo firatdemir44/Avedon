@@ -52,6 +52,8 @@ Girdi yolları: etiket/kartela fotoğrafı, test raporu PDF/foto, fiyat listesi 
 
 Asistan = LLM orkestratörü + firma hafızası + beceri seti.
 
+**Kişilik ve avatar (kullanıcı kararı 2026-09-16):** asistanın bir adı ve yüzü vardır: iki karakter, **İpek** ve **Mert**; kullanıcı ilk açılışta "kim yardımcı olsun?" sorusuyla seçer, sonra değiştirebilir (uygulama cinsiyet sormaz; geri bildirime göre karakterler değişebilir). Yüz **çizim/animasyon avatar**dır (dinliyor, düşünüyor, anlatıyor, sonuç gösteriyor halleri); gerçek zamanlı video insan YOK (yavaş, pahalı, tekinsiz). Karşılama modelsiz üretilir (saat, ad, bekleyen numune talepleri, okunmamış mesajlar). Bilgi sorusunda avatar konuşur, hesapta yana çekilir ve sonuç kartı öne çıkar. Ses (metinden sese) pilot geri bildirimine bırakıldı; önceden çekilmiş video yalnızca tanıtım için değerlendirilir.
+
 **Firma hafızası:** firmanın kendi fire oranları, fasoncu fiyatları, sık kullanılan kaliteler, önceki hesaplar, katalog, stok/MOQ/termin politikası.
 
 **Beceriler (`skills/<ad>/`):** her biri `girdi şeması + formül/kod + makullük kuralları + açıklama metni` içerir.

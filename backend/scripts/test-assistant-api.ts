@@ -109,6 +109,18 @@ async function main() {
     check('silme 204', (await api('DELETE', '/assistant/memory/dyeingLossPercent', T)).status === 204);
     check('silindi', (await api('GET', '/assistant/memory', T)).json?.memory?.length === 0);
 
+    console.log('Kişilik ve karşılama (Adım 9)');
+    const p0 = await api('GET', '/assistant/persona', T);
+    check('seçilmemişken persona null, etkin ipek, 2 seçenek', p0.json?.persona === null && p0.json?.effective === 'ipek' && p0.json?.options?.length === 2, p0.json);
+    check('bilinmeyen kişilik 400', (await api('PUT', '/assistant/persona', T, { persona: 'ayse' })).status === 400);
+    const p1 = await api('PUT', '/assistant/persona', T, { persona: 'mert' });
+    check('Mert seçildi', p1.status === 200 && p1.json?.name === 'Mert', p1.json);
+    check('seçim kalıcı', (await api('GET', '/assistant/persona', T)).json?.persona === 'mert');
+    const g = await api('GET', '/assistant/greeting?hour=9', T);
+    check('karşılama Günaydın + ad + Mert', g.json?.text?.startsWith('Günaydın Test, ben Mert.'), g.json);
+    check('hafıza boş ipucu ve bekleyen sayılar', g.json?.memoryEmpty === true && g.json?.pendingIncoming === 0 && g.json?.unreadMessages === 0, g.json);
+    check('saat geçersizse sunucu saati (200)', (await api('GET', '/assistant/greeting?hour=99', T)).status === 200);
+
     console.log('Geçmiş ve silme');
     const full = await api('GET', `/assistant/threads/${threadId}`, T);
     check('8 mesaj kayıtlı (4 tur)', full.json?.messages?.length === 8, full.json?.messages?.length);

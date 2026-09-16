@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { deleteMemory, readMemory, writeMemory } from '../assistant/memory';
 import { MEMORY_KEYS, memoryKeyDef } from '../assistant/memoryKeys';
 import { runAssistantTurn, toView } from '../assistant/run';
+import { PERSONAS, PERSONA_KEYS, greetingText, isPersonaKey, personaFor } from '../assistant/persona';
 import { makeHandle } from './handle';
 
 // Faz 1, Adım 5: firma asistanı. Sohbet kaydı sunucuda (istemci threadId tutar),
@@ -139,5 +140,58 @@ assistantRouter.delete(
     if (!memoryKeyDef(req.params.key)) return res.status(404).json({ error: 'unknown_memory_key' });
     await deleteMemory(companyId, req.params.key);
     res.status(204).end();
+  })
+);
+
+// --- Kişilik ve karşılama (Adım 9) -------------------------------------------
+
+const personaOptions = () => PERSONA_KEYS.map((k) => ({ key: k, name: PERSONAS[k].name, tagline: PERSONAS[k].tagline }));
+
+assistantRouter.get(
+  '/persona',
+  handle(async (req, res) => {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { assistantPersona: true } });
+    const chosen = isPersonaKey(user?.assistantPersona) ? user!.assistantPersona : null;
+    res.json({ persona: chosen, effective: personaFor(chosen).key, options: personaOptions() });
+  })
+);
+
+assistantRouter.put(
+  '/persona',
+  handle(async (req, res) => {
+    const key = (req.body as { persona?: unknown })?.persona;
+    if (!isPersonaKey(key)) return res.status(400).json({ error: 'unknown_persona', options: PERSONA_KEYS });
+    await prisma.user.update({ where: { id: req.user!.id }, data: { assistantPersona: key } });
+    res.json({ persona: key, name: PERSONAS[key].name });
+  })
+);
+
+// Modelsiz karşılama: saat (istemci gönderir, sunucu saati UTC), ad, bekleyen işler.
+assistantRouter.get(
+  '/greeting',
+  handle(async (req, res) => {
+    const me = req.user!;
+    const hourRaw = Number(req.query.hour);
+    const hour = Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23 ? hourRaw : new Date().getHours();
+    const [user, pendingIncoming, unreadMessages, memoryCount] = await Promise.all([
+      prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true, assistantPersona: true } }),
+      me.companyId
+        ? prisma.sampleRequest.count({ where: { product: { companyId: me.companyId }, status: 'talep_edildi' } })
+        : Promise.resolve(0),
+      prisma.message.count({
+        where: { readAt: null, senderId: { not: me.id }, conversation: { OR: [{ userAId: me.id }, { userBId: me.id }] } },
+      }),
+      me.companyId ? prisma.companyMemory.count({ where: { companyId: me.companyId } }) : Promise.resolve(0),
+    ]);
+    const chosen = isPersonaKey(user?.assistantPersona) ? user!.assistantPersona : null;
+    const persona = personaFor(chosen);
+    res.json({
+      persona: chosen,
+      name: persona.name,
+      text: greetingText(persona, { firstName: user?.firstName ?? null, hour, pendingIncoming, unreadMessages, memoryEmpty: memoryCount === 0 }),
+      pendingIncoming,
+      unreadMessages,
+      memoryEmpty: memoryCount === 0,
+    });
   })
 );

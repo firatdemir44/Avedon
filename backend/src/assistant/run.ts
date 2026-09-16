@@ -6,6 +6,7 @@ import { prisma } from '../db';
 import { LLM_MODELS, LlmNotConfiguredError, getAnthropic, isLlmMock } from '../llm';
 import { readMemory } from './memory';
 import { mockAssistantTurn } from './mock';
+import { personaBlock, personaFor } from './persona';
 import { ASSISTANT_SYSTEM_PROMPT, memoryBlock } from './system';
 import { buildTools, type MemorySuggestion, type ToolCallRecord } from './tools';
 
@@ -79,11 +80,13 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
   const { threadId, userId, companyId } = params;
   const text = params.text.trim();
 
-  const [rows, memory, company] = await Promise.all([
+  const [rows, memory, company, user] = await Promise.all([
     prisma.assistantMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { apiJson: true } }),
     companyId ? readMemory(companyId) : Promise.resolve([]),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, assistantPersona: true } }),
   ]);
+  const persona = personaFor(user?.assistantPersona);
   const history = historyFromRows(rows);
   const userApi: ApiMessage = { role: 'user', content: text };
   const messages: ApiMessage[] = [...history, userApi];
@@ -109,7 +112,10 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
       // Sabit talimat önbelleğe alınır; firma hafızası sık değiştiği için ayrı blok.
       system: [
         { type: 'text', text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-        { type: 'text', text: memoryBlock(memory, company?.name ?? null) },
+        // Kişilik (İpek / Mert) kullanıcıya özel: önbellek dışı blokta.
+        { type: 'text', text: `${personaBlock(persona, user?.firstName ?? null)}
+
+${memoryBlock(memory, company?.name ?? null)}` },
       ],
       messages,
       tools: toolSet.tools,

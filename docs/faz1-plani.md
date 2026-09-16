@@ -274,6 +274,20 @@ Meta WhatsApp Business hesabı, telefon numarası, kalıcı erişim anahtarı, u
 
 ---
 
+## Adım 9 - Asistan kişiliği ve avatar (İpek / Mert)
+
+**Kaynak:** kullanıcı önerisi 2026-09-16 ("düğmeye basınca karşılama yapsın, soruya göre tabloya geçsin"); karar yol haritası §5. **Büyüklük:** orta. **Görünür değişiklik:** Asistan sekmesi açılınca avatar + karşılama.
+
+### Ne yapılacak
+- Sunucu: `User.assistantPersona` ("" | ipek | mert), `assistant/persona.ts` (ad, tanıtım, karakter sesi; sistem talimatının dinamik bloğuna girer), `GET/PUT /api/assistant/persona`, `GET /api/assistant/greeting` (modelsiz: saat, ad, bekleyen gelen numune talepleri, okunmamış mesaj, hafıza boşsa ipucu).
+- Mobil: ilk açılışta seçim kartı (İpek / Mert, tanıtım cümlesi, avatar); avatar `react-native-svg` ile çizim, 4 hal (dinliyor, düşünüyor, anlatıyor, sonuç); karşılama balonu; hesap kartı gelince avatar küçülüp yana çekilir. Ayarlardan karakter değiştirme.
+- Ses ve video bu adımda yok (yol haritası §5).
+
+### Test
+Kişilik seçimi kaydı; karşılama metni saat/bekleyen işlere göre; asistan cevabında karakter adı ve "sen" hitabı; seçilmemişse varsayılan İpek.
+
+---
+
 ## Adım 8 - SMS sağlayıcısı (bağımsız, paralel)
 
 **Büyüklük:** küçük (kod), orta (hesap işi). **Görünür değişiklik:** gerçek kullanıcılar kayıt olabilir.
