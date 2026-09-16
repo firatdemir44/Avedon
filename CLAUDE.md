@@ -25,6 +25,7 @@ Asistanın hafızası makineye özel olduğu için kalıcı tercihler burada:
 - **Windows PowerShell'de script çalıştırma kapalı:** `npm`/`npx` yerine `npm.cmd`/`npx.cmd` kullanılır.
 - **Adım adım onay isteme:** karar gerektirmeyen işler doğrudan yapılır; yalnızca gerçekten kullanıcıya ait kararlar sorulur.
 - Açık işler, kararlar ve cihaz testi bekleyenler **`docs/yapilacaklar.md`**'ye yazılır (oturuma başlarken önce orası okunur); sohbette kalması yetmez.
+- **Ürün vizyonu ve fazlar `docs/yol-haritasi.md`'de** (2026-09-16, 2021 Takyon belgesinin yeniden tasarımı: kumaş pasaportu, firma asistanı + beceri kataloğu, ürün akışı). Yeni özellik/mimari işe başlamadan önce okunur; ürün kararı değişecekse önce orası güncellenir.
 - Özellikler yüzeysel değil derinlemesine yapılır: uçtan uca, kenar durumları ve testleriyle. Kurulum işi proje ilerlemesi gibi sunulmaz.
 - Asistan kimlik bilgisi, ödeme bilgisi girmez ve güvenlik ayarlarını (güvenlik duvarı vb.) değiştirmez; bunları kullanıcı yapar.
 - Tasarım dili: **C · Pazar Masası** (`docs/tasarim-yonleri/`, tokenlar `mobile/src/theme/index.ts`). Yeniden tasarım aşamalı ilerliyor, her aşama telefonda kontrol ediliyor; durum `docs/yapilacaklar.md`'de.
