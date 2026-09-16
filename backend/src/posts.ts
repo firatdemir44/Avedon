@@ -19,10 +19,21 @@ export const POST_AUTHOR_SELECT = {
 export const POST_PRODUCT_SELECT = {
   id: true,
   code: true,
+  companyId: true,
+  type: true,
+  subtype: true,
   weightGsm: true,
   widthCm: true,
+  widthType: true,
   stock: true,
   stockUnit: true,
+  // Pasaport kartı (Faz 1, Adım 6): kompozisyon şeridi, MOQ/termin, sertifika rozetleri.
+  // Fiyat BURADA YOK: akış herkese açık, fiyat yalnızca sahibine (passport.ts).
+  moq: true,
+  moqUnit: true,
+  leadTimeDays: true,
+  compositions: { select: { fiber: true, percent: true }, orderBy: { position: 'asc' } },
+  certificates: { select: { name: true }, orderBy: { position: 'asc' } },
   // Gönderide kendi fotoğrafı yoksa akış kartı ürünün kapak fotoğrafını
   // gösteriyor; fotoğrafın kendisi yine ayrı uçtan çekiliyor.
   _count: { select: { images: true } },
@@ -77,10 +88,19 @@ type PostWithIncludes = {
     | {
         id: string;
         code: string;
+        companyId: string;
+        type: string;
+        subtype: string;
         weightGsm: number;
         widthCm: number;
+        widthType: string;
         stock: number;
         stockUnit: string;
+        moq: number | null;
+        moqUnit: string;
+        leadTimeDays: number | null;
+        compositions: { fiber: string; percent: number }[];
+        certificates: { name: string }[];
         _count: { images: number };
       }
     | null;
@@ -90,7 +110,9 @@ type PostWithIncludes = {
 
 // includeImage yalnızca tek gönderi dönen uçlarda (örn. oluşturma yanıtı) true
 // olur; liste yanıtlarında fotoğraf gönderilmez, istemci ayrı uçtan çeker.
-export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeImage = false) {
+// productFavorite: görüntüleyen kullanıcı bu ürünü takibe almış mı (ProductFavorite;
+// akış kartındaki "Takibe Al" düğmesinin durumu).
+export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeImage = false, productFavorite = false) {
   return {
     id: post.id,
     body: post.body,
@@ -101,7 +123,13 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     editedAt: post.editedAt,
     author: post.author,
     product: post.product
-      ? (({ _count, ...product }) => ({ ...product, hasImage: _count.images > 0 }))(post.product)
+      ? (({ _count, compositions, certificates, ...product }) => ({
+          ...product,
+          hasImage: _count.images > 0,
+          composition: compositions,
+          certificateNames: certificates.map((c) => c.name),
+          isFavorite: productFavorite,
+        }))(post.product)
       : null,
     video: post.video ? toVideoRow(post.video) : null,
     likeCount: post._count.likes,

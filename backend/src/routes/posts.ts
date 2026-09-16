@@ -44,6 +44,10 @@ const feedQuerySchema = z.object({
   // Firma sayfasındaki "Firma Akışı" sekmesi: o firmanın çalışanlarının
   // gönderileri (görünürlük kuralları aynen geçerli).
   companyId: z.string().min(1).optional(),
+  // Adım 6: "Bağlantılarım" sekmesi: bağlantılı kullanıcıların ve onların
+  // firmalarındaki herkesin gönderileri. withProduct: yalnızca ürünlü gönderiler.
+  scope: z.enum(['all', 'connections']).optional(),
+  withProduct: z.enum(['1', 'true']).optional(),
 });
 
 postsRouter.get(
@@ -53,15 +57,30 @@ postsRouter.get(
     if (!parsed.success) {
       return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
     }
-    const { limit = DEFAULT_LIMIT, before, beforeId, authorId, companyId } = parsed.data;
+    const { limit = DEFAULT_LIMIT, before, beforeId, authorId, companyId, scope, withProduct } = parsed.data;
     const me = req.user!.id;
 
     const connectedIds = await getAcceptedConnectionIds(me);
 
+    // Bağlantı kullanıcı düzeyinde; "bağlantıdaki firmalar" = bağlantılı
+    // kullanıcıların firmaları (firma düzeyi bağlantı Faz 2 sorusu).
+    let scopeWhere: Prisma.PostWhereInput = {};
+    if (scope === 'connections') {
+      const companies = connectedIds.length
+        ? await prisma.user.findMany({ where: { id: { in: connectedIds }, companyId: { not: null } }, select: { companyId: true } })
+        : [];
+      const companyIds = [...new Set(companies.map((u) => u.companyId!))];
+      scopeWhere = {
+        OR: [{ authorId: { in: connectedIds } }, ...(companyIds.length ? [{ author: { companyId: { in: companyIds } } }] : [])],
+      };
+      // Bağlantı yoksa hiçbir gönderi gelmez (boş sekme, açıklama istemcide).
+      if (!connectedIds.length) scopeWhere = { id: { in: [] } };
+    }
+
     const posts = await prisma.post.findMany({
       where: {
         OR: feedVisibilityWhere(me, connectedIds),
-        AND: cursorWhere(before, beforeId),
+        AND: [...cursorWhere(before, beforeId), scopeWhere, ...(withProduct ? [{ productId: { not: null } }] : [])],
         ...(authorId ? { authorId } : {}),
         ...(companyId ? { author: { companyId } } : {}),
       },
@@ -84,9 +103,20 @@ postsRouter.get(
       liked.forEach((row) => likedSet.add(row.postId));
     }
 
+    // Ürünlü gönderilerde "Takibe Al" durumu (ProductFavorite ile aynı kayıt).
+    const productIds = posts.map((p) => p.product?.id).filter((id): id is string => !!id);
+    const favoriteSet = new Set<string>();
+    if (productIds.length > 0) {
+      const favorites = await prisma.productFavorite.findMany({
+        where: { userId: me, productId: { in: productIds } },
+        select: { productId: true },
+      });
+      favorites.forEach((row) => favoriteSet.add(row.productId));
+    }
+
     const last = posts[posts.length - 1];
     res.json({
-      posts: posts.map((p) => toFeedRow(p, likedSet.has(p.id))),
+      posts: posts.map((p) => toFeedRow(p, likedSet.has(p.id), false, !!p.product && favoriteSet.has(p.product.id))),
       nextCursor:
         posts.length === limit && last
           ? { before: last.createdAt.toISOString(), beforeId: last.id }

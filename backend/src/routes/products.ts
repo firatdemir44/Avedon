@@ -5,6 +5,8 @@ import { makeHandle } from './handle';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { isValidSubtype, matchCatalogKeys } from '../catalog';
 import { knitSearchKeys } from '../domain/glossary';
+import { getAcceptedConnectionIds } from '../connections';
+import { findOrCreateConversation } from '../conversations';
 import {
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
@@ -527,5 +529,39 @@ productsRouter.delete(
     await prisma.sampleRequest.deleteMany({ where: { productId: req.params.id } });
     await prisma.product.delete({ where: { id: req.params.id } });
     res.status(204).send();
+  })
+);
+
+// Faz 1, Adım 6: "Teklif İste" (Faz 2 teklif akışının kancası). Şimdilik ürün
+// sahibi firmadan bağlantılı bir kişiyle sohbet açar ve ürün koduyla hazır bir
+// mesaj gönderir. Bağlantı yoksa 403 + bağlantı isteği gönderilecek kişi önerisi.
+productsRouter.post(
+  '/:id/quote-request',
+  requireAuth,
+  handle(async (req, res) => {
+    const me = req.user!;
+    const product = await prisma.product.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, code: true, companyId: true, company: { select: { users: { select: { id: true }, orderBy: { createdAt: 'asc' } } } } },
+    });
+    if (!product) return res.status(404).json({ error: 'product_not_found' });
+    if (me.companyId && product.companyId === me.companyId) return res.status(400).json({ error: 'own_product' });
+    const candidates = product.company.users.map((u) => u.id).filter((id) => id !== me.id);
+    if (candidates.length === 0) return res.status(409).json({ error: 'no_contact' });
+
+    const connected = new Set(await getAcceptedConnectionIds(me.id));
+    const target = candidates.find((id) => connected.has(id));
+    if (!target) {
+      return res.status(403).json({ error: 'not_connected', suggestedUserId: candidates[0] });
+    }
+
+    const conversation = await findOrCreateConversation(me.id, target);
+    const now = new Date();
+    const body = `Merhaba, ${product.code} kodlu kumaşınız için teklif almak istiyorum. Miktar ve termin bilgisini paylaşabilirim.`;
+    const [message] = await prisma.$transaction([
+      prisma.message.create({ data: { conversationId: conversation.id, senderId: me.id, body, createdAt: now } }),
+      prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: now } }),
+    ]);
+    res.status(201).json({ conversationId: conversation.id, userId: target, messageId: message.id, body });
   })
 );
