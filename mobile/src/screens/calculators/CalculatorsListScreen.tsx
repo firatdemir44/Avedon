@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import type { MainTabScreenProps, RootStackParamList } from '../../navigation/types';
+import type { RootStackParamList, RootStackScreenProps } from '../../navigation/types';
 import { ListRow } from '../../components/ListRow';
 import { SectionHeader } from '../../components/SectionHeader';
 import { colors, fonts, spacing, typography } from '../../theme';
 
-type Props = MainTabScreenProps<'CalculatorsList'>;
+type Props = RootStackScreenProps<'CalculatorsList'>;
 
 type Item = { route: keyof RootStackParamList; title: string; description: string };
 

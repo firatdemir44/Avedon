@@ -7,7 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { fetchUnreadMessageCount } from '../api/client';
 import { FeedScreen } from '../screens/feed/FeedScreen';
 import { ProductListScreen } from '../screens/products/ProductListScreen';
-import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
+import { AssistantScreen } from '../screens/assistant/AssistantScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { colors, fonts, typography } from '../theme';
@@ -76,12 +76,15 @@ export function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="CalculatorsList"
-        component={CalculatorsListScreen}
+        name="AssistantTab"
+        component={AssistantScreen}
         options={{
-          title: 'Hesaplamalar',
+          title: 'Asistan',
+          // Asistan kızılı YALNIZCA seçili asistan ikonunda; diğer sekmeler
+          // lacivert kalır (bkz. theme/index.ts colors.assistant kuralı).
+          tabBarActiveTintColor: colors.assistant,
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'calculator' : 'calculator-outline'} color={color} size={size} />
+            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} color={color} size={size} />
           ),
         }}
       />

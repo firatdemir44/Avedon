@@ -39,6 +39,13 @@ export const colors = {
   // 4. aşama: beyaz satır/blok basılıyken aldığı zemin. Arka plandan
   // (`background`) bir ton koyu ki beyaz satırın üstünde fark edilsin.
   pressed: '#E4E9EE',
+  // Asistan kızılı (kök boya), taslak docs/tasarim-2027/Asistan.dc.html.
+  // KURAL: yalnızca asistanın kendisinin olduğu yerde kullanılır — seçili
+  // "Asistan" sekme ikonu, sohbetteki asistan avatarı, gönder düğmesi ve
+  // asistan rozetleri. Başka hiçbir ekranda, düğmede ya da durumda geçmez;
+  // ikincil renk lacivert/mavi olarak kalır.
+  assistant: '#A34F2E',
+  assistantSoft: '#F6E9E3',
 };
 
 export const spacing = {

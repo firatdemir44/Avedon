@@ -15,7 +15,9 @@ export type MainTabParamList = {
   // Filtre ekranı "Uygula"da filtreleri buraya geri gönderir; appliedAt her
   // uygulamada değişir, aynı filtre ikinci kez uygulansa da ekran yenilenir.
   ProductList: { filters?: ProductFilters; appliedAt?: number } | undefined;
-  CalculatorsList: undefined;
+  // Firma asistanı (Faz 1, Adım 5). Rota adı "AssistantTab": yığındaki
+  // asistan ekranlarıyla (AssistantThreads, AssistantMemory) çakışmasın.
+  AssistantTab: undefined;
   Conversations: undefined;
   MyProfile: undefined;
 };
@@ -44,7 +46,12 @@ export type RootStackParamList = {
   ProductFilters: { filters: ProductFilters };
   FavoriteProducts: undefined;
   RecentlyViewedProducts: undefined;
-  Advisor: undefined;
+  // Asistanın sohbet geçmişi ve firma hafızası (asistan sekmesinden açılır).
+  AssistantThreads: undefined;
+  AssistantMemory: undefined;
+  // Hesaplayıcı listesi artık sekmede değil, yığında: alt menüdeki yeri
+  // "Asistan"a geçti, listeye asistandaki "Tüm hesaplayıcılar" çipinden gelinir.
+  CalculatorsList: undefined;
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;
   YarnCountCalculator: undefined;

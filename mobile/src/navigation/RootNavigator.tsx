@@ -21,7 +21,9 @@ import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
 import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
 import { RecentlyViewedProductsScreen } from '../screens/products/RecentlyViewedProductsScreen';
-import { AdvisorScreen } from '../screens/advisor/AdvisorScreen';
+import { AssistantThreadsScreen } from '../screens/assistant/AssistantThreadsScreen';
+import { AssistantMemoryScreen } from '../screens/assistant/AssistantMemoryScreen';
+import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
 import { YarnCountCalculator } from '../screens/calculators/YarnCountCalculator';
@@ -137,9 +139,19 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Son Baktıklarım' }}
             />
             <Stack.Screen
-              name="Advisor"
-              component={AdvisorScreen}
-              options={{ headerShown: true, title: 'AI Tekstil Danışmanı' }}
+              name="AssistantThreads"
+              component={AssistantThreadsScreen}
+              options={{ headerShown: true, title: 'Sohbetler' }}
+            />
+            <Stack.Screen
+              name="AssistantMemory"
+              component={AssistantMemoryScreen}
+              options={{ headerShown: true, title: 'Firma Hafızası' }}
+            />
+            <Stack.Screen
+              name="CalculatorsList"
+              component={CalculatorsListScreen}
+              options={{ headerShown: true, title: 'Hesaplamalar' }}
             />
             <Stack.Screen
               name="FabricCostCalculator"

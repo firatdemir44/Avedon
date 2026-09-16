@@ -10,6 +10,7 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 |---|---|---|
 | Zemin / yüzey | `background` #EEF1F4 (gri zemin), `surface` #FFFFFF (bloklar), `surfaceTonal` (giriş alanları) | Ekran gri, içerik beyaz bloklarda. Gölge yok. |
 | Marka | `primary` #133C5F (üst bant, birincil düğme, kodlar), `accent` #2696C6 (firma adları, bağlantılar, okunmamış) | |
+| Asistan | `assistant` #A34F2E (kök boya kızılı), `assistantSoft` #F6E9E3 | **Yalnızca** asistanın olduğu yerde: seçili sekme ikonu, asistan avatarı, gönder düğmesi, asistan rozetleri (bkz. Asistan bölümü). |
 | Çizgiler | `border` (kutu çerçevesi), `divider` (satır arası), `borderStrong` (çerçeveli düğme, bekleyen adım) | |
 | Durum | `success`/`successSoft` (stokta, teslim), `warning`/`warningSoft`/`warningDot` (az stok, süreç sürüyor), `danger`/`dangerSoft`, `notification` (kırmızı sayı rozeti) | Renk tek başına anlam taşımaz; yanında metin olur. |
 | Etkileşim | `pressed` #E4E9EE (basılı satır zemini), `chevron`, `chip`, `onPrimaryMuted` | |
@@ -50,6 +51,21 @@ Yeni bir ekran yazarken önce buradaki kalıplardan birini kullan; kalıp yoksa 
 | `MultiChipSelect` | Çoklu seçim çipleri (kullanım amaçları); seçili çip lacivert + onay işareti. Tek seçim için `ChipSelect` |
 | `PassportReviewScreen` satırı | Onay kutulu alan satırı + güven rozeti + "Okunan:" kanıtı (yalnızca bu ekranda; ikinci kullanımda ortak bileşene çıkarılır) |
 | `CollapsibleSection` | SectionHeader görünümünde dokunulabilir başlık + chevron; varsayılan kapalı gelen form bölümleri (ürün formunda İplik, Sertifikalar; içinde veri varsa açık gelir) |
+| `ResultCard` | Hesaplayıcı ekranlarının tonlu sonuç kutusu (etiket + değer). Aynı dosyadaki **`AssistantResultCard`** asistan sohbetindeki araç sonucu kartıdır (beyaz kutu, kesik çizgili iç çerçeve, büyük harfli başlık + birim, satırlar, katlanabilir "Nasıl hesaplandı") |
+
+## Asistan (Faz 1, Adım 5)
+
+Taslak: `docs/tasarim-2027/Asistan.dc.html`. Alt menüdeki **"Hesaplamalar" sekmesinin yeri "Asistan" oldu** (ikon `sparkles-outline` / `sparkles`, rota adı `AssistantTab`); hesaplayıcı listesi yığına taşındı (`CalculatorsList`) ve asistandaki "Tüm hesaplayıcılar" çipinden açılıyor. Eski `Advisor` ekranı ve `askAdvisor` kaldırıldı; Akış'taki ✦ düğmesi asistan sekmesine gidiyor.
+
+- **Renk kuralı:** `colors.assistant` (#A34F2E kök boya kızılı) ve `colors.assistantSoft` **yalnızca asistanın kendisinin olduğu yerde** kullanılır: seçili Asistan sekme ikonu, sohbetteki 28px asistan avatarı, gönder düğmesi, hafıza öneri kartının "Kaydet" düğmesi, "hesaplıyor" göstergesi. Başka hiçbir ekranda, düğmede ya da durumda geçmez; ikincil renk her yerde lacivert/mavi kalır.
+- **Üst bant:** başlık "Firma asistanı", altında küçük `onPrimaryMuted` satır "Firma adı · N beceri" (beceri sayısı `GET /api/skills`). Sağda iki `HeaderButton`: firma hafızası (`settings-outline`) ve sohbetler (`time-outline`).
+- **Sohbet:** kullanıcı balonu lacivert dolu sağda, saat mono; asistan solda kare kızıl avatar + beyaz ince çerçeveli balon. Gün ayracı sohbetteki gibi (`formatDayLabel`).
+- **Sonuç kartı (`AssistantResultCard`):** balonun altında, her araç çağrısı için bir kart. Beyaz kutu içinde kesik çizgili (`borderStrong`) iç çerçeve, üstte küçük gri BÜYÜK HARFLİ başlık ve sağda birim, altında `divider` çizgili satırlar; sayılar `IBM Plex Mono`, `toLocaleString('tr-TR')`. Son/öne çıkan satır kalın ve lacivert. Altta katlanabilir "Nasıl hesaplandı" (becerinin formülü). **Karttaki her rakam araç çıktısından gelir, model metninden değil** (`features/assistant/toolResult.ts`); tanınmayan beceri sunucunun `summary` metnini gösterir.
+- **Hafıza kartı:** "Hafızaya kaydedilsin mi?" + `label: değer` + gerekçe; "Kaydet" (PUT memory, başarıda kart yeşil "Kaydedildi" olur + `haptics.success()`) ve "Şimdi değil" (kart kapanır). Durum mesaj kimliği + anahtar ile ekranda tutulur. Asistan hafızaya kendisi yazmaz.
+- **Çipler:** girdi çubuğunun üstünde yatay kaydırılan beceri çipleri (İplik çevir · Üretim hesabı · Kumaş maliyeti · Konfeksiyon maliyeti) girdi kutusuna başlangıç metni yazıp odaklanır; "Tüm hesaplayıcılar" `CalculatorsList` ekranını açar. Sohbet boşken karşılama metni + örnek soru çipleri.
+- **Girdi çubuğu:** tonlu çok satırlı kutu ("Sor, hesaplat, etiket yapıştır...") + 44px kare kızıl gönder düğmesi (`arrow-up`). Gönderirken kullanıcı balonu hemen eklenir, altında "Hesaplıyor..." göstergesi; hata olursa `InlineError` + "Tekrar dene" (yanıt 5-30 sn sürebilir, istek zaman aşımı 120 sn).
+- **Sohbet kaydı sunucuda:** cihazda yalnızca son `threadId` durur (`features/assistant/threadStore.ts`). `AssistantThreads` ekranı sohbetleri listeler, "Yeni sohbet" satırı ve çöp ikonuyla silme (`confirmAction`) sunar; seçilen sohbeti cihaza yazıp geri döner, asistan ekranı odaklanınca okur (iç içe sekme parametresi taşınmaz). Silme düğmesi satırın **yanında**, içinde değil (web'de iç içe `<button>` olmasın).
+- **Firma hafızası ekranı (`AssistantMemory`):** bilinen anahtarlar `ListRow` olarak (etiket + ipucu + değer ya da "Kayıtlı değil"); dokununca satır düzenleme bloğuna dönüşür (sayı/metin alanı, Kaydet / Vazgeç / Sil). Firması olmayan kullanıcıda (403) açıklama metni.
 
 ## Basma geri bildirimi (4. aşama)
 
@@ -91,5 +107,5 @@ Taslaklarda karşılığı olmayanlar; aynı kalıplarla uyarlanmalı:
 
 - Kayıt adımları: `RoleSelection`, `Position`, `PersonalInfo`, `CompanyInfo`, `PhoneVerification`, `CompanyCode`, `OnboardingLayout`, `OtpCodeField`
 - Formlar (`AddProduct` 2026-09-15'te geçti): `CreatePost`, `EditCompany`, `SampleRequestForm`, `TextField`, `ChipSelect`
-- 7 hesaplama formu, `GarmentVisualCost`, `Advisor`, `Admin`
+- 7 hesaplama formu, `GarmentVisualCost`, `Admin` (`Advisor` kaldırıldı, yerine Asistan geldi)
 - `ImageViewerModal` (✕ karakteri), kalan uzun tireler: `FabricWeightCalculator`, `CompanyCodeScreen`, `GarmentVisualCostScreen`

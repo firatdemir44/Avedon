@@ -72,11 +72,15 @@ export function FeedScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     // Taslakta iki başlık eylemi de ikon düğmesi (denetim FINDING-016: biri
-    // ikon + yazı, diğeri düz metindi). AI Danışman bir hesaplama aracı
-    // değil, bu yüzden ana ekranda duruyor.
+    // ikon + yazı, diğeri düz metindi). Soldaki kısayol artık firma asistanı
+    // sekmesini açıyor (Faz 1 Adım 5; eski "AI Tekstil Danışmanı" ekranı kalktı).
     navigation.setOptions({
       headerLeft: () => (
-        <HeaderButton icon="sparkles-outline" label="AI Tekstil Danışmanı" onPress={() => navigation.navigate('Advisor')} />
+        <HeaderButton
+          icon="sparkles-outline"
+          label="Firma asistanı"
+          onPress={() => navigation.navigate('AssistantTab')}
+        />
       ),
       headerRight: () => (
         <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />

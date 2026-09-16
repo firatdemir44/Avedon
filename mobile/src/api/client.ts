@@ -642,16 +642,118 @@ export function clearRecentlyViewedProducts() {
   return request<void>('/me/recently-viewed', { method: 'DELETE' });
 }
 
-export interface AdvisorMessage {
-  role: 'user' | 'assistant';
-  content: string;
+// --- Firma asistanı (Faz 1, Adım 5) -----------------------------------------
+// Sohbet kaydı sunucuda tutulur; istemci yalnızca son kullanılan threadId'yi
+// cihazda saklar (src/features/assistant/threadStore.ts).
+
+export interface AssistantThread {
+  id: string;
+  title: string;
+  channel: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export function askAdvisor(question: string, history: AdvisorMessage[]) {
-  return request<{ answer: string }>('/advisor/ask', {
-    method: 'POST',
-    body: JSON.stringify({ question, history }),
+// Asistanın çağırdığı beceri/araç: ekranda sonuç kartı olarak çizilir.
+// `output` beceriye göre değişir; ekran bilinen becerileri satırlara çevirir,
+// tanımadığını `summary` metniyle gösterir (rakamlar hep araç çıktısından).
+export interface AssistantToolCall {
+  name: string;
+  title: string;
+  input: Record<string, unknown>;
+  output: unknown;
+  summary: string;
+  formula?: string;
+}
+
+// "Bunu hafızaya kaydedelim mi?" kartı; yazma yalnızca kullanıcı onayıyla.
+export interface AssistantMemorySuggestion {
+  key: string;
+  label: string;
+  value: number | string;
+  reason: string;
+}
+
+export interface AssistantMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  toolCalls: AssistantToolCall[];
+  memorySuggestions: AssistantMemorySuggestion[];
+  createdAt: string;
+}
+
+export interface AssistantTurn {
+  userMessage: AssistantMessage;
+  message: AssistantMessage;
+  usage: { inputTokens: number; outputTokens: number; iterations: number; mock: boolean };
+  thread: AssistantThread | null;
+}
+
+export function fetchAssistantThreads() {
+  return request<{ threads: AssistantThread[] }>('/assistant/threads');
+}
+
+export function createAssistantThread() {
+  return request<{ thread: AssistantThread }>('/assistant/threads', { method: 'POST' });
+}
+
+export function fetchAssistantThread(threadId: string) {
+  return request<{ thread: AssistantThread; messages: AssistantMessage[] }>(`/assistant/threads/${threadId}`);
+}
+
+export function deleteAssistantThread(threadId: string) {
+  return request<void>(`/assistant/threads/${threadId}`, { method: 'DELETE' });
+}
+
+// Araçlı tur 5-30 sn sürebiliyor: varsayılan 30 sn yetmez.
+export function sendAssistantMessage(threadId: string, text: string) {
+  return request<AssistantTurn>(
+    `/assistant/threads/${threadId}/messages`,
+    { method: 'POST', body: JSON.stringify({ text }) },
+    LLM_REQUEST_TIMEOUT_MS
+  );
+}
+
+export type MemoryKind = 'number' | 'text' | 'list';
+
+export interface MemoryKeyDef {
+  key: string;
+  label: string;
+  hint: string;
+  kind: MemoryKind;
+}
+
+export interface MemoryEntry extends MemoryKeyDef {
+  value: number | string;
+  updatedAt: string;
+}
+
+export function fetchCompanyMemory() {
+  return request<{ memory: MemoryEntry[]; keys: MemoryKeyDef[] }>('/assistant/memory');
+}
+
+export function setCompanyMemory(key: string, value: number | string) {
+  return request<{ entry: MemoryEntry }>(`/assistant/memory/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ value }),
   });
+}
+
+export function deleteCompanyMemory(key: string) {
+  return request<void>(`/assistant/memory/${encodeURIComponent(key)}`, { method: 'DELETE' });
+}
+
+export interface SkillSummary {
+  name: string;
+  title: string;
+  description: string;
+  formula: string;
+  inputSchema: unknown;
+}
+
+export function fetchSkills() {
+  return request<{ skills: SkillSummary[] }>('/skills');
 }
 
 // Numune talebi yanıtları, User/Product'ın tamamını DEĞİL sunucunun açıkça
