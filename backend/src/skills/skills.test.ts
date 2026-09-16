@@ -74,17 +74,26 @@ const SAMPLES: Record<string, { input: unknown; invalid: unknown }> = {
       fabricConsumptionMeters: 1.2,
       fabricPricePerMeter: 150,
       wastagePercent: 10,
-      laborCost: 60,
+      cuttingCost: 15,
+      sewingCost: 60,
+      finishingCost: 25,
       accessoryCost: 15,
+      packagingCost: 8,
+      shippingCost: 10,
       currency: 'TRY',
     },
     // Negatif işçilik
-    invalid: { fabricConsumptionMeters: 1.2, fabricPricePerMeter: 150, laborCost: -10 },
+    invalid: { fabricConsumptionMeters: 1.2, fabricPricePerMeter: 150, sewingCost: -10 },
   },
   yarnUsage: {
     input: { fabricLengthMeters: 1000, weightGsm: 180, widthCm: 180, wastagePercent: 5 },
     // Gramaj eksik
     invalid: { fabricLengthMeters: 1000, widthCm: 180 },
+  },
+  yarnRequirement: {
+    input: { finishedKg: 1000, dyeingLossPercent: 5, knittingLossPercent: 3 },
+    // Mamul miktarı hiç verilmemiş
+    invalid: { dyeingLossPercent: 5, knittingLossPercent: 3 },
   },
   fabricLengthWeight: {
     input: { weightGsm: 180, widthCm: 180, kg: 100 },
@@ -139,10 +148,10 @@ for (const skill of SKILLS) {
   });
 }
 
-test('listSkills: 10 beceri, adlar benzersiz, JSON şema nesnesi', () => {
+test('listSkills: 11 beceri, adlar benzersiz, JSON şema nesnesi', () => {
   const list = listSkills();
-  assert.equal(list.length, 10);
-  assert.equal(new Set(list.map((s) => s.name)).size, 10, 'beceri adları benzersiz olmalı');
+  assert.equal(list.length, 11);
+  assert.equal(new Set(list.map((s) => s.name)).size, 11, 'beceri adları benzersiz olmalı');
   for (const item of list) {
     assert.ok(item.title.length > 0, `${item.name}: başlık boş`);
     assert.ok(item.description.length > 40, `${item.name}: açıklama çok kısa`);
@@ -167,6 +176,7 @@ test('listSkills sırası kayıt sırasıyla aynı', () => {
       'garmentCost',
       'yarnUsage',
       'fabricLengthWeight',
+      'yarnRequirement',
     ]
   );
 });
@@ -249,3 +259,81 @@ function numbersIn(value: unknown, prefix = ''): [string, number][] {
   }
   return [];
 }
+
+// --- Fırat'ın 2026-09-16 cevapları ------------------------------------------
+
+test('yarnRequirement: 1.000 kg mamul, boya %5, örme %3 → 1.085,19 kg iplik', () => {
+  const r = runSkill(getSkill('yarnRequirement')!, { finishedKg: 1000, dyeingLossPercent: 5, knittingLossPercent: 3 });
+  assert.ok(r.ok);
+  const out = r.output as { greigeKg: number; yarnKg: number };
+  assert.ok(Math.abs(out.greigeKg - 1052.63) < 0.01);
+  assert.ok(Math.abs(out.yarnKg - 1085.19) < 0.01);
+  assert.ok(r.summary.includes('ham kumaş') && r.summary.includes('iplik'));
+  // Metre + gramaj + en ile de çalışır
+  const m = runSkill(getSkill('yarnRequirement')!, { finishedMeters: 1000, weightGsm: 200, widthCm: 160, dyeingLossPercent: 0, knittingLossPercent: 0 });
+  assert.ok(m.ok && Math.abs((m.output as { yarnKg: number }).yarnKg - 320) < 0.01);
+});
+
+test('fabricLengthWeight: tek yüz tüp eni 80 cm → hesapta 160; 200 gsm 100 m = 32 kg', () => {
+  const r = runSkill(getSkill('fabricLengthWeight')!, { weightGsm: 200, widthCm: 80, widthMeaning: 'tup_tek_yuz', meters: 100 });
+  assert.ok(r.ok);
+  const out = r.output as { effectiveWidthCm: number; kg: number };
+  assert.equal(out.effectiveWidthCm, 160);
+  assert.ok(Math.abs(out.kg - 32) < 0.01);
+  assert.ok(r.summary.includes('tüp'));
+});
+
+test('garmentCost: kalemler ayrı, Fırat sweatshirt örneği 315 TRY', () => {
+  const r = runSkill(getSkill('garmentCost')!, {
+    fabricConsumptionMeters: 1,
+    fabricPricePerMeter: 180,
+    cuttingCost: 15,
+    sewingCost: 65,
+    finishingCost: 25,
+    accessoryCost: 12,
+    packagingCost: 8,
+    shippingCost: 10,
+    quantity: 100,
+  });
+  assert.ok(r.ok);
+  const out = r.output as { totalCost: number; orderTotal: number; items: { key: string; amount: number }[] };
+  assert.equal(out.totalCost, 315);
+  assert.equal(out.orderTotal, 31500);
+  assert.equal(out.items.find((i) => i.key === 'finishingCost')?.amount, 25);
+  assert.ok(r.summary.includes('boş kalemler: genel gider'));
+});
+
+test('knitProduction: makine adedi çıktıyı çarpar, satır adı özette', () => {
+  const base = { rows: [{ lengthPer50NeedlesCm: 15, count: 30, system: 'ne', feeders: 90, label: 'ana iplik' }], needles: 1920, rpm: 25, efficiencyPercent: 85, hoursPerDay: 20 };
+  const one = runSkill(getSkill('knitProduction')!, base);
+  const two = runSkill(getSkill('knitProduction')!, { ...base, machineCount: 2 });
+  assert.ok(one.ok && two.ok);
+  const a = one.output as { kgPerDay: number };
+  const b = two.output as { kgPerDay: number; perMachineKgPerDay: number };
+  assert.ok(Math.abs(b.kgPerDay - 2 * a.kgPerDay) < 1e-9);
+  assert.ok(Math.abs(b.perMachineKgPerDay - a.kgPerDay) < 1e-9);
+  assert.ok(two.summary.includes('ana iplik') && two.summary.includes('2 makine'));
+  // Randıman ve saat artık varsayılan değil: eksikse geçersiz girdi
+  const missing = runSkill(getSkill('knitProduction')!, { rows: base.rows, needles: 1920, rpm: 25 });
+  assert.equal(missing.ok, false);
+});
+
+test('fabricGsmKnit: en değişiminden mamul gramaj tahmini ve sapma', () => {
+  const r = runSkill(getSkill('fabricGsmKnit')!, {
+    coursesPerCm: 16,
+    walesPerCm: 14,
+    loopLengthMm: 3,
+    yarnTex: 26.46,
+    greigeWidthCm: 180,
+    finishedWidthCm: 160,
+    measuredFinishedGsm: 200,
+  });
+  assert.ok(r.ok);
+  const out = r.output as { gsm: number; estimatedFinishedGsm: number; estimateBasis: string; deviationPercent: number };
+  assert.ok(Math.abs(out.estimatedFinishedGsm - (out.gsm * 180) / 160) < 1e-9);
+  assert.equal(out.estimateBasis, 'width_change');
+  assert.ok(Number.isFinite(out.deviationPercent));
+  assert.ok(r.summary.includes('mamul gramaj') && r.summary.includes('sapma'));
+  const pct = runSkill(getSkill('fabricGsmKnit')!, { coursesPerCm: 16, walesPerCm: 14, loopLengthMm: 3, yarnTex: 26.46, finishChangePercent: 12.5 });
+  assert.equal((pct.output as { estimateBasis: string }).estimateBasis, 'change_percent');
+});

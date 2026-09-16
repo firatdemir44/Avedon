@@ -7,6 +7,7 @@ import { fabricGsmKnit } from './calc/fabricGsmKnit';
 import { fabricGsmSample } from './calc/fabricGsmSample';
 import { fabricLengthWeight } from './calc/fabricLengthWeight';
 import { fabricPricing } from './calc/fabricPricing';
+import { yarnRequirement } from './calc/yarnRequirement';
 import { garmentCost } from './calc/garmentCost';
 import { knitProduction } from './calc/knitProduction';
 import { yarnCount } from './calc/yarnCount';
@@ -28,6 +29,7 @@ export const SKILLS: readonly AnySkill[] = [
   garmentCost,
   yarnUsage,
   fabricLengthWeight,
+  yarnRequirement,
 ];
 
 const byName = new Map<string, AnySkill>(SKILLS.map((s) => [s.name, s]));

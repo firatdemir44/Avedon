@@ -48,6 +48,8 @@ model Company {
   products          Product[]
   logo              CompanyLogo?
   photos            CompanyPhoto[]
+  assistantThreads  AssistantThread[]
+  memories          CompanyMemory[]
 }
 
 // Firma sayfasındaki galeriler (Aşama B): kind "office" (ofis/üretim
@@ -101,6 +103,7 @@ model User {
   videos               Video[]
   productFavorites     ProductFavorite[]
   productViews         ProductView[]
+  assistantThreads     AssistantThread[]
   createdAt            DateTime        @default(now())
 }
 
@@ -462,4 +465,54 @@ model Connection {
   respondedAt DateTime?
 
   @@unique([requesterId, addresseeId])
+}
+
+// --- Firma asistanı (Faz 1, Adım 5; docs/faz1-plani.md) ---
+// Sohbet kaydı sunucuda: araç çağrıları ve sonuçları geçmişin parçası, istemci
+// yalnızca threadId tutar; WhatsApp kanalında istemci yok.
+model AssistantThread {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+  // "app" | "whatsapp"
+  channel   String   @default("app")
+  // İlk sorudan türetilen kısa başlık (liste için).
+  title     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  AssistantMessage[]
+
+  @@index([userId, updatedAt])
+}
+
+model AssistantMessage {
+  id        String          @id @default(cuid())
+  threadId  String
+  thread    AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  // "user" | "assistant"
+  role      String
+  // Ekrana giden içerik: { text, toolCalls: [{ name, title, input, output, summary }], memorySuggestions: [{ key, value, reason }] }
+  contentJson String
+  // Modele giden/gelen ham mesajlar (tool_use / tool_result dahil); sonraki
+  // turda geçmiş buradan kurulur. JSON dizi metni.
+  apiJson   String          @default("[]")
+  createdAt DateTime        @default(now())
+
+  @@index([threadId, createdAt])
+}
+
+// Firma hafızası: kur, fason ücreti, fire gibi firmanın kendi varsayılanları.
+// Asistan okur ve ÖNERİR; yazma yalnızca kullanıcı onayıyla (PUT /assistant/memory/:key).
+model CompanyMemory {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  key       String
+  // JSON değer metni (sayı, metin ya da nesne).
+  valueJson String
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, key])
 }

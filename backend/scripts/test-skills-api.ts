@@ -54,6 +54,7 @@ const EXPECTED_NAMES = [
   'garmentCost',
   'yarnUsage',
   'fabricLengthWeight',
+  'yarnRequirement',
 ];
 
 async function main() {
@@ -73,7 +74,7 @@ async function main() {
     const list = await api('GET', '/skills', T);
     check('200 döner', list.status === 200, list.json);
     const skills: any[] = list.json?.skills ?? [];
-    check('10 beceri', skills.length === 10, skills.map((s) => s.name));
+    check('11 beceri', skills.length === 11, skills.map((s) => s.name));
     check('adlar ve sıra beklendiği gibi', JSON.stringify(skills.map((s) => s.name)) === JSON.stringify(EXPECTED_NAMES), skills.map((s) => s.name));
     check('adlar benzersiz', new Set(skills.map((s) => s.name)).size === skills.length);
     check(
@@ -150,7 +151,8 @@ async function main() {
       },
       fabricGsmSample: { widthMm: 100, lengthMm: 100, weightGrams: 2.75 },
       fabricGsmKnit: { coursesPerCm: 16, walesPerCm: 14, lengthPer50NeedlesCm: 15, yarnCount: 30, yarnSystem: 'ne' },
-      garmentCost: { fabricConsumptionMeters: 1.2, fabricPricePerMeter: 150, wastagePercent: 10, laborCost: 60, accessoryCost: 15 },
+      garmentCost: { fabricConsumptionMeters: 1.2, fabricPricePerMeter: 150, wastagePercent: 10, sewingCost: 60, accessoryCost: 15 },
+      yarnRequirement: { finishedKg: 1000, dyeingLossPercent: 5, knittingLossPercent: 3 },
       yarnUsage: { fabricLengthMeters: 1000, weightGsm: 180, widthCm: 180, wastagePercent: 5 },
     };
     for (const [name, input] of Object.entries(samples)) {

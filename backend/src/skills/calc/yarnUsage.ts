@@ -1,17 +1,24 @@
-// Beceri 9: Sipariş için gereken iplik kilosu (metre kumaş → kg iplik).
+// Beceri 9: Metre kumaş için iplik kilosu (tek fire ile hızlı hesap).
+// Fireleri ayrı ayrı (örme, boya/apre, kesim) hesaba katmak için yarnRequirement.
 import * as z from 'zod/v4';
 import { calculateYarnUsageKg } from '../../domain/calc/formulas';
+import { effectiveWidthCm } from '../../domain/calc/wastage';
 import { metersPerKg, metersToKg } from '../../domain/glossary/units';
 import { defineSkill, fmt } from '../types';
 
 const inputSchema = z.object({
   fabricLengthMeters: z.number().positive().describe('Üretilecek kumaş uzunluğu (metre)'),
   weightGsm: z.number().positive().describe('Kumaşın gramajı (gr/m²)'),
-  widthCm: z.number().positive().describe('Kumaşın eni (cm)'),
-  wastagePercent: z.number().min(0).max(100).default(0).describe('Örme/işlem firesi (%); yoksa 0'),
+  widthCm: z.number().positive().describe('Kumaşın eni (cm), kullanıcının söylediği gibi'),
+  widthMeaning: z
+    .enum(['acik', 'tup_tek_yuz'])
+    .default('acik')
+    .describe('"acik" = açık en; "tup_tek_yuz" = tek yüz tüp eni (iki katı alınır). Tüp kumaşta kullanıcıya sor.'),
+  wastagePercent: z.number().min(0).max(100).default(0).describe('Tek toplam fire (%), metre üstüne eklenir; fireler ayrı verilecekse yarnRequirement kullan'),
 });
 
 interface YarnUsageOutput {
+  effectiveWidthCm: number;
   yarnKg: number;
   kgPerMeter: number;
   metersPerKg: number;
@@ -21,19 +28,23 @@ export const yarnUsage = defineSkill<typeof inputSchema, YarnUsageOutput>({
   name: 'yarnUsage',
   title: 'Gereken iplik kilosu',
   description:
-    'Belli metre kumaş üretmek için kaç kilo iplik gerektiğini hesaplar; gramaj, en ve fire oranından. ' +
-    'Kullan: "1.000 metre için kaç kilo iplik almalıyım", "bu siparişe ne kadar iplik gider" gibi sorularda. ' +
-    'Fire oranını kullanıcı verir, tahmin etme. İplik fiyatı ya da maliyet hesaplamaz (bunun için fabricPricing).',
+    'Belli metre kumaş için kaç kilo iplik gerektiğini hızlıca hesaplar; gramaj, en ve tek bir toplam fire oranından. ' +
+    'Kullan: "1.000 metre için kaç kilo iplik almalıyım" gibi hızlı sorularda. Örme, boya/apre ve kesim firelerini ayrı ayrı hesaba katmak gerekiyorsa yarnRequirement aracını kullan. ' +
+    'Fire oranını kullanıcı verir ya da firma hafızasından gelir; tahmin etme. Fiyat hesaplamaz.',
   formula:
-    '1 metre kumaşın ağırlığı (kg) = gramaj × en(cm) / 100.000. Gereken iplik = metre × metre ağırlığı × (1 + fire).',
+    'Hesap eni = açık en (tek yüz tüp eni × 2). 1 metre ağırlığı (kg) = gramaj × en / 100.000. Gereken iplik = metre × metre ağırlığı × (1 + fire).',
   inputSchema,
-  run: (input) => ({
-    yarnKg: calculateYarnUsageKg(input),
-    kgPerMeter: metersToKg(1, input.weightGsm, input.widthCm),
-    metersPerKg: metersPerKg(input.weightGsm, input.widthCm),
-  }),
+  run: (input) => {
+    const width = effectiveWidthCm(input.widthCm, input.widthMeaning);
+    return {
+      effectiveWidthCm: width,
+      yarnKg: calculateYarnUsageKg({ ...input, widthCm: width }),
+      kgPerMeter: metersToKg(1, input.weightGsm, width),
+      metersPerKg: metersPerKg(input.weightGsm, width),
+    };
+  },
   summarize: (input, out) =>
-    `${fmt(input.weightGsm, 0)} gr/m², ${fmt(input.widthCm, 0)} cm ende 1 metre ${fmt(out.kgPerMeter, 3)} kg gelir ` +
+    `${fmt(input.weightGsm, 0)} gr/m², ${fmt(out.effectiveWidthCm, 0)} cm açık ende 1 metre ${fmt(out.kgPerMeter, 3)} kg gelir ` +
     `(1 kg ≈ ${fmt(out.metersPerKg)} m); ${fmt(input.fabricLengthMeters, 0)} metre için fire %${fmt(input.wastagePercent, 1)} dahil ` +
     `${fmt(out.yarnKg)} kg iplik gerekir.`,
 });

@@ -18,6 +18,8 @@ import { whatsappWebhookRouter } from './routes/whatsappWebhook';
 import { videosRouter } from './routes/videos';
 import { passportRouter } from './routes/passport';
 import { skillsRouter } from './routes/skills';
+import { assistantRouter } from './routes/assistant';
+import { isLlmConfigured } from './llm';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
@@ -36,6 +38,8 @@ app.get('/api/health', async (_req, res) => {
     commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
     storage: getStorageInfo(),
     video: { configured: isStreamConfigured(), ...(await checkStreamAccess()) },
+    // Asistan / etiket okuma / danışman: Anthropic anahtarı var mı (Faz 1, Adım 5).
+    assistant: { configured: isLlmConfigured() },
   });
 });
 app.use('/api/register', registerRouter);
@@ -54,6 +58,7 @@ app.use('/api/admin', adminRouter);
 app.use('/api/videos', videosRouter);
 app.use('/api/passport', passportRouter);
 app.use('/api/skills', skillsRouter);
+app.use('/api/assistant', assistantRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
