@@ -1,6 +1,6 @@
 # Faz 1 - Sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 ve Adım 4 tamamlandı; Adım 5 ve Adım 6 tamamlandı (2026-09-16; tarayıcıda doğrulandı, telefonda denenmedi); sıradaki Adım 7 (WhatsApp → asistan) ve Adım 8 (SMS). Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 1 (vizyon §4 kumaş pasaportu, §5 asistan ve beceriler, §7 teknik notlar) · **Tarih:** 2026-09-16 · **Durum:** onaylandı; Adım 1 ve Adım 2 tamamlandı ve canlıda (2026-09-16); Adım 3 ve Adım 4 tamamlandı; Adım 5 ve Adım 6 tamamlandı (2026-09-16; tarayıcıda doğrulandı, telefonda denenmedi); Adım 7 kod tarafı tamamlandı (2026-09-16; Meta hesabı bağlanınca canlı test); sıradaki Adım 8 (SMS). Hazırlayan: Claude (Fable 5.1), mevcut kod okunarak.
 Mevcut durum `docs/durum.md`, açık işler `docs/yapilacaklar.md`. Aşama A (katalog derinliği, çoklu fotoğraf, filtreler, favoriler, son bakılanlar) ve Aşama B (firma sekmeleri, firma bilgileri, galeriler) canlıda; bu plan onların üzerine ekler, hiçbirini geri almaz.
 
 Okunan kod: `schema.prisma`, `catalog.ts`, `products.ts`, `routes/products.ts`, `validation.ts`, `routes/advisor.ts`, `routes/garmentAnalysis.ts`, `whatsapp.ts`, `routes/whatsappWebhook.ts`, `sms.ts`, `otp.ts`, `mobile/src/features/calculators/formulas.ts`, `AddProductScreen.tsx`, `scripts/test-catalog-api.ts`, `scripts/check-catalog.ts`.
@@ -263,6 +263,14 @@ Beğeni/yorum kararı; "Takibe Al" mı "Favori" mi etiketi; Teklif İste'nin ilk
 
 ### Fırat'tan gerekenler (kod öncesi)
 Meta WhatsApp Business hesabı, telefon numarası, kalıcı erişim anahtarı, uygulama gizli anahtarı; şablon onayı. Bunlar hesap işi; `CLAUDE.md` kuralı gereği adımlar resmi dokümandan doğrulanıp tek seferde verilir, health ucu önceden hazır olur.
+
+### Uygulama notu (2026-09-16, kod tarafı bitti)
+- `routes/whatsappWebhook.ts`: GET doğrulama (`WHATSAPP_VERIFY_TOKEN`, health'e `lastWebhookVerifiedAt`), POST: `X-Hub-Signature-256` HMAC-SHA256 ham gövde üzerinden (`index.ts` express.json `verify` ile saklar; `WHATSAPP_APP_SECRET` boşsa doğrulanmaz, uyarı yazılır ve health `appSecretSet: false` gösterir), 200 hemen döner, işleme arka planda.
+- `whatsappInbound.ts`: yük ayrıştırma (durum bildirimleri atlanır), `WhatsAppInbound` tablosu (`messageId @unique` tekrar koruması; durum, gönderilen cevap, hata, kullanıcı ve iplik), göndereni `phone.ts` `phoneCandidatesFromWhatsApp` ile bulma (90XXXXXXXXXX → 0XXXXXXXXXX), kanal `whatsapp` ipliği (uygulama listesinde görünmez), `runAssistantTurn` → cevap = metin + araç özetleri + hafıza notu (kart yok), `sendWhatsAppText`. Bilinmeyen numaraya kayıt yönlendirmesi; metin dışı mesaja uygulamaya yönlendirme; asistan hatasında nazik mesaj ve hata kaydı.
+- `whatsapp.ts`: env artık çağrı anında okunur; `WHATSAPP_MOCK=1` Graph API'yi çağırmaz (giden mesajlar bellekte); gönderim hatası artık fırlatır (durum `send_failed`).
+- Migration `20260916200000_whatsapp_inbound` (yerel kopyada prova edildi). Testler: birim 117/117 (`whatsapp.test.ts`), uçtan uca `scripts/test-whatsapp-webhook.ts` 22/22 (imza, tekrar, bilinmeyen numara, sahte asistan cevabı, görsel, durum bildirimi).
+- **Yapılmadı (bilinçli):** WhatsApp'tan gelen etiket metniyle ürün taslağı oluşturma ("ürün olarak kaydedelim mi"); asistan `pasaport_cikar` ile okuyup özetliyor, kayıt uygulamadan "Etiketten doldur" ile. Taslak modeli Faz 2'ye.
+- **Canlıya alma (Fırat + Claude birlikte):** Meta WhatsApp Business hesabı, telefon numarası, kalıcı erişim anahtarı, uygulama gizli anahtarı, webhook URL `https://avedon-backend.onrender.com/api/whatsapp/webhook` + doğrulama jetonu; Render'a `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Tıklama adımları Meta dokümanından doğrulanıp tek seferde verilecek; sonuç `/api/health` `whatsapp` alanından okunur (`appSecretSet`, `lastWebhookVerifiedAt`, `lastInboundAt`).
 
 ---
 

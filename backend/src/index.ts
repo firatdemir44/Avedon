@@ -20,12 +20,22 @@ import { passportRouter } from './routes/passport';
 import { skillsRouter } from './routes/skills';
 import { assistantRouter } from './routes/assistant';
 import { isLlmConfigured } from './llm';
+import { getWhatsAppStatus } from './whatsapp';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '15mb' })); // fotoğraf yükleme (base64) için
+// limit: fotoğraf yükleme (base64). verify: WhatsApp webhook imzası ham gövde
+// üzerinden doğrulanır (routes/whatsappWebhook.ts), o yüzden gövde saklanır.
+app.use(
+  express.json({
+    limit: '15mb',
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  })
+);
 
 // `storage`: canlıda verinin kalıcı diske gidip gitmediği (bkz. storageCheck.ts).
 // `commit`: canlıda hangi sürümün çalıştığı — Render başarısız yayında eski
@@ -40,6 +50,8 @@ app.get('/api/health', async (_req, res) => {
     video: { configured: isStreamConfigured(), ...(await checkStreamAccess()) },
     // Asistan / etiket okuma / danışman: Anthropic anahtarı var mı (Faz 1, Adım 5).
     assistant: { configured: isLlmConfigured() },
+    // WhatsApp → asistan (Adım 7): anahtarlar girilmiş mi, webhook doğrulandı mı, son gelen mesaj.
+    whatsapp: getWhatsAppStatus(),
   });
 });
 app.use('/api/register', registerRouter);

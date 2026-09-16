@@ -1,4 +1,6 @@
-import { Router } from 'express';
+import { Router, type Request } from 'express';
+import { handleWebhookPayload } from '../whatsappInbound';
+import { markWebhookVerified, verifyWhatsAppSignature } from '../whatsapp';
 
 export const whatsappWebhookRouter = Router();
 
@@ -9,16 +11,25 @@ whatsappWebhookRouter.get('/', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+  if (mode === 'subscribe' && process.env.WHATSAPP_VERIFY_TOKEN && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+    markWebhookVerified();
     res.status(200).send(challenge);
   } else {
     res.sendStatus(403);
   }
 });
 
-// Gelen WhatsApp mesajları / durum bildirimleri buraya düşer.
-// Şimdilik sadece loglanıyor; ileride platform içi mesajlaşmaya bağlanabilir.
-whatsappWebhookRouter.post('/', (req, res) => {
-  console.log('[whatsapp webhook]', JSON.stringify(req.body));
+// Gelen WhatsApp mesajları / durum bildirimleri (Faz 1, Adım 7).
+// 1) İmza: X-Hub-Signature-256, ham gövde üzerinden (index.ts saklar). Anahtar
+//    tanımlıysa yanlış imza 403; tanımlı değilse yalnızca uyarı yazılır (yerel
+//    geliştirme). Canlıda WHATSAPP_APP_SECRET zorunlu sayılır (health'te görünür).
+// 2) 200 hemen döner; Meta 200 gelmezse yeniden gönderir. İşleme arka planda,
+//    aynı messageId ikinci kez gelirse yok sayılır (whatsappInbound.ts).
+whatsappWebhookRouter.post('/', (req: Request & { rawBody?: Buffer }, res) => {
+  const verified = verifyWhatsAppSignature(req.rawBody, req.header('x-hub-signature-256'));
+  if (verified === false) return res.sendStatus(403);
+  if (verified === null) console.warn('[whatsapp webhook] WHATSAPP_APP_SECRET tanımlı değil; imza doğrulanmadı');
+
   res.sendStatus(200);
+  void handleWebhookPayload(req.body).catch((err) => console.error('[whatsapp webhook] işleme hatası:', err));
 });

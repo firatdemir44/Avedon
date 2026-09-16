@@ -104,6 +104,7 @@ model User {
   productFavorites     ProductFavorite[]
   productViews         ProductView[]
   assistantThreads     AssistantThread[]
+  whatsAppInbounds     WhatsAppInbound[]
   createdAt            DateTime        @default(now())
 }
 
@@ -515,4 +516,25 @@ model CompanyMemory {
   updatedAt DateTime @updatedAt
 
   @@unique([companyId, key])
+}
+
+// Gelen WhatsApp mesajları (Faz 1, Adım 7): tekrar koruması (messageId) ve
+// denetim kaydı. status: received | answered | unknown_user | non_text |
+// assistant_unavailable | failed | send_failed.
+model WhatsAppInbound {
+  id          String    @id @default(cuid())
+  messageId   String    @unique
+  fromPhone   String
+  type        String    @default("text")
+  body        String    @default("")
+  status      String    @default("received")
+  replyBody   String    @default("")
+  error       String    @default("")
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  threadId    String?
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  @@index([fromPhone, receivedAt])
 }
