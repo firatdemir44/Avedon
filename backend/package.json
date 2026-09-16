@@ -9,7 +9,9 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "check:catalog": "tsx scripts/check-catalog.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.124.0",

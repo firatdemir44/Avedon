@@ -5,6 +5,7 @@ import { createProductSchema, updateProductSchema, MAX_PRODUCT_IMAGES } from '..
 import { makeHandle } from './handle';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { isValidSubtype, matchCatalogKeys } from '../catalog';
+import { knitSearchKeys } from '../domain/glossary';
 import {
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
@@ -77,7 +78,16 @@ productsRouter.get(
     }
 
     const search = parsed.data.search;
-    const matched = search ? matchCatalogKeys(search) : null;
+    const matched = search
+      ? (() => {
+          const catalog = matchCatalogKeys(search);
+          const glossary = knitSearchKeys(search);
+          return {
+            types: [...new Set([...catalog.types, ...glossary.types])],
+            subtypes: [...new Set([...catalog.subtypes, ...glossary.subtypes])],
+          };
+        })()
+      : null;
     const where = {
       companyId: req.user!.companyId,
       ...(search

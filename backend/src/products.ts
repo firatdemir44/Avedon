@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { STOCK_UNITS, USAGE_KEYS, matchCatalogKeys } from './catalog';
 import { productTypeSchema } from './validation';
+import { knitSearchKeys } from './domain/glossary';
 
 // Ürün fotoğrafları ProductImage tablosunda (base64 data URL). LİSTE ve DETAY
 // yanıtlarında ASLA dönmez — katalog büyüdükçe tek bir liste isteği megabaytlara
@@ -115,7 +116,15 @@ export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput
 
   if (query.search) {
     const search = query.search;
-    const matched = matchCatalogKeys(search);
+    // Etiket metni (matchCatalogKeys) + sözlük eşanlamlıları (knitSearchKeys):
+    // "single jersey" araması suprem alt çeşidini bulur (Faz 1, Adım 1).
+    const catalog = matchCatalogKeys(search);
+    const glossary = knitSearchKeys(search);
+    const matched = {
+      types: [...new Set([...catalog.types, ...glossary.types])],
+      subtypes: [...new Set([...catalog.subtypes, ...glossary.subtypes])],
+      usages: catalog.usages,
+    };
     and.push({
       OR: [
         { code: { contains: search } },
