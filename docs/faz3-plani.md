@@ -1,6 +1,6 @@
 # Faz 3 (Güven ve veri) - sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 3, §5 beceri 16-17 · **Tarih:** 2026-09-18 · **Durum:** TASLAK, Fırat'ın kararları bekleniyor (en altta) · Hazırlayan: Claude (Fable 5.1), Faz 1-2 kodu üzerinden.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 3, §5 beceri 16-17 · **Tarih:** 2026-09-18 · **Durum:** onaylandı (kararlar 2026-09-18, en altta) · Hazırlayan: Claude (Fable 5.1), Faz 1-2 kodu üzerinden.
 
 Faz 2'nin bıraktığı zemin: bildirimler ve izleme, teklif akışı (istek → taslak → gönderim → kabul/ret), satıcı asistanı (fiyat vermez), makine parkı ve fason kapasite araması, iplik dizini, karşılıklı referans ve doğrulama düzeyi. Faz 3'ün amacı: platformda biriken **işlem verisini güvene ve karara** çevirmek. Alıcı "kime güveneyim, hangi teklif iyi, bu kumaşın benzeri kimde" sorularına platformun içinden cevap alır.
 
@@ -57,7 +57,7 @@ Faz 2'nin bıraktığı zemin: bildirimler ve izleme, teklif akışı (istek →
 
 - `Deal (quoteId, buyerCompanyId, sellerCompanyId, agreedDeliveryDate, status: acik|teslim_edildi|iptal, deliveredAt)`: kabul edilen tekliften doğar. Platform ödeme almaz, sevkiyat takip etmez; yalnızca **iki tarafın beyanı**.
 - Teslim beyanı: satıcı "teslim ettim" der, alıcı onaylar (ya da itiraz eder). Geç teslim = beyan edilen tarih - anlaşılan tarih.
-- Değerlendirme (iki yönlü, yalnızca tamamlanan işte): alıcı → satıcı: kalite numuneye uygun mu, termin tuttu mu, iletişim; satıcı → alıcı: ödeme zamanında mı, iletişim. Kısa yorum isteğe bağlı. Değerlendirmeler **iki taraf da yazınca ya da 14 gün sonra** açılır (misilleme puanını önlemek için).
+- Değerlendirme (iki yönlü, yalnızca tamamlanan işte): alıcı → satıcı: kalite numuneye uygun mu, termin tuttu mu, iletişim; satıcı → alıcı: iletişim, işin ciddiyeti (ödeme konusuna girilmez; Fırat kararı). Kısa yorum isteğe bağlı. Değerlendirmeler **iki taraf da yazınca ya da 14 gün sonra** açılır (misilleme puanını önlemek için).
 - Test: yalnızca taraflar değerlendirebilir, tek iş = tek değerlendirme, açılma kuralı, itiraz durumu.
 
 ## Adım 5 - Güven puanı
@@ -95,11 +95,11 @@ Faz 2'nin bıraktığı zemin: bildirimler ve izleme, teklif akışı (istek →
 - **Escrow / ödeme aracılığı:** yol haritasında "ileride". Ödeme kuruluşu lisansı ve hukuki yapı gerektirir; Faz 3'te yalnızca beyan usulü sipariş kaydı var.
 - Otomatik kur çekme, otomatik fiyat önerisi, satıcı asistanının fiyat vermesi (Fırat kararı: vermez).
 
-## Fırat'tan beklenen kararlar
+## Kararlar (Fırat, 2026-09-18)
 
-1. **Sıra:** yukarıdaki sıra uygun mu? (Öneri: 1 → 2 → 3 → 7 → 4 → 5 → 6; yani DPP'yi öne almak, çünkü veri beklemiyor.)
-2. **Çoklu teklifte sınır:** bir ihtiyaç en çok kaç firmaya gitsin? (Öneri: 5.)
-3. **Değerlendirme ölçütleri:** alıcının satıcıyı, satıcının alıcıyı hangi başlıklarda puanlaması sektörde anlamlı? (Öneri yukarıda; "ödeme zamanında mı" sorusu hassas olabilir.)
-4. **Güven özeti:** yalnızca bileşenler mi görünsün, yoksa 0-100 tek puan da olsun mu? (Öneri: önce yalnızca bileşenler.)
-5. **Fiyat endeksi katılımı:** teklifler endekse varsayılan olarak dahil mi (firma isterse çıkar), yoksa firma açıkça izin verince mi? (Öneri: varsayılan dahil, çünkü tamamen anonim ve eşikli; ama karar ticari güven meselesi.)
-6. **Benzer kumaş:** görünüm kartındaki başlıklar (desen türü, ölçek, renk, yüzey, doku, şeffaflık) yeterli mi; tekstilcinin "benzer" derken baktığı başka özellik var mı?
+1. **Sıra onaylandı:** 1 → 2 → 3 → 7 (DPP) → 4 → 5 → 6.
+2. **Çoklu teklif sınırı:** kime gideceğini ALICI seçer (işaretlediği ürünler). Fırat sınırın 5'ten yüksek olmasını istedi; Claude önerisi: tek seferde **10 firma**, aynı ihtiyaçta firma başına tek istek, alıcı başına günlük toplam sınır (30). Sayı kodda tek sabit; kullanımda ayarlanır. Satıcı kaç firmaya sorulduğunu görmez.
+3. **Ödeme konusuna HİÇ girilmez:** değerlendirmede "ödeme zamanında mı" sorusu yok; platform ödeme ilişkisine karışmaz. Alıcı → satıcı: kalite numuneye uygun mu, termin, iletişim. Satıcı → alıcı: iletişim, işin ciddiyeti.
+4. **Güven gösterimi:** yalnızca bileşenler; tek puan yok.
+5. **Fiyat endeksi:** teklifler kendiliğinden dahil (anonim + eşikli).
+6. **Benzer kumaş:** desen, ölçek, renk, yüzey, doku, şeffaflık.
