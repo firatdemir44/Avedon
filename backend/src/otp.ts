@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from './db';
-import { sendOtpSms } from './sms';
+import { isSmsConfigured, sendOtpSms } from './sms';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const OTP_COOLDOWN_MS = 60 * 1000;
@@ -22,7 +22,10 @@ function hashCode(phone: string, code: string): string {
   return crypto.createHmac('sha256', JWT_SECRET!).update(`${phone}:${code}`).digest('hex');
 }
 
-export type IssueOtpResult = { ok: true } | { ok: false; error: 'cooldown'; retryAfterSeconds: number };
+export type IssueOtpResult =
+  | { ok: true }
+  | { ok: false; error: 'cooldown'; retryAfterSeconds: number }
+  | { ok: false; error: 'sms_failed' };
 
 export async function issueOtp(phone: string): Promise<IssueOtpResult> {
   const existing = await prisma.phoneOtp.findUnique({ where: { phone } });
@@ -49,7 +52,13 @@ export async function issueOtp(phone: string): Promise<IssueOtpResult> {
     },
   });
 
-  await sendOtpSms(phone, code);
+  // Sağlayıcı bağlıyken SMS gitmediyse kullanıcı boşuna beklemesin: kod silinir (bekleme süresi
+  // işlemez), ekran "gönderilemedi" der. Sağlayıcı bağlı değilken eski davranış: kod sunucu kaydına düşer.
+  const sent = await sendOtpSms(phone, code);
+  if (!sent.ok && isSmsConfigured()) {
+    await prisma.phoneOtp.delete({ where: { phone } }).catch(() => {});
+    return { ok: false, error: 'sms_failed' };
+  }
   return { ok: true };
 }
 

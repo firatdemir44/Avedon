@@ -26,6 +26,7 @@ import { referencesRouter } from './routes/references';
 import { yarnsRouter } from './routes/yarns';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
+import { smsStatus } from './sms';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
@@ -57,6 +58,8 @@ app.get('/api/health', async (_req, res) => {
     assistant: { configured: isLlmConfigured() },
     // WhatsApp → asistan (Adım 7): anahtarlar girilmiş mi, webhook doğrulandı mı, son gelen mesaj.
     whatsapp: getWhatsAppStatus(),
+    // SMS ile doğrulama kodu (Adım 8): anahtarlar, başlık, hesap erişimi ve kalan kredi, son gönderim.
+    sms: await smsStatus(),
   });
 });
 app.use('/api/register', registerRouter);
