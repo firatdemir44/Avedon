@@ -35,10 +35,30 @@ export function isWhatsAppConfigured() {
 }
 
 // Sağlık ucu için (gizli değer dönmez).
-const status = { lastWebhookVerifiedAt: null as Date | null, lastInboundAt: null as Date | null };
+const status = {
+  lastWebhookVerifiedAt: null as Date | null,
+  lastInboundAt: null as Date | null,
+  // Teşhis: Meta POST atıyor mu, imza tutuyor mu, son yükte ne vardı (içerik değil, yalnızca tür).
+  lastPostAt: null as Date | null,
+  lastSignatureFailureAt: null as Date | null,
+  postCount: 0,
+  signatureFailureCount: 0,
+  lastPostSummary: '' as string,
+};
 
 export function markWebhookVerified() {
   status.lastWebhookVerifiedAt = new Date();
+}
+
+export function markPost(summary: string) {
+  status.lastPostAt = new Date();
+  status.postCount++;
+  status.lastPostSummary = summary;
+}
+
+export function markSignatureFailure() {
+  status.lastSignatureFailureAt = new Date();
+  status.signatureFailureCount++;
 }
 
 export function markInbound() {
@@ -55,6 +75,11 @@ export function getWhatsAppStatus() {
     templateSet: !!e.templateName,
     lastWebhookVerifiedAt: status.lastWebhookVerifiedAt,
     lastInboundAt: status.lastInboundAt,
+    lastPostAt: status.lastPostAt,
+    postCount: status.postCount,
+    lastPostSummary: status.lastPostSummary,
+    lastSignatureFailureAt: status.lastSignatureFailureAt,
+    signatureFailureCount: status.signatureFailureCount,
   };
 }
 

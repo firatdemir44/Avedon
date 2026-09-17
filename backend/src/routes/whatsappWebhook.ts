@@ -1,6 +1,6 @@
 import { Router, type Request } from 'express';
 import { handleWebhookPayload } from '../whatsappInbound';
-import { markWebhookVerified, verifyWhatsAppSignature } from '../whatsapp';
+import { markPost, markSignatureFailure, markWebhookVerified, verifyWhatsAppSignature } from '../whatsapp';
 
 export const whatsappWebhookRouter = Router();
 
@@ -27,7 +27,13 @@ whatsappWebhookRouter.get('/', (req, res) => {
 //    aynı messageId ikinci kez gelirse yok sayılır (whatsappInbound.ts).
 whatsappWebhookRouter.post('/', (req: Request & { rawBody?: Buffer }, res) => {
   const verified = verifyWhatsAppSignature(req.rawBody, req.header('x-hub-signature-256'));
-  if (verified === false) return res.sendStatus(403);
+  if (verified === false) {
+    markSignatureFailure();
+    return res.sendStatus(403);
+  }
+  // Teşhis özeti: hangi alanlar geldi (mesaj içeriği yazılmaz).
+  const changes = ((req.body as { entry?: { changes?: { field?: string; value?: Record<string, unknown> }[] }[] })?.entry ?? []).flatMap((e) => e.changes ?? []);
+  markPost(changes.map((c) => `${c.field}:${Object.keys(c.value ?? {}).filter((k) => k === 'messages' || k === 'statuses').join('+') || '-'}`).join(',') || 'bos');
   if (verified === null) console.warn('[whatsapp webhook] WHATSAPP_APP_SECRET tanımlı değil; imza doğrulanmadı');
 
   res.sendStatus(200);
