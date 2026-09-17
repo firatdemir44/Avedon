@@ -1,6 +1,6 @@
 # Faz 2 (Ağ) - sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** taslak, Fırat'ın kararları bekleniyor · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** onaylandı (kararlar 2026-09-17, aşağıda); Adım 1 başladı · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
 
 Faz 1'in bıraktığı zemin: kumaş pasaportu (yapılı ürün verisi), etiketten doldurma, 11 hesap becerisi, firma asistanı (İpek/Mert, firma hafızası, sunucuda sohbet), akışta pasaport kartları (Numune talep et / Takibe al / Teklif iste), WhatsApp'tan asistan. Faz 2'nin amacı **ağ etkisi**: bir firmanın kataloğu ve asistanı, başka firmalar için de iş görmeye başlar.
 
@@ -73,7 +73,16 @@ Faz 1'in bıraktığı zemin: kumaş pasaportu (yapılı ürün verisi), etikett
 - **Migration:** her adım kendi migration'ı, yerel kopyada prova (CLAUDE.md kuralı).
 - **Model seçimi:** veri modeli, asistan araçları ve plan Fable 5.1; ekranlar ve testler Opus 5.
 
-## Fırat'tan kararlar (başlamadan önce)
+## Fırat'ın kararları (2026-09-17)
+
+1. **Sıra:** Claude karar verir → plan sırası korunuyor (önce bildirim + izleme).
+2. **Teklif istemek için bağlantı ŞART DEĞİL:** firmalar bağlantısız da teklif isteyebilir (Adım 2'de bugünkü 403 + bağlantı önerisi kalkar; istek doğrudan satıcıya düşer).
+3. **Satıcı asistanı fiyat VERMEZ:** fiyat yalnızca teklifle gider; firma ayarıyla açma seçeneği de olmayacak.
+4. **Makine parkı:** pus, fayn, sistem sayısı, en dahil bütün makine bilgileri tutulur. Kapasite **parkur** (makine parkı) olarak bildirilir; ayrıca firmanın beyan ettiği **aylık tonaj** kaydedilir.
+5. **İplik ürünü alanları:** Fırat ayrıca bildirecek (Adım 6 o zamana kadar bekler).
+6. **WhatsApp gerçek numara / SIM ve SMS:** en sona.
+
+## Eski soru listesi (cevaplandı)
 
 1. Sıra uygun mu; önce **izleme/bildirim** mi, önce **teklif** mi?
 2. Teklif istemek için bağlantı şart mı kalsın, yoksa doğrulanmış firmalara bağlantısız teklif isteği açılsın mı?
