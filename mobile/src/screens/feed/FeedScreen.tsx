@@ -321,7 +321,14 @@ export function FeedScreen({ navigation }: Props) {
             isMine={item.author.id === user?.id}
             myCompanyId={user?.companyId ?? null}
             onToggleLike={handleToggleLike}
-            onOpenChat={(conversationId, title) => navigation.navigate('Chat', { conversationId, title })}
+            onRequestQuote={(p) =>
+              p.product &&
+              navigation.navigate('QuoteRequestForm', {
+                productId: p.product.id,
+                productCode: p.product.code,
+                stockUnit: p.product.stockUnit,
+              })
+            }
             onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
             onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
             onOpenProduct={(post) => post.product && navigation.navigate('ProductDetail', { productId: post.product.id })}

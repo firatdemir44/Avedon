@@ -72,6 +72,12 @@ export type RootStackParamList = {
   SampleRequestTracking: { sampleRequestId: string };
   MySampleRequests: undefined;
   IncomingSampleRequests: undefined;
+  // Teklif akışı (Faz 2, Adım 2). stockUnit: formdaki birim ürünün stok
+  // birimiyle açılır (bilinmiyorsa metre).
+  QuoteRequestForm: { productId: string; productCode: string; stockUnit?: 'm' | 'kg' };
+  QuoteRequestDetail: { requestId: string };
+  // role: hangi sekme açık gelsin (firması olmayanda yalnızca 'buyer').
+  QuoteRequests: { role?: 'buyer' | 'seller' } | undefined;
   GarmentVisualCost: undefined;
   Profile: { userId: string };
   Connections: undefined;

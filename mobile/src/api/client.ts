@@ -671,19 +671,140 @@ export function setProductFavorite(id: string, favorite: boolean) {
   return request<{ isFavorite: boolean }>(`/products/${id}/favorite`, { method: favorite ? 'POST' : 'DELETE' });
 }
 
-// "Teklif İste": ürünün firmasındaki bağlantılı bir kişiyle sohbet açar ve
-// ürün kodunu içeren hazır mesajı gönderir. Bağlantı yoksa 403 döner ve hata
-// gövdesinde `suggestedUserId` ile kime bağlantı isteği gönderileceğini söyler
-// (ApiError.body üzerinden okunur).
-export interface QuoteRequestResult {
-  conversationId: string;
-  userId: string;
-  messageId: string;
-  body: string;
+// --- Teklif akışı (Faz 2, Adım 2) --------------------------------------------
+// Alıcı istek açar (bağlantı ŞART DEĞİL; eski sohbetli "Teklif iste" kalktı),
+// satıcı firma taslak hazırlar ve gönderir, alıcı kabul/ret eder. Fiyat
+// yalnızca iki tarafa görünür; alıcı satıcının taslağını hiç görmez.
+// Sunucu sözleşmesi: backend/src/routes/quotes.ts.
+
+export type QuoteRequestStatus = 'open' | 'quoted' | 'accepted' | 'declined' | 'cancelled';
+
+// 'expired': sunucu, geçerlilik tarihi geçmiş 'sent' teklifi böyle işaretliyor
+// (veritabanında durum yine 'sent').
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'superseded' | 'expired';
+
+export type PriceCurrency = 'TRY' | 'USD' | 'EUR';
+
+export interface Quote {
+  id: string;
+  status: QuoteStatus;
+  // Fiyat girilmemiş taslakta null.
+  price: { value: number; currency: string; unit: string } | null;
+  moq: number | null;
+  moqUnit: string;
+  leadTimeDays: number | null;
+  validUntil: string | null;
+  paymentTerms: string;
+  note: string;
+  sentAt: string | null;
+  createdAt: string;
 }
 
-export function requestQuote(productId: string) {
-  return request<QuoteRequestResult>(`/products/${productId}/quote-request`, { method: 'POST' });
+export interface QuoteRequestProductRef {
+  id: string;
+  code: string;
+  type: string;
+  subtype: string;
+  weightGsm: number;
+  widthCm: number;
+}
+
+export interface QuoteRequestRow {
+  id: string;
+  role: 'buyer' | 'seller';
+  status: QuoteRequestStatus;
+  quantity: number;
+  unit: StockUnit;
+  targetDate: string | null;
+  note: string;
+  createdAt: string;
+  updatedAt: string;
+  product: QuoteRequestProductRef;
+  sellerCompany: { id: string; name: string };
+  buyer: { id: string; name: string; company: { id: string; name: string } | null };
+  // Alıcıda taslaklar hiç gelmez.
+  quotes: Quote[];
+  activeQuote: Quote | null;
+  // Yalnızca satıcıya gelir.
+  draft: Quote | null;
+}
+
+// "Ürün kaydından doldur" sonucu: hangi alan eksik kaldı, miktar MOQ'nun
+// altında mı, fiyat birimi çevrildi mi.
+export interface QuoteDraftInfo {
+  missing: string[];
+  belowMoq: boolean;
+  converted: boolean;
+  total: number | null;
+}
+
+export function createQuoteRequest(input: {
+  productId: string;
+  quantity: number;
+  unit: StockUnit;
+  // 'YYYY-AA-GG' ya da null (istenen termin yok).
+  targetDate?: string | null;
+  note?: string;
+}) {
+  return request<{ request: QuoteRequestRow }>('/quotes/requests', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// role 'buyer': benim açtığım istekler · 'seller': firmama gelen istekler
+// (firması olmayan kullanıcıda sunucu boş liste döner).
+export function fetchQuoteRequests(role: 'buyer' | 'seller' = 'buyer') {
+  const query = role === 'seller' ? '?role=seller' : '';
+  return request<{ requests: QuoteRequestRow[] }>(`/quotes/requests${query}`);
+}
+
+export function fetchQuoteRequest(id: string) {
+  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}`);
+}
+
+// Satıcı: ürün kaydındaki fiyat/MOQ/terminden taslak üretir (fiyat UYDURULMAZ,
+// üründe yoksa boş gelir ve draftInfo.missing içinde 'fiyat' olur).
+export function draftQuote(id: string) {
+  return request<{ request: QuoteRequestRow; draftInfo: QuoteDraftInfo }>(`/quotes/requests/${id}/draft`, {
+    method: 'POST',
+  });
+}
+
+// Gönderilmeyen alana sunucu dokunmaz; null "temizle" demektir.
+export interface QuoteFieldsInput {
+  priceValue?: number | null;
+  priceCurrency?: PriceCurrency;
+  priceUnit?: StockUnit;
+  moq?: number | null;
+  moqUnit?: '' | StockUnit;
+  leadTimeDays?: number | null;
+  validUntil?: string | null;
+  paymentTerms?: string;
+  note?: string;
+}
+
+export function saveQuote(id: string, fields: QuoteFieldsInput) {
+  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/quote`, {
+    method: 'PUT',
+    body: JSON.stringify(fields),
+  });
+}
+
+// 400 price_required: fiyat, para birimi ve birim olmadan gönderilemez.
+export function sendQuote(id: string) {
+  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/quote/send`, { method: 'POST' });
+}
+
+export function respondQuote(id: string, action: 'accept' | 'decline') {
+  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/respond`, {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  });
+}
+
+export function cancelQuoteRequest(id: string) {
+  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/cancel`, { method: 'POST' });
 }
 
 export type FavoriteProduct = Product & { favoritedAt: string };
@@ -710,11 +831,17 @@ export type NotificationKind =
   | 'sample_request_new'
   | 'sample_request_status'
   | 'connection_request'
-  | 'connection_accepted';
+  | 'connection_accepted'
+  // Faz 2, Adım 2 (teklif akışı); hepsinde data.quoteRequestId dolu.
+  | 'quote_request_new'
+  | 'quote_received'
+  | 'quote_accepted'
+  | 'quote_declined';
 
 export interface NotificationData {
   productId?: string;
   sampleRequestId?: string;
+  quoteRequestId?: string;
   userId?: string;
   ruleId?: string;
   postId?: string;

@@ -1,6 +1,6 @@
 # Faz 2 (Ağ) - sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** onaylandı (kararlar 2026-09-17, aşağıda); Adım 1 tamamlandı (2026-09-17, telefonda kontrol bekliyor); sıradaki Adım 2 · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** onaylandı (kararlar 2026-09-17, aşağıda); Adım 1 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 2 tamamlandı (2026-09-17, telefonda kontrol bekliyor); sıradaki Adım 3 · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
 
 Faz 1'in bıraktığı zemin: kumaş pasaportu (yapılı ürün verisi), etiketten doldurma, 11 hesap becerisi, firma asistanı (İpek/Mert, firma hafızası, sunucuda sohbet), akışta pasaport kartları (Numune talep et / Takibe al / Teklif iste), WhatsApp'tan asistan. Faz 2'nin amacı **ağ etkisi**: bir firmanın kataloğu ve asistanı, başka firmalar için de iş görmeye başlar.
 

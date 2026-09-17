@@ -26,6 +26,9 @@ function iconFor(kind: string): IconName {
   if (kind === 'watch_match') return 'bookmark';
   if (kind.startsWith('sample_request')) return 'cube-outline';
   if (kind.startsWith('connection')) return 'people-outline';
+  // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
+  // quote_accepted, quote_declined.
+  if (kind.startsWith('quote')) return 'pricetag-outline';
   return 'notifications-outline';
 }
 
@@ -76,7 +79,12 @@ export function NotificationsScreen({ navigation }: Props) {
   const open = useCallback(
     (item: AppNotification) => {
       if (!item.read) markRead([item.id]);
-      const { productId, sampleRequestId, userId } = item.data ?? {};
+      const { productId, sampleRequestId, quoteRequestId, userId } = item.data ?? {};
+      if (item.kind.startsWith('quote')) {
+        if (quoteRequestId) navigation.navigate('QuoteRequestDetail', { requestId: quoteRequestId });
+        else navigation.navigate('QuoteRequests', { role: item.kind === 'quote_request_new' ? 'seller' : 'buyer' });
+        return;
+      }
       if (item.kind === 'watch_match' && productId) {
         navigation.navigate('ProductDetail', { productId });
         return;

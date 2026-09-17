@@ -38,6 +38,9 @@ import { SampleRequestFormScreen } from '../screens/samples/SampleRequestFormScr
 import { SampleRequestTrackingScreen } from '../screens/samples/SampleRequestTrackingScreen';
 import { MySampleRequestsScreen } from '../screens/samples/MySampleRequestsScreen';
 import { IncomingSampleRequestsScreen } from '../screens/samples/IncomingSampleRequestsScreen';
+import { QuoteRequestFormScreen } from '../screens/quotes/QuoteRequestFormScreen';
+import { QuoteRequestDetailScreen } from '../screens/quotes/QuoteRequestDetailScreen';
+import { QuoteRequestsScreen } from '../screens/quotes/QuoteRequestsScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
@@ -225,6 +228,21 @@ export function RootNavigator() {
               name="IncomingSampleRequests"
               component={IncomingSampleRequestsScreen}
               options={{ headerShown: true, title: 'Gelen Talepler' }}
+            />
+            <Stack.Screen
+              name="QuoteRequestForm"
+              component={QuoteRequestFormScreen}
+              options={{ headerShown: true, title: 'Teklif İste' }}
+            />
+            <Stack.Screen
+              name="QuoteRequestDetail"
+              component={QuoteRequestDetailScreen}
+              options={{ headerShown: true, title: 'Teklif' }}
+            />
+            <Stack.Screen
+              name="QuoteRequests"
+              component={QuoteRequestsScreen}
+              options={{ headerShown: true, title: 'Tekliflerim' }}
             />
             <Stack.Screen
               name="GarmentVisualCost"

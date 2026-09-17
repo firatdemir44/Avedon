@@ -8,9 +8,8 @@ import { PassportCard, toPassportCardProduct } from '../../components/PassportCa
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
-import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { ApiError, requestQuote, sendConnectionRequest, setProductFavorite, type FeedPost } from '../../api/client';
+import { setProductFavorite, type FeedPost } from '../../api/client';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 interface Props {
@@ -28,15 +27,17 @@ interface Props {
   onShare: (post: FeedPost) => void;
   onEdit: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
-  // "Teklif iste" sohbeti açtıktan sonra: (conversationId, başlık).
-  // Verilmezse düğme gösterilmez.
-  onOpenChat?: (conversationId: string, title: string) => void;
+  // "Teklif iste" → teklif isteği formu (Faz 2, Adım 2). Verilmezse düğme
+  // gösterilmez. Eski sohbet açan akış kalktı, bağlantı şartı da yok.
+  onRequestQuote?: (post: FeedPost) => void;
 }
 
 // Taslak: docs/tasarim-2027/Main.dc.html. Kenardan kenara beyaz blok:
 // yazar satırı → görsel → kumaş pasaportu kartı → metin → eylem çubuğu.
 // Ürünlü gönderide eylemler ticari: Numune talep et · Takibe al · Teklif iste
 // (+ yorum). Beğeni yalnızca ürünsüz duyurularda (Faz 1, Adım 6 kararı).
+// "Teklif iste" artık teklif isteği FORMUNU açıyor (Faz 2, Adım 2); eski
+// sohbet açan akış ve bağlantı sorusu kalktı.
 function PostCardComponent({
   post,
   isMine,
@@ -49,7 +50,7 @@ function PostCardComponent({
   onShare,
   onEdit,
   onDelete,
-  onOpenChat,
+  onRequestQuote,
 }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
@@ -130,58 +131,9 @@ function PostCardComponent({
     }
   };
 
-  // "Teklif iste": sunucu bağlantılı bir kişiyle sohbet açıp ürün kodlu mesajı
-  // gönderir. Bağlantı yoksa 403 + suggestedUserId gelir, bağlantı isteği
-  // önerilir. Sonuç kart içinde sarı/yeşil küçük kutuda kalır.
-  const [quoteBusy, setQuoteBusy] = useState(false);
-  const [quoteNotice, setQuoteNotice] = useState<{ text: string; done?: boolean } | null>(null);
-
-  const requestQuoteForPost = async () => {
-    if (!product || quoteBusy) return;
-    setQuoteBusy(true);
-    setQuoteNotice(null);
-    try {
-      const result = await requestQuote(product.id);
-      haptics.success();
-      onOpenChat?.(result.conversationId, company?.name ?? authorName);
-    } catch (err) {
-      const apiError = err instanceof ApiError ? err : null;
-      const code = apiError?.code;
-      if (apiError?.status === 403 && code === 'not_connected') {
-        const suggestedUserId = typeof apiError.body?.suggestedUserId === 'string' ? apiError.body.suggestedUserId : null;
-        if (!suggestedUserId) {
-          setQuoteNotice({ text: 'Teklif için önce bu firmadan biriyle bağlantı kurmanız gerekiyor.' });
-        } else {
-          const confirmed = await confirmAction({
-            title: 'Bağlantı gerekiyor',
-            message: 'Teklif için önce bağlantı kurmanız gerekiyor. Bağlantı isteği gönderilsin mi?',
-            confirmLabel: 'İstek gönder',
-          });
-          if (confirmed) {
-            try {
-              await sendConnectionRequest(suggestedUserId);
-              haptics.success();
-              setQuoteNotice({ text: 'Bağlantı isteği gönderildi. Kabul edilince teklif isteyebilirsiniz.', done: true });
-            } catch {
-              haptics.error();
-              setQuoteNotice({ text: 'Bağlantı isteği gönderilemedi. Kişinin profilinden tekrar deneyebilirsiniz.' });
-            }
-          }
-        }
-      } else if (code === 'no_contact') {
-        setQuoteNotice({ text: 'Bu firmada iletişim kurulabilecek bir kişi bulunamadı.' });
-      } else {
-        haptics.error();
-        setQuoteNotice({ text: 'Teklif isteği gönderilemedi, lütfen tekrar deneyin.' });
-      }
-    } finally {
-      setQuoteBusy(false);
-    }
-  };
-
   // Kendi firmasının ürününe teklif istenmez (sunucu 400 own_product).
   const isOwnProduct = !!product && !!myCompanyId && product.companyId === myCompanyId;
-  const canRequestQuote = !!product && !isOwnProduct && !!onOpenChat;
+  const canRequestQuote = !!product && !isOwnProduct && !!onRequestQuote;
 
   const meta = [
     post.author.position,
@@ -277,17 +229,6 @@ function PostCardComponent({
 
       {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
-      {quoteNotice ? (
-        <View style={[styles.notice, quoteNotice.done && styles.noticeDone]} accessibilityRole="alert">
-          <Ionicons
-            name={quoteNotice.done ? 'checkmark-circle-outline' : 'alert-circle-outline'}
-            size={16}
-            color={quoteNotice.done ? colors.success : colors.warning}
-          />
-          <Text style={[styles.noticeText, quoteNotice.done && styles.noticeTextDone]}>{quoteNotice.text}</Text>
-        </View>
-      ) : null}
-
       {product ? (
         <View style={styles.actionBar}>
           {/* Taslakta düğmenin bir de kutu ikonu var; 375px'lik telefonda dört
@@ -310,14 +251,12 @@ function PostCardComponent({
           />
           {canRequestQuote ? (
             <Pressable
-              onPress={requestQuoteForPost}
-              disabled={quoteBusy}
+              onPress={() => onRequestQuote?.(post)}
               accessibilityRole="button"
-              accessibilityLabel="Teklif iste"
-              accessibilityState={{ disabled: quoteBusy }}
-              style={({ pressed }) => [styles.iconButton, pressed && styles.pressedBg, quoteBusy && styles.disabled]}
+              accessibilityLabel={`${product.code} için teklif iste`}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressedBg]}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.primary} />
+              <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
             </Pressable>
           ) : null}
           <CountAction
@@ -459,20 +398,6 @@ const styles = StyleSheet.create({
   },
   imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   body: { ...typography.body, color: colors.text },
-  // Teklif isteğinin sonucu: kart içinde kalan küçük sarı (ya da başarıda
-  // yeşil) kutu. Web'de pencere yok, bu yüzden geri bildirim ekran içinde.
-  notice: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  noticeDone: { backgroundColor: colors.successSoft },
-  noticeText: { ...typography.caption, color: colors.warning, flexShrink: 1 },
-  noticeTextDone: { color: colors.success },
   actionBar: {
     flexDirection: 'row',
     alignItems: 'center',

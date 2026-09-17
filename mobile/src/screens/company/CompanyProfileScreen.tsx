@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, FlatList, Pressable, ScrollView, ActivityIndicator, Linking, Share, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import {
   deletePost,
   fetchCompany,
   fetchCompanyFeed,
+  fetchQuoteRequests,
   likePost,
   unlikePost,
   type FeedPost,
@@ -65,6 +67,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const { data: company, status, error, refreshing, reload, refresh } = useFocusLoad(
     () => fetchCompany(viewedCompanyId as string).then(({ company: fetched }) => fetched),
     { enabled: !!viewedCompanyId }
+  );
+
+  // Kendi firmasında: açık (henüz teklif verilmemiş) istek sayısı, düğmede
+  // gösterilir. Hata sessiz: sayı görünmez, düğme yine çalışır.
+  const [openQuoteRequests, setOpenQuoteRequests] = useState(0);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isOwnCompany) return;
+      let cancelled = false;
+      fetchQuoteRequests('seller')
+        .then(({ requests }) => {
+          if (!cancelled) setOpenQuoteRequests(requests.filter((r) => r.status === 'open').length);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }, [isOwnCompany])
   );
 
   // Firma akışı yalnızca sekmesi açılınca çekiliyor.
@@ -269,6 +289,15 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               style={styles.actionButton}
             />
           </View>
+          {/* Faz 2, Adım 2: firmaya gelen teklif istekleri. Açık istek varsa
+              sayısı düğmenin üstünde yazıyor (rozet yerine sayı: PrimaryButton
+              içine ikinci bir dokunulabilir öğe koymuyoruz). */}
+          <PrimaryButton
+            label={openQuoteRequests ? `Gelen teklif istekleri (${openQuoteRequests})` : 'Gelen teklif istekleri'}
+            variant="outline"
+            icon="pricetag-outline"
+            onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
+          />
           <PrimaryButton
             label="Firmayı Düzenle"
             variant="outline"
@@ -557,7 +586,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                   isMine={post.author.id === user?.id}
                   myCompanyId={user?.companyId ?? null}
                   onToggleLike={toggleLike}
-                  onOpenChat={(conversationId, title) => navigation.navigate('Chat', { conversationId, title })}
+                  onRequestQuote={(p) =>
+                    p.product &&
+                    navigation.navigate('QuoteRequestForm', {
+                      productId: p.product.id,
+                      productCode: p.product.code,
+                      stockUnit: p.product.stockUnit,
+                    })
+                  }
                   onOpenComments={(p) => navigation.navigate('PostComments', { postId: p.id })}
                   onOpenProduct={(p) => p.product && navigation.navigate('ProductDetail', { productId: p.product.id })}
                   onRequestSample={(p) =>

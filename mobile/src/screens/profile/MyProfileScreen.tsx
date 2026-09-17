@@ -40,6 +40,8 @@ export function MyProfileScreen({ navigation }: Props) {
   const menu = [
     user?.companyId ? { key: 'company', title: 'Firmam', onPress: () => navigation.navigate('CompanyProfile') } : null,
     { key: 'sampleRequests', title: 'Taleplerim', onPress: () => navigation.navigate('MySampleRequests') },
+    // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
+    { key: 'quoteRequests', title: 'Tekliflerim', onPress: () => navigation.navigate('QuoteRequests') },
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
     { key: 'watchRules', title: 'İzlediklerim', onPress: () => navigation.navigate('WatchRules') },

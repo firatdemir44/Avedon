@@ -517,7 +517,23 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
           />
         ) : (
-          <PrimaryButton label="Firma" variant="outline" size="lg" onPress={openCompany} />
+          // Faz 2, Adım 2: alt çubuğun ikincil eylemi artık "Teklif iste".
+          // Eski "Firma" düğmesi kalktı: 375px'lik telefonda üç `lg` düğme yan
+          // yana sığmıyordu ve firmaya gidiş zaten çubuğun hemen üstündeki
+          // firma satırından yapılıyor.
+          <PrimaryButton
+            label="Teklif iste"
+            icon="pricetag-outline"
+            variant="outline"
+            size="lg"
+            onPress={() =>
+              navigation.navigate('QuoteRequestForm', {
+                productId: product.id,
+                productCode: product.code,
+                stockUnit: product.stockUnit,
+              })
+            }
+          />
         )}
         {isOwnProduct ? (
           <PrimaryButton
