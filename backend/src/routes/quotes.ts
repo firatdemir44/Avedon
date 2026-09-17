@@ -58,6 +58,8 @@ function toRequestRow(row: NonNullable<RequestRow>, role: 'buyer' | 'seller') {
   return {
     id: row.id,
     role,
+    // Çoklu teklifin parçasıysa yalnızca ALICIYA döner (karşılaştırma tablosuna geçiş için).
+    rfqId: role === 'buyer' ? row.rfqId : null,
     status: row.status,
     quantity: row.quantity,
     unit: row.unit,
@@ -102,6 +104,9 @@ quotesRouter.post(
     // Aynı ürüne açık bir isteği varken ikinciyi açmasın (yanlışlıkla çift dokunma).
     const open = await prisma.quoteRequest.findFirst({ where: { buyerId: me.id, productId: product.id, status: 'open' } });
     if (open) return res.status(409).json({ error: 'already_open', requestId: open.id });
+    if ((await prisma.quoteRequest.count({ where: { buyerId: me.id, createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } })) >= 30) {
+      return res.status(429).json({ error: 'daily_limit', max: 30, remaining: 0 });
+    }
 
     const created = await prisma.quoteRequest.create({
       data: {

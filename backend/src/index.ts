@@ -24,6 +24,7 @@ import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
 import { referencesRouter } from './routes/references';
 import { yarnsRouter } from './routes/yarns';
+import { rfqsRouter } from './routes/rfqs';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { smsStatus } from './sms';
@@ -85,6 +86,7 @@ app.use('/api/quotes', quotesRouter);
 app.use('/api/machines', machinesRouter);
 app.use('/api/references', referencesRouter);
 app.use('/api/yarns', yarnsRouter);
+app.use('/api/rfqs', rfqsRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;

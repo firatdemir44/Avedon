@@ -631,12 +631,31 @@ model QuoteRequest {
   targetDate      DateTime?
   note            String    @default("")
   status          String    @default("open")
+  // Faz 3 Adım 1: çoklu teklif isteğinin parçasıysa dolu (ilişki yok; tablo yeniden kurulmasın).
+  // Satıcıya ASLA dönmez: satıcı kaç firmaya sorulduğunu bilmez.
+  rfqId           String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   quotes          Quote[]
 
   @@index([buyerId, createdAt])
   @@index([sellerCompanyId, status, createdAt])
+  @@index([rfqId])
+}
+
+// Çoklu teklif isteği (Faz 3, Adım 1): alıcının aynı ihtiyaç için seçtiği ürünlere giden
+// QuoteRequest'leri toplar; karşılaştırma tablosu bunun üzerinden kurulur.
+model Rfq {
+  id         String    @id @default(cuid())
+  buyerId    String
+  title      String
+  quantity   Float
+  unit       String
+  targetDate DateTime?
+  note       String    @default("")
+  createdAt  DateTime  @default(now())
+
+  @@index([buyerId, createdAt])
 }
 
 // Bir isteğe birden çok teklif sürümü olabilir; geçerli olan son "sent".
