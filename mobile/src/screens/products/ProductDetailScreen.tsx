@@ -496,6 +496,27 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           </Pressable>
         ) : null}
 
+        {/* Faz 2, Adım 3: firmanın asistanına bu ürünü sorma. Kendi ürününde
+            gösterilmez. Satır firma satırının ALTINDA ayrı bir dokunma alanı:
+            web'de iç içe düğme olmasın. */}
+        {company && !isOwnProduct ? (
+          <Pressable
+            onPress={() =>
+              navigation.navigate('SellerAssistant', {
+                companyId: company.id,
+                companyName: company.name,
+                productCode: product.code,
+              })
+            }
+            accessibilityRole="button"
+            accessibilityLabel={`${company.name} asistanına ${product.code} hakkında sor`}
+            style={({ pressed }) => [styles.assistantLink, pressed && styles.assistantLinkPressed]}
+          >
+            <Ionicons name="sparkles" size={16} color={colors.assistant} />
+            <Text style={styles.assistantLinkText}>Asistana sor</Text>
+          </Pressable>
+        ) : null}
+
         {error ? (
           <InlineError
             message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')}
@@ -655,6 +676,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   pressed: { backgroundColor: colors.pressed },
+  // Asistan kızılı: yalnızca asistana giden bu bağlantıda (renk kuralı).
+  assistantLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: MIN_TOUCH,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+  },
+  assistantLinkPressed: { opacity: 0.6 },
+  assistantLinkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.assistant },
   companyTexts: { flex: 1 },
   companyName: { ...typography.bodyStrong, color: colors.text },
   companyMeta: { ...typography.caption },

@@ -836,7 +836,12 @@ export type NotificationKind =
   | 'quote_request_new'
   | 'quote_received'
   | 'quote_accepted'
-  | 'quote_declined';
+  | 'quote_declined'
+  // Faz 2, Adım 3 (satıcı asistanı): asistan alıcının sorusunu firmaya iletti
+  // (satıcıya, data.questionId) ve firma cevapladı (alıcıya, data.threadId +
+  // data.companyId).
+  | 'company_question_new'
+  | 'company_question_answered';
 
 export interface NotificationData {
   productId?: string;
@@ -845,6 +850,10 @@ export interface NotificationData {
   userId?: string;
   ruleId?: string;
   postId?: string;
+  // Satıcı asistanı (Faz 2, Adım 3).
+  questionId?: string;
+  threadId?: string;
+  companyId?: string;
 }
 
 export interface AppNotification {
@@ -1078,6 +1087,68 @@ export interface SkillSummary {
 
 export function fetchSkills() {
   return request<{ skills: SkillSummary[] }>('/skills');
+}
+
+// --- Satıcı asistanı (Faz 2, Adım 3) -----------------------------------------
+// Alıcı, başka bir firmanın asistanıyla konuşur: iplik "buyer" kanalındadır,
+// mesajlar yukarıdaki /assistant/threads uçlarıyla gider. Bu kipte asistan
+// FİYAT VERMEZ (fiyat yalnızca teklifle) ve hafıza/izleme önerisi üretmez.
+
+export interface SellerAssistantThread {
+  thread: AssistantThread;
+  company: { id: string; name: string };
+}
+
+// Aynı firma için hep aynı iplik döner (200 mevcut, 201 yeni).
+export function openSellerAssistantThread(companyId: string) {
+  return request<SellerAssistantThread>(`/assistant/seller/${companyId}/thread`, { method: 'POST' });
+}
+
+export interface CompanyQuestion {
+  id: string;
+  question: string;
+  answer: string | null;
+  status: 'open' | 'answered';
+  createdAt: string;
+  answeredAt: string | null;
+  product: { id: string; code: string } | null;
+  asker: { id: string; name: string; company: { id: string; name: string } | null };
+}
+
+// Firması olmayan kullanıcıda 403 no_company.
+export function fetchCompanyQuestions() {
+  return request<{ questions: CompanyQuestion[]; openCount: number }>('/assistant/questions');
+}
+
+export function answerCompanyQuestion(id: string, input: { answer: string; addToFaq?: boolean }) {
+  return request<{ ok: true }>(`/assistant/questions/${id}/answer`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface CompanyFaq {
+  id: string;
+  question: string;
+  answer: string;
+  updatedAt: string;
+}
+
+export function fetchCompanyFaqs() {
+  return request<{ faqs: CompanyFaq[] }>('/assistant/faq');
+}
+
+// 409 too_many_faqs: firma başına sınır doldu.
+export function createCompanyFaq(input: { question: string; answer: string }) {
+  return request<{ faq: CompanyFaq }>('/assistant/faq', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateCompanyFaq(id: string, input: { question: string; answer: string }) {
+  return request<{ faq: CompanyFaq }>(`/assistant/faq/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+export function deleteCompanyFaq(id: string) {
+  return request<void>(`/assistant/faq/${id}`, { method: 'DELETE' });
 }
 
 // Numune talebi yanıtları, User/Product'ın tamamını DEĞİL sunucunun açıkça

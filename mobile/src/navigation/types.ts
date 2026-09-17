@@ -58,6 +58,14 @@ export type RootStackParamList = {
   // Asistanın sohbet geçmişi ve firma hafızası (asistan sekmesinden açılır).
   AssistantThreads: undefined;
   AssistantMemory: undefined;
+  // Satıcı asistanı (Faz 2, Adım 3): BAŞKA bir firmanın asistanıyla sohbet.
+  // companyName bildirimden gelmeyebilir; o zaman başlık "Firma asistanı" olur
+  // ve iplik açılınca sunucudan gelen adla değişir. productCode verilirse ilk
+  // örnek soru o ürünle ilgili olur.
+  SellerAssistant: { companyId: string; companyName?: string; productCode?: string };
+  // Satıcı tarafı: asistana gelen sorular ve sık sorulanlar yönetimi.
+  CompanyQuestions: undefined;
+  CompanyFaq: undefined;
   // Hesaplayıcı listesi artık sekmede değil, yığında: alt menüdeki yeri
   // "Asistan"a geçti, listeye asistandaki "Tüm hesaplayıcılar" çipinden gelinir.
   CalculatorsList: undefined;

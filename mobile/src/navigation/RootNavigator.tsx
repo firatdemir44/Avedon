@@ -26,6 +26,9 @@ import { NotificationsScreen } from '../screens/notifications/NotificationsScree
 import { WatchRulesScreen } from '../screens/notifications/WatchRulesScreen';
 import { AssistantThreadsScreen } from '../screens/assistant/AssistantThreadsScreen';
 import { AssistantMemoryScreen } from '../screens/assistant/AssistantMemoryScreen';
+import { SellerAssistantScreen } from '../screens/assistant/SellerAssistantScreen';
+import { CompanyQuestionsScreen } from '../screens/assistant/CompanyQuestionsScreen';
+import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
@@ -168,6 +171,23 @@ export function RootNavigator() {
               name="AssistantMemory"
               component={AssistantMemoryScreen}
               options={{ headerShown: true, title: 'Firma Hafızası' }}
+            />
+            {/* Satıcı asistanı (Faz 2, Adım 3): başlık ekranın kendisinde
+                firma adıyla ayarlanıyor. */}
+            <Stack.Screen
+              name="SellerAssistant"
+              component={SellerAssistantScreen}
+              options={{ headerShown: true, title: 'Firma asistanı' }}
+            />
+            <Stack.Screen
+              name="CompanyQuestions"
+              component={CompanyQuestionsScreen}
+              options={{ headerShown: true, title: 'Asistana Gelen Sorular' }}
+            />
+            <Stack.Screen
+              name="CompanyFaq"
+              component={CompanyFaqScreen}
+              options={{ headerShown: true, title: 'Sık Sorulanlar' }}
             />
             <Stack.Screen
               name="CalculatorsList"

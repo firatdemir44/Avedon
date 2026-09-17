@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, radius, shadow, spacing, typography } from '../theme';
+import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../theme';
 import type { ResultRow } from '../features/assistant/toolResult';
 
 interface Row {
@@ -42,12 +42,15 @@ export function AssistantResultCard({
   rows,
   text,
   formula,
+  onProductPress,
 }: {
   title: string;
   unit?: string;
   rows: ResultRow[];
   text?: string;
   formula?: string;
+  // Katalog sonucunda ürün satırına dokunma (satıcı asistanı, Faz 2 Adım 3).
+  onProductPress?: (productId: string) => void;
 }) {
   const [openFormula, setOpenFormula] = useState(false);
 
@@ -60,15 +63,37 @@ export function AssistantResultCard({
           </Text>
           {unit ? <Text style={styles.toolUnit}>{unit}</Text> : null}
         </View>
-        {rows.map((row, index) => (
-          <View key={`${row.label}-${index}`} style={[styles.toolRow, row.strong && styles.toolRowStrong]}>
-            <View style={styles.toolRowTexts}>
-              <Text style={[styles.toolLabel, row.strong && styles.toolLabelStrong]}>{row.label}</Text>
-              {row.note ? <Text style={styles.toolNote}>{row.note}</Text> : null}
+        {rows.map((row, index) => {
+          const body = (
+            <>
+              <View style={styles.toolRowTexts}>
+                <Text style={[styles.toolLabel, row.strong && styles.toolLabelStrong]}>{row.label}</Text>
+                {row.note ? <Text style={styles.toolNote}>{row.note}</Text> : null}
+              </View>
+              <Text style={[styles.toolValue, row.strong && styles.toolValueStrong]}>{row.value}</Text>
+            </>
+          );
+          const productId = row.productId;
+          if (productId && onProductPress) {
+            return (
+              <Pressable
+                key={`${row.label}-${index}`}
+                onPress={() => onProductPress(productId)}
+                accessibilityRole="button"
+                accessibilityLabel={`${row.label}${row.note ? `, ${row.note}` : ''}, ürün sayfasını aç`}
+                style={({ pressed }) => [styles.toolRow, styles.toolRowLink, pressed && styles.toolRowPressed]}
+              >
+                {body}
+                <Ionicons name="chevron-forward" size={16} color={colors.chevron} />
+              </Pressable>
+            );
+          }
+          return (
+            <View key={`${row.label}-${index}`} style={[styles.toolRow, row.strong && styles.toolRowStrong]}>
+              {body}
             </View>
-            <Text style={[styles.toolValue, row.strong && styles.toolValueStrong]}>{row.value}</Text>
-          </View>
-        ))}
+          );
+        })}
         {rows.length === 0 && text ? <Text style={styles.toolText}>{text}</Text> : null}
       </View>
       {formula ? (
@@ -174,6 +199,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
   },
   toolRowStrong: { borderTopColor: colors.borderStrong, minHeight: 38 },
+  // Ürün satırı dokunulabilir: en az 44px ve sonda ok.
+  toolRowLink: { minHeight: MIN_TOUCH },
+  toolRowPressed: { backgroundColor: colors.pressed },
   toolRowTexts: { flexShrink: 1 },
   toolLabel: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.text },
   toolLabelStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20 },

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -48,8 +49,7 @@ function parseNumber(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-// Ekran yalnızca sunucudan okur/yazar; navigation'a ihtiyacı yok.
-export function AssistantMemoryScreen(_props: Props) {
+export function AssistantMemoryScreen({ navigation }: Props) {
   const { data, status, error, reload } = useFocusLoad(fetchCompanyMemory);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -176,6 +176,17 @@ export function AssistantMemoryScreen(_props: Props) {
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       {personaSection}
+      {/* Faz 2, Adım 3: satıcı asistanının alıcılara verdiği hazır cevaplar. */}
+      <SectionHeader title="Alıcı soruları" />
+      <View style={styles.block}>
+        <ListRow
+          title="Sık sorulanlar"
+          subtitle="Asistanınız alıcı sorularını bu cevaplara göre yanıtlar"
+          left={<Ionicons name="help-circle-outline" size={22} color={colors.primary} />}
+          divider={false}
+          onPress={() => navigation.navigate('CompanyFaq')}
+        />
+      </View>
       <Text style={styles.intro}>
         Asistan hesap yaparken bu değerleri varsayılan olarak önerir ve hangisini kullandığını söyler. Boş bırakılan
         değerleri her seferinde size sorar.

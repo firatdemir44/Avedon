@@ -17,6 +17,9 @@ interface Props {
   // lg: ekran altına sabitlenen eylem çubuğundaki düğmeler (48px).
   size?: 'sm' | 'md' | 'lg';
   icon?: IconName;
+  // 'assistant': yazı, ikon ve çerçeve asistan kızılı olur. YALNIZCA asistanın
+  // kendisine giden düğmelerde (renk kuralı, MOBILE-DESIGN.md Asistan bölümü).
+  tone?: 'assistant';
   style?: ViewStyle;
   accessibilityLabel?: string;
 }
@@ -28,11 +31,12 @@ export function PrimaryButton({
   variant = 'primary',
   size = 'md',
   icon,
+  tone,
   style,
   accessibilityLabel,
 }: Props) {
   const isPrimary = variant === 'primary';
-  const textColor = isPrimary ? colors.primaryText : colors.primary;
+  const textColor = tone === 'assistant' && !isPrimary ? colors.assistant : isPrimary ? colors.primaryText : colors.primary;
   return (
     <Pressable
       onPress={onPress}
@@ -48,6 +52,7 @@ export function PrimaryButton({
         size === 'lg' && styles.large,
         size === 'sm' && styles.small,
         styles[variant],
+        tone === 'assistant' && !isPrimary && { borderColor: colors.assistant },
         pressed && !disabled && (isPrimary ? styles.pressedPrimary : styles.pressedQuiet),
         disabled && styles.disabled,
         style,

@@ -29,6 +29,8 @@ function iconFor(kind: string): IconName {
   // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
   // quote_accepted, quote_declined.
   if (kind.startsWith('quote')) return 'pricetag-outline';
+  // Satıcı asistanı (Faz 2, Adım 3): soru geldi / soru cevaplandı.
+  if (kind.startsWith('company_question')) return 'sparkles-outline';
   return 'notifications-outline';
 }
 
@@ -79,7 +81,18 @@ export function NotificationsScreen({ navigation }: Props) {
   const open = useCallback(
     (item: AppNotification) => {
       if (!item.read) markRead([item.id]);
-      const { productId, sampleRequestId, quoteRequestId, userId } = item.data ?? {};
+      const { productId, sampleRequestId, quoteRequestId, userId, companyId } = item.data ?? {};
+      // Faz 2, Adım 3: satıcıya gelen soru → gelen sorular listesi; alıcıya
+      // gelen cevap → o firmanın asistanı (firma adı bildirimde yok, ekran
+      // iplik açılınca sunucudan alır).
+      if (item.kind === 'company_question_new') {
+        navigation.navigate('CompanyQuestions');
+        return;
+      }
+      if (item.kind === 'company_question_answered') {
+        if (companyId) navigation.navigate('SellerAssistant', { companyId });
+        return;
+      }
       if (item.kind.startsWith('quote')) {
         if (quoteRequestId) navigation.navigate('QuoteRequestDetail', { requestId: quoteRequestId });
         else navigation.navigate('QuoteRequests', { role: item.kind === 'quote_request_new' ? 'seller' : 'buyer' });

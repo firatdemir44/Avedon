@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -37,15 +36,24 @@ import {
 import { AssistantAvatar, type AssistantAvatarState } from '../../components/AssistantAvatar';
 import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
 import { AssistantResultCard } from '../../components/ResultCard';
+import {
+  AssistantBubble,
+  AssistantComposer,
+  ChatDayChip,
+  ThinkingBubble,
+  UserBubble,
+  chatStyles,
+  type ComposerChip,
+} from '../../components/assistant/ChatParts';
 import { HeaderButton } from '../../components/HeaderButton';
 import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { SkeletonList } from '../../components/Skeleton';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
-import { formatClockTime, formatDayLabel, isSameCalendarDay } from '../../features/time';
+import { isSameCalendarDay } from '../../features/time';
 import { toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
 
@@ -434,20 +442,13 @@ export function AssistantScreen({ navigation }: Props) {
       const previous = data[index - 1];
       const startsNewDay =
         !previous || !isSameCalendarDay(new Date(previous.createdAt), new Date(item.createdAt));
-      const dayChip = startsNewDay ? (
-        <View style={styles.dayChip}>
-          <Text style={styles.dayChipText}>{formatDayLabel(item.createdAt)}</Text>
-        </View>
-      ) : null;
+      const dayChip = startsNewDay ? <ChatDayChip createdAt={item.createdAt} /> : null;
 
       if (item.role === 'user') {
         return (
           <>
             {dayChip}
-            <View style={styles.userBubble}>
-              <Text style={styles.userText}>{item.text}</Text>
-              <Text style={styles.userTime}>{item.local ? 'Gönderiliyor' : formatClockTime(item.createdAt)}</Text>
-            </View>
+            <UserBubble text={item.text} createdAt={item.createdAt} local={item.local} />
           </>
         );
       }
@@ -458,19 +459,15 @@ export function AssistantScreen({ navigation }: Props) {
       return (
         <>
           {dayChip}
-          <View style={styles.assistantRow}>
+          <View style={chatStyles.assistantRow}>
             <AssistantAvatar
               persona={effectivePersona}
               size={CHAT_AVATAR}
               state={isLast ? avatarState : 'idle'}
               accessibilityLabel={`${personaName}, asistan`}
             />
-            <View style={styles.assistantColumn}>
-              {item.text ? (
-                <View style={styles.assistantBubble}>
-                  <Text style={styles.assistantText}>{item.text}</Text>
-                </View>
-              ) : null}
+            <View style={chatStyles.assistantColumn}>
+              {item.text ? <AssistantBubble text={item.text} /> : null}
               {item.toolCalls.map((call, callIndex) => {
                 const view = toolResultView(call);
                 return (
@@ -524,58 +521,29 @@ export function AssistantScreen({ navigation }: Props) {
     ]
   );
 
+  const composerChips: ComposerChip[] = [
+    ...SKILL_CHIPS.map((chip) => ({
+      label: chip.label,
+      onPress: () => applyStarter(chip.starter),
+      accessibilityLabel: `${chip.label}, örnek soruyu yaz`,
+    })),
+    {
+      label: 'Tüm hesaplayıcılar',
+      icon: 'calculator-outline' as const,
+      onPress: () => navigation.navigate('CalculatorsList'),
+    },
+  ];
+
   const composer = (
-    <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.chipRow}
-      >
-        {SKILL_CHIPS.map((chip) => (
-          <Pressable
-            key={chip.label}
-            onPress={() => applyStarter(chip.starter)}
-            accessibilityRole="button"
-            accessibilityLabel={`${chip.label}, örnek soruyu yaz`}
-            style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-          >
-            <Text style={styles.chipText}>{chip.label}</Text>
-          </Pressable>
-        ))}
-        <Pressable
-          onPress={() => navigation.navigate('CalculatorsList')}
-          accessibilityRole="button"
-          accessibilityLabel="Tüm hesaplayıcılar"
-          style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-        >
-          <Ionicons name="calculator-outline" size={14} color={colors.primary} />
-          <Text style={styles.chipText}>Tüm hesaplayıcılar</Text>
-        </Pressable>
-      </ScrollView>
-      <View style={styles.composer}>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder="Sor, hesaplat, etiket yapıştır..."
-          placeholderTextColor={colors.textMuted}
-          value={input}
-          onChangeText={setInput}
-          multiline
-          accessibilityLabel="Asistana sorunuz"
-        />
-        <Pressable
-          onPress={() => send(input)}
-          disabled={!canSend}
-          accessibilityRole="button"
-          accessibilityLabel="Gönder"
-          accessibilityState={{ disabled: !canSend }}
-          style={({ pressed }) => [styles.send, !canSend && styles.sendDisabled, pressed && canSend && styles.pressedFade]}
-        >
-          <Ionicons name="arrow-up" size={20} color={colors.primaryText} />
-        </Pressable>
-      </View>
-    </View>
+    <AssistantComposer
+      inputRef={inputRef}
+      value={input}
+      onChangeText={setInput}
+      onSend={() => send(input)}
+      canSend={canSend}
+      bottomInset={insets.bottom}
+      chips={composerChips}
+    />
   );
 
   if (status === 'loading' || !personaReady) {
@@ -636,7 +604,7 @@ export function AssistantScreen({ navigation }: Props) {
           data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={chatStyles.listContent}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
           ListEmptyComponent={
@@ -655,16 +623,16 @@ export function AssistantScreen({ navigation }: Props) {
                   {WELCOME} {skillCount} beceri hazır.
                 </Text>
               </View>
-              <View style={styles.examples}>
+              <View style={chatStyles.examples}>
                 {EXAMPLES.map((example) => (
                   <Pressable
                     key={example}
                     onPress={() => send(example)}
                     accessibilityRole="button"
                     accessibilityLabel={`Örnek soru: ${example}`}
-                    style={({ pressed }) => [styles.example, pressed && styles.chipPressed]}
+                    style={({ pressed }) => [chatStyles.example, pressed && chatStyles.examplePressed]}
                   >
-                    <Text style={styles.exampleText}>{example}</Text>
+                    <Text style={chatStyles.exampleText}>{example}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -673,17 +641,14 @@ export function AssistantScreen({ navigation }: Props) {
           ListFooterComponent={
             <>
               {sending ? (
-                <View style={styles.assistantRow}>
+                <View style={chatStyles.assistantRow}>
                   <AssistantAvatar
                     persona={effectivePersona}
                     size={CHAT_AVATAR}
                     state="thinking"
                     accessibilityLabel={`${personaName} düşünüyor`}
                   />
-                  <View style={styles.typingBubble} accessibilityLiveRegion="polite">
-                    <ActivityIndicator size="small" color={colors.assistant} />
-                    <Text style={styles.typingText}>Hesaplıyor...</Text>
-                  </View>
+                  <ThinkingBubble />
                 </View>
               ) : null}
               {sendError ? (
@@ -833,10 +798,6 @@ const styles = StyleSheet.create({
   },
   chooserError: { marginTop: spacing.sm },
 
-  listContent: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.md, gap: 12 },
-  dayChip: { alignSelf: 'center', backgroundColor: colors.chip, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 3 },
-  dayChipText: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-
   greeting: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.md },
   greetingBubble: {
     alignSelf: 'stretch',
@@ -849,101 +810,9 @@ const styles = StyleSheet.create({
   },
   greetingHint: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
 
-  userBubble: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  userText: { ...typography.label, fontFamily: fonts.regular, color: colors.primaryText },
-  userTime: { fontFamily: fonts.mono, fontSize: 11, lineHeight: 15, color: colors.onPrimaryMuted, textAlign: 'right', marginTop: 4 },
-
-  assistantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  assistantColumn: { flex: 1, minWidth: 0, gap: spacing.sm },
-  assistantBubble: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
   assistantText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  typingText: { ...typography.caption, color: colors.textMuted },
   sendErrorBanner: { marginTop: spacing.sm },
-
-  examples: { paddingHorizontal: spacing.xs, gap: spacing.sm },
-  example: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: spacing.sm,
-  },
-  exampleText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-
-  footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  chipRow: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingTop: 10 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   chipPressed: { backgroundColor: colors.pressed },
-  chipText: { ...typography.caption, fontFamily: fonts.medium, color: colors.primary },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  input: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    maxHeight: 120,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    color: colors.text,
-  },
-  send: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.md,
-    // Asistan kızılı: gönder düğmesi.
-    backgroundColor: colors.assistant,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.45 },
   pressedFade: { opacity: 0.85 },
 
   memoryCard: {

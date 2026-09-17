@@ -16,6 +16,8 @@ export interface ResultRow {
   note?: string;
   // Kartın son satırı gibi öne çıkan satır.
   strong?: boolean;
+  // Katalog sonucu satırı: dokununca açılacak ürün (satıcı asistanı, Faz 2 Adım 3).
+  productId?: string;
 }
 
 export interface ToolResultView {
@@ -156,6 +158,7 @@ function catalogRows(output: unknown): ResultRow[] {
       label: asText(p.code) || 'Ürün',
       value: measures.join(' · '),
       note: [category, note].filter(Boolean).join(' · ') || undefined,
+      productId: asText(p.id) || undefined,
     };
   });
 }

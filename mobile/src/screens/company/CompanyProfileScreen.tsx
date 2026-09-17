@@ -9,6 +9,7 @@ import {
   deletePost,
   fetchCompany,
   fetchCompanyFeed,
+  fetchCompanyQuestions,
   fetchQuoteRequests,
   likePost,
   unlikePost,
@@ -72,6 +73,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   // Kendi firmasında: açık (henüz teklif verilmemiş) istek sayısı, düğmede
   // gösterilir. Hata sessiz: sayı görünmez, düğme yine çalışır.
   const [openQuoteRequests, setOpenQuoteRequests] = useState(0);
+  // Faz 2, Adım 3: asistana gelip henüz cevaplanmamış soru sayısı (aynı desen).
+  const [openQuestions, setOpenQuestions] = useState(0);
   useFocusEffect(
     useCallback(() => {
       if (!isOwnCompany) return;
@@ -79,6 +82,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       fetchQuoteRequests('seller')
         .then(({ requests }) => {
           if (!cancelled) setOpenQuoteRequests(requests.filter((r) => r.status === 'open').length);
+        })
+        .catch(() => {});
+      fetchCompanyQuestions()
+        .then(({ openCount }) => {
+          if (!cancelled) setOpenQuestions(openCount);
         })
         .catch(() => {});
       return () => {
@@ -298,6 +306,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             icon="pricetag-outline"
             onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
           />
+          {/* Faz 2, Adım 3: asistana gelen alıcı soruları. */}
+          <PrimaryButton
+            label={openQuestions ? `Asistana gelen sorular (${openQuestions})` : 'Asistana gelen sorular'}
+            variant="outline"
+            icon="sparkles-outline"
+            onPress={() => navigation.navigate('CompanyQuestions')}
+          />
           <PrimaryButton
             label="Firmayı Düzenle"
             variant="outline"
@@ -305,7 +320,22 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
           />
         </View>
-      ) : null}
+      ) : (
+        // Faz 2, Adım 3: başka bir firmanın sayfasında asistanına soru sorma.
+        // Asistan rengi yalnızca asistanın olduğu yerde (renk kuralı).
+        <View style={styles.actions}>
+          <PrimaryButton
+            label="Asistana sor"
+            variant="outline"
+            icon="sparkles"
+            onPress={() =>
+              navigation.navigate('SellerAssistant', { companyId: company.id, companyName: company.name })
+            }
+            accessibilityLabel={`${company.name} asistanına sor`}
+            tone="assistant"
+          />
+        </View>
+      )}
     </View>
   );
 
