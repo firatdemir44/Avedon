@@ -45,13 +45,14 @@ import {
   chatStyles,
   type ComposerChip,
 } from '../../components/assistant/ChatParts';
+import { RfqCandidatesCard, RfqSummaryCard } from '../../components/assistant/RfqAssistantCards';
 import { HeaderButton } from '../../components/HeaderButton';
 import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { SkeletonList } from '../../components/Skeleton';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
 import { isSameCalendarDay } from '../../features/time';
-import { toolResultView } from '../../features/assistant/toolResult';
+import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -102,6 +103,8 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
   { label: 'Fason kapasite', starter: '28 fayn 30 pus süprem örecek fason arıyorum' },
   // Faz 2, Adım 6: iplik dizini araması.
   { label: 'İplik ara', starter: '150/48 DTY polyester ipliği kim satıyor?' },
+  // Faz 3, Adım 2: çoklu teklif toplama (asistan aday önerir, göndermez).
+  { label: 'Teklif topla', starter: 'Şu özellikte kumaş için teklif toplayalım: ' },
 ];
 
 // Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
@@ -473,6 +476,42 @@ export function AssistantScreen({ navigation }: Props) {
             <View style={chatStyles.assistantColumn}>
               {item.text ? <AssistantBubble text={item.text} /> : null}
               {item.toolCalls.map((call, callIndex) => {
+                // Faz 3, Adım 2: teklif araçları satır listesi değil, kendi
+                // kartlarını çiziyor (seçim + düğme). Aday yoksa kart çizilmez,
+                // asistanın metni yeter.
+                if (call.name === 'teklif_topla') {
+                  const rfqView = rfqCandidatesView(call);
+                  if (!rfqView.candidates.length) return null;
+                  return (
+                    <RfqCandidatesCard
+                      key={`${item.id}-tool-${callIndex}`}
+                      view={rfqView}
+                      onOpenProduct={(productId) => navigation.navigate('ProductDetail', { productId })}
+                      onRequest={(items, request) =>
+                        navigation.navigate('RfqForm', {
+                          items,
+                          prefill: {
+                            quantity: request.quantity ?? undefined,
+                            unit: request.unit ?? undefined,
+                            targetDate: request.targetDate ?? undefined,
+                            note: request.note || undefined,
+                          },
+                        })
+                      }
+                    />
+                  );
+                }
+                if (call.name === 'teklifleri_ozetle') {
+                  const summaryView = rfqSummaryView(call);
+                  if (!summaryView) return null;
+                  return (
+                    <RfqSummaryCard
+                      key={`${item.id}-tool-${callIndex}`}
+                      view={summaryView}
+                      onOpen={(rfqId) => navigation.navigate('RfqCompare', { rfqId })}
+                    />
+                  );
+                }
                 const view = toolResultView(call);
                 return (
                   <AssistantResultCard

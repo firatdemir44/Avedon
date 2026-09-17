@@ -1,5 +1,6 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, Modal, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchRfq, type RfqCompare, type RfqRow } from '../../api/client';
@@ -48,11 +49,46 @@ function Empty() {
   return <Text style={styles.cellMuted}>·</Text>;
 }
 
+// Ödeme koşulu ve Not hücreleri 2 satırda kırpılıyor. Uzun metinde hücreye
+// dokunmak tam metni alt panelde açar; satır yükseklikleri sabit kalsın diye
+// hücrenin içine ek bir şey konmuyor.
+const LONG_TEXT = 40;
+
+function ExpandableCell({
+  label,
+  text,
+  onExpand,
+}: {
+  label: string;
+  text: string;
+  onExpand: (cell: { label: string; text: string }) => void;
+}) {
+  if (text.length <= LONG_TEXT) {
+    return (
+      <Text style={styles.cellText} numberOfLines={2}>
+        {text}
+      </Text>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => onExpand({ label, text })}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}, tamamını gör`}
+      style={({ pressed }) => [styles.expandCell, pressed && styles.pressedQuiet]}
+    >
+      <Text style={styles.cellText} numberOfLines={2}>
+        {text}
+      </Text>
+    </Pressable>
+  );
+}
+
 interface RowSpec {
   key: string;
   label: string;
   height: number;
-  render: (row: RfqRow) => React.ReactNode;
+  render: (row: RfqRow, onExpand: (cell: { label: string; text: string }) => void) => React.ReactNode;
 }
 
 const ROW_SPECS: RowSpec[] = [
@@ -138,13 +174,9 @@ const ROW_SPECS: RowSpec[] = [
     key: 'payment',
     label: 'Ödeme koşulu',
     height: 52,
-    render: (row) => {
+    render: (row, onExpand) => {
       if (!row.quote?.paymentTerms) return <Empty />;
-      return (
-        <Text style={styles.cellText} numberOfLines={2}>
-          {row.quote.paymentTerms}
-        </Text>
-      );
+      return <ExpandableCell label="Ödeme koşulu" text={row.quote.paymentTerms} onExpand={onExpand} />;
     },
   },
   {
@@ -164,13 +196,9 @@ const ROW_SPECS: RowSpec[] = [
     key: 'note',
     label: 'Not',
     height: 52,
-    render: (row) => {
+    render: (row, onExpand) => {
       if (!row.quote?.note) return <Empty />;
-      return (
-        <Text style={styles.cellText} numberOfLines={2}>
-          {row.quote.note}
-        </Text>
-      );
+      return <ExpandableCell label="Not" text={row.quote.note} onExpand={onExpand} />;
     },
   },
   {
@@ -191,6 +219,9 @@ const ROW_SPECS: RowSpec[] = [
 // para birimi içinde veriliyor, ekran da bunu yazıyor.
 export function RfqCompareScreen({ route, navigation }: Props) {
   const { rfqId } = route.params;
+  const insets = useSafeAreaInsets();
+  // Kırpılan hücrenin tam metni (alt panel).
+  const [expanded, setExpanded] = useState<{ label: string; text: string } | null>(null);
   const { data: rfq, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchRfq(rfqId).then((res) => res.rfq)
   );
@@ -317,7 +348,7 @@ export function RfqCompareScreen({ route, navigation }: Props) {
 
                   {ROW_SPECS.map((spec) => (
                     <View key={spec.key} style={[styles.cell, { height: spec.height }]}>
-                      {spec.render(row)}
+                      {spec.render(row, setExpanded)}
                     </View>
                   ))}
 
@@ -343,6 +374,37 @@ export function RfqCompareScreen({ route, navigation }: Props) {
           çevrilmez.
         </Text>
       </ScrollView>
+
+      <Modal
+        visible={expanded !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExpanded(null)}
+      >
+        <Pressable style={styles.sheetBackdrop} onPress={() => setExpanded(null)} accessibilityLabel="Kapat">
+          {/* Panelin içine dokunmak kapatmasın; zemine dokunmak kapatır.
+              (Panel ayrı bir Pressable olsaydı web'de iç içe düğme olurdu.) */}
+          <View
+            onStartShouldSetResponder={() => true}
+            style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}
+          >
+            <Text style={styles.sheetTitle} accessibilityRole="header">
+              {expanded?.label}
+            </Text>
+            <ScrollView style={styles.sheetScroll}>
+              <Text style={styles.sheetText}>{expanded?.text}</Text>
+            </ScrollView>
+            <Pressable
+              onPress={() => setExpanded(null)}
+              accessibilityRole="button"
+              accessibilityLabel="Kapat"
+              style={({ pressed }) => [styles.sheetClose, pressed && styles.pressedQuiet]}
+            >
+              <Text style={styles.sheetCloseText}>Kapat</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -426,6 +488,30 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
   },
   pressedQuiet: { backgroundColor: colors.pressed },
+  // Hücrenin tamamını kaplar ki sabit yükseklikte de kolay dokunulsun.
+  expandCell: { alignSelf: 'stretch', justifyContent: 'center', flex: 1 },
+  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  sheetScroll: { maxHeight: 280 },
+  sheetTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
+  sheetText: { ...typography.body, color: colors.text },
+  sheetClose: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+  },
+  sheetCloseText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
   openText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
   footNote: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter },
 });

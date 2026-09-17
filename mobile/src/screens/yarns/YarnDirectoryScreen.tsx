@@ -13,6 +13,8 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { StockValue } from '../../components/StockIndicator';
 import { TextField } from '../../components/TextField';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
+import { RfqSelectionBar } from '../../components/RfqSelectionBar';
+import { useRfqSelection, type RfqSelectionItem } from '../../features/quotes/rfqSelection';
 import { EmptyState, InlineError, friendlyMessage } from '../../components/StateView';
 import { SkeletonList } from '../../components/Skeleton';
 import { parseNumber } from '../../features/calculators/parse';
@@ -71,18 +73,24 @@ const PAGE_SIZE = 20;
 export function YarnDirectory({
   onOpenProduct,
   onAddYarn,
+  onRfqSubmit,
   preset,
   presetKey,
 }: {
   onOpenProduct: (productId: string) => void;
   // Firması olan kullanıcıda "İplik ekle"; yoksa verilmez.
   onAddYarn?: () => void;
+  // Faz 3, Adım 3: çoklu teklif seçme kipi (ürün listesindekinin aynısı).
+  // Verilmezse kip düğmesi hiç çıkmaz.
+  onRfqSubmit?: (items: RfqSelectionItem[]) => void;
   // Kumaş pasaportundaki "Kim satıyor?" bağlantısından gelen ön dolgu.
   preset?: YarnDirectoryPreset;
   // Her açılışta değişir: aynı ön dolgu ikinci kez gelse de uygulanır.
   presetKey?: number;
 }) {
   const options = useYarnOptions();
+  const { user } = useSession();
+  const selection = useRfqSelection();
 
   const [search, setSearch] = useState('');
   const [families, setFamilies] = useState<string[]>([]);
@@ -320,7 +328,45 @@ export function YarnDirectory({
 
   const countUnitOptions = optionValues(options.countUnits);
 
+  const canSelect = !!onRfqSubmit && !!user;
+
   return (
+    <View style={styles.screen}>
+      {canSelect ? (
+        <View style={styles.modeBar}>
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              if (selection.active) selection.cancel();
+              else selection.start();
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: selection.active }}
+            accessibilityLabel={
+              selection.active ? 'Teklif için seçmeyi bırak' : 'Teklif için iplik seç, birkaç firmaya birden sor'
+            }
+            style={({ pressed }) => [
+              styles.modeButton,
+              selection.active && styles.modeActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons
+              name={selection.active ? 'close' : 'checkbox-outline'}
+              size={18}
+              color={selection.active ? colors.primaryText : colors.primary}
+            />
+            <Text style={[styles.modeText, selection.active && styles.modeTextActive]}>
+              {selection.active ? 'Seçimi bırak' : 'Teklif için seç'}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {selection.active ? (
+        <Text style={styles.selectHint} accessibilityLiveRegion="polite">
+          Teklif almak istediğiniz iplikleri işaretleyin; her firmaya tek istek gider.
+        </Text>
+      ) : null}
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -510,16 +556,37 @@ export function YarnDirectory({
         <>
           <SectionHeader title="İplikler" count={results.length} />
           <View style={styles.block}>
-            {results.map((yarn, index) => (
-              <YarnRow
-                key={yarn.id}
-                product={yarn}
-                divider={index < results.length - 1}
-                endUseLabels={options.endUses}
-                colorStateLabels={options.colorStates}
-                onPress={() => onOpenProduct(yarn.id)}
-              />
-            ))}
+            {results.map((yarn, index) => {
+              // Kendi firmanızın ipliği seçilemez (sunucu da dışlıyor).
+              const selectable = selection.active && !!user && user.companyId !== yarn.companyId;
+              return (
+                <YarnRow
+                  key={yarn.id}
+                  product={yarn}
+                  divider={index < results.length - 1}
+                  endUseLabels={options.endUses}
+                  colorStateLabels={options.colorStates}
+                  selectable={selectable}
+                  selected={selection.selectedIds.has(yarn.id)}
+                  onPress={() => {
+                    if (!selectable) {
+                      onOpenProduct(yarn.id);
+                      return;
+                    }
+                    haptics.selection();
+                    selection.toggle({
+                      id: yarn.id,
+                      code: yarn.code,
+                      companyId: yarn.companyId,
+                      companyName: yarn.company?.name ?? 'Firma',
+                      // İplikte birim kg.
+                      stockUnit: 'kg',
+                      type: yarn.type,
+                    });
+                  }}
+                />
+              );
+            })}
           </View>
           {nextOffset !== null ? (
             <View style={styles.moreWrap}>
@@ -535,6 +602,10 @@ export function YarnDirectory({
         </>
       )}
     </ScrollView>
+      {selection.active && onRfqSubmit ? (
+        <RfqSelectionBar selection={selection} onSubmit={() => onRfqSubmit(selection.items)} />
+      ) : null}
+    </View>
   );
 }
 
@@ -545,12 +616,18 @@ function YarnRow({
   divider,
   endUseLabels,
   colorStateLabels,
+  selectable = false,
+  selected = false,
   onPress,
 }: {
   product: Product;
   divider: boolean;
   endUseLabels: readonly { key: string; label: string }[];
   colorStateLabels: readonly { key: string; label: string }[];
+  // Çoklu teklif seçme kipi (Faz 3, Adım 3): solda onay kutusu, seçiliyken
+  // açık mavi zemin. Satırın içinde başka düğme yok, web'de sorun çıkmaz.
+  selectable?: boolean;
+  selected?: boolean;
   onPress: () => void;
 }) {
   const yarn = product.yarn ?? null;
@@ -562,13 +639,26 @@ function YarnRow({
   return (
     <Pressable
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`${product.code}, ${summary}${
-        product.company ? `, ${product.company.name}` : ''
-      }. İplik sayfasını aç`}
+      accessibilityRole={selectable ? 'checkbox' : 'button'}
+      accessibilityState={selectable ? { checked: selected } : undefined}
+      accessibilityLabel={`${product.code}, ${summary}${product.company ? `, ${product.company.name}` : ''}${
+        selectable ? (selected ? ', seçili' : ', seçili değil') : '. İplik sayfasını aç'
+      }`}
       android_ripple={{ color: colors.pressed }}
-      style={({ pressed }) => [styles.yarnRow, divider && styles.divider, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.yarnRow,
+        divider && styles.divider,
+        selectable && selected && styles.yarnRowSelected,
+        pressed && styles.pressed,
+      ]}
     >
+      {selectable ? (
+        <Ionicons
+          name={selected ? 'checkbox' : 'square-outline'}
+          size={22}
+          color={selected ? colors.primary : colors.borderStrong}
+        />
+      ) : null}
       <ProductThumbnail productId={product.id} hasImage={product.hasImage} size={56} />
       <View style={styles.yarnBody}>
         <Text style={styles.yarnSummary} numberOfLines={2}>
@@ -605,7 +695,7 @@ function YarnRow({
         ) : null}
         <StockValue stock={product.stock} unit={product.stockUnit} />
       </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+      {selectable ? null : <Ionicons name="chevron-forward" size={18} color={colors.chevron} />}
     </Pressable>
   );
 }
@@ -620,6 +710,7 @@ export function YarnDirectoryScreen({ navigation, route }: Props) {
       presetKey={route.params?.presetKey}
       onOpenProduct={(productId) => navigation.navigate('ProductDetail', { productId })}
       onAddYarn={user?.companyId ? () => navigation.navigate('YarnForm') : undefined}
+      onRfqSubmit={(items) => navigation.navigate('RfqForm', { items })}
     />
   );
 }
@@ -677,7 +768,37 @@ const styles = StyleSheet.create({
     minHeight: 72,
   },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  yarnRowSelected: { backgroundColor: colors.accentSoft },
   pressed: { backgroundColor: colors.pressed },
+  modeBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH,
+    paddingHorizontal: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  modeActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  modeText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
+  modeTextActive: { color: colors.primaryText },
+  selectHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: spacing.sm,
+  },
   yarnBody: { flex: 1, minWidth: 0, gap: 2 },
   yarnSummary: { ...typography.bodyStrong, color: colors.text },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },

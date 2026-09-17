@@ -112,7 +112,12 @@ export type RootStackParamList = {
   QuoteRequests: { role?: 'buyer' | 'seller' } | undefined;
   // Çoklu teklif isteme ve karşılaştırma (Faz 3, Adım 1). Form seçilen
   // ürünlerin ÖZETİNİ alır (id'lerden yeniden veri çekmemek için).
-  RfqForm: { items: RfqSelectionItem[] };
+  // prefill: asistanın "teklif_topla" kartından gelindiğinde miktar/termin/not
+  // forma ön dolu gelir (Faz 3, Adım 2).
+  RfqForm: {
+    items: RfqSelectionItem[];
+    prefill?: { quantity?: number; unit?: 'm' | 'kg'; targetDate?: string; note?: string };
+  };
   RfqCompare: { rfqId: string };
   GarmentVisualCost: undefined;
   Profile: { userId: string };

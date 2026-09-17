@@ -30,16 +30,22 @@ const SKIP_REASONS: Record<string, string> = {
 // birkaç firmaya birden sorulur; istek FİRMA başına tek gider.
 export function RfqFormScreen({ route, navigation }: Props) {
   const insets = useSafeAreaInsets();
+  // Asistanın "teklif_topla" kartından gelindiyse kullanıcının söylediği
+  // miktar/birim/termin/not forma ön dolu gelir; hepsi değiştirilebilir.
+  const prefill = route.params.prefill;
   const [items, setItems] = useState<RfqSelectionItem[]>(route.params.items);
-  // Hepsi iplikse kg, aksi halde metre.
+  // Ön dolgudaki birim varsa o; yoksa hepsi iplikse kg, aksi halde metre.
   const [unit, setUnit] = useState<StockUnit>(
-    route.params.items.length > 0 && route.params.items.every((i) => isYarnType(i.type) || i.stockUnit === 'kg')
-      ? 'kg'
-      : 'm'
+    prefill?.unit ??
+      (route.params.items.length > 0 && route.params.items.every((i) => isYarnType(i.type) || i.stockUnit === 'kg')
+        ? 'kg'
+        : 'm')
   );
-  const [quantity, setQuantity] = useState('');
-  const [targetDate, setTargetDate] = useState('');
-  const [note, setNote] = useState('');
+  const [quantity, setQuantity] = useState(
+    prefill?.quantity != null ? String(prefill.quantity).replace('.', ',') : ''
+  );
+  const [targetDate, setTargetDate] = useState(prefill?.targetDate ?? '');
+  const [note, setNote] = useState(prefill?.note ?? '');
   const [title, setTitle] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

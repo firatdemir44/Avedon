@@ -24,7 +24,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 9. Kumaş tarafında yalnızca arama metni varken "Bu aramayı izle" çıkmıyor; izleme kuralının adı ekrandan değiştirilemiyor.
 10. Video yalnızca akış gönderilerinde; kararlaştırılan kapsamın kalanı (ürün sayfası videosu, sohbette video) yapılmadı.
 11. WhatsApp'tan ürün taslağı (fotoğraf gönder → pasaport taslağı) yok; etiketten İPLİK çıkarma yok (yalnızca kumaş).
-12. Asistanın `teklif_topla` aracı yalnızca kumaş arıyor (iplik için `iplik_ara` + dizinde seçme kipi var).
+12. Asistanın `teklif_topla` aracı yalnızca kumaş arıyor (iplikte: `iplik_ara` + iplik dizininde "Teklif için seç" kipi var). Aday kartındaki işaretler sohbetten çıkıp dönünce sıfırlanıyor.
 13. Teknik borç: kumaş ve iplik formlarında karışım/sertifika satır düzenleyicileri kopya (ortak bileşene çıkarılacak); `Product.imageUrl` eski sütunu silinecek; `mobile/MOBILE-DESIGN.md`'de Faz 2-3 ekran kalıpları yazılmadı.
 14. Evden telefonda GELİŞTİRME sürümü testi çözülmedi (canlı web adresi yettiği için ihtiyaç yok).
 
@@ -133,6 +133,8 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Mobile `Company` tipi ile Prisma şeması arasındaki `productCategories`/`employeeIds` tutarsızlığını gidermek
 
 ## Tamamlananlar (kısa özet)
+
+- 2026-09-18: **Faz 3 Adım 2 tamamlandı: asistanla teklif toplama.** Sunucu (Fable 5.1, 206e9da): `teklif_topla` (tüm firmalarda arar, firma başına tek aday, en çok 10; İSTEK GÖNDERMEZ, kart önerir; fiyat dönmez) ve `teklifleri_ozetle` (alıcının çoklu isteğine gelen teklifler, karşılaştırmalı). Gerçek modelle denendi: adayları buldu, "istek henüz gitmedi, karttan onaylayın" dedi, elastan farkını kendisi belirtti. Mobil (Opus 5): asistanda aday kartı (işaretle → "Seçilenlerden teklif iste" → form miktar/not ön dolu), karşılaştırma kartı, "Teklif topla" çipi, iplik dizininde seçme kipi, karşılaştırma tablosunda uzun metin için alt panel. Tarayıcıda uçtan uca denendi. **Telefonda kontrol bekliyor.**
 
 - 2026-09-18: **Faz 3 planı onaylandı (`docs/faz3-plani.md`) ve Adım 1 tamamlandı: çoklu teklif isteme + karşılaştırma.** Kararlar (Fırat): sıra 1→2→3→7→4→5→6; kime gideceğini alıcı seçer, tek seferde en çok 10 FİRMA (5 az bulundu), firma başına tek istek, günde 30 istek; ödeme konusuna hiç girilmez; güven gösterimi yalnızca bileşenler; teklifler endekse kendiliğinden dahil; benzer kumaşta desen de var. Sunucu (Fable 5.1, c8a0dc0): `Rfq` + `QuoteRequest.rfqId` (yalnızca sütun + yeni tablo), `/api/rfqs`; satıcı çoklu olduğunu göremez; fiyat isteğin birimine çevrilir (kg↔m, gramaj+en), para birimi çevrilmez, en düşük fiyat işareti yalnızca aynı para biriminde; test 25/25. Mobil (Opus 5): Ürünler ve Takip Ettiklerim'de "Teklif için seç" kipi, `RfqFormScreen`, `RfqCompareScreen` (yatay kaydırmalı tablo), Tekliflerim'de "Karşılaştırmalar". Tarayıcıda uçtan uca denendi. **Telefonda kontrol bekliyor** (özellikle tablonun dar ekranda okunurluğu). **Açık:** iplik dizininde seçme kipi yok; tabloda uzun not/ödeme koşulu kırpılıyor. **SMS:** kod ve health teşhisi hazır (e87f2d8); başlık onayı şirket evrakı + KEP + e-Devlet BTK e-Kayıt ister (1-2 iş günü), adımlar `docs/sms-saglayici.md`.
 

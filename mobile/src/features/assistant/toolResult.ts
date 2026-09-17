@@ -1,5 +1,5 @@
 import type { AssistantToolCall } from '../../api/client';
-import { categoryLabel } from '../products/catalog';
+import { categoryLabel, STOCK_UNIT_LABELS, type StockUnit } from '../products/catalog';
 import { certificateLabel, formatComposition, widthTypeLabel } from '../products/glossaryLabels';
 import { YARN_END_USES, optionLabel } from '../yarns/catalog';
 
@@ -343,4 +343,100 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
     default:
       return { ...base, rows: [], text: call.summary };
   }
+}
+
+// Faz 3, Adım 2: asistanın teklif araçları. Bu ikisi satır listesi değil, kendi
+// kartlarını çiziyor (onay kutusu + düğme), bu yüzden ayrı okuyucular var.
+// Kural aynı: karttaki her değer ARAÇ ÇIKTISINDAN gelir, model metninden değil.
+
+export interface RfqCandidate {
+  id: string;
+  code: string;
+  companyId: string;
+  companyName: string;
+  verified: boolean;
+  type: string;
+  stockUnit: StockUnit;
+  // "Örme · Süprem · %95 PA %5 EA · 220 gr/m² · 180 cm · 1.200 m"
+  summary: string;
+}
+
+export interface RfqCandidatesView {
+  candidates: RfqCandidate[];
+  request: {
+    quantity: number | null;
+    unit: StockUnit | null;
+    targetDate: string | null;
+    note: string;
+  };
+}
+
+function stockUnitOf(value: unknown): StockUnit {
+  return value === 'kg' ? 'kg' : 'm';
+}
+
+export function rfqCandidatesView(call: AssistantToolCall): RfqCandidatesView {
+  const out = asObject(call.output);
+  const request = asObject(out.request);
+  const unit = request.unit === 'kg' || request.unit === 'm' ? request.unit : null;
+
+  const candidates = asArray(out.candidates)
+    .map((item) => {
+      const c = asObject(item);
+      const stockUnit = stockUnitOf(c.stockUnit);
+      const gsm = asNumber(c.weightGsm);
+      const width = asNumber(c.widthCm);
+      const stock = asNumber(c.stock);
+      const summary = [
+        categoryLabel(asText(c.type), asText(c.subtype)),
+        asText(c.content),
+        gsm != null ? `${formatNumber(gsm, 0)} gr/m²` : null,
+        width != null ? `${formatNumber(width, 0)} cm` : null,
+        stock != null ? `${formatNumber(stock, 0)} ${STOCK_UNIT_LABELS[stockUnit].short}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+      return {
+        id: asText(c.id),
+        code: asText(c.code) || 'Ürün',
+        companyId: asText(c.companyId),
+        companyName: asText(c.companyName) || 'Firma',
+        verified: c.verification === 'dogrulanmis',
+        type: asText(c.type),
+        stockUnit,
+        summary,
+      };
+    })
+    // Kimliksiz aday seçilemez (forma taşınamaz), hiç gösterilmez.
+    .filter((c) => !!c.id && !!c.companyId);
+
+  return {
+    candidates,
+    request: {
+      quantity: asNumber(request.quantity),
+      unit,
+      targetDate: asText(request.targetDate) || null,
+      note: asText(request.note),
+    },
+  };
+}
+
+export interface RfqSummaryView {
+  rfqId: string;
+  title: string;
+  requestCount: number;
+  quotedCount: number;
+}
+
+export function rfqSummaryView(call: AssistantToolCall): RfqSummaryView | null {
+  const out = asObject(call.output);
+  const rfqId = asText(out.rfqId);
+  if (!rfqId) return null;
+  return {
+    rfqId,
+    title: asText(out.title) || 'Teklif karşılaştırması',
+    requestCount: asNumber(out.requestCount) ?? 0,
+    quotedCount: asNumber(out.quotedCount) ?? 0,
+  };
 }

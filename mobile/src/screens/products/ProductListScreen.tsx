@@ -542,6 +542,7 @@ export function ProductListScreen({ navigation, route }: Props) {
         <YarnDirectory
           onOpenProduct={(id) => navigation.navigate('ProductDetail', { productId: id })}
           onAddYarn={user?.companyId ? () => navigation.navigate('YarnForm') : undefined}
+          onRfqSubmit={(items) => navigation.navigate('RfqForm', { items })}
         />
       </View>
     );
