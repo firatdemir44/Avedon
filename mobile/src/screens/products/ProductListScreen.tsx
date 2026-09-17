@@ -4,7 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MainTabScreenProps } from '../../navigation/types';
-import { fetchProductList, searchCompanies } from '../../api/client';
+import { ApiError, createWatchRule, fetchProductList, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
 import { SkeletonList } from '../../components/Skeleton';
@@ -22,6 +22,8 @@ import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, USAGES, typeLabel, type ProductTy
 import {
   EMPTY_FILTERS,
   activeFilterChips,
+  unsupportedWatchFilterLabels,
+  watchQueryFromFilters,
   type ProductFilters,
 } from '../../features/products/filters';
 import type { Company, Product } from '../../types';
@@ -60,6 +62,9 @@ export function ProductListScreen({ navigation, route }: Props) {
   const [openType, setOpenType] = useState<ProductType | null>(null);
   // null: klasördeki tüm ürünler · '': alt çeşidi belirtilmemiş olanlar
   const [openSubtype, setOpenSubtype] = useState<string | null>(null);
+  // "Bu aramayı izle" sonucu: kısa onay ya da açıklama (Faz 2, Adım 1).
+  const [watchNote, setWatchNote] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const [watchSaving, setWatchSaving] = useState(false);
   const queryRef = useRef(query);
   queryRef.current = query;
   const filtersRef = useRef(filters);
@@ -132,6 +137,8 @@ export function ProductListScreen({ navigation, route }: Props) {
   );
 
   useEffect(() => {
+    // Arama ya da süzgeç değişti: "İzlemeye alındı" notu artık o aramaya ait değil.
+    setWatchNote(null);
     const signal = { cancelled: false };
     const timer = setTimeout(() => loadProducts(query, filters, signal), 300);
     return () => {
@@ -203,6 +210,38 @@ export function ProductListScreen({ navigation, route }: Props) {
 
   const openFilters = () => navigation.navigate('ProductFilters', { filters });
 
+  // Etkin süzgeci (ve arama metnini) izleme kuralına çevirir. Ad verilmiyor:
+  // sunucu süzgeçten okunur bir ad üretiyor.
+  const watchCurrentSearch = async () => {
+    if (watchSaving) return;
+    const watchQuery = watchQueryFromFilters(query, filters);
+    if (!watchQuery) {
+      setWatchNote({ text: 'Bu süzgeç izlemeye çevrilemiyor. Çeşit, lif, gramaj ya da sertifika seçin.', tone: 'error' });
+      return;
+    }
+    setWatchSaving(true);
+    try {
+      await createWatchRule({ query: watchQuery });
+      haptics.success();
+      const dropped = unsupportedWatchFilterLabels(filters);
+      setWatchNote({
+        text: dropped.length ? `İzlemeye alındı (${dropped.join(', ')} izlemeye girmez).` : 'İzlemeye alındı.',
+        tone: 'ok',
+      });
+    } catch (err) {
+      haptics.error();
+      setWatchNote({
+        text:
+          err instanceof ApiError && err.code === 'too_many_rules'
+            ? 'İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.'
+            : 'İzleme kurulamadı, tekrar deneyin.',
+        tone: 'error',
+      });
+    } finally {
+      setWatchSaving(false);
+    }
+  };
+
   const applyUsageShortcut = (key: string) => {
     haptics.selection();
     setFilters((prev) => ({ ...prev, usages: [key] }));
@@ -272,6 +311,18 @@ export function ProductListScreen({ navigation, route }: Props) {
           style={({ pressed }) => [styles.clearChip, pressed && styles.pressedFade]}
         >
           <Text style={styles.clearChipText}>Temizle</Text>
+        </Pressable>
+        {/* Faz 2, Adım 1: etkin süzgeci izlemeye alma kısayolu. */}
+        <Pressable
+          onPress={() => void watchCurrentSearch()}
+          disabled={watchSaving}
+          accessibilityRole="button"
+          accessibilityLabel="Bu aramayı izle, uyan yeni ürün çıkınca haber ver"
+          accessibilityState={{ disabled: watchSaving }}
+          style={({ pressed }) => [styles.watchChip, pressed && styles.pressedFade]}
+        >
+          <Ionicons name="bookmark-outline" size={15} color={colors.primary} />
+          <Text style={styles.watchChipText}>{watchSaving ? 'Kuruluyor...' : 'Bu aramayı izle'}</Text>
         </Pressable>
       </ScrollView>
     ) : null;
@@ -438,6 +489,14 @@ export function ProductListScreen({ navigation, route }: Props) {
       </View>
       {viewToggle}
       {filterChipsBar}
+      {watchNote ? (
+        <Text
+          style={[styles.watchNote, watchNote.tone === 'error' && styles.watchNoteError]}
+          accessibilityLiveRegion="polite"
+        >
+          {watchNote.text}
+        </Text>
+      ) : null}
       {offline ? <Text style={styles.offlineNotice}>Sunucuya ulaşılamadı, örnek veriler gösteriliyor.</Text> : null}
       {loading && products.length === 0 ? (
         <SkeletonList variant="product" />
@@ -592,6 +651,16 @@ const styles = StyleSheet.create({
   clearChip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.xs },
   clearChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
   pressedFade: { opacity: 0.6 },
+  watchChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: spacing.xs },
+  watchChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
+  watchNote: {
+    ...typography.caption,
+    color: colors.success,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 6,
+  },
+  watchNoteError: { color: colors.danger, backgroundColor: colors.dangerSoft },
   offlineNotice: {
     ...typography.caption,
     color: colors.danger,

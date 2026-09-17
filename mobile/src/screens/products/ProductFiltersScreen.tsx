@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { ApiError, createWatchRule } from '../../api/client';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { ChipSelect } from '../../components/ChipSelect';
@@ -23,7 +24,8 @@ import {
   WIDTH_TYPES,
   type WidthType,
 } from '../../features/products/glossaryLabels';
-import type { ProductFilters } from '../../features/products/filters';
+import { watchQueryFromFilters, type ProductFilters } from '../../features/products/filters';
+import { InlineError } from '../../components/StateView';
 import { toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { colors, fonts, spacing, typography } from '../../theme';
@@ -61,7 +63,13 @@ const toText = (value?: number) => (value === undefined ? '' : toInputNumber(val
 // gönderir; ürün kodu ve firma araması Ürünler'deki arama çubuğunda.
 export function ProductFiltersScreen({ navigation, route }: Props) {
   const initial = route.params.filters;
+  // İzleme kipi (Faz 2, Adım 1): aynı ekran, farklı çıkış. Sunucudaki izleme
+  // süzgeci ürün süzgecinin alt kümesi olduğu için desteklenmeyen bölümler
+  // (Stok, İçerik, En tipi) bu kipte hiç gösterilmiyor: sessizce düşmesin.
+  const watchMode = route.params.mode === 'watch';
   const insets = useSafeAreaInsets();
+  const [saving, setSaving] = useState(false);
+  const [watchError, setWatchError] = useState<string | null>(null);
   const [type, setType] = useState<ProductType | ''>(initial.type ?? '');
   const [subtype, setSubtype] = useState(initial.subtype ?? '');
   const [usages, setUsages] = useState<string[]>(initial.usages);
@@ -78,6 +86,10 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
   const [moqMax, setMoqMax] = useState(toText(initial.moqMax));
   const [leadTimeMax, setLeadTimeMax] = useState(toText(initial.leadTimeMax));
   const [widthType, setWidthType] = useState<WidthType | ''>(initial.widthType ?? '');
+
+  useLayoutEffect(() => {
+    if (watchMode) navigation.setOptions({ title: 'Yeni İzleme' });
+  }, [navigation, watchMode]);
 
   const stock = readNumber(stockMin);
   const gsmLow = readNumber(gsmMin);
@@ -127,11 +139,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
     setWidthType('');
   };
 
-  const apply = () => {
-    if (errors.length) {
-      haptics.error();
-      return;
-    }
+  const collect = (): ProductFilters => {
     const filters: ProductFilters = {
       type: type || undefined,
       subtype: type && subtype ? subtype : undefined,
@@ -151,8 +159,48 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
       leadTimeMax: leadTime.value,
       widthType: widthType || undefined,
     };
+    return filters;
+  };
+
+  const apply = () => {
+    if (errors.length) {
+      haptics.error();
+      return;
+    }
     haptics.selection();
-    navigation.navigate('MainTabs', { screen: 'ProductList', params: { filters, appliedAt: Date.now() } });
+    navigation.navigate('MainTabs', { screen: 'ProductList', params: { filters: collect(), appliedAt: Date.now() } });
+  };
+
+  const saveWatch = async () => {
+    if (errors.length || saving) {
+      haptics.error();
+      return;
+    }
+    const query = watchQueryFromFilters('', collect());
+    if (!query) {
+      haptics.error();
+      setWatchError('İzleme kurmak için en az bir süzgeç seçin.');
+      return;
+    }
+    setSaving(true);
+    setWatchError(null);
+    try {
+      // Ad verilmiyor: sunucu süzgeçten okunur bir ad üretiyor (describeWatchQuery).
+      await createWatchRule({ query });
+      haptics.success();
+      navigation.popTo('WatchRules');
+    } catch (err) {
+      haptics.error();
+      if (err instanceof ApiError && err.code === 'too_many_rules') {
+        setWatchError('İzleme sınırına ulaştınız. Yeni bir izleme için önce listeden birini silin.');
+      } else if (err instanceof ApiError && err.code === 'invalid_body') {
+        setWatchError('Bu süzgeç izlemeye çevrilemedi. Çeşit, lif, gramaj ya da sertifika seçmeyi deneyin.');
+      } else {
+        setWatchError('İzleme kurulamadı, tekrar deneyin.');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const subtypeOptions = type
@@ -179,6 +227,8 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
           <MultiChipSelect options={USAGES} values={usages} onChange={setUsages} />
         </View>
 
+        {watchMode ? null : (
+          <>
         <SectionHeader title="Stok" />
         <View style={styles.block}>
           <ChipSelect options={UNIT_OPTIONS} value={stockUnit} onChange={setStockUnit} compact />
@@ -195,6 +245,8 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
             </Text>
           ) : null}
         </View>
+          </>
+        )}
 
         <SectionHeader title="Ölçüler" />
         <View style={styles.block}>
@@ -214,8 +266,12 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
               <TextField label="En en çok" value={widthMax} onChangeText={setWidthMax} placeholder="cm" keyboardType="numeric" />
             </View>
           </View>
-          <Text style={styles.label}>En tipi</Text>
-          <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} compact />
+          {watchMode ? null : (
+            <>
+              <Text style={styles.label}>En tipi</Text>
+              <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} compact />
+            </>
+          )}
         </View>
 
         <SectionHeader title="Lif" />
@@ -263,25 +319,35 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        <SectionHeader title="İçerik" />
-        <View style={styles.block}>
-          <TextField label="İçerikte geçen" value={content} onChangeText={setContent} placeholder="Örn. Pamuk, Elastan" />
-        </View>
+        {watchMode ? null : (
+          <>
+            <SectionHeader title="İçerik" />
+            <View style={styles.block}>
+              <TextField label="İçerikte geçen" value={content} onChangeText={setContent} placeholder="Örn. Pamuk, Elastan" />
+            </View>
+          </>
+        )}
 
         {errors.map((message) => (
           <Text key={message} style={styles.error}>
             {message}
           </Text>
         ))}
+        {watchError ? <InlineError message={watchError} style={styles.watchError} /> : null}
+        {watchMode ? (
+          <Text style={styles.watchNote}>
+            Bu süzgece uyan yeni bir ürün eklendiğinde bildirim alırsınız. Kendi firmanızın ürünleri sayılmaz.
+          </Text>
+        ) : null}
       </ScrollView>
 
       <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
         <PrimaryButton label="Temizle" variant="outline" size="lg" onPress={clearAll} />
         <PrimaryButton
-          label="Filtreyi Uygula"
+          label={watchMode ? (saving ? 'Kuruluyor...' : 'Bu süzgeci izle') : 'Filtreyi Uygula'}
           size="lg"
-          onPress={apply}
-          disabled={errors.length > 0}
+          onPress={watchMode ? () => void saveWatch() : apply}
+          disabled={errors.length > 0 || saving}
           style={styles.actionMain}
         />
       </View>
@@ -301,6 +367,13 @@ const styles = StyleSheet.create({
     ...typography.label,
     fontFamily: fonts.regular,
     color: colors.danger,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.sm,
+  },
+  watchError: { marginHorizontal: spacing.gutter, marginTop: spacing.sm },
+  watchNote: {
+    ...typography.caption,
+    color: colors.textMuted,
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.sm,
   },

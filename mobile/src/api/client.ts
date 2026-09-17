@@ -10,7 +10,7 @@ import type {
   VerificationStatus,
 } from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
-import { productQueryString, type ProductFilters } from '../features/products/filters';
+import { productQueryString, type ProductFilters, type WatchQuery } from '../features/products/filters';
 import type { StockUnit } from '../features/products/catalog';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
@@ -702,6 +702,88 @@ export function clearRecentlyViewedProducts() {
   return request<void>('/me/recently-viewed', { method: 'DELETE' });
 }
 
+// --- Bildirimler ve izleme (Faz 2, Adım 1) -----------------------------------
+// Uygulama içi bildirimler; push bildirimi bu adımda YOK.
+
+export type NotificationKind =
+  | 'watch_match'
+  | 'sample_request_new'
+  | 'sample_request_status'
+  | 'connection_request'
+  | 'connection_accepted';
+
+export interface NotificationData {
+  productId?: string;
+  sampleRequestId?: string;
+  userId?: string;
+  ruleId?: string;
+  postId?: string;
+}
+
+export interface AppNotification {
+  id: string;
+  // Sunucu ileride yeni tür ekleyebilir: bilinmeyen tür ekranda genel ikonla çizilir.
+  kind: NotificationKind | (string & {});
+  title: string;
+  body: string;
+  data: NotificationData;
+  read: boolean;
+  createdAt: string;
+}
+
+export function fetchNotifications(limit = 30) {
+  return request<{ notifications: AppNotification[]; unreadCount: number }>(`/notifications?limit=${limit}`);
+}
+
+export function fetchUnreadNotificationCount() {
+  return request<{ unreadCount: number }>('/notifications/unread-count');
+}
+
+// Ya belirli bildirimler ya da hepsi okundu işaretlenir.
+export function markNotificationsRead(payload: { ids: string[] } | { all: true }) {
+  return request<{ unreadCount: number }>('/notifications/read', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// İzleme kuralının süzgeci ürün süzgecinin alt kümesi; çeviri tek yerde
+// (features/products/filters.ts watchQueryFromFilters).
+export type { WatchQuery };
+
+export interface WatchRule {
+  id: string;
+  name: string;
+  query: WatchQuery;
+  active: boolean;
+  lastMatchedAt: string | null;
+  matchCount: number;
+  createdAt: string;
+}
+
+export function fetchWatchRules() {
+  return request<{ rules: WatchRule[]; max: number }>('/watch-rules');
+}
+
+// name verilmezse sunucu süzgeçten okunur bir ad üretir.
+export function createWatchRule(input: { name?: string; query: WatchQuery }) {
+  return request<{ rule: WatchRule }>('/watch-rules', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateWatchRule(id: string, patch: { name?: string; active?: boolean }) {
+  return request<{ rule: WatchRule }>(`/watch-rules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteWatchRule(id: string) {
+  return request<void>(`/watch-rules/${id}`, { method: 'DELETE' });
+}
+
 // --- Firma asistanı (Faz 1, Adım 5) -----------------------------------------
 // Sohbet kaydı sunucuda tutulur; istemci yalnızca son kullanılan threadId'yi
 // cihazda saklar (src/features/assistant/threadStore.ts).
@@ -734,12 +816,22 @@ export interface AssistantMemorySuggestion {
   reason: string;
 }
 
+// "Bu aramayı izleyelim mi?" kartı (Faz 2, Adım 1): hafıza önerisiyle aynı
+// desen — asistan kuralı kendisi KURMAZ, kullanıcı ekranda onaylar.
+export interface AssistantWatchSuggestion {
+  name: string;
+  query: WatchQuery;
+  reason: string;
+}
+
 export interface AssistantMessage {
   id: string;
   role: 'user' | 'assistant';
   text: string;
   toolCalls: AssistantToolCall[];
   memorySuggestions: AssistantMemorySuggestion[];
+  // Eski sunucuda bu alan yok: ekranlar `?? []` ile okumalı.
+  watchSuggestions?: AssistantWatchSuggestion[];
   createdAt: string;
 }
 

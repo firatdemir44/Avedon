@@ -22,6 +22,8 @@ import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
 import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
 import { RecentlyViewedProductsScreen } from '../screens/products/RecentlyViewedProductsScreen';
+import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
+import { WatchRulesScreen } from '../screens/notifications/WatchRulesScreen';
 import { AssistantThreadsScreen } from '../screens/assistant/AssistantThreadsScreen';
 import { AssistantMemoryScreen } from '../screens/assistant/AssistantMemoryScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
@@ -143,6 +145,16 @@ export function RootNavigator() {
               name="RecentlyViewedProducts"
               component={RecentlyViewedProductsScreen}
               options={{ headerShown: true, title: 'Son Baktıklarım' }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ headerShown: true, title: 'Bildirimler' }}
+            />
+            <Stack.Screen
+              name="WatchRules"
+              component={WatchRulesScreen}
+              options={{ headerShown: true, title: 'İzlediklerim' }}
             />
             <Stack.Screen
               name="AssistantThreads"

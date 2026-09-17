@@ -18,6 +18,7 @@ import type { MainTabScreenProps } from '../../navigation/types';
 import {
   ApiError,
   createAssistantThread,
+  createWatchRule,
   fetchAssistantGreeting,
   fetchAssistantPersona,
   fetchAssistantThread,
@@ -31,6 +32,7 @@ import {
   type AssistantMessage,
   type AssistantPersonaKey,
   type AssistantPersonaState,
+  type AssistantWatchSuggestion,
 } from '../../api/client';
 import { AssistantAvatar, type AssistantAvatarState } from '../../components/AssistantAvatar';
 import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
@@ -86,6 +88,8 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
     label: 'Konfeksiyon maliyeti',
     starter: 'Konfeksiyon maliyeti: adette 1,3 m kumaş, metresi 95 TL, kesim 8 TL, dikim 25 TL.',
   },
+  // Faz 2, Adım 1: izleme kuralı önerisi (asistan kurmaz, kart onaylanır).
+  { label: 'Ürün izle', starter: 'PA lycra süprem 200 gr üstü çıkınca haber ver' },
 ];
 
 // Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
@@ -114,6 +118,8 @@ export function AssistantScreen({ navigation }: Props) {
   const [companyName, setCompanyName] = useState<string | null>(cachedCompanyName);
   // Hafıza öneri kartının durumu: `${mesajId}:${anahtar}`.
   const [memoryState, setMemoryState] = useState<Record<string, 'saved' | 'dismissed' | 'error'>>({});
+  // İzleme öneri kartının durumu: `${mesajId}:${sıra}` (hafıza kartıyla aynı desen).
+  const [watchState, setWatchState] = useState<Record<string, 'saved' | 'dismissed' | 'error' | 'limit'>>({});
 
   // Kişilik: null persona = kullanıcı henüz seçmedi.
   const [persona, setPersona] = useState<AssistantPersonaState | null>(null);
@@ -332,6 +338,7 @@ export function AssistantScreen({ navigation }: Props) {
         text: question,
         toolCalls: [],
         memorySuggestions: [],
+        watchSuggestions: [],
         createdAt: new Date().toISOString(),
         local: true,
       });
@@ -394,6 +401,22 @@ export function AssistantScreen({ navigation }: Props) {
 
   const dismissSuggestion = useCallback((messageId: string, suggestion: AssistantMemorySuggestion) => {
     setMemoryState((prev) => ({ ...prev, [`${messageId}:${suggestion.key}`]: 'dismissed' }));
+  }, []);
+
+  const saveWatchSuggestion = useCallback(async (stateKey: string, suggestion: AssistantWatchSuggestion) => {
+    try {
+      await createWatchRule({ name: suggestion.name, query: suggestion.query });
+      haptics.success();
+      setWatchState((prev) => ({ ...prev, [stateKey]: 'saved' }));
+    } catch (err) {
+      haptics.error();
+      const limit = err instanceof ApiError && err.code === 'too_many_rules';
+      setWatchState((prev) => ({ ...prev, [stateKey]: limit ? 'limit' : 'error' }));
+    }
+  }, []);
+
+  const dismissWatchSuggestion = useCallback((stateKey: string) => {
+    setWatchState((prev) => ({ ...prev, [stateKey]: 'dismissed' }));
   }, []);
 
   const data = useMemo<ChatItem[]>(() => (pending ? [...messages, pending] : messages), [messages, pending]);
@@ -470,12 +493,35 @@ export function AssistantScreen({ navigation }: Props) {
                   onDismiss={() => dismissSuggestion(item.id, suggestion)}
                 />
               ))}
+              {(item.watchSuggestions ?? []).map((suggestion, watchIndex) => {
+                const stateKey = `${item.id}:watch:${watchIndex}`;
+                return (
+                  <WatchSuggestionCard
+                    key={stateKey}
+                    suggestion={suggestion}
+                    state={watchState[stateKey]}
+                    onSave={() => void saveWatchSuggestion(stateKey, suggestion)}
+                    onDismiss={() => dismissWatchSuggestion(stateKey)}
+                  />
+                );
+              })}
             </View>
           </View>
         </>
       );
     },
-    [avatarState, data, dismissSuggestion, effectivePersona, memoryState, personaName, saveSuggestion]
+    [
+      avatarState,
+      data,
+      dismissSuggestion,
+      dismissWatchSuggestion,
+      effectivePersona,
+      memoryState,
+      personaName,
+      saveSuggestion,
+      saveWatchSuggestion,
+      watchState,
+    ]
   );
 
   const composer = (
@@ -699,6 +745,61 @@ function MemorySuggestionCard({
           style={({ pressed }) => [styles.memoryButton, styles.memorySave, pressed && styles.pressedFade]}
         >
           <Text style={styles.memorySaveText}>Kaydet</Text>
+        </Pressable>
+        <Pressable
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Şimdi değil"
+          style={({ pressed }) => [styles.memoryButton, styles.memoryDismiss, pressed && styles.chipPressed]}
+        >
+          <Text style={styles.memoryDismissText}>Şimdi değil</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// "İzleme kurulsun mu?" kartı (Faz 2, Adım 1): hafıza kartının aynısı —
+// asistan izlemeyi kendisi KURMAZ, kullanıcı onaylar.
+function WatchSuggestionCard({
+  suggestion,
+  state,
+  onSave,
+  onDismiss,
+}: {
+  suggestion: AssistantWatchSuggestion;
+  state?: 'saved' | 'dismissed' | 'error' | 'limit';
+  onSave: () => void;
+  onDismiss: () => void;
+}) {
+  if (state === 'dismissed') return null;
+
+  if (state === 'saved') {
+    return (
+      <View style={[styles.memoryCard, styles.memorySaved]}>
+        <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+        <Text style={styles.memorySavedText}>İzlemeye alındı: {suggestion.name}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.memoryCard}>
+      <Text style={styles.memoryTitle}>İzleme kurulsun mu?</Text>
+      <Text style={styles.memoryValue}>{suggestion.name}</Text>
+      <Text style={styles.memoryReason}>{suggestion.reason}</Text>
+      {state === 'limit' ? (
+        <Text style={styles.memoryError}>İzleme sınırına ulaştınız. Profil {'>'} İzlediklerim listesinden birini silin.</Text>
+      ) : null}
+      {state === 'error' ? <Text style={styles.memoryError}>İzleme kurulamadı, tekrar deneyin.</Text> : null}
+      <View style={styles.memoryActions}>
+        <Pressable
+          onPress={onSave}
+          accessibilityRole="button"
+          accessibilityLabel={`İzlemeye al: ${suggestion.name}`}
+          style={({ pressed }) => [styles.memoryButton, styles.memorySave, pressed && styles.pressedFade]}
+        >
+          <Text style={styles.memorySaveText}>İzlemeye al</Text>
         </Pressable>
         <Pressable
           onPress={onDismiss}

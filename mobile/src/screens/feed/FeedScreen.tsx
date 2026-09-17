@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
+import { View, Text, Pressable, FlatList, ActivityIndicator, AppState, Share, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { useSession } from '../../context/SessionContext';
 import {
   deletePost,
   fetchFeed,
+  fetchUnreadNotificationCount,
   likePost,
   unlikePost,
   type FeedCursor,
@@ -33,6 +34,10 @@ const REFRESH_THROTTLE_MS = 30000;
 // cihazda hatırlanır (Faz 1, Adım 6).
 const SCOPE_KEY = 'avedon.feedScope';
 
+// Zil rozeti: ekran odaklanınca ve uygulama ön plandayken dakikada bir tazelenir
+// (Faz 2, Adım 1). Push bildirimi yok, sayaç yoklamayla geliyor.
+const NOTIFICATION_POLL_MS = 60000;
+
 export function FeedScreen({ navigation }: Props) {
   const { user } = useSession();
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -44,6 +49,7 @@ export function FeedScreen({ navigation }: Props) {
   // Kayıtlı seçim okunana kadar akışı çekmiyoruz, yoksa "Bağlantılarım"
   // seçiliyken önce "Tümü" yükleniyor ve liste iki kez zıplıyor.
   const [scopeReady, setScopeReady] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const loadingMoreRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
   const hasPostsRef = useRef(false);
@@ -114,6 +120,22 @@ export function FeedScreen({ navigation }: Props) {
     }, [loadFirstPage, scopeReady])
   );
 
+  // Okunmamış bildirim sayacı: hata sessiz (kozmetik), sayfa çalışmaya devam eder.
+  const refreshUnreadNotifications = useCallback(() => {
+    if (AppState.currentState !== 'active') return;
+    fetchUnreadNotificationCount()
+      .then(({ unreadCount }) => setUnreadNotifications(unreadCount))
+      .catch(() => {});
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshUnreadNotifications();
+      const timer = setInterval(refreshUnreadNotifications, NOTIFICATION_POLL_MS);
+      return () => clearInterval(timer);
+    }, [refreshUnreadNotifications])
+  );
+
   useLayoutEffect(() => {
     // Taslakta iki başlık eylemi de ikon düğmesi (denetim FINDING-016: biri
     // ikon + yazı, diğeri düz metindi). Soldaki kısayol artık firma asistanı
@@ -127,10 +149,18 @@ export function FeedScreen({ navigation }: Props) {
         />
       ),
       headerRight: () => (
-        <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
+        <View style={styles.headerActions}>
+          <HeaderButton
+            icon="notifications-outline"
+            label="Bildirimler"
+            badge={unreadNotifications}
+            onPress={() => navigation.navigate('Notifications')}
+          />
+          <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
+        </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, unreadNotifications]);
 
   const loadMore = async () => {
     if (!cursor || loadingMoreRef.current) return;
@@ -321,6 +351,7 @@ const styles = StyleSheet.create({
   listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
   blockGap: { height: spacing.blockGap },
   banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   toggleBar: {
     flexDirection: 'row',
     gap: spacing.sm,

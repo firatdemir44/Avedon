@@ -46,7 +46,13 @@ export type RootStackParamList = {
   // Etiketten okunanların onay ekranı (ürün formundan açılır, forma geri döner).
   PassportReview: { productId?: string; outcome: ExtractOutcome };
   ProductDetail: { productId: string };
-  ProductFilters: { filters: ProductFilters };
+  // mode 'watch': aynı ekran "izleme kipinde" açılır (Faz 2, Adım 1) — alttaki
+  // düğme "Bu süzgeci izle" olur ve sonuç Ürünler'e değil izleme kuralına gider.
+  ProductFilters: { filters: ProductFilters; mode?: 'watch' };
+  // Bildirimler ve izleme kuralları (Faz 2, Adım 1). Push bildirimi yok,
+  // yalnızca uygulama içi.
+  Notifications: undefined;
+  WatchRules: undefined;
   FavoriteProducts: undefined;
   RecentlyViewedProducts: undefined;
   // Asistanın sohbet geçmişi ve firma hafızası (asistan sekmesinden açılır).

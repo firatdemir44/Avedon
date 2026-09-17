@@ -65,6 +65,61 @@ export function productQueryString(search: string, filters: ProductFilters) {
   return params.length ? `?${params.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}` : '';
 }
 
+// --- İzleme kuralı süzgeci (Faz 2, Adım 1) -----------------------------------
+// Sunucudaki watchQuerySchema (backend/src/watch.ts) ürün sorgusunun izlemeye
+// uygun ALT KÜMESİ ve `.strict()`: tanımadığı alan gelirse 400 döner. Bu yüzden
+// `stockMin`, `stockUnit`, `content`, `widthType`, `companyId` gibi desteklenmeyen
+// alanlar burada bilinçli olarak atılıyor.
+export interface WatchQuery {
+  search?: string;
+  type?: ProductType;
+  subtype?: string;
+  // Virgülle ayrılmış liste (sunucu ayrıştırıyor).
+  usage?: string;
+  gsmMin?: number;
+  gsmMax?: number;
+  widthMin?: number;
+  widthMax?: number;
+  fiber?: string;
+  fiberMinPercent?: number;
+  certificate?: string;
+  moqMax?: number;
+  leadTimeMax?: number;
+}
+
+// Ürünler ekranındaki arama + süzgeç durumundan izleme kuralı süzgeci üretir.
+// Hiçbir desteklenen alan dolu değilse null döner (sunucu boş süzgeci reddeder).
+export function watchQueryFromFilters(search: string, filters: ProductFilters): WatchQuery | null {
+  const query: WatchQuery = {};
+  const text = search.trim();
+  if (text) query.search = text;
+  if (filters.type) query.type = filters.type;
+  if (filters.type && filters.subtype) query.subtype = filters.subtype;
+  if (filters.usages?.length) query.usage = filters.usages.join(',');
+  if (filters.gsmMin !== undefined) query.gsmMin = filters.gsmMin;
+  if (filters.gsmMax !== undefined) query.gsmMax = filters.gsmMax;
+  if (filters.widthMin !== undefined) query.widthMin = filters.widthMin;
+  if (filters.widthMax !== undefined) query.widthMax = filters.widthMax;
+  if (filters.fibers?.length) {
+    query.fiber = filters.fibers.join(',');
+    // Oran tek başına anlamsız: yalnızca lif seçiliyken gider (süzgeç ekranıyla aynı kural).
+    if (filters.fiberMinPercent !== undefined) query.fiberMinPercent = filters.fiberMinPercent;
+  }
+  if (filters.certificates?.length) query.certificate = filters.certificates.join(',');
+  if (filters.moqMax !== undefined) query.moqMax = filters.moqMax;
+  if (filters.leadTimeMax !== undefined) query.leadTimeMax = filters.leadTimeMax;
+  return Object.keys(query).length > 0 ? query : null;
+}
+
+// İzlemeye çevrilirken düşen süzgeçler (kullanıcıya söylenir, sessizce yutulmaz).
+export function unsupportedWatchFilterLabels(filters: ProductFilters): string[] {
+  const dropped: string[] = [];
+  if (filters.stockMin !== undefined || filters.stockUnit) dropped.push('stok');
+  if (filters.content?.trim()) dropped.push('içerik metni');
+  if (filters.widthType) dropped.push('en tipi');
+  return dropped;
+}
+
 function rangeLabel(min: number | undefined, max: number | undefined, unit: string) {
   if (min !== undefined && max !== undefined) return `${formatMeasure(min)}-${formatMeasure(max)} ${unit}`;
   if (min !== undefined) return `en az ${formatMeasure(min)} ${unit}`;
