@@ -841,7 +841,12 @@ export type NotificationKind =
   // (satıcıya, data.questionId) ve firma cevapladı (alıcıya, data.threadId +
   // data.companyId).
   | 'company_question_new'
-  | 'company_question_answered';
+  | 'company_question_answered'
+  // Faz 2, Adım 7 (karşılıklı referans): data.referenceId + data.companyId
+  // (isteği gönderen ya da cevaplayan karşı firma).
+  | 'reference_request'
+  | 'reference_confirmed'
+  | 'reference_rejected';
 
 export interface NotificationData {
   productId?: string;
@@ -854,6 +859,8 @@ export interface NotificationData {
   questionId?: string;
   threadId?: string;
   companyId?: string;
+  // Karşılıklı referanslar (Faz 2, Adım 7).
+  referenceId?: string;
 }
 
 export interface AppNotification {
@@ -1452,6 +1459,14 @@ export interface CapacitySearchParams {
   widthMin?: number;
   contractOpen?: boolean;
   city?: string;
+  /** Sayfalama: kaçıncı sonuçtan sonrası istensin (ilk sayfada verilmez). */
+  offset?: number;
+}
+
+export interface CapacitySearchPage {
+  results: CapacityResult[];
+  hasMore: boolean;
+  nextOffset: number | null;
 }
 
 export interface CapacityResult {
@@ -1477,8 +1492,70 @@ export function searchCapacity(params: CapacitySearchParams) {
   if (params.widthMin !== undefined) query.set('widthMin', String(params.widthMin));
   if (params.contractOpen) query.set('contractOpen', '1');
   if (params.city?.trim()) query.set('city', params.city.trim());
+  if (params.offset) query.set('offset', String(params.offset));
   const suffix = query.toString();
-  return request<{ results: CapacityResult[] }>(`/machines/search${suffix ? `?${suffix}` : ''}`);
+  return request<CapacitySearchPage>(`/machines/search${suffix ? `?${suffix}` : ''}`);
+}
+
+// --- Karşılıklı referanslar (Faz 2, Adım 7) ----------------------------------
+// Sunucu: backend/src/routes/references.ts. Bir firma diğerini "müşterimiz" ya
+// da "tedarikçimiz" olarak gösterir; karşı taraf onaylayınca iki firmanın
+// sayfasında birden görünür. Onaylanmamış referansı yalnızca iki taraf görür.
+
+export type ReferenceRelation = 'musteri' | 'tedarikci';
+export type ReferenceStatus = 'pending' | 'confirmed' | 'rejected';
+
+export interface CompanyReference {
+  id: string;
+  status: ReferenceStatus;
+  /** given: sayfası görüntülenen firma bu referansı verdi; received: karşı taraf verdi. */
+  direction: 'given' | 'received';
+  /** DİKKAT: ilişki sayfası görüntülenen firmaya göredir (karşı tarafın rolü). */
+  relation: ReferenceRelation;
+  company: {
+    id: string;
+    name: string;
+    city: string;
+    verification: VerificationStatus;
+    logoUpdatedAt: string | null;
+  };
+  note: string;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export interface CompanyReferences {
+  references: CompanyReference[];
+  /** Yalnızca kendi firmanızda dolu gelir. */
+  pendingIncoming: CompanyReference[];
+  pendingOutgoing: CompanyReference[];
+  confirmedCount: number;
+}
+
+// Oturumsuz da çalışır: başkasının sayfasında yalnızca onaylılar döner.
+export function fetchCompanyReferences(companyId: string) {
+  return request<CompanyReferences>(`/references/company/${companyId}`);
+}
+
+// 400 own_company · 403 no_company · 409 already_exists (gövdede `status`) ·
+// 409 too_many_references.
+export function createReference(input: { toCompanyId: string; relation: ReferenceRelation; note?: string }) {
+  return request<{ reference: CompanyReference }>('/references', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function respondToReference(id: string, action: 'confirm' | 'reject') {
+  return request<{ reference: CompanyReference }>(`/references/${id}/respond`, {
+    method: 'POST',
+    body: JSON.stringify({ action }),
+  });
+}
+
+// İki taraf da kaldırabilir (bekleyen isteği geri çekmek de budur).
+export function deleteReference(id: string) {
+  return request<void>(`/references/${id}`, { method: 'DELETE' });
 }
 
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };

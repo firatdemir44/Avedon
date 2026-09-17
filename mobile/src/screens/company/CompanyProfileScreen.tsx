@@ -1,25 +1,44 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView, ActivityIndicator, Linking, Share, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Platform,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  Linking,
+  Share,
+  StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import {
+  ApiError,
+  createReference,
   deletePost,
+  deleteReference,
   fetchCompany,
   fetchCompanyFeed,
   fetchCompanyMachines,
   fetchCompanyQuestions,
+  fetchCompanyReferences,
   fetchQuoteRequests,
   likePost,
+  respondToReference,
   unlikePost,
   type CompanyCapacity,
+  type CompanyReference,
+  type CompanyReferences,
   type FeedPost,
   type Machine,
+  type ReferenceRelation,
 } from '../../api/client';
 import { groupMachines, machineSummary, monthlyCapacityText } from '../../features/machines/catalog';
-import { formatRelativeTime } from '../../features/time';
+import { formatMonthYear, formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
@@ -36,6 +55,8 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { ListRow } from '../../components/ListRow';
 import { ProductRow } from '../../components/ProductRow';
 import { SectionHeader } from '../../components/SectionHeader';
+import { ChipSelect } from '../../components/ChipSelect';
+import { TextField } from '../../components/TextField';
 import { CompanyPhotoGallery } from '../../components/CompanyPhotoGallery';
 import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
@@ -147,6 +168,37 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [tab, loadPark])
   );
 
+  // Karşılıklı referanslar (Faz 2, Adım 7): Hakkında sekmesinde gösteriliyor,
+  // yalnızca o sekme açıkken çekiliyor ve odakta tazeleniyor.
+  const [refs, setRefs] = useState<CompanyReferences | null>(null);
+  const [refsLoading, setRefsLoading] = useState(false);
+  const [refsFailed, setRefsFailed] = useState(false);
+  const [refError, setRefError] = useState<string | null>(null);
+  const [refNote, setRefNote] = useState<string | null>(null);
+  const [refFormOpen, setRefFormOpen] = useState(false);
+  const [refRelation, setRefRelation] = useState<ReferenceRelation>('musteri');
+  const [refFormNote, setRefFormNote] = useState('');
+  const [refSaving, setRefSaving] = useState(false);
+  const [refBusyId, setRefBusyId] = useState<string | null>(null);
+  // Doğrulama rozetine dokununca düzeylerin ne anlama geldiği açılır.
+  const [verifyInfoOpen, setVerifyInfoOpen] = useState(false);
+
+  const loadReferences = useCallback(() => {
+    if (!viewedCompanyId) return;
+    setRefsLoading(true);
+    setRefsFailed(false);
+    fetchCompanyReferences(viewedCompanyId)
+      .then(setRefs)
+      .catch(() => setRefsFailed(true))
+      .finally(() => setRefsLoading(false));
+  }, [viewedCompanyId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (tab === 'about') loadReferences();
+    }, [tab, loadReferences])
+  );
+
   // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
   // yazıyordu (denetim FINDING-018).
   useEffect(() => {
@@ -228,6 +280,77 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     Share.share({ message: `${author} (Avedon):\n\n${post.body}` }).catch(() => {});
   };
 
+  const submitReference = async () => {
+    if (!viewedCompanyId) return;
+    setRefSaving(true);
+    setRefError(null);
+    setRefNote(null);
+    try {
+      await createReference({
+        toCompanyId: viewedCompanyId,
+        relation: refRelation,
+        note: refFormNote.trim() || undefined,
+      });
+      haptics.success();
+      setRefFormOpen(false);
+      setRefFormNote('');
+      setRefNote('Onay isteği gönderildi; karşı firma onaylayınca iki sayfada da görünür.');
+      loadReferences();
+    } catch (err) {
+      haptics.error();
+      setRefError(referenceErrorMessage(err));
+    } finally {
+      setRefSaving(false);
+    }
+  };
+
+  const respondReference = async (row: CompanyReference, action: 'confirm' | 'reject') => {
+    setRefBusyId(row.id);
+    setRefError(null);
+    setRefNote(null);
+    try {
+      await respondToReference(row.id, action);
+      haptics.success();
+      setRefNote(
+        action === 'confirm'
+          ? `${row.company.name} referanslarınızda görünüyor.`
+          : `${row.company.name} isteği reddedildi.`
+      );
+      loadReferences();
+    } catch (err) {
+      haptics.error();
+      setRefError(referenceErrorMessage(err));
+    } finally {
+      setRefBusyId(null);
+    }
+  };
+
+  const removeReference = async (row: CompanyReference, mode: 'withdraw' | 'remove') => {
+    const confirmed = await confirmAction({
+      title: mode === 'withdraw' ? 'İsteği geri çek' : 'Referansı kaldır',
+      message:
+        mode === 'withdraw'
+          ? `${row.company.name} firmasına gönderdiğiniz onay isteği geri çekilsin mi?`
+          : `${row.company.name} referansınızdan kaldırılsın mı? İki firmanın sayfasından da düşer.`,
+      confirmLabel: mode === 'withdraw' ? 'Geri çek' : 'Kaldır',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setRefBusyId(row.id);
+    setRefError(null);
+    setRefNote(null);
+    try {
+      await deleteReference(row.id);
+      haptics.success();
+      loadReferences();
+    } catch (err) {
+      haptics.error();
+      setRefError(referenceErrorMessage(err));
+    } finally {
+      setRefBusyId(null);
+    }
+  };
+
   if (!viewedCompanyId) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['bottom']}>
@@ -305,9 +428,41 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <View style={styles.identityTexts}>
           <Text style={styles.name}>{company.name}</Text>
           <View style={styles.tagRow}>
-            <VerificationTag status={company.verification} />
+            {company.verification === 'dogrulanmis' ? (
+              // Rozete dokununca düzeylerin ne anlama geldiği açılır (Faz 2, Adım 7).
+              <Pressable
+                onPress={() => setVerifyInfoOpen((open) => !open)}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: verifyInfoOpen }}
+                accessibilityLabel={`${verificationLevelText(company)}. Doğrulama düzeyleri ne demek?`}
+                style={({ pressed }) => [pressed && styles.linkPressed]}
+              >
+                <VerificationTag status={company.verification} />
+              </Pressable>
+            ) : (
+              <VerificationTag status={company.verification} />
+            )}
             <Text style={styles.taxId}>VKN {company.taxId}</Text>
           </View>
+          {company.verification === 'dogrulanmis' ? (
+            <Pressable
+              onPress={() => setVerifyInfoOpen((open) => !open)}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: verifyInfoOpen }}
+              style={({ pressed }) => [pressed && styles.linkPressed]}
+            >
+              <Text style={styles.verifyLine}>
+                {verificationLevelText(company)}
+                <Text style={styles.verifyHint}>{verifyInfoOpen ? '  gizle' : '  bu ne demek?'}</Text>
+              </Text>
+              {verifyInfoOpen ? (
+                <Text style={styles.verifyInfo}>
+                  Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı incelendi. Yerinde ziyaretle
+                  doğrulama: Avedon ekibi tesisi yerinde gördü.
+                </Text>
+              ) : null}
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
@@ -410,8 +565,254 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </ScrollView>
   );
 
+  // Referanslar (Faz 2, Adım 7): Hakkında sekmesinin bir bölümü. Onaylılar
+  // herkese, bekleyenler yalnızca kendi firmanıza görünür.
+  const confirmedCustomers = (refs?.references ?? []).filter((r) => r.relation === 'musteri');
+  const confirmedSuppliers = (refs?.references ?? []).filter((r) => r.relation === 'tedarikci');
+
+  // Onaylı referansı iki taraf da kaldırabilir; kendi sayfanızda düğme çıkar.
+  const removeButton = (row: CompanyReference) =>
+    isOwnCompany ? (
+      <Pressable
+        onPress={() => void removeReference(row, 'remove')}
+        accessibilityRole="button"
+        accessibilityLabel={`Referansı kaldır: ${row.company.name}`}
+        disabled={refBusyId === row.id}
+        hitSlop={8}
+        style={({ pressed }) => [styles.refRemove, pressed && styles.linkPressed]}
+      >
+        <Text style={styles.refRemoveText}>Kaldır</Text>
+      </Pressable>
+    ) : undefined;
+
+  const referenceRow = (row: CompanyReference, divider: boolean, action?: React.ReactNode, detail?: string) => (
+    <View key={row.id} style={[styles.refRow, divider && styles.refDivider]}>
+      <Pressable
+        onPress={() => navigation.push('CompanyProfile', { companyId: row.company.id })}
+        accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
+        accessibilityLabel={`${row.company.name}${row.company.city ? `, ${row.company.city}` : ''}. Firma sayfasını aç`}
+        android_ripple={{ color: colors.pressed }}
+        style={({ pressed }) => [styles.refTexts, pressed && styles.tabPressed]}
+      >
+        <View style={styles.refNameRow}>
+          <Text style={styles.refName} numberOfLines={1}>
+            {row.company.name}
+          </Text>
+          {row.company.verification === 'dogrulanmis' ? (
+            <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
+          ) : null}
+        </View>
+        {row.company.city ? <Text style={styles.refCity}>{row.company.city}</Text> : null}
+        {detail ? <Text style={styles.refDetail}>{detail}</Text> : null}
+        {row.note ? <Text style={styles.refNote}>{row.note}</Text> : null}
+      </Pressable>
+      {/* Eylemler satırın YANINDA: web'de iç içe düğme olmasın. */}
+      {action}
+    </View>
+  );
+
+  const referencesContent = (
+    <View>
+      <SectionHeader title="Referanslar" count={refs?.confirmedCount} />
+
+      {refsLoading && !refs ? (
+        <View style={styles.block}>
+          <ActivityIndicator style={styles.loading} color={colors.primary} />
+        </View>
+      ) : null}
+
+      {refsFailed && !refs ? (
+        <View style={styles.block}>
+          <EmptyState
+            compact
+            icon="cloud-offline-outline"
+            title="Referanslar alınamadı"
+            message="Bağlantınızı kontrol edip tekrar deneyin."
+            actionLabel="Tekrar dene"
+            onAction={loadReferences}
+          />
+        </View>
+      ) : null}
+
+      {refError ? <InlineError message={refError} style={styles.banner} /> : null}
+      {refNote ? <Text style={styles.refSuccess}>{refNote}</Text> : null}
+
+      {refs ? (
+        <>
+          {/* Kendi firmanız: önce onayınızı bekleyenler, sonra gönderdikleriniz. */}
+          {isOwnCompany && refs.pendingIncoming.length ? (
+            <>
+              <SectionHeader title="Onayınızı bekleyenler" count={refs.pendingIncoming.length} />
+              <View style={styles.block}>
+                {refs.pendingIncoming.map((row, index) =>
+                  referenceRow(
+                    row,
+                    index < refs.pendingIncoming.length - 1,
+                    <View style={styles.refActions}>
+                      <PrimaryButton
+                        label="Onayla"
+                        size="sm"
+                        onPress={() => void respondReference(row, 'confirm')}
+                        disabled={refBusyId === row.id}
+                        accessibilityLabel={`${row.company.name} referansını onayla`}
+                      />
+                      <PrimaryButton
+                        label="Reddet"
+                        size="sm"
+                        variant="outline"
+                        onPress={() => void respondReference(row, 'reject')}
+                        disabled={refBusyId === row.id}
+                        accessibilityLabel={`${row.company.name} referansını reddet`}
+                      />
+                    </View>,
+                    // relation sayfası görüntülenen firmaya (size) göre: karşı
+                    // taraf tedarikçinizse, o firma sizi müşterisi olarak gösterdi.
+                    `${row.company.name} sizi ${row.relation === 'tedarikci' ? 'müşterisi' : 'tedarikçisi'} olarak gösterdi.`
+                  )
+                )}
+              </View>
+              <Text style={styles.refHint}>
+                Onayladığınız referans iki firmanın sayfasında da görünür; reddettiğiniz hiçbir yerde görünmez.
+              </Text>
+            </>
+          ) : null}
+
+          {isOwnCompany && refs.pendingOutgoing.length ? (
+            <>
+              <SectionHeader title="Gönderdikleriniz — onay bekliyor" count={refs.pendingOutgoing.length} />
+              <View style={styles.block}>
+                {refs.pendingOutgoing.map((row, index) =>
+                  referenceRow(
+                    row,
+                    index < refs.pendingOutgoing.length - 1,
+                    <View style={styles.refActions}>
+                      <PrimaryButton
+                        label="İsteği geri çek"
+                        size="sm"
+                        variant="outline"
+                        onPress={() => void removeReference(row, 'withdraw')}
+                        disabled={refBusyId === row.id}
+                        accessibilityLabel={`${row.company.name} firmasına gönderdiğiniz isteği geri çek`}
+                      />
+                    </View>,
+                    `Bu firmayı ${row.relation === 'musteri' ? 'müşteriniz' : 'tedarikçiniz'} olarak gösterdiniz.`
+                  )
+                )}
+              </View>
+            </>
+          ) : null}
+
+          {confirmedCustomers.length ? (
+            <>
+              <SectionHeader title={isOwnCompany ? 'Müşterileriniz' : 'Müşterileri'} count={confirmedCustomers.length} />
+              <View style={styles.block}>
+                {confirmedCustomers.map((row, index) =>
+                  referenceRow(row, index < confirmedCustomers.length - 1, removeButton(row))
+                )}
+              </View>
+            </>
+          ) : null}
+
+          {confirmedSuppliers.length ? (
+            <>
+              <SectionHeader
+                title={isOwnCompany ? 'Tedarikçileriniz' : 'Tedarikçileri'}
+                count={confirmedSuppliers.length}
+              />
+              <View style={styles.block}>
+                {confirmedSuppliers.map((row, index) =>
+                  referenceRow(row, index < confirmedSuppliers.length - 1, removeButton(row))
+                )}
+              </View>
+            </>
+          ) : null}
+
+          {refs.references.length === 0 ? (
+            <View style={styles.block}>
+              {isOwnCompany ? (
+                <EmptyState
+                  compact
+                  icon="ribbon-outline"
+                  title="Henüz onaylı referans yok"
+                  message="Çalıştığınız firmaların sayfasından 'Referans olarak ekle' diyerek onay isteyebilirsiniz. Onaylanan referans iki firmanın sayfasında görünür."
+                />
+              ) : (
+                <Text style={styles.refEmpty}>Henüz onaylı referans yok.</Text>
+              )}
+            </View>
+          ) : null}
+
+          {/* Başkasının sayfası ve firmanız varsa: referans olarak ekleme formu. */}
+          {!isOwnCompany && user?.companyId ? (
+            <View style={[styles.block, styles.refFormBlock]}>
+              {refFormOpen ? (
+                <>
+                  <Text style={styles.refFormTitle}>Bu firmayla çalışıyor musunuz?</Text>
+                  <ChipSelect
+                    options={[
+                      { value: 'musteri', label: 'Bu firma müşterimiz' },
+                      { value: 'tedarikci', label: 'Bu firma tedarikçimiz' },
+                    ]}
+                    value={refRelation}
+                    onChange={(next) => {
+                      haptics.selection();
+                      setRefRelation(next as ReferenceRelation);
+                    }}
+                    compact
+                  />
+                  <TextField
+                    label="Not (isteğe bağlı)"
+                    value={refFormNote}
+                    onChangeText={setRefFormNote}
+                    placeholder="Örn. 2023'ten beri süprem alıyoruz"
+                    maxLength={200}
+                    multiline
+                  />
+                  <Text style={styles.refHintTight}>
+                    İstek karşı firmaya gider; onaylanmadan hiçbir sayfada görünmez.
+                  </Text>
+                  <View style={styles.refFormActions}>
+                    <PrimaryButton
+                      label={refSaving ? 'Gönderiliyor...' : 'Gönder'}
+                      onPress={() => void submitReference()}
+                      disabled={refSaving}
+                      style={styles.refFormButton}
+                    />
+                    <PrimaryButton
+                      label="Vazgeç"
+                      variant="outline"
+                      onPress={() => {
+                        setRefFormOpen(false);
+                        setRefError(null);
+                      }}
+                      disabled={refSaving}
+                      style={styles.refFormButton}
+                    />
+                  </View>
+                </>
+              ) : (
+                <PrimaryButton
+                  label="Referans olarak ekle"
+                  variant="outline"
+                  icon="ribbon-outline"
+                  onPress={() => {
+                    setRefError(null);
+                    setRefNote(null);
+                    setRefFormOpen(true);
+                  }}
+                  accessibilityLabel={`${company.name} firmasını referans olarak ekle`}
+                />
+              )}
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+
   const aboutContent = (
     <View>
+      {route.params?.focus === 'references' ? referencesContent : null}
       <View style={styles.block}>
         <View style={styles.aboutBlock}>
           <Text style={styles.aboutTitle}>Hakkında</Text>
@@ -500,6 +901,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           last
         />
       </View>
+      {route.params?.focus === 'references' ? null : referencesContent}
+
       {isOwnCompany ? (
         <Text style={styles.footNote}>
           Eksik bilgileri adım adım "Tamamla" ile ya da hepsini tek seferde "Firmayı Düzenle" ile ekleyebilirsiniz.
@@ -849,6 +1252,37 @@ function FilterChip({
   );
 }
 
+// Doğrulama düzeyi (Faz 2, Adım 7): boş düzeyde yalnızca "Doğrulandı".
+// Tarih varsa ay-yıl olarak eklenir: "Belge ile doğrulandı · Eylül 2026".
+function verificationLevelText(company: { verificationLevel?: string; verifiedAt?: string | null }): string {
+  const level =
+    company.verificationLevel === 'belge'
+      ? 'Belge ile doğrulandı'
+      : company.verificationLevel === 'ziyaret'
+        ? 'Yerinde ziyaretle doğrulandı'
+        : 'Doğrulandı';
+  const when = company.verifiedAt ? formatMonthYear(company.verifiedAt) : '';
+  return when ? `${level} · ${when}` : level;
+}
+
+// Referans uçlarının hata kodları okunur Türkçeye çevriliyor.
+function referenceErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.code === 'already_exists') {
+      const status = typeof err.body?.status === 'string' ? err.body.status : '';
+      if (status === 'pending') return 'Onay bekleyen bir isteğiniz var.';
+      if (status === 'confirmed') return 'Bu firma zaten referansınız.';
+      return 'Bu firma için daha önce bir istek gönderilmiş.';
+    }
+    if (err.code === 'own_company') return 'Kendi firmanızı referans olarak ekleyemezsiniz.';
+    if (err.code === 'no_company') return 'Referans eklemek için bir firmaya bağlı olmanız gerekir.';
+    if (err.code === 'too_many_references') return 'Referans sayısı üst sınıra ulaştı.';
+    if (err.code === 'already_responded') return 'Bu istek daha önce cevaplanmış.';
+    if (err.code === 'reference_not_found') return 'Bu referans artık yok, liste yenilendiğinde düşecek.';
+  }
+  return friendlyMessage(err, 'İşlem tamamlanamadı, tekrar deneyin.');
+}
+
 function VerificationTag({ status }: { status: VerificationStatus }) {
   if (status === 'dogrulanmis') {
     return (
@@ -1039,6 +1473,42 @@ const styles = StyleSheet.create({
   machineCount: { fontFamily: fonts.monoSemibold },
   machineSummary: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   machineNote: { ...typography.caption, color: colors.textMuted },
+  // Doğrulama düzeyi açıklaması (Faz 2, Adım 7)
+  verifyLine: { ...typography.caption, color: colors.textMuted },
+  verifyHint: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
+  verifyInfo: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs },
+  // Referanslar (Faz 2, Adım 7)
+  refRow: { flexDirection: 'row', alignItems: 'center', paddingRight: spacing.sm },
+  refDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  refTexts: {
+    flex: 1,
+    gap: 2,
+    minHeight: MIN_TOUCH + 8,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+  },
+  refNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  refName: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent, flexShrink: 1 },
+  refCity: { ...typography.caption, color: colors.textMuted },
+  refDetail: { ...typography.caption, color: colors.text },
+  refNote: { ...typography.caption, color: colors.textMuted },
+  refActions: { gap: spacing.xs, paddingVertical: spacing.sm },
+  refRemove: { minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.sm },
+  refRemoveText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
+  refHint: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingTop: 6 },
+  refHintTight: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
+  refSuccess: {
+    ...typography.caption,
+    color: colors.success,
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 6,
+  },
+  refEmpty: { ...typography.body, color: colors.textMuted, padding: spacing.gutter },
+  refFormBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.gutter, marginTop: spacing.blockGap },
+  refFormTitle: { ...typography.subtitle, color: colors.text, marginBottom: spacing.sm },
+  refFormActions: { flexDirection: 'row', gap: spacing.sm },
+  refFormButton: { flex: 1 },
   loading: { marginVertical: spacing.lg },
   postWrap: { marginBottom: spacing.blockGap },
 });

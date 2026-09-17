@@ -48,6 +48,11 @@ export interface Company {
   productCategories: string[];
   employeeIds: string[];
   verification: VerificationStatus;
+  // Doğrulamanın nasıl yapıldığı (Faz 2, Adım 7): '' = düzey belirtilmemiş,
+  // 'belge' = vergi levhası/ticaret sicili incelendi, 'ziyaret' = yerinde görüldü.
+  // Eski sunucu sürümleri bu alanları göndermiyor olabilir, o yüzden isteğe bağlı.
+  verificationLevel?: '' | 'belge' | 'ziyaret' | (string & {});
+  verifiedAt?: string | null;
   companyCode: string; // kayıt sırasında çalışanların katılması için
   // Firma sayfası "Şirket Genel Bakışı" (Aşama B). companyType anahtarı
   // features/products/catalog.ts COMPANY_TYPES; boş = belirtilmemiş.

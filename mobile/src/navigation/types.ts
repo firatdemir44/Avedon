@@ -37,7 +37,15 @@ export type RootStackParamList = {
   Admin: undefined;
   // initialTab: kapasite aramasından gelindiğinde "Makine parkı" sekmesi açık
   // gelsin diye (Faz 2, Adım 5).
-  CompanyProfile: { companyId?: string; initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines' } | undefined;
+  // focus: 'references' — referans bildiriminden gelindiğinde Hakkında
+  // sekmesinde Referanslar bölümü en üste alınır (Faz 2, Adım 7).
+  CompanyProfile:
+    | {
+        companyId?: string;
+        initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines';
+        focus?: 'references';
+      }
+    | undefined;
   EditCompany: { companyId: string };
   // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
   // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.

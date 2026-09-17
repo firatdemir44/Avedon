@@ -31,6 +31,8 @@ function iconFor(kind: string): IconName {
   if (kind.startsWith('quote')) return 'pricetag-outline';
   // Satıcı asistanı (Faz 2, Adım 3): soru geldi / soru cevaplandı.
   if (kind.startsWith('company_question')) return 'sparkles-outline';
+  // Karşılıklı referanslar (Faz 2, Adım 7).
+  if (kind.startsWith('reference')) return 'ribbon-outline';
   return 'notifications-outline';
 }
 
@@ -91,6 +93,20 @@ export function NotificationsScreen({ navigation }: Props) {
       }
       if (item.kind === 'company_question_answered') {
         if (companyId) navigation.navigate('SellerAssistant', { companyId });
+        return;
+      }
+      // Faz 2, Adım 7: onay isteği kendi firma sayfasına (referanslar bölümü
+      // en üstte), onay/ret sonucu karşı firmanın sayfasına gider.
+      if (item.kind === 'reference_request') {
+        navigation.navigate('CompanyProfile', { initialTab: 'about', focus: 'references' });
+        return;
+      }
+      if (item.kind === 'reference_confirmed' || item.kind === 'reference_rejected') {
+        navigation.navigate('CompanyProfile', {
+          ...(companyId ? { companyId } : {}),
+          initialTab: 'about',
+          focus: 'references',
+        });
         return;
       }
       if (item.kind.startsWith('quote')) {

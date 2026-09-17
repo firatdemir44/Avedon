@@ -26,6 +26,13 @@ export function formatDateTime(iso: string): string {
   return `${date.toLocaleDateString('tr-TR')} · ${formatClockTime(iso)}`;
 }
 
+// Doğrulama tarihinde gün gerekmiyor: "Eylül 2026" (Faz 2, Adım 7).
+export function formatMonthYear(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+}
+
 export function isSameCalendarDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, Switch, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
@@ -6,6 +6,7 @@ import {
   fetchMachineKinds,
   searchCapacity,
   type CapacityResult,
+  type CapacitySearchParams,
   type MachineGroup,
 } from '../../api/client';
 import { ChipSelect } from '../../components/ChipSelect';
@@ -68,6 +69,10 @@ export function CapacitySearchScreen({ navigation }: Props) {
   const [results, setResults] = useState<CapacityResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Sayfalama (Faz 2, Adım 7): sunucu hasMore + nextOffset döndürüyor.
+  const [nextOffset, setNextOffset] = useState<number | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const lastParams = useRef<CapacitySearchParams>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -100,24 +105,52 @@ export function CapacitySearchScreen({ navigation }: Props) {
       setSearchError('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).');
       return;
     }
+    // Yeni arama: liste ve sayfalama sıfırlanır.
+    const params: CapacitySearchParams = {
+      group: group || undefined,
+      kind,
+      gauge: gaugeValue.value,
+      diameterInch: diameterValue.value,
+      widthMin: widthValue.value,
+      contractOpen: onlyOpen,
+      city,
+    };
+    lastParams.current = params;
     setSearching(true);
     setSearchError(null);
+    setNextOffset(null);
     try {
-      const { results: found } = await searchCapacity({
-        group: group || undefined,
-        kind,
-        gauge: gaugeValue.value,
-        diameterInch: diameterValue.value,
-        widthMin: widthValue.value,
-        contractOpen: onlyOpen,
-        city,
-      });
-      setResults(found);
+      const page = await searchCapacity(params);
+      setResults(page.results);
+      setNextOffset(page.hasMore ? page.nextOffset : null);
     } catch (err) {
       haptics.error();
       setSearchError(friendlyMessage(err, 'Arama yapılamadı, tekrar deneyin.'));
     } finally {
       setSearching(false);
+    }
+  };
+
+  // "Daha fazla göster": süzgeç formunda sonradan yapılan değişiklikler değil,
+  // aramanın kendi süzgeci kullanılır (liste karışmasın).
+  const loadMore = async () => {
+    if (nextOffset === null || loadingMore) return;
+    setLoadingMore(true);
+    setSearchError(null);
+    try {
+      const page = await searchCapacity({ ...lastParams.current, offset: nextOffset });
+      setResults((prev) => {
+        const current = prev ?? [];
+        const seen = new Set(current.map((r) => r.company.id));
+        // Aynı firma iki sayfada birden gelirse ikinci kez eklenmez.
+        return [...current, ...page.results.filter((r) => !seen.has(r.company.id))];
+      });
+      setNextOffset(page.hasMore ? page.nextOffset : null);
+    } catch (err) {
+      haptics.error();
+      setSearchError(friendlyMessage(err, 'Sonraki sonuçlar alınamadı, tekrar deneyin.'));
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -280,6 +313,17 @@ export function CapacitySearchScreen({ navigation }: Props) {
               </Pressable>
             ))}
           </View>
+          {nextOffset !== null ? (
+            <View style={styles.moreWrap}>
+              <PrimaryButton
+                label={loadingMore ? 'Yükleniyor...' : 'Daha fazla göster'}
+                variant="outline"
+                onPress={() => void loadMore()}
+                disabled={loadingMore}
+                accessibilityLabel="Daha fazla firma göster"
+              />
+            </View>
+          ) : null}
         </>
       )}
     </ScrollView>
@@ -321,6 +365,7 @@ const styles = StyleSheet.create({
   },
   switchLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
   searchWrap: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md },
+  moreWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
   resultRow: {
     flexDirection: 'row',
     alignItems: 'center',
