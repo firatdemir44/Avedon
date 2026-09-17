@@ -16,6 +16,19 @@ const STATUS_OPTIONS: { value: VerificationStatus; label: string }[] = [
   { value: 'dogrulanmis', label: 'Doğrulandı' },
 ];
 
+// Doğrulamanın nasıl yapıldığı (Faz 2, Adım 7): firma sayfasındaki rozet
+// açıklamasında görünür.
+type VerificationLevel = 'belge' | 'ziyaret';
+
+const LEVEL_OPTIONS: { value: VerificationLevel; label: string }[] = [
+  { value: 'belge', label: 'Belge ile' },
+  { value: 'ziyaret', label: 'Yerinde ziyaretle' },
+];
+
+function levelLabel(level?: string): string {
+  return LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? 'Düzey belirtilmemiş';
+}
+
 export function AdminScreen() {
   const { user } = useSession();
   const isAdmin = !!user?.isAdmin;
@@ -26,12 +39,21 @@ export function AdminScreen() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const handleSetStatus = async (companyId: string, nextStatus: VerificationStatus) => {
+  const handleSetStatus = async (
+    companyId: string,
+    nextStatus: VerificationStatus,
+    level?: VerificationLevel
+  ) => {
     if (!isAdmin) return;
     setUpdatingId(companyId);
     setActionError(null);
     try {
-      await updateCompanyVerification(companyId, nextStatus);
+      // "Doğrulandı" düzeysiz gönderilmez: varsayılan "Belge ile".
+      await updateCompanyVerification(
+        companyId,
+        nextStatus,
+        nextStatus === 'dogrulanmis' ? (level ?? 'belge') : undefined
+      );
       await reload();
     } catch (err) {
       setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
@@ -110,6 +132,28 @@ export function AdminScreen() {
                 );
               })}
             </View>
+            {item.verification === 'dogrulanmis' ? (
+              <View style={styles.levelBlock}>
+                <Text style={styles.levelHint}>Doğrulama düzeyi: {levelLabel(item.verificationLevel)}</Text>
+                <View style={styles.statusRow}>
+                  {LEVEL_OPTIONS.map((option) => {
+                    const isCurrent = item.verificationLevel === option.value;
+                    return (
+                      <Pressable
+                        key={option.value}
+                        disabled={isCurrent || updatingId === item.id}
+                        onPress={() => handleSetStatus(item.id, 'dogrulanmis', option.value)}
+                        style={[styles.statusChip, isCurrent && styles.statusChipActive]}
+                      >
+                        <Text style={[styles.statusChipText, isCurrent && styles.statusChipTextActive]}>
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : null}
           </View>
         )}
       />
@@ -131,6 +175,8 @@ const styles = StyleSheet.create({
   cardHeaderRow: { marginBottom: spacing.xs },
   name: { ...typography.subtitle, fontFamily: fonts.bold, color: colors.text },
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: 2 },
+  levelBlock: { marginTop: spacing.sm },
+  levelHint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   statusRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

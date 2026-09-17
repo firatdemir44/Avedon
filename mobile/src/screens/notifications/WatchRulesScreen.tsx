@@ -9,7 +9,8 @@ import { EmptyState, ErrorState, InlineError } from '../../components/StateView'
 import { refreshControl } from '../../components/refresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { EMPTY_FILTERS } from '../../features/products/filters';
+import { EMPTY_FILTERS, isYarnWatchQuery } from '../../features/products/filters';
+import { presetFromYarnWatchQuery } from '../../features/yarns/watch';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { MIN_TOUCH, colors, fonts, spacing, typography } from '../../theme';
 
@@ -90,6 +91,16 @@ export function WatchRulesScreen({ navigation }: Props) {
     [setData]
   );
 
+  // İplik kuralına basınca iplik dizini o süzgeçle açılır (kumaş kuralları
+  // şimdilik yalnızca listede duruyor).
+  const openYarnRule = (rule: WatchRule) => {
+    if (!isYarnWatchQuery(rule.query)) return;
+    navigation.navigate('YarnDirectory', {
+      preset: presetFromYarnWatchQuery(rule.query),
+      presetKey: Date.now(),
+    });
+  };
+
   const newWatch = () =>
     navigation.navigate('ProductFilters', { filters: EMPTY_FILTERS, mode: 'watch' });
 
@@ -156,8 +167,18 @@ export function WatchRulesScreen({ navigation }: Props) {
               style={styles.rowFlex}
               title={item.name}
               subtitle={ruleSubtitle(item)}
+              // İplik kuralının süzgeci kumaş alanlarıyla çözümlenemez: küçük
+              // bir "İplik" etiketi kuralın hangi dizine ait olduğunu söyler.
+              left={
+                isYarnWatchQuery(item.query) ? (
+                  <View style={styles.kindTag}>
+                    <Text style={styles.kindTagText}>İplik</Text>
+                  </View>
+                ) : undefined
+              }
               divider={false}
-              chevron={false}
+              chevron={isYarnWatchQuery(item.query)}
+              onPress={isYarnWatchQuery(item.query) ? () => openYarnRule(item) : undefined}
             />
             <Switch
               value={item.active}
@@ -202,6 +223,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   rowFlex: { flex: 1 },
+  kindTag: {
+    borderRadius: 4,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  kindTagText: { ...typography.caption, fontFamily: fonts.semibold, fontSize: 11, color: colors.primary },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   trash: {
     width: MIN_TOUCH,

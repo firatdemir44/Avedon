@@ -1,7 +1,20 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  TextInput,
+  AppState,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -40,6 +53,11 @@ type Props = RootStackScreenProps<'SellerAssistant'>;
 
 const CHAT_AVATAR = 38;
 
+// Satıcı cevabı ipliğe sunucuda ekleniyor; açık ekran kendi kendine tazelensin
+// (Mesajlar ekranındaki yoklama kalıbı).
+const POLL_INTERVAL_MS = 10000;
+const NEAR_BOTTOM_THRESHOLD_PX = 80;
+
 const INFO =
   'Bu asistan yalnızca firmanın yayınlanmış kataloğundan cevap verir. Fiyat için Teklif iste\'yi kullanın.';
 
@@ -76,6 +94,13 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
   const retryTextRef = useRef('');
   const inputRef = useRef<TextInput>(null);
   const listRef = useRef<FlatList<ChatItem>>(null);
+  const messagesRef = useRef<ChatItem[]>([]);
+  messagesRef.current = messages;
+  const sendingRef = useRef(false);
+  sendingRef.current = sending;
+  const pollInFlightRef = useRef(false);
+  // Kullanıcı yukarı kaydırdıysa yeni mesaj gelince liste zıplamasın.
+  const isNearBottomRef = useRef(true);
 
   useLayoutEffect(() => {
     // Firma adı bildirimden gelmemiş olabilir: iplik açılınca sunucudan gelir.
@@ -101,6 +126,38 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Sessiz yoklama: yeni mesaj yoksa state'e dokunulmaz (liste zıplamasın);
+  // gönderim sürerken ve uygulama ön planda değilken istek atılmaz.
+  const poll = useCallback(async () => {
+    const threadId = threadIdRef.current;
+    if (!threadId || pollInFlightRef.current || sendingRef.current) return;
+    if (AppState.currentState !== 'active') return;
+
+    pollInFlightRef.current = true;
+    try {
+      const { messages: rows } = await fetchAssistantThread(threadId);
+      const prev = messagesRef.current;
+      const unchanged =
+        prev.length === rows.length && (rows.length === 0 || prev[prev.length - 1]?.id === rows[rows.length - 1]?.id);
+      if (unchanged) return;
+      setMessages(rows);
+      if (isNearBottomRef.current) {
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+      }
+    } catch {
+      // Geçici ağ hatası: bir sonraki turda tekrar denenecek.
+    } finally {
+      pollInFlightRef.current = false;
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+      return () => clearInterval(timer);
+    }, [poll])
+  );
 
   const send = useCallback(
     async (text: string) => {
@@ -150,6 +207,12 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
     (productId: string) => navigation.navigate('ProductDetail', { productId }),
     [navigation]
   );
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    isNearBottomRef.current =
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - NEAR_BOTTOM_THRESHOLD_PX;
+  };
 
   const data = useMemo<ChatItem[]>(() => (pending ? [...messages, pending] : messages), [messages, pending]);
   const canSend = input.trim().length > 0 && !sending && status === 'ready';
@@ -259,7 +322,11 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
           renderItem={renderItem}
           contentContainerStyle={chatStyles.listContent}
           keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+          onScroll={handleScroll}
+          scrollEventThrottle={100}
+          onContentSizeChange={() => {
+            if (isNearBottomRef.current) listRef.current?.scrollToEnd({ animated: true });
+          }}
           ListEmptyComponent={
             <View>
               <View style={chatStyles.assistantRow}>

@@ -68,7 +68,7 @@ function newestServerTimestamp(messages: ChatMessage[]): string | null {
 
 // Taslak: docs/tasarim-yonleri/CSohbet.dc.html. Gün ayraç çipi, gönderen tarafı
 // sivri köşeli baloncuklar, eşit aralıklı saat; altta yazma alanı + kare gönder.
-export function ChatScreen({ route }: Props) {
+export function ChatScreen({ navigation, route }: Props) {
   const { conversationId } = route.params;
   const { user } = useSession();
   const insets = useSafeAreaInsets();
@@ -250,13 +250,44 @@ export function ChatScreen({ route }: Props) {
             const previous = messages[index - 1];
             const startsNewDay =
               !previous || !isSameCalendarDay(new Date(previous.createdAt), new Date(item.createdAt));
+            const dayChip = startsNewDay ? (
+              <View style={styles.dayChip}>
+                <Text style={styles.dayChipText}>{formatDayLabel(item.createdAt)}</Text>
+              </View>
+            ) : null;
+
+            // Teklif bağlantılı mesaj: balon yerine kart (Faz 2, Adım 2).
+            // Dış kap Pressable DEĞİL: içindeki "Teklifi aç" düğmesiyle web'de
+            // iç içe <button> oluşmasın (MOBILE-DESIGN web kuralları).
+            if (item.quoteRequestId) {
+              const quoteRequestId = item.quoteRequestId;
+              return (
+                <>
+                  {dayChip}
+                  <View style={[styles.quoteCard, isMine ? styles.quoteCardMine : styles.quoteCardOther]}>
+                    <View style={styles.quoteHeader}>
+                      <Ionicons name="pricetag-outline" size={15} color={colors.primary} />
+                      <Text style={styles.quoteTitle}>Teklif</Text>
+                    </View>
+                    <Text style={styles.quoteBody}>{item.body}</Text>
+                    <Pressable
+                      onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: quoteRequestId })}
+                      accessibilityRole="button"
+                      accessibilityLabel="Teklifi aç"
+                      style={({ pressed }) => [styles.quoteAction, pressed && styles.pressedFade]}
+                    >
+                      <Text style={styles.quoteActionText}>Teklifi aç</Text>
+                      <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+                    </Pressable>
+                    <Text style={[styles.time, styles.otherMeta]}>{formatClockTime(item.createdAt)}</Text>
+                  </View>
+                </>
+              );
+            }
+
             return (
               <>
-                {startsNewDay ? (
-                  <View style={styles.dayChip}>
-                    <Text style={styles.dayChipText}>{formatDayLabel(item.createdAt)}</Text>
-                  </View>
-                ) : null}
+                {dayChip}
                 <Pressable
                   disabled={!item.failed}
                   onPress={() => handleRetry(item)}
@@ -348,6 +379,30 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 2,
   },
   failedBubble: { opacity: 0.75 },
+  // Teklif kartı: balonlarla aynı hizada ama beyaz blok, başlıklı.
+  quoteCard: {
+    maxWidth: '78%',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginBottom: spacing.sm,
+    gap: 4,
+  },
+  quoteCardMine: { alignSelf: 'flex-end', borderBottomRightRadius: 2 },
+  quoteCardOther: { alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
+  quoteHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  quoteTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
+  quoteBody: { ...typography.body, color: colors.text },
+  quoteAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    minHeight: MIN_TOUCH,
+  },
+  quoteActionText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
   pressedFade: { opacity: 0.6 },
   myText: { ...typography.body, color: colors.primaryText },
   otherText: { ...typography.body, color: colors.text },

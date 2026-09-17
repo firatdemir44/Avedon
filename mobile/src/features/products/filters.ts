@@ -70,7 +70,7 @@ export function productQueryString(search: string, filters: ProductFilters) {
 // uygun ALT KÜMESİ ve `.strict()`: tanımadığı alan gelirse 400 döner. Bu yüzden
 // `stockMin`, `stockUnit`, `content`, `widthType`, `companyId` gibi desteklenmeyen
 // alanlar burada bilinçli olarak atılıyor.
-export interface WatchQuery {
+export interface FabricWatchQuery {
   search?: string;
   type?: ProductType;
   subtype?: string;
@@ -87,10 +87,42 @@ export interface WatchQuery {
   leadTimeMax?: number;
 }
 
+// İplik izleme (Faz 2, Adım 6): sunucudaki yarnWatchQuerySchema de `.strict()`
+// ve `kind: 'iplik'` bekliyor. İplik dizinindeki `inStock` izlemeye GİRMEZ
+// (stok anlık bir durum, kalıcı bir tarif değil) — kumaştaki stok kuralıyla aynı.
+export interface YarnWatchQuery {
+  kind: 'iplik';
+  search?: string;
+  // Virgülle ayrılmış listeler (sunucu ayrıştırıyor).
+  family?: string;
+  count?: number;
+  countMin?: number;
+  countMax?: number;
+  countUnit?: string;
+  ply?: number;
+  filaments?: number;
+  filamentType?: string;
+  spinning?: string;
+  combing?: string;
+  luster?: string;
+  endUse?: string;
+  colorState?: string;
+  fiber?: string;
+  certificate?: string;
+  sellerRole?: string;
+}
+
+// Kural süzgeci ya kumaş ya iplik tarafındandır; ayrımı `kind` alanı yapar.
+export type WatchQuery = FabricWatchQuery | YarnWatchQuery;
+
+export function isYarnWatchQuery(query: WatchQuery): query is YarnWatchQuery {
+  return (query as YarnWatchQuery).kind === 'iplik';
+}
+
 // Ürünler ekranındaki arama + süzgeç durumundan izleme kuralı süzgeci üretir.
 // Hiçbir desteklenen alan dolu değilse null döner (sunucu boş süzgeci reddeder).
-export function watchQueryFromFilters(search: string, filters: ProductFilters): WatchQuery | null {
-  const query: WatchQuery = {};
+export function watchQueryFromFilters(search: string, filters: ProductFilters): FabricWatchQuery | null {
+  const query: FabricWatchQuery = {};
   const text = search.trim();
   if (text) query.search = text;
   if (filters.type) query.type = filters.type;

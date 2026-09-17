@@ -10,7 +10,13 @@ import type {
   VerificationStatus,
 } from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
-import { productQueryString, type ProductFilters, type WatchQuery } from '../features/products/filters';
+import {
+  productQueryString,
+  type FabricWatchQuery,
+  type ProductFilters,
+  type WatchQuery,
+  type YarnWatchQuery,
+} from '../features/products/filters';
 import type { AnyProductType, StockUnit } from '../features/products/catalog';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
@@ -235,6 +241,9 @@ export type ChatMessage = {
   senderId: string;
   createdAt: string;
   readAt: string | null;
+  // Teklif akışından düşen mesaj (Faz 2, Adım 2): doluysa sohbette normal
+  // balon yerine "Teklif" kartı çizilir. Eski sunucuda bu alan yok.
+  quoteRequestId?: string | null;
 };
 
 export type ConversationSummary = {
@@ -895,9 +904,10 @@ export function markNotificationsRead(payload: { ids: string[] } | { all: true }
   });
 }
 
-// İzleme kuralının süzgeci ürün süzgecinin alt kümesi; çeviri tek yerde
-// (features/products/filters.ts watchQueryFromFilters).
-export type { WatchQuery };
+// İzleme kuralının süzgeci ürün (kumaş) ya da iplik süzgecinin alt kümesi;
+// çeviri tek yerde (features/products/filters.ts watchQueryFromFilters,
+// features/yarns/watch.ts yarnWatchQueryFromParams).
+export type { WatchQuery, FabricWatchQuery, YarnWatchQuery };
 
 export interface WatchRule {
   id: string;
@@ -1719,9 +1729,15 @@ export function fetchAdminCompanies() {
   return request<{ companies: CompanyWithCounts[] }>('/admin/companies');
 }
 
-export function updateCompanyVerification(companyId: string, verification: Company['verification']) {
+// level yalnızca verification === 'dogrulanmis' iken anlamlı; doğrulama geri
+// alınınca sunucu düzeyi kendisi temizler (Faz 2, Adım 7).
+export function updateCompanyVerification(
+  companyId: string,
+  verification: Company['verification'],
+  level?: '' | 'belge' | 'ziyaret'
+) {
   return request<{ company: Company }>(`/admin/companies/${companyId}/verification`, {
     method: 'PATCH',
-    body: JSON.stringify({ verification }),
+    body: JSON.stringify(level !== undefined ? { verification, level } : { verification }),
   });
 }

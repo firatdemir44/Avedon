@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, ScrollView, Switch, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { searchYarns, type YarnSearchParams } from '../../api/client';
+import { ApiError, createWatchRule, searchYarns, type YarnSearchParams } from '../../api/client';
 import { useSession } from '../../context/SessionContext';
 import { ChipSelect } from '../../components/ChipSelect';
 import { MultiChipSelect } from '../../components/MultiChipSelect';
@@ -24,6 +24,7 @@ import {
   yarnFields,
   yarnRowSummary,
 } from '../../features/yarns/catalog';
+import { unsupportedYarnWatchLabels, yarnWatchQueryFromParams } from '../../features/yarns/watch';
 import type { Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -43,6 +44,17 @@ export interface YarnDirectoryPreset {
   combing?: string;
   filamentType?: string;
   family?: string;
+  // İzleme kuralından geri dönülürken (Faz 2, Adım 6) çoklu seçimler ve kalan
+  // süzgeçler de geri yüklenir; "Kim satıyor?" bağlantısı bunları göndermez.
+  search?: string;
+  families?: string[];
+  filaments?: string;
+  spinnings?: string[];
+  filamentTypes?: string[];
+  luster?: string;
+  endUses?: string[];
+  colorState?: string;
+  sellerRole?: string;
 }
 
 const NUMBER_PATTERN = /^\d+([.,]\d+)?$/;
@@ -87,6 +99,9 @@ export function YarnDirectory({
   const [inStock, setInStock] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const [watchNote, setWatchNote] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
+  const [watchSaving, setWatchSaving] = useState(false);
+
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -103,13 +118,33 @@ export function YarnDirectory({
   useEffect(() => {
     if (!preset || presetKey == null || appliedPreset.current === presetKey) return;
     appliedPreset.current = presetKey;
+    if (preset.search) setSearch(preset.search);
     if (preset.count) setCount(preset.count);
     if (preset.countUnit) setCountUnit(preset.countUnit);
-    if (preset.family) setFamilies([preset.family]);
-    if (preset.spinning) setSpinnings([preset.spinning]);
+    if (preset.filaments) setFilaments(preset.filaments);
+    if (preset.families?.length) setFamilies(preset.families);
+    else if (preset.family) setFamilies([preset.family]);
+    if (preset.spinnings?.length) setSpinnings(preset.spinnings);
+    else if (preset.spinning) setSpinnings([preset.spinning]);
     if (preset.combing) setCombing(preset.combing);
-    if (preset.filamentType) setFilamentTypes([preset.filamentType]);
-    if (preset.spinning || preset.combing || preset.filamentType) setMoreOpen(true);
+    if (preset.filamentTypes?.length) setFilamentTypes(preset.filamentTypes);
+    else if (preset.filamentType) setFilamentTypes([preset.filamentType]);
+    if (preset.luster) setLuster(preset.luster);
+    if (preset.endUses?.length) setEndUses(preset.endUses);
+    if (preset.colorState) setColorState(preset.colorState);
+    if (preset.sellerRole) setSellerRole(preset.sellerRole);
+    if (
+      preset.spinning ||
+      preset.spinnings?.length ||
+      preset.combing ||
+      preset.filamentType ||
+      preset.filamentTypes?.length ||
+      preset.luster ||
+      preset.endUses?.length ||
+      preset.colorState ||
+      preset.sellerRole
+    )
+      setMoreOpen(true);
     // preset nesnesi her render'da yeni olabilir; anahtar yeterli.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetKey]);
@@ -203,8 +238,44 @@ export function YarnDirectory({
     }
   };
 
+  // Etkin süzgeci (ve arama metnini) iplik izleme kuralına çevirir. Ad
+  // verilmiyor: sunucu süzgeçten okunur bir ad üretiyor.
+  const watchCurrentSearch = async () => {
+    if (watchSaving) return;
+    const watchQuery = yarnWatchQueryFromParams(params);
+    if (!watchQuery) {
+      setWatchNote({
+        text: 'Bu süzgeç izlemeye çevrilemiyor. Numara, iplik çeşidi ya da başka bir süzgeç seçin.',
+        tone: 'error',
+      });
+      return;
+    }
+    setWatchSaving(true);
+    try {
+      await createWatchRule({ query: watchQuery });
+      haptics.success();
+      const dropped = unsupportedYarnWatchLabels(params);
+      setWatchNote({
+        text: dropped.length ? `İzlemeye alındı (${dropped.join(', ')} izlemeye girmez).` : 'İzlemeye alındı.',
+        tone: 'ok',
+      });
+    } catch (err) {
+      haptics.error();
+      setWatchNote({
+        text:
+          err instanceof ApiError && err.code === 'too_many_rules'
+            ? 'İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.'
+            : 'İzleme kurulamadı, tekrar deneyin.',
+        tone: 'error',
+      });
+    } finally {
+      setWatchSaving(false);
+    }
+  };
+
   const clearAll = () => {
     haptics.selection();
+    setWatchNote(null);
     setSearch('');
     setFamilies([]);
     setCount('');
@@ -243,6 +314,9 @@ export function YarnDirectory({
     !!colorState ||
     !!sellerRole ||
     inStock;
+
+  // İzlemeye çevrilebilir bir süzgeç var mı (yalnızca "stokta olanlar" yetmez).
+  const canWatch = !numbersInvalid && yarnWatchQueryFromParams(params) !== null;
 
   const countUnitOptions = optionValues(options.countUnits);
 
@@ -366,6 +440,21 @@ export function YarnDirectory({
 
       {hasFilter ? (
         <View style={styles.clearWrap}>
+          {/* Faz 2, Adım 6: etkin süzgeci izlemeye alma kısayolu (kumaştaki
+              "Bu aramayı izle" ile aynı kalıp ve mesajlar). */}
+          {canWatch ? (
+            <Pressable
+              onPress={() => void watchCurrentSearch()}
+              disabled={watchSaving}
+              accessibilityRole="button"
+              accessibilityLabel="Bu aramayı izle, uyan yeni iplik çıkınca haber ver"
+              accessibilityState={{ disabled: watchSaving }}
+              style={({ pressed }) => [styles.watchChip, pressed && styles.pressedFade]}
+            >
+              <Ionicons name="bookmark-outline" size={15} color={colors.primary} />
+              <Text style={styles.watchChipText}>{watchSaving ? 'Kuruluyor...' : 'Bu aramayı izle'}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={clearAll}
             accessibilityRole="button"
@@ -375,6 +464,15 @@ export function YarnDirectory({
             <Text style={styles.clearText}>Süzgeçleri temizle</Text>
           </Pressable>
         </View>
+      ) : null}
+
+      {watchNote ? (
+        <Text
+          style={[styles.watchNote, watchNote.tone === 'error' && styles.watchNoteError]}
+          accessibilityLiveRegion="polite"
+        >
+          {watchNote.text}
+        </Text>
       ) : null}
 
       {numbersInvalid ? (
@@ -544,9 +642,27 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   switchLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  clearWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm },
+  clearWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.gutter,
+    paddingTop: spacing.sm,
+  },
   clearLink: { minHeight: MIN_TOUCH, justifyContent: 'center' },
   clearText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
+  watchChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH },
+  watchChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
+  watchNote: {
+    ...typography.caption,
+    color: colors.success,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 6,
+    marginTop: spacing.sm,
+  },
+  watchNoteError: { color: colors.danger, backgroundColor: colors.dangerSoft },
   pressedFade: { opacity: 0.6 },
   banner: { marginHorizontal: spacing.gutter, marginTop: spacing.md },
   addWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
