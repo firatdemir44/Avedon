@@ -276,7 +276,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   const [compositionRows, setCompositionRows] = useState<CompositionRow[]>(
     isEditing ? [] : [emptyCompositionRow()]
   );
-  const [widthType, setWidthType] = useState('');
+  // Fırat (2026-09-17): boyalı/mamul kumaşta en büyük çoğunlukla açık endir; tüp en
+  // genellikle yalnızca ham kumaşta olur. Yeni üründe varsayılan "Açık en".
+  const [widthType, setWidthType] = useState(productId ? '' : 'acik');
   // Yalnızca "Tüp en" seçiliyken sorulur; varsayılan seçili DEĞİL (otomatik
   // çarpma her zaman doğru değil, Fırat'ın kararı: faz1-plani Adım 4 madde 2).
   const [widthMeaning, setWidthMeaning] = useState('');
@@ -1276,6 +1278,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={changeWidthType} compact />
           {widthType === 'tup' ? (
             <>
+              <Text style={styles.hint}>Tüp en genellikle ham kumaşta olur; boyalı kumaş çoğunlukla açık endir.</Text>
               <Text style={styles.label}>Girdiğiniz en neyi gösteriyor?</Text>
               <ChipSelect
                 options={WIDTH_MEANING_OPTIONS}
