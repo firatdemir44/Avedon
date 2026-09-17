@@ -50,6 +50,8 @@ model Company {
   photos            CompanyPhoto[]
   assistantThreads  AssistantThread[]
   memories          CompanyMemory[]
+  faqs              CompanyFaq[]
+  questions         CompanyQuestion[]
 }
 
 // Firma sayfasındaki galeriler (Aşama B): kind "office" (ofis/üretim
@@ -111,6 +113,7 @@ model User {
   watchRules           WatchRule[]
   quoteRequests        QuoteRequest[]
   quotes               Quote[]
+  companyQuestions     CompanyQuestion[]
   createdAt            DateTime        @default(now())
 }
 
@@ -487,8 +490,9 @@ model AssistantThread {
   user      User     @relation(fields: [userId], references: [id])
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
-  // "app" | "whatsapp"
+  // "app" | "whatsapp" | "buyer" (Faz 2 Adım 3: alıcı, targetCompanyId firmasının asistanıyla konuşur)
   channel   String   @default("app")
+  targetCompanyId String?
   // İlk sorudan türetilen kısa başlık (liste için).
   title     String   @default("")
   createdAt DateTime @default(now())
@@ -643,4 +647,37 @@ model Quote {
   updatedAt     DateTime     @updatedAt
 
   @@index([requestId, createdAt])
+}
+
+// --- Faz 2, Adım 3: satıcı asistanı (alıcı sorularına katalogdan cevap) ---
+// Firmanın sık sorulan soruları; satıcı asistanı bunları okur (fiyat yazılmaz).
+model CompanyFaq {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+}
+
+// Asistanın cevaplayamayıp satıcıya ilettiği soru. status: open | answered
+model CompanyQuestion {
+  id         String    @id @default(cuid())
+  companyId  String
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  askerId    String
+  asker      User      @relation(fields: [askerId], references: [id])
+  threadId   String?
+  productId  String?
+  question   String
+  answer     String    @default("")
+  status     String    @default("open")
+  createdAt  DateTime  @default(now())
+  answeredAt DateTime?
+
+  @@index([companyId, status, createdAt])
+  @@index([askerId, createdAt])
 }

@@ -12,7 +12,9 @@ export type NotificationKind =
   | 'quote_request_new'
   | 'quote_received'
   | 'quote_accepted'
-  | 'quote_declined';
+  | 'quote_declined'
+  | 'company_question_new'
+  | 'company_question_answered';
 
 export interface NotificationData {
   productId?: string;
@@ -21,6 +23,9 @@ export interface NotificationData {
   ruleId?: string;
   postId?: string;
   quoteRequestId?: string;
+  questionId?: string;
+  threadId?: string;
+  companyId?: string;
 }
 
 export interface NotifyInput {

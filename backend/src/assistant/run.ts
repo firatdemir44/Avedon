@@ -4,6 +4,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { prisma } from '../db';
 import { LLM_MODELS, LlmNotConfiguredError, getAnthropic, isLlmMock } from '../llm';
+import { buildBuyerTools, buyerSystemPrompt } from './buyer';
 import { readMemory } from './memory';
 import { mockAssistantTurn } from './mock';
 import { personaBlock, personaFor } from './persona';
@@ -82,9 +83,21 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
   const { threadId, userId, companyId } = params;
   const text = params.text.trim();
 
+  // Alıcı kipi (Faz 2 Adım 3): iplik başka bir firmanın asistanıyla. Bu kipte firma
+  // hafızası, kişilik ve sahibin araçları YOK; yalnızca o firmanın açık kataloğu.
+  const threadRow = await prisma.assistantThread.findUnique({ where: { id: threadId }, select: { channel: true, targetCompanyId: true } });
+  const sellerCompany =
+    threadRow?.channel === 'buyer' && threadRow.targetCompanyId
+      ? await prisma.company.findUnique({
+          where: { id: threadRow.targetCompanyId },
+          select: { id: true, name: true, about: true, companyType: true, city: true, mainMarkets: true, verification: true },
+        })
+      : null;
+  if (threadRow?.channel === 'buyer' && !sellerCompany) throw new Error('seller_company_not_found');
+
   const [rows, memory, company, user] = await Promise.all([
     prisma.assistantMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { apiJson: true } }),
-    companyId ? readMemory(companyId) : Promise.resolve([]),
+    companyId && !sellerCompany ? readMemory(companyId) : Promise.resolve([]),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, assistantPersona: true } }),
   ]);
@@ -93,7 +106,9 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
   const userApi: ApiMessage = { role: 'user', content: text };
   const messages: ApiMessage[] = [...history, userApi];
 
-  const toolSet = buildTools({ userId, companyId });
+  const toolSet = sellerCompany
+    ? buildBuyerTools({ askerId: userId, threadId, sellerCompanyId: sellerCompany.id, sellerName: sellerCompany.name })
+    : buildTools({ userId, companyId });
 
   let answer: string;
   let newApi: ApiMessage[];
@@ -112,7 +127,9 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
       model: LLM_MODELS.chat,
       max_tokens: 2048,
       // Sabit talimat önbelleğe alınır; firma hafızası sık değiştiği için ayrı blok.
-      system: [
+      system: sellerCompany
+        ? [{ type: 'text', text: buyerSystemPrompt(sellerCompany, user?.firstName ?? null) }]
+        : [
         { type: 'text', text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         // Kişilik (İpek / Mert) kullanıcıya özel: önbellek dışı blokta.
         { type: 'text', text: `${personaBlock(persona, user?.firstName ?? null)}

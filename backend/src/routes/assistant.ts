@@ -7,6 +7,8 @@ import { deleteMemory, readMemory, writeMemory } from '../assistant/memory';
 import { MEMORY_KEYS, memoryKeyDef } from '../assistant/memoryKeys';
 import { runAssistantTurn, toView } from '../assistant/run';
 import { PERSONAS, PERSONA_KEYS, greetingText, isPersonaKey, personaFor } from '../assistant/persona';
+import { MAX_BUYER_QUESTIONS_PER_DAY } from '../assistant/buyer';
+import { notify } from '../notifications';
 import { makeHandle } from './handle';
 
 // Faz 1, Adım 5: firma asistanı. Sohbet kaydı sunucuda (istemci threadId tutar),
@@ -81,6 +83,13 @@ assistantRouter.post(
     if (!thread) return res.status(404).json({ error: 'thread_not_found' });
     const parsed = messageSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+
+    // Satıcı asistanına günlük soru sınırı (kötüye kullanım ve maliyet).
+    if (thread.channel === 'buyer') {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const asked = await prisma.assistantMessage.count({ where: { role: 'user', createdAt: { gte: since }, thread: { userId: req.user!.id, channel: 'buyer' } } });
+      if (asked >= MAX_BUYER_QUESTIONS_PER_DAY) return res.status(429).json({ error: 'daily_limit', max: MAX_BUYER_QUESTIONS_PER_DAY });
+    }
 
     try {
       const result = await runAssistantTurn({
@@ -193,5 +202,156 @@ assistantRouter.get(
       unreadMessages,
       memoryEmpty: memoryCount === 0,
     });
+  })
+);
+
+// --- Satıcı asistanı (Faz 2, Adım 3) -------------------------------------------
+// Alıcı, başka bir firmanın asistanıyla konuşur. İplik "buyer" kanalındadır; mesaj
+// gönderme ve okuma yukarıdaki /threads/:id uçlarıyla aynıdır (run.ts kipi iplikten anlar).
+
+assistantRouter.post(
+  '/seller/:companyId/thread',
+  handle(async (req, res) => {
+    const me = req.user!;
+    const company = await prisma.company.findUnique({ where: { id: req.params.companyId }, select: { id: true, name: true } });
+    if (!company) return res.status(404).json({ error: 'company_not_found' });
+    if (me.companyId && me.companyId === company.id) return res.status(400).json({ error: 'own_company' });
+
+    const existing = await prisma.assistantThread.findFirst({
+      where: { userId: me.id, channel: 'buyer', targetCompanyId: company.id },
+      orderBy: { updatedAt: 'desc' },
+      select: THREAD_SELECT,
+    });
+    const thread =
+      existing ??
+      (await prisma.assistantThread.create({
+        data: { userId: me.id, companyId: me.companyId ?? null, channel: 'buyer', targetCompanyId: company.id, title: company.name },
+        select: THREAD_SELECT,
+      }));
+    res.status(existing ? 200 : 201).json({ thread, company });
+  })
+);
+
+// SSS: firmanın kendi yönettiği soru-cevaplar (satıcı asistanı okur).
+const faqSchema = z.object({ question: z.string().trim().min(3).max(300), answer: z.string().trim().min(1).max(1000) }).strict();
+const MAX_FAQS = 60;
+
+assistantRouter.get(
+  '/faq',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const faqs = await prisma.companyFaq.findMany({ where: { companyId }, orderBy: { updatedAt: 'desc' } });
+    res.json({ faqs: faqs.map((f) => ({ id: f.id, question: f.question, answer: f.answer, updatedAt: f.updatedAt })) });
+  })
+);
+
+assistantRouter.post(
+  '/faq',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = faqSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    if ((await prisma.companyFaq.count({ where: { companyId } })) >= MAX_FAQS) return res.status(409).json({ error: 'too_many_faqs', max: MAX_FAQS });
+    const faq = await prisma.companyFaq.create({ data: { companyId, ...parsed.data } });
+    res.status(201).json({ faq: { id: faq.id, question: faq.question, answer: faq.answer, updatedAt: faq.updatedAt } });
+  })
+);
+
+assistantRouter.put(
+  '/faq/:id',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = faqSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const own = await prisma.companyFaq.findFirst({ where: { id: req.params.id, companyId } });
+    if (!own) return res.status(404).json({ error: 'faq_not_found' });
+    const faq = await prisma.companyFaq.update({ where: { id: own.id }, data: parsed.data });
+    res.json({ faq: { id: faq.id, question: faq.question, answer: faq.answer, updatedAt: faq.updatedAt } });
+  })
+);
+
+assistantRouter.delete(
+  '/faq/:id',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const own = await prisma.companyFaq.findFirst({ where: { id: req.params.id, companyId } });
+    if (!own) return res.status(404).json({ error: 'faq_not_found' });
+    await prisma.companyFaq.delete({ where: { id: own.id } });
+    res.status(204).end();
+  })
+);
+
+// Asistanın firmaya ilettiği sorular: satıcı listeler ve cevaplar.
+assistantRouter.get(
+  '/questions',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const rows = await prisma.companyQuestion.findMany({
+      where: { companyId },
+      orderBy: [{ status: 'desc' }, { createdAt: 'desc' }],
+      take: 100,
+      include: { asker: { select: { id: true, firstName: true, lastName: true, company: { select: { id: true, name: true } } } } },
+    });
+    const productIds = rows.map((r) => r.productId).filter((id): id is string => !!id);
+    const products = productIds.length ? await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, code: true } }) : [];
+    const codeById = new Map(products.map((p) => [p.id, p.code]));
+    res.json({
+      questions: rows.map((r) => ({
+        id: r.id,
+        question: r.question,
+        answer: r.answer,
+        status: r.status,
+        createdAt: r.createdAt,
+        answeredAt: r.answeredAt,
+        product: r.productId ? { id: r.productId, code: codeById.get(r.productId) ?? '' } : null,
+        asker: { id: r.asker.id, name: `${r.asker.firstName} ${r.asker.lastName}`, company: r.asker.company },
+      })),
+      openCount: rows.filter((r) => r.status === 'open').length,
+    });
+  })
+);
+
+const answerSchema = z.object({ answer: z.string().trim().min(1).max(1000), addToFaq: z.boolean().optional() }).strict();
+
+assistantRouter.post(
+  '/questions/:id/answer',
+  handle(async (req, res) => {
+    const companyId = requireCompany(req);
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = answerSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const q = await prisma.companyQuestion.findFirst({ where: { id: req.params.id, companyId }, include: { company: { select: { name: true } } } });
+    if (!q) return res.status(404).json({ error: 'question_not_found' });
+
+    await prisma.companyQuestion.update({ where: { id: q.id }, data: { answer: parsed.data.answer, status: 'answered', answeredAt: new Date() } });
+    if (parsed.data.addToFaq) {
+      await prisma.companyFaq.create({ data: { companyId, question: q.question, answer: parsed.data.answer } });
+    }
+    // Cevap alıcının ipliğine asistan mesajı olarak da düşer (sohbeti açınca görür).
+    if (q.threadId) {
+      const text = `${q.company.name} yetkilisi sorunuzu cevapladı.\nSoru: ${q.question}\nCevap: ${parsed.data.answer}`;
+      await prisma.assistantMessage
+        .create({
+          data: {
+            threadId: q.threadId,
+            role: 'assistant',
+            contentJson: JSON.stringify({ text, toolCalls: [], memorySuggestions: [], watchSuggestions: [] }),
+            apiJson: JSON.stringify([{ role: 'user', content: `[Sistem notu: firma yetkilisi şu soruyu cevapladı. Soru: ${q.question} Cevap: ${parsed.data.answer}]` }, { role: 'assistant', content: text }]),
+          },
+        })
+        .catch(() => {});
+    }
+    await notify(q.askerId, {
+      kind: 'company_question_answered',
+      title: `${q.company.name} sorunuzu cevapladı`,
+      body: parsed.data.answer.slice(0, 140),
+      data: { questionId: q.id, threadId: q.threadId ?? undefined, companyId },
+    });
+    res.json({ ok: true });
   })
 );
