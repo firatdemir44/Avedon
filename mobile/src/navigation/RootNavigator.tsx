@@ -15,6 +15,7 @@ import { PhoneVerificationScreen } from '../screens/onboarding/PhoneVerification
 import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
+import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
@@ -106,6 +107,11 @@ export function RootNavigator() {
               name="EditCompany"
               component={EditCompanyScreen}
               options={{ headerShown: true, title: 'Firmayı Düzenle' }}
+            />
+            <Stack.Screen
+              name="CompanySetup"
+              component={CompanySetupScreen}
+              options={{ headerShown: true, title: 'Firma Sayfanı Tamamla' }}
             />
             <Stack.Screen
               name="AddProduct"

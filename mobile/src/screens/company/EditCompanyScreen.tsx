@@ -1,42 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { TextField } from '../../components/TextField';
 import { ChipSelect } from '../../components/ChipSelect';
-import { PhotoGridEditor, type EditablePhoto } from '../../components/PhotoGridEditor';
+import { PhotoGridEditor } from '../../components/PhotoGridEditor';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { CompanyLogoPicker } from '../../components/CompanyLogoPicker';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
-import { pickCompressedImage } from '../../features/imagePicker';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
-import {
-  getCachedCompanyPhoto,
-  loadCompanyPhoto,
-  replaceCachedCompanyPhotos,
-} from '../../features/companies/companyPhotoCache';
+import { useCompanyGalleries } from '../../features/companies/useCompanyGalleries';
 import { MAX_COMPANY_PHOTOS } from '../../features/companies/limits';
-import type { CompanyPhotoInput, CompanyPhotoKind } from '../../api/client';
+import { MIN_COMPANY_NAME_LENGTH, foundedYearError, foundedYearPayload } from '../../features/companies/validation';
 import { COMPANY_TYPES } from '../../features/products/catalog';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 import type { VerificationStatus } from '../../types';
 
 type Props = RootStackScreenProps<'EditCompany'>;
 
-const LOGO_SIZE = 96;
-
 // Şirket tipi seçenekleri; boş seçenek "belirtilmemiş".
 const TYPE_OPTIONS = [{ value: '', label: 'Belirtilmemiş' }, ...COMPANY_TYPES.map((t) => ({ value: t.key, label: t.label }))];
-
-// Sunucudaki sınırla aynı (backend/src/routes/companies.ts).
-const MIN_FOUNDED_YEAR = 1800;
 
 export function EditCompanyScreen({ route, navigation }: Props) {
   const { companyId } = route.params;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [pickingLogo, setPickingLogo] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [originalName, setOriginalName] = useState('');
@@ -54,13 +44,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   const [address, setAddress] = useState('');
   const [mainMarkets, setMainMarkets] = useState('');
   // Galeriler (Aşama B): ofis/üretim fotoğrafları ve sertifikalar.
-  const [officePhotos, setOfficePhotos] = useState<EditablePhoto[]>([]);
-  const [certificatePhotos, setCertificatePhotos] = useState<EditablePhoto[]>([]);
-  const [galleryDirty, setGalleryDirty] = useState<Record<CompanyPhotoKind, boolean>>({
-    office: false,
-    certificate: false,
-  });
-  const [pickingPhoto, setPickingPhoto] = useState<CompanyPhotoKind | null>(null);
+  const gallery = useCompanyGalleries(companyId);
   // Ekranda görünen logo.
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // undefined: logoya dokunulmadı · string: yeni logo · null: logo kaldırıldı
@@ -84,10 +68,8 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         setDistrict(company.district ?? '');
         setAddress(company.address ?? '');
         setMainMarkets(company.mainMarkets ?? '');
-        // Mevcut galeri fotoğrafları yalnızca önizleme için çekiliyor;
-        // kaydederken sıraları gönderiliyor, kendileri yeniden yüklenmiyor.
-        loadGallery('office', company.officePhotoCount ?? 0, setOfficePhotos);
-        loadGallery('certificate', company.certificatePhotoCount ?? 0, setCertificatePhotos);
+        gallery.load('office', company.officePhotoCount ?? 0);
+        gallery.load('certificate', company.certificatePhotoCount ?? 0);
         if (company.logoUpdatedAt) {
           loadCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt))
             .then((url) => {
@@ -105,100 +87,14 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
     };
+    // gallery.load kimliği companyId'ye bağlı; bağımlılığa eklenirse yükleme döngüye girer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
-  const loadGallery = (
-    kind: CompanyPhotoKind,
-    count: number,
-    setter: React.Dispatch<React.SetStateAction<EditablePhoto[]>>
-  ) => {
-    setter(
-      Array.from({ length: count }, (_, i) => ({
-        key: `${kind}-mevcut-${i}`,
-        existing: i,
-        dataUrl: null,
-        uri: getCachedCompanyPhoto(companyId, kind, i) ?? null,
-      }))
-    );
-    for (let i = 0; i < count; i++) {
-      if (getCachedCompanyPhoto(companyId, kind, i)) continue;
-      loadCompanyPhoto(companyId, kind, i)
-        .then((url) => {
-          setter((prev) => prev.map((p) => (p.existing === i && !p.uri ? { ...p, uri: url } : p)));
-        })
-        .catch(() => {});
-    }
-  };
-
-  const galleryState = (kind: CompanyPhotoKind) =>
-    kind === 'office'
-      ? ([officePhotos, setOfficePhotos] as const)
-      : ([certificatePhotos, setCertificatePhotos] as const);
-
-  const addPhoto = async (kind: CompanyPhotoKind) => {
-    const [photos, setPhotos] = galleryState(kind);
-    if (photos.length >= MAX_COMPANY_PHOTOS) return;
-    setPickingPhoto(kind);
+  const addPhoto = async (kind: 'office' | 'certificate') => {
     setError(null);
-    try {
-      const picked = await pickCompressedImage();
-      if (!picked) return;
-      setPhotos((prev) => [...prev, { key: `${kind}-yeni-${Date.now()}`, uri: picked.uri, dataUrl: picked.dataUrl }]);
-      setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
-      );
-    } finally {
-      setPickingPhoto(null);
-    }
-  };
-
-  const removePhoto = (kind: CompanyPhotoKind, key: string) => {
-    const [, setPhotos] = galleryState(kind);
-    setPhotos((prev) => prev.filter((p) => p.key !== key));
-    setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
-  };
-
-  const movePhotoFirst = (kind: CompanyPhotoKind, key: string) => {
-    const [, setPhotos] = galleryState(kind);
-    setPhotos((prev) => {
-      const target = prev.find((p) => p.key === key);
-      return target ? [target, ...prev.filter((p) => p.key !== key)] : prev;
-    });
-    setGalleryDirty((prev) => ({ ...prev, [kind]: true }));
-  };
-
-  // Kaydederken: mevcut fotoğraf eski sırasıyla, yeni fotoğraf data URL ile.
-  const galleryPayload = (photos: EditablePhoto[]): CompanyPhotoInput[] =>
-    photos.map((p) => (p.existing !== undefined ? { existing: p.existing } : p.dataUrl!));
-
-  const pickLogo = async () => {
-    setPickingLogo(true);
-    setError(null);
-    try {
-      // Logo küçük görünür; 400 px genişlik her ekranda net durmaya yetiyor ve
-      // dosyayı sunucunun kabul ettiği boyutun çok altında tutuyor.
-      const picked = await pickCompressedImage(400, 0.8);
-      if (!picked) return;
-      setLogoPreview(picked.dataUrl);
-      setLogoChange(picked.dataUrl);
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
-      );
-    } finally {
-      setPickingLogo(false);
-    }
-  };
-
-  const removeLogo = () => {
-    setLogoPreview(null);
-    setLogoChange(null);
+    const message = await gallery.add(kind);
+    if (message) setError(message);
   };
 
   const save = async () => {
@@ -211,14 +107,13 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
         companyType,
-        foundedYear: foundedYear.trim() ? Number(foundedYear.trim()) : null,
+        foundedYear: foundedYearPayload(foundedYear),
         website: website.trim(),
         city: city.trim(),
         district: district.trim(),
         address: address.trim(),
         mainMarkets: mainMarkets.trim(),
-        ...(galleryDirty.office ? { officePhotos: galleryPayload(officePhotos) } : {}),
-        ...(galleryDirty.certificate ? { certificatePhotos: galleryPayload(certificatePhotos) } : {}),
+        ...gallery.payload(),
         ...(logoChange !== undefined ? { logo: logoChange } : {}),
       });
       // Yeni logo zaten elimizde; firma sayfasına dönünce tekrar indirilmesin.
@@ -226,9 +121,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         setCachedCompanyLogo(companyLogoKey(company.id, company.logoUpdatedAt), logoChange);
       }
       // Galeri sıraları değişmiş olabilir: önbellekteki eski sıralar atılıyor.
-      if (galleryDirty.office) replaceCachedCompanyPhotos(companyId, 'office', officePhotos.map((p) => p.dataUrl ?? p.uri));
-      if (galleryDirty.certificate)
-        replaceCachedCompanyPhotos(companyId, 'certificate', certificatePhotos.map((p) => p.dataUrl ?? p.uri));
+      gallery.commit();
       haptics.success();
       navigation.goBack();
     } catch (err) {
@@ -243,18 +136,11 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     }
   };
 
-  // Boş bırakılabilir; doluysa 1800 ile bu yıl arasında dört haneli bir yıl.
-  const currentYear = new Date().getFullYear();
-  const foundedYearValue = foundedYear.trim();
-  const foundedYearInvalid =
-    foundedYearValue.length > 0 &&
-    (!/^\d{4}$/.test(foundedYearValue) ||
-      Number(foundedYearValue) < MIN_FOUNDED_YEAR ||
-      Number(foundedYearValue) > currentYear);
+  const yearError = foundedYearError(foundedYear);
 
   const handleSave = async () => {
-    if (foundedYearInvalid) {
-      setError(`Kuruluş yılı ${MIN_FOUNDED_YEAR} ile ${currentYear} arasında dört haneli bir yıl olmalı.`);
+    if (yearError) {
+      setError(yearError);
       haptics.error();
       return;
     }
@@ -283,31 +169,19 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     );
   }
 
-  const initial = name.trim().charAt(0).toLocaleUpperCase('tr-TR') || '?';
-
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.label}>Logo</Text>
-        <View style={styles.logoRow}>
-          {logoPreview ? (
-            <Image source={{ uri: logoPreview }} style={[styles.logo, styles.logoImage]} resizeMode="cover" />
-          ) : (
-            <View style={styles.logo}>
-              <Text style={styles.logoInitial}>{initial}</Text>
-            </View>
-          )}
-          <View style={styles.logoActions}>
-            <PrimaryButton
-              label={pickingLogo ? 'İşleniyor...' : logoPreview ? 'Logoyu Değiştir' : 'Logo Seç'}
-              variant="secondary"
-              disabled={pickingLogo}
-              onPress={pickLogo}
-            />
-            {logoPreview ? <PrimaryButton label="Logoyu Kaldır" variant="secondary" onPress={removeLogo} /> : null}
-          </View>
-        </View>
-        <Text style={styles.hint}>Kare ya da kareye yakın bir logo en iyi sonucu verir. Logo akışta, ürünlerde ve firma sayfanızda görünür.</Text>
+        <CompanyLogoPicker
+          companyName={name}
+          preview={logoPreview}
+          onError={setError}
+          onChange={(dataUrl) => {
+            setLogoPreview(dataUrl);
+            setLogoChange(dataUrl);
+          }}
+        />
 
         <TextField label="Firma adı" value={name} onChangeText={setName} autoCapitalize="words" autoComplete="organization" textContentType="organizationName" />
         <TextField label="Hakkında" value={about} onChangeText={setAbout} multiline placeholder="Ürettiğiniz kumaşlar, makine parkınız, çalıştığınız pazarlar..." />
@@ -371,34 +245,34 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           otomatik çıkar.
         </Text>
 
-        <Text style={styles.label}>Firmadan görseller ({officePhotos.length}/{MAX_COMPANY_PHOTOS})</Text>
+        <Text style={styles.label}>Firmadan görseller ({gallery.photos.office.length}/{MAX_COMPANY_PHOTOS})</Text>
         <Text style={styles.hint}>Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.</Text>
         <PhotoGridEditor
-          photos={officePhotos}
+          photos={gallery.photos.office}
           max={MAX_COMPANY_PHOTOS}
-          busy={pickingPhoto === 'office'}
+          busy={gallery.picking === 'office'}
           onAdd={() => addPhoto('office')}
-          onRemove={(key) => removePhoto('office', key)}
-          onMoveFirst={(key) => movePhotoFirst('office', key)}
+          onRemove={(key) => gallery.remove('office', key)}
+          onMoveFirst={(key) => gallery.moveFirst('office', key)}
           firstBadge="İlk"
         />
 
-        <Text style={[styles.label, styles.sectionGap]}>Sertifikalar ve başarılar ({certificatePhotos.length}/{MAX_COMPANY_PHOTOS})</Text>
+        <Text style={[styles.label, styles.sectionGap]}>Sertifikalar ve başarılar ({gallery.photos.certificate.length}/{MAX_COMPANY_PHOTOS})</Text>
         <Text style={styles.hint}>Kalite belgeleri ve ödüller; alıcıların güveni için önemli.</Text>
         <PhotoGridEditor
-          photos={certificatePhotos}
+          photos={gallery.photos.certificate}
           max={MAX_COMPANY_PHOTOS}
-          busy={pickingPhoto === 'certificate'}
+          busy={gallery.picking === 'certificate'}
           onAdd={() => addPhoto('certificate')}
-          onRemove={(key) => removePhoto('certificate', key)}
-          onMoveFirst={(key) => movePhotoFirst('certificate', key)}
+          onRemove={(key) => gallery.remove('certificate', key)}
+          onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
           firstBadge="İlk"
         />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <PrimaryButton
           label={saving ? 'Kaydediliyor...' : 'Kaydet'}
-          disabled={saving || name.trim().length < 2 || foundedYearInvalid}
+          disabled={saving || name.trim().length < MIN_COMPANY_NAME_LENGTH || !!yearError}
           onPress={handleSave}
           style={{ marginTop: spacing.md }}
         />
@@ -412,19 +286,6 @@ const styles = StyleSheet.create({
   content: { padding: spacing.lg },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
   hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
-  logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  logoImage: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  logoInitial: { fontSize: 40, fontFamily: fonts.bold, color: colors.primaryText },
-  logoActions: { flex: 1, gap: spacing.sm },
   row: { flexDirection: 'row', gap: spacing.sm },
   half: { flex: 1 },
   sectionGap: { marginTop: spacing.lg },

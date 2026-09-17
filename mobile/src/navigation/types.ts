@@ -37,6 +37,9 @@ export type RootStackParamList = {
   Admin: undefined;
   CompanyProfile: { companyId?: string } | undefined;
   EditCompany: { companyId: string };
+  // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
+  // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.
+  CompanySetup: { step?: string } | undefined;
   // passportImport: etiket okuma onay ekranından aktarılan alanlar. importKey
   // her aktarımda değişir; aynı öneri ikinci kez aktarılsa da formun haberi olur.
   AddProduct: { productId?: string; passportImport?: PassportImport; importKey?: number } | undefined;

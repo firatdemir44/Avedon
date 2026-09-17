@@ -33,6 +33,7 @@ import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { markFeedStale } from '../../features/feed/feedRefresh';
+import { companyCompleteness } from '../../features/companies/completeness';
 import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 import type { Product, VerificationStatus } from '../../types';
@@ -203,6 +204,42 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const people = company.users;
 
+  // Kendi firmasında: sayfanın ne kadarının dolduğu ve eksikse "Tamamla" şeridi.
+  // Adım adım kurulum (CompanySetup) bu hesabın kendisini kullanıyor.
+  const setup = isOwnCompany
+    ? companyCompleteness({
+        about: company.about,
+        companyType: company.companyType,
+        contactEmail: company.contactEmail,
+        contactPhone: company.contactPhone,
+        city: company.city,
+        logoUpdatedAt: company.logoUpdatedAt,
+        officePhotoCount: company.officePhotoCount,
+        productCount: products.length,
+      })
+    : null;
+
+  const setupBanner =
+    setup && setup.percent < 100 ? (
+      <View style={styles.setupBanner}>
+        <View style={styles.setupTexts}>
+          <Text style={styles.setupTitle}>Firma sayfanız %{setup.percent} tamamlandı</Text>
+          <View style={styles.setupTrack}>
+            <View style={[styles.setupFill, { width: `${setup.percent}%` }]} />
+          </View>
+          <Text style={styles.setupHint}>
+            {setup.total - setup.doneCount} adım kaldı. Eksik bilgiler alıcıların size güvenmesini zorlaştırır.
+          </Text>
+        </View>
+        <PrimaryButton
+          label="Tamamla"
+          size="sm"
+          onPress={() => navigation.navigate('CompanySetup')}
+          accessibilityLabel={`Firma sayfanız yüzde ${setup.percent} tamamlandı, tamamla`}
+        />
+      </View>
+    ) : null;
+
   const identity = (
     <View style={styles.identityBlock}>
       <View style={styles.identityRow}>
@@ -276,12 +313,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       <View style={styles.block}>
         <View style={styles.aboutBlock}>
           <Text style={styles.aboutTitle}>Hakkında</Text>
-          <Text style={company.about ? styles.about : styles.aboutEmpty}>
-            {company.about ||
-              (isOwnCompany
-                ? 'Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.'
-                : 'Bu firma henüz tanıtım yazısı eklememiş.')}
-          </Text>
+          {company.about ? (
+            <Text style={styles.about}>{company.about}</Text>
+          ) : isOwnCompany ? (
+            // Boş durum metni doğrudan ilgili kurulum adımına götürüyor.
+            <Pressable
+              onPress={() => navigation.navigate('CompanySetup', { step: 'tanitim' })}
+              accessibilityRole="button"
+              accessibilityLabel="Firmanızı tanıtan bir yazı ekleyin"
+              style={({ pressed }) => [pressed && styles.linkPressed]}
+            >
+              <Text style={styles.aboutEmpty}>
+                Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.
+              </Text>
+              <Text style={styles.aboutEmptyAction}>Tanıtım yazısı ekle</Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.aboutEmpty}>Bu firma henüz tanıtım yazısı eklememiş.</Text>
+          )}
         </View>
       </View>
 
@@ -351,7 +400,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       </View>
       {isOwnCompany ? (
         <Text style={styles.footNote}>
-          Eksik bilgileri, ofis fotoğraflarını ve sertifikaları "Firmayı Düzenle" ile ekleyebilirsiniz.
+          Eksik bilgileri adım adım "Tamamla" ile ya da hepsini tek seferde "Firmayı Düzenle" ile ekleyebilirsiniz.
         </Text>
       ) : null}
     </View>
@@ -406,6 +455,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {error ? (
         <InlineError message={friendlyMessage(error, 'Firma bilgisi alınamadı')} onRetry={reload} style={styles.banner} />
       ) : null}
+      {setupBanner}
       {identity}
       {tabBar}
       {tab === 'about' ? aboutContent : null}
@@ -683,6 +733,22 @@ const styles = StyleSheet.create({
   aboutTitle: { ...typography.subtitle, color: colors.text },
   about: { ...typography.body, color: colors.text },
   aboutEmpty: { ...typography.body, color: colors.textMuted },
+  aboutEmptyAction: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent, marginTop: spacing.xs },
+  linkPressed: { opacity: 0.6 },
+  // Kendi firmasında sayfanın üstündeki "tamamla" şeridi (açık mavi blok).
+  setupBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.md,
+  },
+  setupTexts: { flex: 1, gap: 6 },
+  setupTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  setupTrack: { height: 6, borderRadius: radius.sm, backgroundColor: colors.surface, overflow: 'hidden' },
+  setupFill: { height: 6, borderRadius: radius.sm, backgroundColor: colors.primary },
+  setupHint: { ...typography.caption, color: colors.textMuted },
   fact: {
     flexDirection: 'row',
     justifyContent: 'space-between',
