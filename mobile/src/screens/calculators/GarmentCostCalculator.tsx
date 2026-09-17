@@ -152,8 +152,8 @@ export function GarmentCostCalculator() {
                   label: row.label,
                   value: `${formatNumber(row.amount)} ${symbol}`,
                   note: row.largest
-                    ? `Toplamın %${formatNumber(row.sharePercent, 1)}'i, en büyük kalem`
-                    : `Toplamın %${formatNumber(row.sharePercent, 1)}'i`,
+                    ? `Toplam içinde %${formatNumber(row.sharePercent, 1)}, en büyük kalem`
+                    : `Toplam içinde %${formatNumber(row.sharePercent, 1)}`,
                   highlight: row.largest,
                 })),
                 {
