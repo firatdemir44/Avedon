@@ -99,9 +99,16 @@ async function main() {
     check('fiyat ürün listesine sızmaz', !JSON.stringify((await api('GET', `/products/${priced.id}`, B)).json).includes('"price"'));
 
     console.log('Revizyon ve yanıt');
+    check('bağlantı yokken teklif sohbete düşmez', (await prisma.message.count({ where: { quoteRequestId: id } })) === 0);
+    await prisma.connection.create({ data: { requesterId: buyer.id, addresseeId: seller.id, status: 'accepted', respondedAt: new Date() } });
     await api('PUT', `/quotes/requests/${id}/quote`, S, { priceValue: 2.4, priceCurrency: 'USD', priceUnit: 'm' });
     const resent = await api('POST', `/quotes/requests/${id}/quote/send`, S);
     const statuses = resent.json?.request?.quotes?.map((q: any) => q.status);
+    const convs = await api('GET', '/conversations', B);
+    const convId = convs.json?.conversations?.[0]?.id;
+    const chat = await api('GET', `/conversations/${convId}/messages`, B);
+    const card = chat.json?.messages?.find((m: any) => m.quoteRequestId === id);
+    check('bağlantılıyken teklif sohbete kart olarak düşer', !!card && card.senderId === seller.id && card.body.includes('2,4 USD/m'), chat.json);
     check('yeni sürüm gönderilince eskisi superseded', resent.json?.request?.activeQuote?.price?.value === 2.4 && statuses?.includes('superseded'), statuses);
     check('satıcı yanıt veremez 404', (await api('POST', `/quotes/requests/${id}/respond`, S, { action: 'accept' })).status === 404);
     const acc = await api('POST', `/quotes/requests/${id}/respond`, B, { action: 'accept' });
@@ -120,6 +127,9 @@ async function main() {
     check('süresi geçmiş teklif kabul edilemez 409', (await api('POST', `/quotes/requests/${r3.json.request.id}/respond`, B, { action: 'accept' })).json?.error === 'quote_expired');
   } finally {
     const userIds = [seller.id, stranger.id, buyer.id];
+    await prisma.message.deleteMany({ where: { senderId: { in: userIds } } });
+    await prisma.conversation.deleteMany({ where: { OR: [{ userAId: { in: userIds } }, { userBId: { in: userIds } }] } });
+    await prisma.connection.deleteMany({ where: { OR: [{ requesterId: { in: userIds } }, { addresseeId: { in: userIds } }] } });
     await prisma.quoteRequest.deleteMany({ where: { buyerId: { in: userIds } } });
     await prisma.product.deleteMany({ where: { companyId: sellerCo.id } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });

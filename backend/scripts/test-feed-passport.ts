@@ -119,19 +119,8 @@ async function main() {
     check('bağlantısı olmayan için boş', lonely.status === 200 && lonely.json?.posts?.length === 0, lonely.json);
     check('geçersiz scope 400', (await api('GET', '/posts?scope=firma', B)).status === 400);
 
-    console.log('Teklif İste');
-    check('oturumsuz 401', (await api('POST', `/products/${product.id}/quote-request`)).status === 401);
-    check('kendi ürünü 400', (await api('POST', `/products/${product.id}/quote-request`, S)).json?.error === 'own_product');
-    const noConn = await api('POST', `/products/${product.id}/quote-request`, X);
-    check('bağlantı yoksa 403 + öneri', noConn.status === 403 && noConn.json?.error === 'not_connected' && typeof noConn.json?.suggestedUserId === 'string', noConn.json);
-    const quote = await api('POST', `/products/${product.id}/quote-request`, B);
-    check('bağlantılıysa 201 + sohbet', quote.status === 201 && typeof quote.json?.conversationId === 'string' && quote.json?.userId === seller.id, quote.json);
-    check('mesaj ürün koduyla hazır', typeof quote.json?.body === 'string' && quote.json.body.includes(product.code));
-    const msgs = await api('GET', `/conversations/${quote.json?.conversationId}/messages`, S);
-    check('satıcı sohbette mesajı görür', JSON.stringify(msgs.json).includes(product.code), msgs.status);
-    const again = await api('POST', `/products/${product.id}/quote-request`, B);
-    check('ikinci istek aynı sohbeti kullanır', again.json?.conversationId === quote.json?.conversationId);
-    check('olmayan ürün 404', (await api('POST', `/products/yok/quote-request`, B)).status === 404);
+    console.log('Eski teklif ucu kaldırıldı');
+    check('eski /quote-request ucu 404', (await api('POST', `/products/${product.id}/quote-request`, B)).status === 404);
   } finally {
     const userIds = [seller.id, colleague.id, stranger.id, buyer.id];
     await prisma.post.deleteMany({ where: { authorId: { in: userIds } } });

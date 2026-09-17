@@ -4,6 +4,8 @@ import { PRICE_CURRENCIES, STOCK_UNITS } from '../catalog';
 import { prisma } from '../db';
 import { effectiveWidthCm } from '../domain/calc/wastage';
 import { requireAuth } from '../middleware/auth';
+import { getConnectionState, isConnectedAccepted } from '../connections';
+import { findOrCreateConversation } from '../conversations';
 import { notify, notifyMany } from '../notifications';
 import { computeQuoteDraft } from '../skills/calc/quoteDraft';
 import { makeHandle } from './handle';
@@ -250,9 +252,30 @@ quotesRouter.post(
       body: row.product.company.name,
       data: { quoteRequestId: row.id, productId: row.productId },
     });
+    await postQuoteToChat(req.user!.id, row.buyerId, row.id, row.product.code, draft).catch((err) => console.error('[quotes] sohbete düşürülemedi:', err));
     res.json({ request: toRequestRow((await loadRequest(row.id))!, 'seller') });
   })
 );
+
+// Teklif, iki kişi bağlantılıysa sohbete de kart olarak düşer (mesajlaşma bağlantı ister;
+// bağlantı yoksa teklif yalnızca Tekliflerim + bildirimle gider). Fiyat yalnızca iki tarafın gördüğü sohbette.
+async function postQuoteToChat(
+  sellerUserId: string,
+  buyerId: string,
+  quoteRequestId: string,
+  productCode: string,
+  quote: { priceValue: number | null; priceCurrency: string; priceUnit: string; leadTimeDays: number | null }
+) {
+  if (sellerUserId === buyerId || !isConnectedAccepted(await getConnectionState(sellerUserId, buyerId))) return;
+  const conversation = await findOrCreateConversation(sellerUserId, buyerId);
+  const price = `${String(quote.priceValue).replace('.', ',')} ${quote.priceCurrency}/${quote.priceUnit}`;
+  const body = `Teklif: ${productCode} · ${price}${quote.leadTimeDays != null ? ` · termin ${quote.leadTimeDays} gün` : ''}. Ayrıntılar Tekliflerim'de.`;
+  const now = new Date();
+  await prisma.$transaction([
+    prisma.message.create({ data: { conversationId: conversation.id, senderId: sellerUserId, body, quoteRequestId, createdAt: now } }),
+    prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: now } }),
+  ]);
+}
 
 const respondSchema = z.object({ action: z.enum(['accept', 'decline']) }).strict();
 

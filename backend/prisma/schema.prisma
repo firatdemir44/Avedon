@@ -387,6 +387,8 @@ model Message {
   senderId       String
   sender         User         @relation(fields: [senderId], references: [id])
   body           String
+  // Teklif kartı mesajı: doluysa istemci mesajı karta çevirir (ilişki yok; tablo yeniden kurulmasın).
+  quoteRequestId String?
   createdAt      DateTime     @default(now())
   readAt         DateTime?
 
