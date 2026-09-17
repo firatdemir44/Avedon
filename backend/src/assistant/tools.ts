@@ -5,6 +5,8 @@ import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaRunnableTool } from '@anthropic-ai/sdk/lib/tools/BetaRunnableTool';
 import * as z from 'zod/v4';
 import { PRODUCT_TYPES } from '../catalog';
+import { YARN_END_USES, YARN_FAMILIES, type YarnQuery } from '../yarns';
+import { searchYarns } from '../routes/yarns';
 import { prisma } from '../db';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
@@ -241,5 +243,34 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra], calls, suggestions, watchSuggestions };
+  const iplikAra = betaZodTool({
+    name: 'iplik_ara',
+    description:
+      'İplik dizininde arama: platformdaki iplik üreticisi ve tüccarlarının ipliklerini numara, filament, lif ailesi, eğirme/filament tipi ve kullanım yerine göre bulur. ' +
+      'Kullan: "150/48 DTY polyester kim satıyor", "30/1 penye kompakt pamuk ipliği", "raşel için naylon iplik" gibi sorularda. Fiyat dönmez; teklif istemeye yönlendir.',
+    inputSchema: z.object({
+      search: z.string().max(100).optional().describe('Serbest metin (kod, marka, çeşit adı, firma)'),
+      family: z.enum(YARN_FAMILIES.map((f) => f.key) as [string, ...string[]]).optional().describe('Ana alan: pamuk, viskon, polyester, naylon, akrilik, yun, keten, karisim, fantezi, elastan_gipe, diger'),
+      count: z.number().positive().optional().describe('İplik numarası (countUnit ile birlikte; ±%4 tolerans)'),
+      countUnit: z.enum(['ne', 'nm', 'denye', 'dtex', 'tex']).optional(),
+      ply: z.number().int().min(1).max(12).optional().describe('Kat sayısı'),
+      filaments: z.number().int().positive().optional().describe('Filament sayısı (150/48 içindeki 48)'),
+      filamentType: z.enum(['dty', 'fdy', 'poy', 'aty', 'bcf', 'mono']).optional(),
+      spinning: z.enum(['ring', 'kompakt', 'open_end', 'vortex', 'siro']).optional(),
+      combing: z.enum(['penye', 'karde']).optional(),
+      endUse: z.enum(YARN_END_USES.map((u) => u.key) as [string, ...string[]]).optional().describe('Kullanım yeri'),
+      inStock: z.boolean().optional().describe('Yalnızca stoğu olanlar'),
+    }),
+    run: async (args) => {
+      const page = await searchYarns({ ...args, inStock: args.inStock ? '1' : undefined, limit: 8 } as YarnQuery, ctx.companyId);
+      const results = page.yarns.map((y) => ({ id: y.id, code: y.code, company: y.company, summary: y.yarn?.summary ?? y.content, content: y.content, stockKg: y.stock, endUses: y.yarn?.endUses ?? [], colorState: y.yarn?.colorState ?? '' }));
+      const summary = results.length
+        ? `${results.length}${page.hasMore ? '+' : ''} iplik bulundu: ${results.map((r) => `${r.summary} (${r.company.name})`).join('; ')}`
+        : 'Bu özelliklerde iplik bulunamadı.';
+      calls.push({ name: 'iplik_ara', title: 'İplik araması', input: args, output: { results }, summary });
+      return JSON.stringify({ summary, results });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra], calls, suggestions, watchSuggestions };
 }

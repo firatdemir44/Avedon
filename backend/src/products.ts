@@ -5,6 +5,7 @@ import { productTypeSchema } from './validation';
 import { WIDTH_TYPES, isValidCertificate, isValidFiber, knitSearchKeys } from './domain/glossary';
 import { PASSPORT_LIST_SELECT, toPassportRow } from './passport';
 import { effectiveWidthCm } from './domain/calc/wastage';
+import { YARN_PRODUCT_TYPE, YARN_SPEC_SELECT, toYarnSpecRow } from './yarns';
 
 // Ürün fotoğrafları ProductImage tablosunda (base64 data URL). LİSTE ve DETAY
 // yanıtlarında ASLA dönmez — katalog büyüdükçe tek bir liste isteği megabaytlara
@@ -36,6 +37,8 @@ export const PRODUCT_SELECT = {
   createdAt: true,
   company: { select: PRODUCT_COMPANY_SELECT },
   ...PASSPORT_LIST_SELECT,
+  // İplik ürünlerinde (type = "iplik") dolu; kumaşta null.
+  yarnSpec: { select: YARN_SPEC_SELECT },
   // fieldMeta sayısı: onay bekleyen (confirmedAt boş) alanlar.
   _count: { select: { images: true, fieldMeta: { where: { confirmedAt: null } } } },
 } satisfies Prisma.ProductSelect;
@@ -75,6 +78,7 @@ export function toProductRow(row: ProductRow, viewerCompanyId?: string | null) {
     passportUpdatedAt,
     compositions,
     certificates,
+    yarnSpec,
     ...product
   } = row;
   return {
@@ -84,6 +88,7 @@ export function toProductRow(row: ProductRow, viewerCompanyId?: string | null) {
     usages: parseUsages(usages),
     imageCount: _count.images,
     hasImage: _count.images > 0,
+    yarn: toYarnSpecRow(yarnSpec),
     ...toPassportRow(
       {
         widthType,
@@ -170,7 +175,8 @@ export type ProductQuery = z.infer<typeof productQuerySchema>;
 const usageContains = (key: string): Prisma.ProductWhereInput => ({ usages: { contains: `"${key}"` } });
 
 export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput {
-  const and: Prisma.ProductWhereInput[] = [];
+  // Kumaş kataloğu: iplikler ayrı dizinde (/api/yarns) listelenir.
+  const and: Prisma.ProductWhereInput[] = [{ type: { not: YARN_PRODUCT_TYPE } }];
 
   if (query.search) {
     const search = query.search;
@@ -234,7 +240,7 @@ export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput
   if (query.leadTimeMax !== undefined) and.push({ leadTimeDays: { lte: query.leadTimeMax } });
   if (query.widthType) and.push({ widthType: query.widthType });
 
-  return and.length ? { AND: and } : {};
+  return { AND: and };
 }
 
 // Kullanıcı başına tutulan "son bakılan" kaydı; eskiler budanır.

@@ -184,6 +184,8 @@ model Product {
   sampleRequests SampleRequest[]
   quoteRequests  QuoteRequest[]
   posts          Post[]
+  // Faz 2 Adım 6: type = "iplik" olan ürünün ipliğe özel alanları.
+  yarnSpec       YarnSpec?
   createdAt      DateTime        @default(now())
 }
 
@@ -745,4 +747,47 @@ model CompanyReference {
 
   @@unique([fromCompanyId, toCompanyId, relation])
   @@index([toCompanyId, status])
+}
+
+// İplik dizini (Faz 2, Adım 6). İplik de bir Product satırıdır (type = "iplik";
+// weightGsm/widthCm = 0) ki teklif, numune, favori, gönderi altyapısı aynen çalışsın.
+// Karışım ProductComposition'da, sertifika ProductCertificate'ta tutulur.
+model YarnSpec {
+  productId     String  @id
+  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  // Ana alan (Fırat 2026-09-18): pamuk | viskon | polyester | naylon | akrilik | yun | keten | karisim | fantezi | elastan_gipe | diger
+  family        String
+  count         Float
+  // ne | nm | tex | dtex | denye
+  countUnit     String
+  ply           Int     @default(1)
+  // Tek katın dtex karşılığı: birimden bağımsız aralık araması için.
+  countDtex     Float
+  filaments     Int?
+  // "" | ring | open_end | vortex | kompakt | siro
+  spinning      String  @default("")
+  // "" | karde | penye
+  combing       String  @default("")
+  // "" | dty | fdy | poy | aty | bcf | mono
+  filamentType  String  @default("")
+  // "" | parlak | yari_mat | mat
+  luster        String  @default("")
+  // "" | S | Z
+  twistDirection String @default("")
+  twistTpm      Float?
+  // Kullanım yerleri: JSON dizi metni (yuvarlak_orme, triko, dokuma_cozgu, ...)
+  endUses       String  @default("[]")
+  // ham | boyali | melanj | elyaf_boyali | dope_dyed
+  colorState    String  @default("")
+  color         String  @default("")
+  // Serbest çeşit adı: fantezi (şönil, buklet...), gipe yapısı vb.
+  variety       String  @default("")
+  origin        String  @default("")
+  brand         String  @default("")
+  coneWeightKg  Float?
+  // tuccar ise üretici değil satıcı stoğu
+  sellerRole    String  @default("")
+
+  @@index([family])
+  @@index([countDtex])
 }

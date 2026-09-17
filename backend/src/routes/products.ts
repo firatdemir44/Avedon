@@ -447,6 +447,10 @@ productsRouter.patch(
     if (existing.companyId !== req.user!.companyId) {
       return res.status(403).json({ error: 'not_your_company' });
     }
+    // İplik ürünleri kendi ucundan düzenlenir (alanları farklı).
+    if (existing.type === 'iplik') {
+      return res.status(400).json({ error: 'use_yarn_endpoint' });
+    }
 
     const { images, imageUrl, usages, subtype, content, ...rest } = parsed.data;
     const passport = passportFieldsSchema.parse(rest);
