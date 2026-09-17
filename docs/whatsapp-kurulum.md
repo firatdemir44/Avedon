@@ -70,3 +70,12 @@ Telefonunuzdan test numarasına yazın: `30/1 Ne iplik kaç tex?` Beklenen: birk
 - Numune talebi bildirimleri (pencere dışı) için onaylı bir **şablon** gerekir: WhatsApp Manager → Message templates → Utility kategorisinde şablon oluşturup onaylatın; adı Render'da `WHATSAPP_TEMPLATE_NAME`'e girilir. Bu adım asistan için şart değil.
 - Gerçek numaraya geçiş: ayrı SIM alındığında API Setup → Add phone number ile eklenir; kod değişmez, yalnızca `WHATSAPP_PHONE_NUMBER_ID` güncellenir.
 - Sorun olursa: `health.whatsapp` alanlarını bana söyleyin; imza hatası sunucu kayıtlarına düşer, gelen her mesaj `WhatsAppInbound` tablosunda durumuyla saklanır.
+
+## Sorun giderme (2026-09-17 kurulumundan)
+
+`/api/health` içindeki `whatsapp` alanı her şeyi gösterir:
+- `postCount: 0` ve imza hatası yok → Meta hiç istek göndermiyor: mesaj **doğru numaraya** mı yazılıyor (test numarası panelde Step 1'de; sohbeti `https://wa.me/<numara>` ile açın), `messages` alanı abone mi, uygulama **Live** mı.
+- `signatureFailureCount > 0` → Render'daki `WHATSAPP_APP_SECRET` yanlış (App settings → Basic → App secret → Show; 32 karakter).
+- `wabaSubscription: hata 401 ... Session has expired` → `WHATSAPP_ACCESS_TOKEN` geçici token; sistem kullanıcısından **süresi "Asla"** olan token üretin. Beklenen: `ok (abone uygulamalar: Avedon, ...)`.
+- Panel artık rehberli: Kullanım durumları → Customize → **Step 1. Try it out** (test numarası, Phone Number ID, WABA ID), webhook **Step 2. Production setup** içinde. Sistem kullanıcıları: `business.facebook.com/latest/settings/system_users?business_id=<portföy no>`.
+- Uygulamayı yayınlamak için gizlilik politikası adresi gerekir: `https://avedon-blond.vercel.app/gizlilik.html`.
