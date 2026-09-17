@@ -35,7 +35,7 @@ import {
   yarnTypeLabel,
   yarnUnitLabel,
 } from '../../features/products/catalog';
-import { certificateLabel, fiberLabel } from '../../features/products/glossaryLabels';
+import { certificateLabel, effectiveWidthCm, fiberLabel } from '../../features/products/glossaryLabels';
 import { formatMeasure } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
@@ -48,6 +48,7 @@ const FIELD_LABELS: Record<string, string> = {
   yarns: 'iplik',
   certificates: 'sertifika',
   widthType: 'en tipi',
+  widthMeaning: 'enin anlamı',
   moq: 'en az sipariş',
   leadTimeDays: 'termin',
   finishTags: 'apre',
@@ -166,7 +167,18 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   // tekrar edilmiyor; kartta olmayanlar (kullanım, içerik metni, not) kalıyor.
   const passportCardProduct = toPassportCardProduct({ ...product, certificates });
 
+  // Tek yüz tüp eninde kartta sığmayan hesap eni burada açıkça yazılır:
+  // "80 cm tek yüz tüp eni · hesap eni 160 cm". Diğer durumlarda en yalnızca
+  // pasaport kartında görünür (tekrar edilmez).
+  const widthSpec =
+    product.widthType === 'tup' && product.widthMeaning === 'tup_tek_yuz'
+      ? `${formatMeasure(product.widthCm)} cm tek yüz tüp eni · hesap eni ${formatMeasure(
+          product.effectiveWidthCm ?? effectiveWidthCm(product.widthCm, product.widthMeaning)
+        )} cm`
+      : '';
+
   const specs: { label: string; value: string; sans?: boolean }[] = [
+    ...(widthSpec ? [{ label: 'En', value: widthSpec }] : []),
     ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
     // Kompozisyon satırları varsa içerik metni ayrı blokta gösteriliyor.
     ...(composition.length ? [] : [{ label: 'İçerik', value: product.content }]),

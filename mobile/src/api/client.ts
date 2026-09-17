@@ -330,6 +330,8 @@ export type FeedProduct = {
   weightGsm: number;
   widthCm: number;
   widthType: '' | 'acik' | 'tup';
+  // Girilen enin anlamı; hesap eni için (bkz. glossaryLabels.effectiveWidthCm).
+  widthMeaning?: string;
   stock: number;
   stockUnit: StockUnit;
   moq: number | null;
@@ -526,6 +528,8 @@ export interface PassportInput {
   certificates?: CertificateInput[];
   testReports?: TestReportInput[];
   widthType?: string;
+  // '' | 'acik' | 'tup_tek_yuz'; boş gönderilirse hesap eni girilen en olur.
+  widthMeaning?: string;
   // null: temizle
   moq?: number | null;
   moqUnit?: string;

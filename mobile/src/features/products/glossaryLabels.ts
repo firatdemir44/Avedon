@@ -43,6 +43,36 @@ export const WIDTH_TYPES = ['acik', 'tup'] as const;
 export type WidthType = (typeof WIDTH_TYPES)[number];
 export const WIDTH_TYPE_LABELS: Record<WidthType, string> = { acik: 'Açık en', tup: 'Tüp en' };
 
+// Enin anlamı (Faz 1, Adım 4 madde 2): tüp kumaşta girilen en tek yüzün eni
+// olabilir (açık en = 2×) ya da zaten açık en olabilir. Otomatik çarpma her
+// zaman doğru olmadığı için kullanıcı seçmeden boş kalır.
+export const WIDTH_MEANINGS = ['tup_tek_yuz', 'acik'] as const;
+export type WidthMeaning = (typeof WIDTH_MEANINGS)[number];
+export const WIDTH_MEANING_LABELS: Record<WidthMeaning, string> = {
+  tup_tek_yuz: 'Tek yüz tüp eni',
+  acik: 'Açık en',
+};
+
+export function widthMeaningLabel(key: string) {
+  return WIDTH_MEANING_LABELS[key as WidthMeaning] ?? '';
+}
+
+// Hesapta kullanılacak açık en (sunucudaki effectiveWidthCm ile aynı kural).
+export function effectiveWidthCm(widthCm: number, widthMeaning: string) {
+  return widthMeaning === 'tup_tek_yuz' ? widthCm * 2 : widthCm;
+}
+
+// Pasaport kartındaki En sütununun altındaki küçük gri yazı; tek satır.
+export function widthHintLabel(widthType: string, widthMeaning: string) {
+  if (widthType === 'tup') {
+    if (widthMeaning === 'tup_tek_yuz') return 'tüp, tek yüz';
+    if (widthMeaning === 'acik') return 'tüp, açık en';
+    return 'tüp en';
+  }
+  if (widthType === 'acik') return 'açık en';
+  return '';
+}
+
 export function fiberLabel(key: string) {
   return FIBERS.find((f) => f.key === key)?.label ?? key;
 }

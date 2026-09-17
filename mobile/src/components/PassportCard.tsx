@@ -4,7 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { StockDot, formatStock } from './StockIndicator';
 import { formatMeasure } from '../features/calculators/parse';
 import { STOCK_UNIT_LABELS, subtypeLabel, typeLabel, type StockUnit } from '../features/products/catalog';
-import { certificateLabel, formatComposition, widthTypeLabel } from '../features/products/glossaryLabels';
+import {
+  certificateLabel,
+  effectiveWidthCm,
+  formatComposition,
+  widthHintLabel,
+} from '../features/products/glossaryLabels';
 import type { CompositionItem } from '../types';
 import { colors, fonts, radius, spacing, typography } from '../theme';
 
@@ -19,6 +24,8 @@ export interface PassportCardProduct {
   weightGsm: number;
   widthCm: number;
   widthType: string;
+  // '' | 'acik' | 'tup_tek_yuz'; En sütununun altındaki ipucunu belirler.
+  widthMeaning: string;
   stock: number;
   stockUnit: StockUnit;
   moq: number | null;
@@ -38,6 +45,7 @@ export interface PassportCardSource {
   weightGsm: number;
   widthCm: number;
   widthType?: string | null;
+  widthMeaning?: string | null;
   stock: number;
   stockUnit: StockUnit;
   moq?: number | null;
@@ -59,6 +67,7 @@ export function toPassportCardProduct(product: PassportCardSource): PassportCard
     weightGsm: product.weightGsm,
     widthCm: product.widthCm,
     widthType: product.widthType ?? '',
+    widthMeaning: product.widthMeaning ?? '',
     stock: product.stock,
     stockUnit: product.stockUnit,
     moq: product.moq ?? null,
@@ -89,9 +98,15 @@ function commercialSummary(product: PassportCardProduct) {
 export function passportAccessibilityLabel(product: PassportCardProduct) {
   const structure = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
   const composition = product.composition.length ? `, ${formatComposition(product.composition)}` : '';
+  const effective =
+    product.widthMeaning === 'tup_tek_yuz'
+      ? `, tek yüz tüp eni, hesap eni ${formatMeasure(effectiveWidthCm(product.widthCm, product.widthMeaning))} santim`
+      : '';
   return `Kumaş pasaportu. ${product.code}, ${structure}, ${formatMeasure(
     product.weightGsm
-  )} gram metrekare, ${formatMeasure(product.widthCm)} santim en${composition}, ${commercialSummary(product)}`;
+  )} gram metrekare, ${formatMeasure(product.widthCm)} santim en${effective}${composition}, ${commercialSummary(
+    product
+  )}`;
 }
 
 export function PassportCard({
@@ -105,7 +120,8 @@ export function PassportCard({
   style?: StyleProp<ViewStyle>;
 }) {
   const structure = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
-  const widthMeaning = widthTypeLabel(product.widthType);
+  // "tüp, tek yüz" / "tüp, açık en" / "tüp en" / "açık en"
+  const widthHint = widthHintLabel(product.widthType, product.widthMeaning);
   const composition = product.composition.length ? formatComposition(product.composition) : '';
   const certificates = product.certificateNames ?? [];
 
@@ -132,9 +148,9 @@ export function PassportCard({
           <Text style={styles.specValue} numberOfLines={1}>
             {formatMeasure(product.widthCm)} cm
           </Text>
-          {widthMeaning ? (
+          {widthHint ? (
             <Text style={styles.specHint} numberOfLines={1}>
-              {widthMeaning.toLocaleLowerCase('tr-TR')}
+              {widthHint}
             </Text>
           ) : null}
         </View>

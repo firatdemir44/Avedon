@@ -62,10 +62,13 @@ import {
 import {
   CERTIFICATES,
   FIBERS,
+  WIDTH_MEANINGS,
+  WIDTH_MEANING_LABELS,
   WIDTH_TYPES,
   WIDTH_TYPE_LABELS,
+  effectiveWidthCm,
 } from '../../features/products/glossaryLabels';
-import { parseNumber, toInputNumber } from '../../features/calculators/parse';
+import { formatMeasure, parseNumber, toInputNumber } from '../../features/calculators/parse';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
@@ -147,6 +150,12 @@ const WIDTH_TYPE_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Belirtilmemiş' },
   ...WIDTH_TYPES.map((value) => ({ value, label: WIDTH_TYPE_LABELS[value] })),
 ];
+// Tüp ende: girilen en tek yüzün eni mi, yoksa zaten açık en mi. Varsayılan
+// seçili değil (boş = belirtilmemiş, hesap eni girilen en olur).
+const WIDTH_MEANING_OPTIONS: { value: string; label: string }[] = WIDTH_MEANINGS.map((value) => ({
+  value,
+  label: WIDTH_MEANING_LABELS[value],
+}));
 const FIBER_OPTIONS: { value: string; label: string }[] = FIBERS.map((f) => ({ value: f.key, label: f.label }));
 const CERTIFICATE_OPTIONS: { value: string; label: string }[] = CERTIFICATES.map((c) => ({
   value: c.key,
@@ -268,6 +277,9 @@ export function AddProductScreen({ navigation, route }: Props) {
     isEditing ? [] : [emptyCompositionRow()]
   );
   const [widthType, setWidthType] = useState('');
+  // Yalnızca "Tüp en" seçiliyken sorulur; varsayılan seçili DEĞİL (otomatik
+  // çarpma her zaman doğru değil, Fırat'ın kararı: faz1-plani Adım 4 madde 2).
+  const [widthMeaning, setWidthMeaning] = useState('');
   const [finishTags, setFinishTags] = useState<string[]>([]);
   const [moq, setMoq] = useState('');
   const [moqUnit, setMoqUnit] = useState<StockUnit>('m');
@@ -339,6 +351,8 @@ export function AddProductScreen({ navigation, route }: Props) {
         }
 
         setWidthType(product.widthType ?? '');
+        // Enin anlamı yalnızca tüp ende seçilebiliyor; açık ende zaten 'acik'.
+        setWidthMeaning(product.widthType === 'tup' ? (product.widthMeaning ?? '') : '');
         setFinishTags(product.finishTags ?? []);
         setMoq(product.moq == null ? '' : toInputNumber(product.moq));
         if (product.moqUnit) setMoqUnit(product.moqUnit);
@@ -494,8 +508,11 @@ export function AddProductScreen({ navigation, route }: Props) {
 
   const changeWidthType = (next: string) => {
     setWidthType(next);
+    // Tüp en dışında "enin anlamı" sorusu yok: seçim sıfırlanır.
+    if (next !== 'tup') setWidthMeaning('');
     forgetExtracted('widthType');
   };
+
 
   const changeUsages = (next: string[]) => {
     setUsages(next);
@@ -627,7 +644,11 @@ export function AddProductScreen({ navigation, route }: Props) {
 
     if (values.weightGsm != null) setWeightGsm(toInputNumber(values.weightGsm));
     if (values.widthCm != null) setWidthCm(toInputNumber(values.widthCm));
-    if (values.widthType) setWidthType(values.widthType);
+    if (values.widthType) {
+      setWidthType(values.widthType);
+      // Etiketten "tüp" geldiyse enin anlamını kullanıcı seçer (boş kalır).
+      setWidthMeaning('');
+    }
 
     if (values.yarns?.length) {
       setYarnRows(
@@ -827,6 +848,17 @@ export function AddProductScreen({ navigation, route }: Props) {
   const weightGsmNum = parseNumber(weightGsm);
   const widthCmNum = parseNumber(widthCm);
 
+  // Canlı bilgi satırı: "Hesap eni: 160 cm (80 × 2)" ya da "Hesap eni: 80 cm".
+  // En girilmediyse ya da tüp en seçili değilse gösterilmez.
+  const effectiveWidthText =
+    widthType === 'tup' && widthCmNum > 0
+      ? widthMeaning === 'tup_tek_yuz'
+        ? `Hesap eni: ${formatMeasure(effectiveWidthCm(widthCmNum, widthMeaning))} cm (${formatMeasure(
+            widthCmNum
+          )} × 2)`
+        : `Hesap eni: ${formatMeasure(widthCmNum)} cm`
+      : '';
+
   const filledCompositionRows = compositionRows.filter((row) => row.fiber || row.percent.trim());
   const validCompositionRows = filledCompositionRows.filter(
     (row) => row.fiber && parseNumber(row.percent) > 0 && parseNumber(row.percent) <= 100
@@ -935,6 +967,9 @@ export function AddProductScreen({ navigation, route }: Props) {
       certificates,
       testReports,
       widthType,
+      // Açık ende anlam zaten açık en; tüpte kullanıcının seçimi (seçmediyse
+      // boş gider ve hesap eni girilen en olur).
+      widthMeaning: widthType === 'acik' ? 'acik' : widthType === 'tup' ? widthMeaning : '',
       moq: moqNum,
       // MOQ temizlendiyse birim de temizlenir.
       moqUnit: moqNum == null ? '' : moqUnit,
@@ -1239,6 +1274,18 @@ export function AddProductScreen({ navigation, route }: Props) {
           ) : null}
           <Text style={styles.label}>En tipi</Text>
           <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={changeWidthType} compact />
+          {widthType === 'tup' ? (
+            <>
+              <Text style={styles.label}>Girdiğiniz en neyi gösteriyor?</Text>
+              <ChipSelect
+                options={WIDTH_MEANING_OPTIONS}
+                value={widthMeaning}
+                onChange={setWidthMeaning}
+                compact
+              />
+              {effectiveWidthText ? <Text style={styles.labelHint}>{effectiveWidthText}</Text> : null}
+            </>
+          ) : null}
           <Text style={styles.label}>Kullanım amaçları</Text>
           <Text style={styles.labelHint}>Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.</Text>
           <MultiChipSelect options={USAGES} values={usages} onChange={changeUsages} />

@@ -92,6 +92,10 @@ export interface Product {
   // Eski sunucuya ya da yerel örnek veriye karşı dayanıklı olsun diye hepsi
   // isteğe bağlı; ekranlar boş değerle çalışmalı.
   widthType?: '' | WidthType;
+  // Girilen enin anlamı: '' | 'acik' | 'tup_tek_yuz' (glossaryLabels).
+  widthMeaning?: string;
+  // Sunucunun hesapladığı açık en: tup_tek_yuz ise widthCm × 2.
+  effectiveWidthCm?: number;
   moq?: number | null;
   // Stok biriminden BAĞIMSIZ (kullanıcı kararı 2026-09-16).
   moqUnit?: '' | StockUnit;
