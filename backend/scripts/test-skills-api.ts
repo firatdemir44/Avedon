@@ -55,6 +55,7 @@ const EXPECTED_NAMES = [
   'yarnUsage',
   'fabricLengthWeight',
   'yarnRequirement',
+  'quoteDraft',
 ];
 
 async function main() {
@@ -74,7 +75,7 @@ async function main() {
     const list = await api('GET', '/skills', T);
     check('200 döner', list.status === 200, list.json);
     const skills: any[] = list.json?.skills ?? [];
-    check('11 beceri', skills.length === 11, skills.map((s) => s.name));
+    check('12 beceri', skills.length === 12, skills.map((s) => s.name));
     check('adlar ve sıra beklendiği gibi', JSON.stringify(skills.map((s) => s.name)) === JSON.stringify(EXPECTED_NAMES), skills.map((s) => s.name));
     check('adlar benzersiz', new Set(skills.map((s) => s.name)).size === skills.length);
     check(

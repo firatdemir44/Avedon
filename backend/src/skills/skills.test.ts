@@ -95,6 +95,11 @@ const SAMPLES: Record<string, { input: unknown; invalid: unknown }> = {
     // Mamul miktarı hiç verilmemiş
     invalid: { dyeingLossPercent: 5, knittingLossPercent: 3 },
   },
+  quoteDraft: {
+    input: { quantity: 500, unit: 'm', priceValue: 8, priceCurrency: 'USD', priceUnit: 'kg', weightGsm: 200, widthCm: 160, moq: 300, moqUnit: 'm', leadTimeDays: 12 },
+    // Miktar yok
+    invalid: { unit: 'm' },
+  },
   fabricLengthWeight: {
     input: { weightGsm: 180, widthCm: 180, kg: 100 },
     // En sıfır olamaz
@@ -148,10 +153,10 @@ for (const skill of SKILLS) {
   });
 }
 
-test('listSkills: 11 beceri, adlar benzersiz, JSON şema nesnesi', () => {
+test('listSkills: 12 beceri, adlar benzersiz, JSON şema nesnesi', () => {
   const list = listSkills();
-  assert.equal(list.length, 11);
-  assert.equal(new Set(list.map((s) => s.name)).size, 11, 'beceri adları benzersiz olmalı');
+  assert.equal(list.length, 12);
+  assert.equal(new Set(list.map((s) => s.name)).size, 12, 'beceri adları benzersiz olmalı');
   for (const item of list) {
     assert.ok(item.title.length > 0, `${item.name}: başlık boş`);
     assert.ok(item.description.length > 40, `${item.name}: açıklama çok kısa`);
@@ -177,6 +182,7 @@ test('listSkills sırası kayıt sırasıyla aynı', () => {
       'yarnUsage',
       'fabricLengthWeight',
       'yarnRequirement',
+      'quoteDraft',
     ]
   );
 });
@@ -336,4 +342,24 @@ test('fabricGsmKnit: en değişiminden mamul gramaj tahmini ve sapma', () => {
   assert.ok(r.summary.includes('mamul gramaj') && r.summary.includes('sapma'));
   const pct = runSkill(getSkill('fabricGsmKnit')!, { coursesPerCm: 16, walesPerCm: 14, loopLengthMm: 3, yarnTex: 26.46, finishChangePercent: 12.5 });
   assert.equal((pct.output as { estimateBasis: string }).estimateBasis, 'change_percent');
+});
+
+test('quoteDraft: kg fiyatı metreye çevrilir, MOQ altı işaretlenir, fiyat yoksa uydurulmaz', () => {
+  const r = runSkill(getSkill('quoteDraft')!, { quantity: 200, unit: 'm', priceValue: 8, priceCurrency: 'USD', priceUnit: 'kg', weightGsm: 200, widthCm: 160, moq: 300, moqUnit: 'm', leadTimeDays: 12 });
+  assert.ok(r.ok);
+  const out = r.output as { unitPrice: number; total: number; converted: boolean; belowMoq: boolean; missing: string[] };
+  // 200 gsm × 160 cm → 3,125 m/kg; 8 USD/kg → 2,56 USD/m
+  assert.ok(Math.abs(out.unitPrice - 2.56) < 1e-9);
+  assert.ok(Math.abs(out.total - 512) < 1e-9);
+  assert.equal(out.converted, true);
+  assert.equal(out.belowMoq, true);
+  assert.deepEqual(out.missing, []);
+
+  const noPrice = runSkill(getSkill('quoteDraft')!, { quantity: 500, unit: 'kg' });
+  assert.ok(noPrice.ok);
+  const o2 = noPrice.output as { unitPrice: number | null; total: number | null; missing: string[] };
+  assert.equal(o2.unitPrice, null);
+  assert.equal(o2.total, null);
+  assert.ok(o2.missing.includes('fiyat') && o2.missing.includes('termin'));
+  assert.ok(noPrice.summary.includes('fiyat hesaplanamadı'));
 });

@@ -109,6 +109,8 @@ model User {
   whatsAppInbounds     WhatsAppInbound[]
   notifications        Notification[]
   watchRules           WatchRule[]
+  quoteRequests        QuoteRequest[]
+  quotes               Quote[]
   createdAt            DateTime        @default(now())
 }
 
@@ -165,6 +167,7 @@ model Product {
   favorites      ProductFavorite[]
   views          ProductView[]
   sampleRequests SampleRequest[]
+  quoteRequests  QuoteRequest[]
   posts          Post[]
   createdAt      DateTime        @default(now())
 }
@@ -588,4 +591,56 @@ model WatchMatch {
   createdAt DateTime  @default(now())
 
   @@unique([ruleId, productId])
+}
+
+// --- Faz 2, Adım 2: teklif akışı (docs/faz2-plani.md) ---
+// Bağlantı şartı yok (Fırat 2026-09-17). Fiyat yalnızca taraflara görünür.
+// status: open (teklif bekliyor) | quoted | accepted | declined | cancelled
+model QuoteRequest {
+  id              String    @id @default(cuid())
+  buyerId         String
+  buyer           User      @relation(fields: [buyerId], references: [id])
+  // Alıcının firması (varsa) ve satıcı firma, istek anındaki değerler.
+  buyerCompanyId  String?
+  sellerCompanyId String
+  productId       String
+  product         Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity        Float
+  // "m" | "kg"
+  unit            String
+  targetDate      DateTime?
+  note            String    @default("")
+  status          String    @default("open")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  quotes          Quote[]
+
+  @@index([buyerId, createdAt])
+  @@index([sellerCompanyId, status, createdAt])
+}
+
+// Bir isteğe birden çok teklif sürümü olabilir; geçerli olan son "sent".
+// status: draft | sent | accepted | declined | superseded
+model Quote {
+  id            String       @id @default(cuid())
+  requestId     String
+  request       QuoteRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  sellerUserId  String
+  sellerUser    User         @relation(fields: [sellerUserId], references: [id])
+  priceValue    Float?
+  priceCurrency String       @default("")
+  // Fiyat birimi: "m" | "kg" (isteğin birimiyle aynı olması beklenir)
+  priceUnit     String       @default("")
+  moq           Float?
+  moqUnit       String       @default("")
+  leadTimeDays  Int?
+  validUntil    DateTime?
+  paymentTerms  String       @default("")
+  note          String       @default("")
+  status        String       @default("draft")
+  sentAt        DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([requestId, createdAt])
 }

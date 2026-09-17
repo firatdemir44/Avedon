@@ -8,7 +8,11 @@ export type NotificationKind =
   | 'sample_request_status'
   | 'connection_request'
   | 'connection_accepted'
-  | 'watch_match';
+  | 'watch_match'
+  | 'quote_request_new'
+  | 'quote_received'
+  | 'quote_accepted'
+  | 'quote_declined';
 
 export interface NotificationData {
   productId?: string;
@@ -16,6 +20,7 @@ export interface NotificationData {
   userId?: string;
   ruleId?: string;
   postId?: string;
+  quoteRequestId?: string;
 }
 
 export interface NotifyInput {
