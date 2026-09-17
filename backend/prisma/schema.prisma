@@ -140,6 +140,9 @@ model Product {
   // Hepsi isteğe bağlı; eski istemciler bu alanlar olmadan çalışır.
   // widthType: "" | acik | tup
   widthType         String    @default("")
+  // Enin anlamı (Fırat 2026-09-16): "" | acik (girilen en açık en) | tup_tek_yuz (tek yüz tüp eni;
+  // hesap eni iki katı). Otomatik çarpma yok, satıcı seçer.
+  widthMeaning      String    @default("")
   // MOQ değeri ve birimi stok biriminden bağımsız (kullanıcı kararı 2026-09-16).
   moq               Float?
   moqUnit           String    @default("")

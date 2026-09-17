@@ -213,6 +213,15 @@ async function main() {
     check('eski ürün onay bekler', (await api('GET', `/products/${old.id}`, O)).json?.product?.pendingFieldCount === 1);
     check('admin olmayan 403', (await api('POST', '/admin/products/backfill-composition?dryRun=1', S)).status === 403);
 
+    console.log('Enin anlamı (tüp tek yüz → hesap eni iki katı)');
+    const tube = await api('POST', '/products', S, { ...base, code: `P${suffix}-TUP`, content: '%100 Pamuk', widthCm: 80, widthType: 'tup', widthMeaning: 'tup_tek_yuz' });
+    check('tüp ürün 201', tube.status === 201, tube.json);
+    check('widthMeaning ve hesap eni 160', tube.json?.product?.widthMeaning === 'tup_tek_yuz' && tube.json?.product?.effectiveWidthCm === 160, tube.json?.product);
+    check('açık ende hesap eni aynı', p1?.effectiveWidthCm === p1?.widthCm, [p1?.effectiveWidthCm, p1?.widthCm]);
+    check('geçersiz anlam 400', (await api('POST', '/products', S, { ...base, code: `P${suffix}-X`, content: 'x', widthMeaning: 'yarim' })).status === 400);
+    const patched = await api('PATCH', `/products/${tube.json?.product?.id}`, S, { widthMeaning: 'acik' });
+    check('anlam açık ene çevrilince hesap eni 80', patched.json?.product?.effectiveWidthCm === 80, patched.json?.product);
+
     console.log('Silme');
     check('ürün silinir', (await api('DELETE', `/products/${p1.id}`, S)).status === 204);
     check('alt tablolar cascade ile gider', (await prisma.productComposition.count({ where: { productId: p1.id } })) === 0 && (await prisma.productCertificate.count({ where: { productId: p1.id } })) === 0 && (await prisma.productFieldMeta.count({ where: { productId: p1.id } })) === 0);

@@ -100,6 +100,8 @@ export function buildTools(ctx: ToolContext): ToolSet {
           weightGsm: p.weightGsm,
           widthCm: p.widthCm,
           widthType: p.widthType,
+          widthMeaning: p.widthMeaning,
+          effectiveWidthCm: p.effectiveWidthCm,
           stock: p.stock,
           stockUnit: p.stockUnit,
           moq: p.moq,

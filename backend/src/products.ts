@@ -4,6 +4,7 @@ import { STOCK_UNITS, USAGE_KEYS, matchCatalogKeys } from './catalog';
 import { productTypeSchema } from './validation';
 import { WIDTH_TYPES, isValidCertificate, isValidFiber, knitSearchKeys } from './domain/glossary';
 import { PASSPORT_LIST_SELECT, toPassportRow } from './passport';
+import { effectiveWidthCm } from './domain/calc/wastage';
 
 // Ürün fotoğrafları ProductImage tablosunda (base64 data URL). LİSTE ve DETAY
 // yanıtlarında ASLA dönmez — katalog büyüdükçe tek bir liste isteği megabaytlara
@@ -63,6 +64,7 @@ export function toProductRow(row: ProductRow, viewerCompanyId?: string | null) {
     _count,
     usages,
     widthType,
+    widthMeaning,
     moq,
     moqUnit,
     leadTimeDays,
@@ -77,12 +79,15 @@ export function toProductRow(row: ProductRow, viewerCompanyId?: string | null) {
   } = row;
   return {
     ...product,
+    // Hesapta kullanılacak açık en: tek yüz tüp eni verildiyse iki katı.
+    effectiveWidthCm: effectiveWidthCm(product.widthCm, widthMeaning === 'tup_tek_yuz' ? 'tup_tek_yuz' : 'acik'),
     usages: parseUsages(usages),
     imageCount: _count.images,
     hasImage: _count.images > 0,
     ...toPassportRow(
       {
         widthType,
+        widthMeaning,
         moq,
         moqUnit,
         leadTimeDays,

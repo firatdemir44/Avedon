@@ -25,6 +25,7 @@ export const POST_PRODUCT_SELECT = {
   weightGsm: true,
   widthCm: true,
   widthType: true,
+  widthMeaning: true,
   stock: true,
   stockUnit: true,
   // Pasaport kartı (Faz 1, Adım 6): kompozisyon şeridi, MOQ/termin, sertifika rozetleri.
@@ -94,6 +95,7 @@ type PostWithIncludes = {
         weightGsm: number;
         widthCm: number;
         widthType: string;
+        widthMeaning: string;
         stock: number;
         stockUnit: string;
         moq: number | null;

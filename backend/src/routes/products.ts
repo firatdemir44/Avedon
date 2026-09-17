@@ -202,6 +202,7 @@ productsRouter.post(
 function stripPassportKeys<T extends Record<string, unknown>>(obj: T) {
   const {
     widthType: _w,
+    widthMeaning: _wm,
     moq: _m,
     moqUnit: _mu,
     leadTimeDays: _l,

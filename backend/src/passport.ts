@@ -100,6 +100,7 @@ export const passportFieldsSchema = z.object({
   certificates: z.array(certificateSchema).max(MAX_CERTIFICATES).optional(),
   testReports: z.array(testReportSchema).max(MAX_TEST_REPORTS).optional(),
   widthType: z.union([z.literal(''), z.enum(WIDTH_TYPES)]).optional(),
+  widthMeaning: z.union([z.literal(''), z.enum(['acik', 'tup_tek_yuz'])]).optional(),
   // MOQ ve birimi stok biriminden bağımsız (kullanıcı kararı 2026-09-16); null temizler.
   moq: z.number().positive().nullable().optional(),
   moqUnit: stockUnitOrEmpty.optional(),
@@ -122,6 +123,7 @@ export type PassportFields = z.infer<typeof passportFieldsSchema>;
 // sertifika adları yanıta girer; iplik, test raporu ve belge fotoğrafları girmez.
 export const PASSPORT_LIST_SELECT = {
   widthType: true,
+  widthMeaning: true,
   moq: true,
   moqUnit: true,
   leadTimeDays: true,
@@ -284,13 +286,14 @@ export async function writeFieldMeta(
 type PassportColumnData = Partial<
   Pick<
     Prisma.ProductUncheckedCreateInput,
-    'widthType' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags'
+    'widthType' | 'widthMeaning' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags'
   >
 >;
 
 export function passportColumns(input: PassportFields): PassportColumnData {
   const data: PassportColumnData = {};
   if (input.widthType !== undefined) data.widthType = input.widthType;
+  if (input.widthMeaning !== undefined) data.widthMeaning = input.widthMeaning;
   if (input.moq !== undefined) data.moq = input.moq;
   if (input.moqUnit !== undefined) data.moqUnit = input.moqUnit;
   if (input.leadTimeDays !== undefined) data.leadTimeDays = input.leadTimeDays;
