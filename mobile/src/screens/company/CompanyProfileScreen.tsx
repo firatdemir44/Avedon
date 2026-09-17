@@ -9,12 +9,17 @@ import {
   deletePost,
   fetchCompany,
   fetchCompanyFeed,
+  fetchCompanyMachines,
   fetchCompanyQuestions,
   fetchQuoteRequests,
   likePost,
   unlikePost,
+  type CompanyCapacity,
   type FeedPost,
+  type Machine,
 } from '../../api/client';
+import { groupMachines, machineSummary, monthlyCapacityText } from '../../features/machines/catalog';
+import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
@@ -46,20 +51,22 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 // Orijinal tasarımdaki firma sayfası dört sekmeli: Hakkında · Ürünler · Firma
 // Akışı · Kişiler (docs/orijinal-tasarim/2021-ekranlar, "Firma Sayfası ...").
 // Aşama B, 1. parça: sekmeler, ürün süzme çipleri, firma akışı, kişiler.
-type CompanyTab = 'about' | 'products' | 'feed' | 'people';
+// Faz 2, Adım 5: beşinci sekme "Makine parkı" (parkur + aylık kapasite).
+type CompanyTab = 'about' | 'products' | 'feed' | 'people' | 'machines';
 
 const TABS: { key: CompanyTab; label: string }[] = [
   { key: 'about', label: 'Hakkında' },
   { key: 'products', label: 'Ürünler' },
   { key: 'feed', label: 'Akış' },
   { key: 'people', label: 'Kişiler' },
+  { key: 'machines', label: 'Makine parkı' },
 ];
 
 export function CompanyProfileScreen({ navigation, route }: Props) {
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
-  const [tab, setTab] = useState<CompanyTab>('about');
+  const [tab, setTab] = useState<CompanyTab>(route.params?.initialTab ?? 'about');
   const [typeFilter, setTypeFilter] = useState<ProductType | null>(null);
   const [usageFilter, setUsageFilter] = useState<string | null>(null);
 
@@ -116,6 +123,29 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (tab === 'feed' && posts === null && !postsLoading) loadPosts();
   }, [tab, posts, postsLoading, loadPosts]);
+
+  // Makine parkı da yalnızca sekmesi açılınca çekiliyor (Faz 2, Adım 5).
+  const [park, setPark] = useState<{ machines: Machine[]; capacity: CompanyCapacity; totalCount: number } | null>(null);
+  const [parkLoading, setParkLoading] = useState(false);
+  const [parkFailed, setParkFailed] = useState(false);
+
+  const loadPark = useCallback(() => {
+    if (!viewedCompanyId) return;
+    setParkLoading(true);
+    setParkFailed(false);
+    fetchCompanyMachines(viewedCompanyId)
+      .then(setPark)
+      .catch(() => setParkFailed(true))
+      .finally(() => setParkLoading(false));
+  }, [viewedCompanyId]);
+
+  // Sekme açıkken her odakta tazeleniyor: parkuru düzenleyip geri dönünce
+  // güncel hali gelsin. Elde veri varsa ekranda kalır (iskelet yerine sessiz).
+  useFocusEffect(
+    useCallback(() => {
+      if (tab === 'machines') loadPark();
+    }, [tab, loadPark])
+  );
 
   // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
   // yazıyordu (denetim FINDING-018).
@@ -339,12 +369,25 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </View>
   );
 
+  // Sekme şeridi yatay kaydırılabilir: beş sekme dar ekrana sığmıyor.
   const tabBar = (
-    <View style={styles.tabBar} accessibilityRole="tablist">
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tabBar}
+      contentContainerStyle={styles.tabBarContent}
+      accessibilityRole="tablist"
+    >
       {TABS.map((item) => {
         const selected = tab === item.key;
         const count =
-          item.key === 'products' ? products.length : item.key === 'people' ? people.length : undefined;
+          item.key === 'products'
+            ? products.length
+            : item.key === 'people'
+              ? people.length
+              : item.key === 'machines'
+                ? park?.totalCount
+                : undefined;
         return (
           <Pressable
             key={item.key}
@@ -364,7 +407,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           </Pressable>
         );
       })}
-    </View>
+    </ScrollView>
   );
 
   const aboutContent = (
@@ -509,6 +552,121 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       </View>
     ) : null;
 
+  // Makine parkı sekmesi (Faz 2, Adım 5): üstte kapasite bloğu, altında
+  // gruplara göre makine satırları. Kendi firmanda "Düzenle" yönetim ekranını
+  // açar; başka firmada yalnızca okunur.
+  const parkSections = groupMachines(park?.machines ?? []);
+  const capacityTons = monthlyCapacityText(park?.capacity.monthlyCapacityTons ?? null);
+
+  const machinesContent = (
+    <View>
+      {parkLoading && !park ? <ActivityIndicator style={styles.loading} color={colors.primary} /> : null}
+      {parkFailed && !park ? (
+        <View style={styles.block}>
+          <EmptyState
+            compact
+            icon="cloud-offline-outline"
+            title="Makine parkı alınamadı"
+            message="Bağlantınızı kontrol edip tekrar deneyin."
+            actionLabel="Tekrar dene"
+            onAction={loadPark}
+          />
+        </View>
+      ) : null}
+
+      {park ? (
+        <>
+          <View style={styles.block}>
+            <View style={styles.capacityBlock}>
+              <View style={styles.capacityTop}>
+                <View style={styles.capacityTexts}>
+                  <Text style={styles.capacityLabel}>Aylık kapasite</Text>
+                  <Text style={styles.capacityValue}>{capacityTons ?? 'Bildirilmedi'}</Text>
+                </View>
+                <View
+                  style={[
+                    styles.contractTag,
+                    park.capacity.contractOpen ? styles.contractTagOpen : styles.contractTagClosed,
+                  ]}
+                >
+                  <Ionicons
+                    name={park.capacity.contractOpen ? 'checkmark-circle' : 'remove-circle-outline'}
+                    size={13}
+                    color={park.capacity.contractOpen ? colors.success : colors.textMuted}
+                  />
+                  <Text
+                    style={[
+                      styles.contractTagText,
+                      { color: park.capacity.contractOpen ? colors.success : colors.textMuted },
+                    ]}
+                  >
+                    {park.capacity.contractOpen ? 'Fason kapasitesi açık' : 'Fason almıyor'}
+                  </Text>
+                </View>
+              </View>
+              {park.capacity.note ? <Text style={styles.capacityNote}>{park.capacity.note}</Text> : null}
+              {park.capacity.updatedAt ? (
+                <Text style={styles.capacityUpdated}>güncellendi: {formatRelativeTime(park.capacity.updatedAt)}</Text>
+              ) : null}
+              {isOwnCompany ? (
+                <View style={styles.capacityAction}>
+                  <PrimaryButton
+                    label="Düzenle"
+                    variant="outline"
+                    size="sm"
+                    icon="create-outline"
+                    onPress={() => navigation.navigate('MachinePark')}
+                    accessibilityLabel="Makine parkını ve kapasiteyi düzenle"
+                  />
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          {parkSections.length ? (
+            parkSections.map((section) => (
+              <View key={section.group}>
+                <SectionHeader title={section.label} count={section.count} />
+                <View style={styles.block}>
+                  {section.items.map((machine, index) => (
+                    <View
+                      key={machine.id}
+                      style={[styles.machineRow, index < section.items.length - 1 && styles.machineDivider]}
+                    >
+                      <Text style={styles.machineTitle}>
+                        {machine.kind}
+                        <Text style={styles.machineCount}>{`  × ${machine.count}`}</Text>
+                      </Text>
+                      {machineSummary(machine) ? (
+                        <Text style={styles.machineSummary}>{machineSummary(machine)}</Text>
+                      ) : null}
+                      {machine.note ? <Text style={styles.machineNote}>{machine.note}</Text> : null}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.block}>
+              <EmptyState
+                compact
+                icon="hardware-chip-outline"
+                title={isOwnCompany ? 'Makine parkınız boş' : 'Makine parkı yok'}
+                message={
+                  isOwnCompany
+                    ? 'Makinelerinizi girdiğinizde fason iş arayanlar sizi pus, fayn ve çalışma enine göre bulabilir.'
+                    : 'Bu firma makine parkını henüz girmedi.'
+                }
+                actionLabel={isOwnCompany ? 'Makine ekle' : undefined}
+                onAction={isOwnCompany ? () => navigation.navigate('MachineForm') : undefined}
+              />
+            </View>
+          )}
+        </>
+      ) : null}
+    </View>
+  );
+
   const listHeader = (
     <View>
       {error ? (
@@ -519,6 +677,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {tabBar}
       {tab === 'about' ? aboutContent : null}
       {tab === 'products' ? productFilters : null}
+      {tab === 'machines' ? machinesContent : null}
       {tab === 'feed' && postsLoading ? <ActivityIndicator style={styles.loading} color={colors.primary} /> : null}
     </View>
   );
@@ -535,10 +694,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         refreshControl={refreshControl(refreshing, () => {
           refresh();
           if (tab === 'feed') loadPosts();
+          if (tab === 'machines') loadPark();
         })}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={
-          tab === 'about' ? null : tab === 'products' ? (
+          tab === 'about' || tab === 'machines' ? null : tab === 'products' ? (
             <View style={styles.block}>
               <EmptyState
                 compact
@@ -782,12 +942,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
+  tabBarContent: { flexGrow: 1 },
   tabItem: {
-    flex: 1,
+    flexGrow: 1,
     minHeight: MIN_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -852,6 +1013,32 @@ const styles = StyleSheet.create({
   filterChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
   filterChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
   filterChipTextSelected: { color: colors.primaryText },
+  // Makine parkı sekmesi (Faz 2, Adım 5)
+  capacityBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md, gap: 6 },
+  capacityTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  capacityTexts: { flexShrink: 1, gap: 2 },
+  capacityLabel: { ...typography.caption, color: colors.textMuted },
+  capacityValue: { ...typography.mono, fontSize: 19, lineHeight: 25, color: colors.text },
+  contractTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  contractTagOpen: { backgroundColor: colors.successSoft },
+  contractTagClosed: { backgroundColor: colors.surfaceTonal },
+  contractTagText: { ...typography.caption, fontFamily: fonts.semibold },
+  capacityNote: { ...typography.body, color: colors.text },
+  capacityUpdated: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+  capacityAction: { alignSelf: 'flex-start', marginTop: spacing.xs },
+  machineRow: { paddingHorizontal: spacing.gutter, paddingVertical: 10, gap: 2 },
+  machineDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  machineTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  machineCount: { fontFamily: fonts.monoSemibold },
+  machineSummary: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.textMuted },
+  machineNote: { ...typography.caption, color: colors.textMuted },
   loading: { marginVertical: spacing.lg },
   postWrap: { marginBottom: spacing.blockGap },
 });

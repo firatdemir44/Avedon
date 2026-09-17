@@ -29,6 +29,9 @@ import { AssistantMemoryScreen } from '../screens/assistant/AssistantMemoryScree
 import { SellerAssistantScreen } from '../screens/assistant/SellerAssistantScreen';
 import { CompanyQuestionsScreen } from '../screens/assistant/CompanyQuestionsScreen';
 import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
+import { MachineParkScreen } from '../screens/machines/MachineParkScreen';
+import { MachineFormScreen } from '../screens/machines/MachineFormScreen';
+import { CapacitySearchScreen } from '../screens/machines/CapacitySearchScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
@@ -188,6 +191,23 @@ export function RootNavigator() {
               name="CompanyFaq"
               component={CompanyFaqScreen}
               options={{ headerShown: true, title: 'Sık Sorulanlar' }}
+            />
+            {/* Makine parkı ve fason kapasite (Faz 2, Adım 5). MachineForm
+                başlığını ekranın kendisi ayarlıyor (ekle/düzenle). */}
+            <Stack.Screen
+              name="MachinePark"
+              component={MachineParkScreen}
+              options={{ headerShown: true, title: 'Makine Parkı' }}
+            />
+            <Stack.Screen
+              name="MachineForm"
+              component={MachineFormScreen}
+              options={{ headerShown: true, title: 'Makine Ekle' }}
+            />
+            <Stack.Screen
+              name="CapacitySearch"
+              component={CapacitySearchScreen}
+              options={{ headerShown: true, title: 'Fason Kapasite Ara' }}
             />
             <Stack.Screen
               name="CalculatorsList"

@@ -1357,6 +1357,130 @@ export function extractPassport(input: PassportExtractInput) {
   );
 }
 
+// --- Makine parkı ve fason kapasite (Faz 2, Adım 5) --------------------------
+// Sunucu: backend/src/routes/machines.ts. Makine türü SERBEST METİN; /kinds
+// yalnızca öneri döner (başlangıç listesi + platformda girilenler).
+
+export type MachineGroup = 'orme' | 'dokuma' | 'boya_terbiye' | 'baski' | 'konfeksiyon' | 'iplik' | 'diger';
+
+export interface Machine {
+  id: string;
+  group: MachineGroup;
+  kind: string;
+  brand: string;
+  model: string;
+  year: number | null;
+  /** Pus (çap, inç) */
+  diameterInch: number | null;
+  /** Fayn (incelik) */
+  gauge: number | null;
+  /** Sistem sayısı */
+  feeders: number | null;
+  /** İğne sayısı */
+  needles: number | null;
+  workingWidthCm: number | null;
+  feature: string;
+  count: number;
+  note: string;
+}
+
+export interface CompanyCapacity {
+  monthlyCapacityTons: number | null;
+  note: string;
+  contractOpen: boolean;
+  updatedAt: string | null;
+}
+
+export interface MachineKinds {
+  groups: { key: MachineGroup; label: string }[];
+  kinds: Record<string, string[]>;
+}
+
+export function fetchMachineKinds() {
+  return request<MachineKinds>('/machines/kinds');
+}
+
+// Oturumsuz da çalışır: başka firmanın sayfasındaki "Makine parkı" sekmesi.
+export function fetchCompanyMachines(companyId: string) {
+  return request<{ machines: Machine[]; capacity: CompanyCapacity; totalCount: number }>(
+    `/machines/company/${companyId}`
+  );
+}
+
+// Boş bırakılan sayı alanları null olarak gider (sunucu şeması nullable).
+export interface MachineInput {
+  group: MachineGroup;
+  kind: string;
+  brand?: string;
+  model?: string;
+  year?: number | null;
+  diameterInch?: number | null;
+  gauge?: number | null;
+  feeders?: number | null;
+  needles?: number | null;
+  workingWidthCm?: number | null;
+  feature?: string;
+  count?: number;
+  note?: string;
+}
+
+// 403 no_company · 409 too_many_machines · 400 invalid_body.
+export function createMachine(input: MachineInput) {
+  return request<{ machine: Machine }>('/machines', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateMachine(id: string, input: MachineInput) {
+  return request<{ machine: Machine }>(`/machines/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+export function deleteMachine(id: string) {
+  return request<void>(`/machines/${id}`, { method: 'DELETE' });
+}
+
+export function saveCapacity(input: { monthlyCapacityTons?: number | null; note?: string; contractOpen?: boolean }) {
+  return request<{ capacity: CompanyCapacity }>('/machines/capacity/mine', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface CapacitySearchParams {
+  group?: MachineGroup | '';
+  kind?: string;
+  gauge?: number;
+  diameterInch?: number;
+  widthMin?: number;
+  contractOpen?: boolean;
+  city?: string;
+}
+
+export interface CapacityResult {
+  company: {
+    id: string;
+    name: string;
+    city: string;
+    verification: VerificationStatus;
+    logoUpdatedAt: string | null;
+  };
+  capacity: CompanyCapacity;
+  matchedMachines: Machine[];
+  matchedCount: number;
+}
+
+// Kendi firmanız sonuçta çıkmaz (sunucu dışlar).
+export function searchCapacity(params: CapacitySearchParams) {
+  const query = new URLSearchParams();
+  if (params.group) query.set('group', params.group);
+  if (params.kind?.trim()) query.set('kind', params.kind.trim());
+  if (params.gauge !== undefined) query.set('gauge', String(params.gauge));
+  if (params.diameterInch !== undefined) query.set('diameterInch', String(params.diameterInch));
+  if (params.widthMin !== undefined) query.set('widthMin', String(params.widthMin));
+  if (params.contractOpen) query.set('contractOpen', '1');
+  if (params.city?.trim()) query.set('city', params.city.trim());
+  const suffix = query.toString();
+  return request<{ results: CapacityResult[] }>(`/machines/search${suffix ? `?${suffix}` : ''}`);
+}
+
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };
 
 export function fetchAdminCompanies() {

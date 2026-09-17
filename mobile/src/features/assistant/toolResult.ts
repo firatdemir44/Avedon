@@ -18,6 +18,8 @@ export interface ResultRow {
   strong?: boolean;
   // Katalog sonucu satırı: dokununca açılacak ürün (satıcı asistanı, Faz 2 Adım 3).
   productId?: string;
+  // Kapasite araması satırı: dokununca açılacak firma (Faz 2, Adım 5).
+  companyId?: string;
 }
 
 export interface ToolResultView {
@@ -268,6 +270,38 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
         unit: productRows.length ? `${productRows.length} ürün` : undefined,
         rows: productRows,
         text: productRows.length ? undefined : call.summary,
+      };
+    }
+    // Faz 2, Adım 5: fason kapasite araması. Firma satırına dokununca firma
+    // sayfası açılır (katalog satırındaki ürün deseninin aynısı).
+    case 'kapasite_ara': {
+      const results = asArray(out.results);
+      for (const item of results) {
+        const result = asObject(item);
+        const company = asObject(result.company);
+        const capacity = asObject(result.capacity);
+        const matchedCount = asNumber(result.matchedCount);
+        const tons = asNumber(capacity.monthlyCapacityTons);
+        const note = [
+          asText(company.city),
+          capacity.contractOpen === true ? 'fason açık' : 'fason kapalı',
+          matchedCount != null ? `${formatNumber(matchedCount, 0)} makine` : null,
+          tons != null ? `aylık ${formatNumber(tons, 0)} ton` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        rows.push({
+          label: asText(company.name) || 'Firma',
+          value: tons != null ? `${formatNumber(tons, 0)} ton` : '',
+          note: note || undefined,
+          companyId: asText(company.id) || undefined,
+        });
+      }
+      return {
+        ...base,
+        unit: rows.length ? `${rows.length} firma` : undefined,
+        rows,
+        text: rows.length ? undefined : call.summary,
       };
     }
     case 'pasaport_cikar': {

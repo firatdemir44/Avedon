@@ -98,6 +98,8 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
   },
   // Faz 2, Adım 1: izleme kuralı önerisi (asistan kurmaz, kart onaylanır).
   { label: 'Ürün izle', starter: 'PA lycra süprem 200 gr üstü çıkınca haber ver' },
+  // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
+  { label: 'Fason kapasite', starter: '28 fayn 30 pus süprem örecek fason arıyorum' },
 ];
 
 // Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
@@ -478,6 +480,13 @@ export function AssistantScreen({ navigation }: Props) {
                     rows={view.rows}
                     text={view.text}
                     formula={view.formula}
+                    // Faz 2, Adım 5: kapasite sonucundaki firma satırı firma
+                    // sayfasını Makine parkı sekmesiyle açar.
+                    onCompanyPress={
+                      call.name === 'kapasite_ara'
+                        ? (companyId) => navigation.navigate('CompanyProfile', { companyId, initialTab: 'machines' })
+                        : undefined
+                    }
                   />
                 );
               })}
@@ -514,6 +523,7 @@ export function AssistantScreen({ navigation }: Props) {
       dismissWatchSuggestion,
       effectivePersona,
       memoryState,
+      navigation,
       personaName,
       saveSuggestion,
       saveWatchSuggestion,

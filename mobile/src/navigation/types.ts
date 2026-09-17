@@ -35,7 +35,9 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   // Üste itilen ekranlar
   Admin: undefined;
-  CompanyProfile: { companyId?: string } | undefined;
+  // initialTab: kapasite aramasından gelindiğinde "Makine parkı" sekmesi açık
+  // gelsin diye (Faz 2, Adım 5).
+  CompanyProfile: { companyId?: string; initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines' } | undefined;
   EditCompany: { companyId: string };
   // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
   // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.
@@ -66,6 +68,12 @@ export type RootStackParamList = {
   // Satıcı tarafı: asistana gelen sorular ve sık sorulanlar yönetimi.
   CompanyQuestions: undefined;
   CompanyFaq: undefined;
+  // Makine parkı ve fason kapasite (Faz 2, Adım 5). MachinePark: kendi firmanın
+  // parkuru + aylık tonaj; MachineForm: tek makine ekle/düzenle;
+  // CapacitySearch: "28 fayn 30 pus süprem örecek fason" araması.
+  MachinePark: undefined;
+  MachineForm: { machineId?: string } | undefined;
+  CapacitySearch: undefined;
   // Hesaplayıcı listesi artık sekmede değil, yığında: alt menüdeki yeri
   // "Asistan"a geçti, listeye asistandaki "Tüm hesaplayıcılar" çipinden gelinir.
   CalculatorsList: undefined;

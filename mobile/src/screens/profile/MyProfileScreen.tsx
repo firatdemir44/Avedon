@@ -43,6 +43,11 @@ export function MyProfileScreen({ navigation }: Props) {
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
     { key: 'quoteRequests', title: 'Tekliflerim', onPress: () => navigation.navigate('QuoteRequests') },
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
+    // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
+    { key: 'capacitySearch', title: 'Fason Kapasite Ara', onPress: () => navigation.navigate('CapacitySearch') },
+    user?.companyId
+      ? { key: 'machinePark', title: 'Makine Parkım', onPress: () => navigation.navigate('MachinePark') }
+      : null,
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
     { key: 'watchRules', title: 'İzlediklerim', onPress: () => navigation.navigate('WatchRules') },
     { key: 'recentlyViewed', title: 'Son Baktıklarım', onPress: () => navigation.navigate('RecentlyViewedProducts') },

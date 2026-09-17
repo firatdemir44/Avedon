@@ -43,6 +43,7 @@ export function AssistantResultCard({
   text,
   formula,
   onProductPress,
+  onCompanyPress,
 }: {
   title: string;
   unit?: string;
@@ -51,6 +52,8 @@ export function AssistantResultCard({
   formula?: string;
   // Katalog sonucunda ürün satırına dokunma (satıcı asistanı, Faz 2 Adım 3).
   onProductPress?: (productId: string) => void;
+  // Kapasite aramasında firma satırına dokunma (Faz 2, Adım 5).
+  onCompanyPress?: (companyId: string) => void;
 }) {
   const [openFormula, setOpenFormula] = useState(false);
 
@@ -74,13 +77,20 @@ export function AssistantResultCard({
             </>
           );
           const productId = row.productId;
-          if (productId && onProductPress) {
+          const companyId = row.companyId;
+          const link =
+            productId && onProductPress
+              ? { onPress: () => onProductPress(productId), target: 'ürün sayfasını aç' }
+              : companyId && onCompanyPress
+                ? { onPress: () => onCompanyPress(companyId), target: 'firma sayfasını aç' }
+                : null;
+          if (link) {
             return (
               <Pressable
                 key={`${row.label}-${index}`}
-                onPress={() => onProductPress(productId)}
+                onPress={link.onPress}
                 accessibilityRole="button"
-                accessibilityLabel={`${row.label}${row.note ? `, ${row.note}` : ''}, ürün sayfasını aç`}
+                accessibilityLabel={`${row.label}${row.note ? `, ${row.note}` : ''}, ${link.target}`}
                 style={({ pressed }) => [styles.toolRow, styles.toolRowLink, pressed && styles.toolRowPressed]}
               >
                 {body}
