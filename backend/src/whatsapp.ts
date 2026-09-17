@@ -44,6 +44,8 @@ const status = {
   postCount: 0,
   signatureFailureCount: 0,
   lastPostSummary: '' as string,
+  // WABA aboneliği (ensureWabaSubscription): uygulama hesaba abone değilse Meta gerçek mesajları webhook'a iletmez.
+  wabaSubscription: 'not_checked' as string,
 };
 
 export function markWebhookVerified() {
@@ -80,6 +82,8 @@ export function getWhatsAppStatus() {
     lastPostSummary: status.lastPostSummary,
     lastSignatureFailureAt: status.lastSignatureFailureAt,
     signatureFailureCount: status.signatureFailureCount,
+    wabaIdSet: !!process.env.WHATSAPP_WABA_ID,
+    wabaSubscription: status.wabaSubscription,
   };
 }
 
@@ -171,4 +175,26 @@ async function callGraphApi(payload: Record<string, unknown>): Promise<void> {
     console.error('[whatsapp] istek hatası:', err);
     throw err;
   }
+}
+
+// Uygulamayı WhatsApp Business hesabına abone eder (POST /{WABA_ID}/subscribed_apps) ve
+// sonucu health'e yazar. Panelden kurulumda bu genelde otomatik olur; olmadıysa
+// Meta test isteklerini gönderir ama gerçek mesajları iletmez. WHATSAPP_WABA_ID
+// (gizli değil) tanımlıysa açılışta bir kez çalışır.
+export async function ensureWabaSubscription(): Promise<void> {
+  const wabaId = process.env.WHATSAPP_WABA_ID;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!wabaId || !token || env().mock) return;
+  const url = `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`;
+  try {
+    const post = await fetch(url, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    const postBody = await post.text();
+    const get = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const getJson = (await get.json()) as { data?: { whatsapp_business_api_data?: { name?: string } }[]; error?: { message?: string } };
+    const apps = (getJson.data ?? []).map((d) => d.whatsapp_business_api_data?.name ?? '?').join(',');
+    status.wabaSubscription = post.ok ? `ok (abone uygulamalar: ${apps || '-'})` : `hata ${post.status}: ${postBody.slice(0, 200)}`;
+  } catch (err) {
+    status.wabaSubscription = `istek hatası: ${(err as Error).message}`;
+  }
+  console.log('[whatsapp] WABA aboneliği:', status.wabaSubscription);
 }

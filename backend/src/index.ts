@@ -20,7 +20,7 @@ import { passportRouter } from './routes/passport';
 import { skillsRouter } from './routes/skills';
 import { assistantRouter } from './routes/assistant';
 import { isLlmConfigured } from './llm';
-import { getWhatsAppStatus } from './whatsapp';
+import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
@@ -76,4 +76,5 @@ app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
   console.log(`Avedon API listening on http://localhost:${port}`);
+  void ensureWabaSubscription();
 });
