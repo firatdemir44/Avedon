@@ -61,6 +61,14 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
         setError('Bu ürün için zaten açık bir teklif isteğiniz var.');
       } else if (apiError?.code === 'own_product') {
         setError('Kendi firmanızın ürününe teklif isteyemezsiniz.');
+      } else if (apiError?.code === 'daily_limit') {
+        // Faz 3, Adım 1: günlük toplam teklif isteği sınırı tekil istekte de var.
+        const remaining = typeof apiError.body?.remaining === 'number' ? apiError.body.remaining : 0;
+        setError(
+          remaining > 0
+            ? `Günlük teklif isteği sınırına yaklaştınız; bugün ${remaining} istek hakkınız kaldı.`
+            : 'Günlük teklif isteği sınırına ulaştınız. Yarın tekrar deneyin.'
+        );
       } else if (apiError?.code === 'product_not_found') {
         setError('Ürün bulunamadı, kaldırılmış olabilir.');
       } else {

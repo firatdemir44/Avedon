@@ -49,6 +49,8 @@ import { IncomingSampleRequestsScreen } from '../screens/samples/IncomingSampleR
 import { QuoteRequestFormScreen } from '../screens/quotes/QuoteRequestFormScreen';
 import { QuoteRequestDetailScreen } from '../screens/quotes/QuoteRequestDetailScreen';
 import { QuoteRequestsScreen } from '../screens/quotes/QuoteRequestsScreen';
+import { RfqFormScreen } from '../screens/quotes/RfqFormScreen';
+import { RfqCompareScreen } from '../screens/quotes/RfqCompareScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
@@ -297,6 +299,16 @@ export function RootNavigator() {
               name="QuoteRequests"
               component={QuoteRequestsScreen}
               options={{ headerShown: true, title: 'Tekliflerim' }}
+            />
+            <Stack.Screen
+              name="RfqForm"
+              component={RfqFormScreen}
+              options={{ headerShown: true, title: 'Çoklu Teklif İste' }}
+            />
+            <Stack.Screen
+              name="RfqCompare"
+              component={RfqCompareScreen}
+              options={{ headerShown: true, title: 'Teklif Karşılaştırma' }}
             />
             <Stack.Screen
               name="GarmentVisualCost"

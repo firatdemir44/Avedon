@@ -62,6 +62,8 @@ export function ProductRow({
   onPress,
   onRequestSample,
   divider = true,
+  selectable = false,
+  selected = false,
 }: {
   product: Product;
   // Firma sayfasında firma adı zaten başlıkta; tekrar yazılmaz.
@@ -70,6 +72,10 @@ export function ProductRow({
   // Verilmezse "Talep Et" gösterilmez (kendi ürünü, giriş yapılmamış).
   onRequestSample?: () => void;
   divider?: boolean;
+  // Çoklu teklif seçim kipi (Faz 3, Adım 1): satırda onay kutusu çıkar,
+  // satıra basmak detaya değil seçime gider, "Talep Et" gizlenir.
+  selectable?: boolean;
+  selected?: boolean;
 }) {
   // İplikte (Faz 2, Adım 6) gramaj/en 0'dır: "0 g/m² · 0 cm" anlamsız olur.
   // Onun yerine ipliğin özeti (numara + eğirme + lif) ve kg stoğu yazılır.
@@ -85,13 +91,28 @@ export function ProductRow({
       // düğme olduğu için geçersiz iç içe <button> oluşuyordu (React uyarısı,
       // tarayıcıda tıklama karışabilir). Web'de satır rolsüz, telefonda ekran
       // okuyucu için düğme.
-      accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
+      accessibilityRole={Platform.OS === 'web' ? undefined : selectable ? 'checkbox' : 'button'}
+      accessibilityState={selectable ? { checked: selected } : undefined}
       accessibilityLabel={`${product.code}, ${category}, ${summary}${
         certificates.length ? `, ${certificates.length} sertifika` : ''
-      }${product.isFavorite ? ', takip ediliyor' : ''}`}
+      }${product.isFavorite ? ', takip ediliyor' : ''}${selectable ? (selected ? ', seçili' : ', seçili değil') : ''}`}
       android_ripple={{ color: colors.pressed }}
-      style={({ pressed }) => [styles.row, divider && styles.divider, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        divider && styles.divider,
+        pressed && styles.pressed,
+        selectable && selected && styles.rowSelected,
+      ]}
     >
+      {selectable ? (
+        <View style={styles.checkbox}>
+          <Ionicons
+            name={selected ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={selected ? colors.primary : colors.borderStrong}
+          />
+        </View>
+      ) : null}
       <ProductThumbnail productId={product.id} hasImage={product.hasImage} size={64} />
       <View style={styles.body}>
         <View style={styles.titleRow}>
@@ -133,7 +154,7 @@ export function ProductRow({
             )}
             <StockValue stock={product.stock} unit={product.stockUnit} />
           </View>
-          {onRequestSample ? (
+          {onRequestSample && !selectable ? (
             <Pressable
               onPress={onRequestSample}
               hitSlop={6}
@@ -161,6 +182,8 @@ const styles = StyleSheet.create({
   },
   divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
   pressed: { backgroundColor: colors.pressed },
+  rowSelected: { backgroundColor: colors.accentSoft },
+  checkbox: { width: 24, paddingTop: 20, alignItems: 'center' },
   body: { flex: 1, minWidth: 0, gap: 2 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   code: { ...typography.monoStrong, color: colors.primary, flexShrink: 0 },

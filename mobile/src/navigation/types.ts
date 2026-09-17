@@ -5,6 +5,7 @@ import type { ProductFilters } from '../features/products/filters';
 import type { PassportImport } from '../features/products/passportImport';
 import type { ExtractOutcome } from '../api/client';
 import type { YarnDirectoryPreset } from '../screens/yarns/YarnDirectoryScreen';
+import type { RfqSelectionItem } from '../features/quotes/rfqSelection';
 
 // ÖNEMLİ: Hiçbir rota adı hem sekme hem yığın listesinde bulunamaz.
 // React Navigation, navigate çağrısını önce çağıran ekranın KENDİ navigatörüne
@@ -109,6 +110,10 @@ export type RootStackParamList = {
   QuoteRequestDetail: { requestId: string };
   // role: hangi sekme açık gelsin (firması olmayanda yalnızca 'buyer').
   QuoteRequests: { role?: 'buyer' | 'seller' } | undefined;
+  // Çoklu teklif isteme ve karşılaştırma (Faz 3, Adım 1). Form seçilen
+  // ürünlerin ÖZETİNİ alır (id'lerden yeniden veri çekmemek için).
+  RfqForm: { items: RfqSelectionItem[] };
+  RfqCompare: { rfqId: string };
   GarmentVisualCost: undefined;
   Profile: { userId: string };
   Connections: undefined;

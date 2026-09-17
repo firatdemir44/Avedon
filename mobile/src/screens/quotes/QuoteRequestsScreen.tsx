@@ -4,7 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
-import { fetchQuoteRequests, type QuoteRequestRow } from '../../api/client';
+import { fetchQuoteRequests, fetchRfqs, type QuoteRequestRow, type RfqSummary } from '../../api/client';
+import { SectionHeader } from '../../components/SectionHeader';
 import { QuoteStatusBadge } from '../../components/QuoteStatusBadge';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
@@ -27,14 +28,18 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
   const [role, setRole] = useState<Role>(route.params?.role === 'seller' && hasCompany ? 'seller' : 'buyer');
 
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(async () => {
-    const [buyer, seller] = await Promise.all([
+    const [buyer, seller, rfqs] = await Promise.all([
       fetchQuoteRequests('buyer'),
       hasCompany ? fetchQuoteRequests('seller') : Promise.resolve({ requests: [] as QuoteRequestRow[] }),
+      // Faz 3, Adım 1: çoklu istekler (karşılaştırmalar) yalnızca alıcıda.
+      // Eski sunucuda bu uç yok: hata listeyi düşürmesin.
+      fetchRfqs().catch(() => ({ rfqs: [] as RfqSummary[] })),
     ]);
-    return { buyer: buyer.requests, seller: seller.requests };
+    return { buyer: buyer.requests, seller: seller.requests, rfqs: rfqs.rfqs };
   });
 
   const requests = (role === 'seller' ? data?.seller : data?.buyer) ?? [];
+  const rfqs = role === 'buyer' ? (data?.rfqs ?? []) : [];
 
   if (status === 'loading') {
     return (
@@ -73,13 +78,49 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
-          error ? (
-            <InlineError
-              message={friendlyMessage(error, 'Teklif istekleri alınamadı')}
-              onRetry={reload}
-              style={styles.banner}
-            />
-          ) : null
+          <View>
+            {error ? (
+              <InlineError
+                message={friendlyMessage(error, 'Teklif istekleri alınamadı')}
+                onRetry={reload}
+                style={styles.banner}
+              />
+            ) : null}
+            {/* Çoklu istekler (Faz 3, Adım 1): her satır bir karşılaştırma. */}
+            {rfqs.length ? (
+              <View>
+                <SectionHeader title="Karşılaştırmalar" count={rfqs.length} first />
+                <View style={styles.block}>
+                  {rfqs.map((rfq, index) => (
+                    <Pressable
+                      key={rfq.id}
+                      onPress={() => navigation.navigate('RfqCompare', { rfqId: rfq.id })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${rfq.title}, ${rfq.requestCount} firmadan ${rfq.quotedCount} teklif. Karşılaştırmayı aç`}
+                      android_ripple={{ color: colors.pressed }}
+                      style={({ pressed }) => [
+                        styles.row,
+                        index < rfqs.length - 1 && styles.rowDivider,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.texts}>
+                        <Text style={styles.rfqTitle} numberOfLines={1}>
+                          {rfq.title}
+                        </Text>
+                        <Text style={styles.meta} numberOfLines={1}>
+                          {rfq.requestCount} firmadan {rfq.quotedCount} teklif ·{' '}
+                          {formatQuantity(rfq.quantity, rfq.unit)} · {formatRelativeTime(rfq.createdAt)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
+                    </Pressable>
+                  ))}
+                </View>
+                <SectionHeader title="Tek tek istekler" count={requests.length} />
+              </View>
+            ) : null}
+          </View>
         }
         ListEmptyComponent={
           role === 'seller' ? (
@@ -190,7 +231,9 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.pressed },
   texts: { flex: 1, gap: 2 },
   topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  block: { backgroundColor: colors.surface },
   code: { ...typography.monoStrong, color: colors.primary },
+  rfqTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
   company: { ...typography.label, color: colors.accent },
   meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
 });

@@ -734,6 +734,9 @@ export interface QuoteRequestRow {
   createdAt: string;
   updatedAt: string;
   product: QuoteRequestProductRef;
+  // Faz 3, Adım 1: istek bir çoklu teklif isteğinin (RFQ) parçasıysa dolu.
+  // Eski sunucuda bu alan yok.
+  rfqId?: string | null;
   sellerCompany: { id: string; name: string };
   buyer: { id: string; name: string; company: { id: string; name: string } | null };
   // Alıcıda taslaklar hiç gelmez.
@@ -819,6 +822,124 @@ export function respondQuote(id: string, action: 'accept' | 'decline') {
 
 export function cancelQuoteRequest(id: string) {
   return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/cancel`, { method: 'POST' });
+}
+
+// --- Çoklu teklif isteme ve karşılaştırma (Faz 3, Adım 1) --------------------
+// Sunucu: backend/src/routes/rfqs.ts. Alıcı birden çok ürün işaretler, her
+// FİRMAYA tek istek gider (aynı firmadan yalnızca ilk seçilen ürün) ve gelen
+// teklifler tek tabloda karşılaştırılır. Satıcı kaç firmaya sorulduğunu görmez.
+
+// Sunucudaki sabitlerle aynı (MAX_RFQ_COMPANIES, MAX_QUOTE_REQUESTS_PER_DAY).
+export const MAX_RFQ_COMPANIES = 10;
+// Bunun üstünde firmaya sorunca ekranda "cevap oranı düşebilir" notu çıkar.
+export const MANY_RFQ_COMPANIES = 5;
+
+export type RfqSkipReason = 'not_found' | 'own_product' | 'same_company' | 'already_open';
+
+export interface RfqSkipped {
+  productId: string;
+  reason: RfqSkipReason | (string & {});
+}
+
+export interface RfqSummary {
+  id: string;
+  title: string;
+  quantity: number;
+  unit: StockUnit;
+  targetDate: string | null;
+  createdAt: string;
+  requestCount: number;
+  quotedCount: number;
+  acceptedCount: number;
+}
+
+export type RfqQuoteStatus = 'sent' | 'accepted' | 'declined' | 'expired';
+
+export interface RfqQuote {
+  id: string;
+  status: RfqQuoteStatus | (string & {});
+  // Satıcının girdiği asıl fiyat (kendi biriminde).
+  price: { value: number; currency: string; unit: string } | null;
+  // İsteğin birimine çevrilmiş fiyat; para birimi ÇEVRİLMEZ. Çevrilemiyorsa
+  // (gramaj/en yok, iplik) null gelir.
+  comparablePrice: { value: number; currency: string; unit: StockUnit; converted: boolean } | null;
+  estimatedTotal: { value: number; currency: string } | null;
+  moq: number | null;
+  moqUnit: string;
+  moqAboveQuantity: boolean;
+  leadTimeDays: number | null;
+  validUntil: string | null;
+  paymentTerms: string;
+  note: string;
+  sentAt: string | null;
+}
+
+// 'lowest_price' yalnızca AYNI para birimi içinde verilir.
+export type RfqFlag = 'lowest_price' | 'fastest';
+
+export interface RfqRow {
+  requestId: string;
+  requestStatus: QuoteRequestStatus;
+  product: {
+    id: string;
+    code: string;
+    type: string;
+    subtype: string;
+    weightGsm: number;
+    widthCm: number;
+    content: string;
+  };
+  company: {
+    id: string;
+    name: string;
+    city: string;
+    verification: VerificationStatus;
+    verificationLevel?: string;
+    logoUpdatedAt: string | null;
+    confirmedReferenceCount: number;
+  };
+  quote: RfqQuote | null;
+  flags: (RfqFlag | (string & {}))[];
+}
+
+export interface RfqCompare {
+  id: string;
+  title: string;
+  quantity: number;
+  unit: StockUnit;
+  targetDate: string | null;
+  note: string;
+  createdAt: string;
+  requestCount: number;
+  quotedCount: number;
+  // Teklif gelen para birimleri; birden çoksa ekranda uyarı notu çıkar.
+  currencies: string[];
+  rows: RfqRow[];
+}
+
+// 400 need_two_companies (gövdede `skipped`) · 400 too_many_companies
+// (`max`, `selected`) · 429 daily_limit (`max`, `remaining`).
+export function createRfq(input: {
+  productIds: string[];
+  title?: string;
+  quantity: number;
+  unit: StockUnit;
+  // 'YYYY-AA-GG' ya da null.
+  targetDate?: string | null;
+  note?: string;
+}) {
+  return request<{ rfq: RfqCompare; skipped: RfqSkipped[] }>('/rfqs', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchRfqs() {
+  return request<{ rfqs: RfqSummary[] }>('/rfqs');
+}
+
+export function fetchRfq(id: string) {
+  return request<{ rfq: RfqCompare }>(`/rfqs/${id}`);
 }
 
 export type FavoriteProduct = Product & { favoritedAt: string };

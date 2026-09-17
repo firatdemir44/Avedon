@@ -26,6 +26,8 @@ import {
   watchQueryFromFilters,
   type ProductFilters,
 } from '../../features/products/filters';
+import { RfqSelectionBar } from '../../components/RfqSelectionBar';
+import { useRfqSelection, type RfqSelectionItem } from '../../features/quotes/rfqSelection';
 import { YarnDirectory } from '../yarns/YarnDirectoryScreen';
 import type { Company, Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
@@ -73,6 +75,8 @@ export function ProductListScreen({ navigation, route }: Props) {
   // "Bu aramayı izle" sonucu: kısa onay ya da açıklama (Faz 2, Adım 1).
   const [watchNote, setWatchNote] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
   const [watchSaving, setWatchSaving] = useState(false);
+  // Çoklu teklif isteme (Faz 3, Adım 1): "Teklif için seç" kipi.
+  const selection = useRfqSelection();
   const queryRef = useRef(query);
   queryRef.current = query;
   const filtersRef = useRef(filters);
@@ -294,6 +298,32 @@ export function ProductListScreen({ navigation, route }: Props) {
           </Pressable>
         );
       })}
+      {/* Faz 3, Adım 1: birkaç firmaya birden sormak için seçim kipi. */}
+      {user ? (
+        <Pressable
+          onPress={() => {
+            haptics.selection();
+            if (selection.active) selection.cancel();
+            else selection.start();
+          }}
+          accessibilityRole="button"
+          accessibilityState={{ selected: selection.active }}
+          accessibilityLabel={
+            selection.active ? 'Teklif için seçmeyi bırak' : 'Teklif için ürün seç, birkaç firmaya birden sor'
+          }
+          style={({ pressed }) => [
+            styles.selectButton,
+            selection.active && styles.toggleSelected,
+            pressed && !selection.active && styles.togglePressed,
+          ]}
+        >
+          <Ionicons
+            name={selection.active ? 'close' : 'checkbox-outline'}
+            size={20}
+            color={selection.active ? colors.primaryText : colors.primary}
+          />
+        </Pressable>
+      ) : null}
     </View>
   );
 
@@ -553,6 +583,11 @@ export function ProductListScreen({ navigation, route }: Props) {
         ) : null}
       </View>
       {viewToggle}
+      {selection.active ? (
+        <Text style={styles.selectHint} accessibilityLiveRegion="polite">
+          Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.
+        </Text>
+      ) : null}
       {filterChipsBar}
       {watchNote ? (
         <Text
@@ -621,22 +656,54 @@ export function ProductListScreen({ navigation, route }: Props) {
             </View>
           }
           ListEmptyComponent={emptyState}
-          renderItem={({ item, index }) => (
-            <ProductRow
-              product={item}
-              divider={index < visibleProducts.length - 1}
-              onPress={() => navigation.navigate('ProductDetail', { productId: item.id })}
-              onRequestSample={
-                user && user.companyId !== item.companyId
-                  ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
-                  : undefined
-              }
-            />
-          )}
+          renderItem={({ item, index }) => {
+            // Kendi firmanızın ürününe teklif istenmez: seçim kipinde de
+            // işaretlenemez, dokununca ürün sayfası açılır.
+            const selectable = selection.active && !!user && user.companyId !== item.companyId;
+            return (
+              <ProductRow
+                product={item}
+                divider={index < visibleProducts.length - 1}
+                selectable={selectable}
+                selected={selection.selectedIds.has(item.id)}
+                onPress={() => {
+                  if (!selectable) {
+                    navigation.navigate('ProductDetail', { productId: item.id });
+                    return;
+                  }
+                  haptics.selection();
+                  selection.toggle(toSelectionItem(item));
+                }}
+                onRequestSample={
+                  user && user.companyId !== item.companyId
+                    ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
+                    : undefined
+                }
+              />
+            );
+          }}
         />
       )}
+      {selection.active ? (
+        <RfqSelectionBar
+          selection={selection}
+          onSubmit={() => navigation.navigate('RfqForm', { items: selection.items })}
+        />
+      ) : null}
     </View>
   );
+}
+
+// Ürün satırından forma taşınan özet.
+export function toSelectionItem(product: Product): RfqSelectionItem {
+  return {
+    id: product.id,
+    code: product.code,
+    companyId: product.companyId,
+    companyName: product.company?.name ?? 'Firma',
+    stockUnit: product.stockUnit,
+    type: product.type,
+  };
 }
 
 const styles = StyleSheet.create({
@@ -719,6 +786,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   toggleSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  selectButton: {
+    width: MIN_TOUCH,
+    minHeight: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+  },
+  selectHint: {
+    ...typography.caption,
+    color: colors.primary,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 6,
+  },
   togglePressed: { backgroundColor: colors.pressed },
   toggleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
   toggleTextSelected: { color: colors.primaryText },

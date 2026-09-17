@@ -318,6 +318,20 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
           ) : null}
           <Text style={styles.summaryMeta}>{formatRelativeTime(request.createdAt)}</Text>
           {request.note ? <Text style={styles.requestNote}>“{request.note}”</Text> : null}
+          {/* Faz 3, Adım 1: bu istek çoklu bir isteğin parçasıysa alıcı
+              tablonun tamamına buradan geçer. */}
+          {!isSeller && request.rfqId ? (
+            <Pressable
+              onPress={() => navigation.navigate('RfqCompare', { rfqId: request.rfqId! })}
+              accessibilityRole="button"
+              accessibilityLabel="Bu isteğin karşılaştırma tablosunu aç"
+              hitSlop={6}
+              style={({ pressed }) => [styles.compareLink, pressed && styles.pressedFade]}
+            >
+              <Ionicons name="git-compare-outline" size={16} color={colors.accent} />
+              <Text style={styles.compareLinkText}>Karşılaştırmayı aç</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         {isSeller ? (
@@ -647,6 +661,8 @@ const styles = StyleSheet.create({
   summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
   summaryValue: { ...typography.mono, fontSize: 15, color: colors.text },
   requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
+  compareLink: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH },
+  compareLinkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent },
   infoBlock: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.gutter },
   infoText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, flex: 1 },
   quoteWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
