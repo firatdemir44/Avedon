@@ -26,19 +26,16 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { SectionHeader } from '../../components/SectionHeader';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductGallery } from '../../components/ProductGallery';
-import { StockBadge, formatStock } from '../../components/StockIndicator';
+import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import {
   STOCK_UNIT_LABELS,
-  categoryLabel,
   finishTagLabel,
-  subtypeLabel,
-  typeLabel,
   usageLabel,
   yarnRoleLabel,
   yarnTypeLabel,
   yarnUnitLabel,
 } from '../../features/products/catalog';
-import { certificateLabel, fiberLabel, widthTypeLabel } from '../../features/products/glossaryLabels';
+import { certificateLabel, fiberLabel } from '../../features/products/glossaryLabels';
 import { formatMeasure } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
@@ -141,7 +138,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const isOwnProduct = !!user?.companyId && user.companyId === product.companyId;
   const company = product.company;
   const openCompany = () => navigation.navigate('CompanyProfile', { companyId: product.companyId });
-  const subtype = subtypeLabel(product.type, product.subtype ?? '');
   const usages = (product.usages ?? []).map(usageLabel).join(', ');
 
   // --- Kumaş pasaportu ---
@@ -165,14 +161,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     ? []
     : (product.fieldMeta ?? []).filter((meta) => !meta.confirmedAt).map((meta) => meta.field);
 
+  // Kart: kod, gramaj, en (+ en tipi), çeşit/alt çeşit, kompozisyon, stok,
+  // MOQ ve termin, sertifika rozetleri. Aşağıdaki özet satırlarında bunlar
+  // tekrar edilmiyor; kartta olmayanlar (kullanım, içerik metni, not) kalıyor.
+  const passportCardProduct = toPassportCardProduct({ ...product, certificates });
+
   const specs: { label: string; value: string; sans?: boolean }[] = [
-    { label: 'Çeşit', value: typeLabel(product.type) },
-    ...(subtype ? [{ label: 'Alt çeşit', value: subtype }] : []),
     ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
-    { label: 'Stok', value: formatStock(product.stock, product.stockUnit) },
-    { label: 'Ağırlık', value: `${formatMeasure(product.weightGsm)} gr/m²` },
-    { label: 'Genişlik', value: `${formatMeasure(product.widthCm)} cm` },
-    ...(product.widthType ? [{ label: 'En tipi', value: widthTypeLabel(product.widthType), sans: true }] : []),
     // Kompozisyon satırları varsa içerik metni ayrı blokta gösteriliyor.
     ...(composition.length ? [] : [{ label: 'İçerik', value: product.content }]),
     ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
@@ -289,26 +284,23 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             onOpenImage={setViewerUrl}
             overlay={favoriteButton}
           />
-          <View style={styles.titleRow}>
-            <View style={styles.titleTexts}>
-              <Text style={styles.code}>{product.code}</Text>
-              <Text style={styles.titleMeta}>{categoryLabel(product.type, product.subtype ?? '')}</Text>
-            </View>
-            <StockBadge stock={product.stock} unit={product.stockUnit} />
-          </View>
+          {/* Akıştaki kartın aynısı; ürün sayfasında dokunulamaz (onPress yok). */}
+          <PassportCard product={passportCardProduct} />
         </View>
 
-        <View style={[styles.block, styles.specBlock]}>
-          {specs.map((spec, index) => (
-            <SpecRow
-              key={spec.label}
-              label={spec.label}
-              value={spec.value}
-              sans={spec.sans}
-              last={index === specs.length - 1}
-            />
-          ))}
-        </View>
+        {specs.length ? (
+          <View style={[styles.block, styles.specBlock]}>
+            {specs.map((spec, index) => (
+              <SpecRow
+                key={spec.label}
+                label={spec.label}
+                value={spec.value}
+                sans={spec.sans}
+                last={index === specs.length - 1}
+              />
+            ))}
+          </View>
+        ) : null}
 
         {composition.length ? (
           <View>
@@ -568,10 +560,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   favoritePressed: { backgroundColor: colors.pressed },
-  titleRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  titleTexts: { flex: 1, gap: 2 },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 24, lineHeight: 30, color: colors.primary },
-  titleMeta: { ...typography.body, color: colors.textMuted },
   specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
   // Pasaport bölümleri: blok aralığı zaten gri boşluk, başlık üstü kısaltıldı.
   sectionHeader: { paddingTop: spacing.sm },

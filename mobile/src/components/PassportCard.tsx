@@ -28,6 +28,47 @@ export interface PassportCardProduct {
   certificateNames: string[];
 }
 
+// Kartı besleyen kaynak: akış ürünü (FeedProduct, alanların hepsi dolu) ya da
+// ürün sayfasındaki ProductDetail (pasaport alanları isteğe bağlı). Tek eşleme
+// olsun diye ikisini de kapsayan gevşek bir arayüz.
+export interface PassportCardSource {
+  code: string;
+  type: string;
+  subtype?: string | null;
+  weightGsm: number;
+  widthCm: number;
+  widthType?: string | null;
+  stock: number;
+  stockUnit: StockUnit;
+  moq?: number | null;
+  moqUnit?: string | null;
+  leadTimeDays?: number | null;
+  composition?: CompositionItem[] | null;
+  certificateNames?: string[] | null;
+  // Detay yanıtı sertifikaların tamamını taşır; adlar yoksa buradan alınır.
+  certificates?: { name: string }[] | null;
+}
+
+export function toPassportCardProduct(product: PassportCardSource): PassportCardProduct {
+  const certificateNames =
+    product.certificateNames ?? (product.certificates ?? []).map((certificate) => certificate.name);
+  return {
+    code: product.code,
+    type: product.type,
+    subtype: product.subtype ?? '',
+    weightGsm: product.weightGsm,
+    widthCm: product.widthCm,
+    widthType: product.widthType ?? '',
+    stock: product.stock,
+    stockUnit: product.stockUnit,
+    moq: product.moq ?? null,
+    moqUnit: product.moqUnit ?? '',
+    leadTimeDays: product.leadTimeDays ?? null,
+    composition: product.composition ?? [],
+    certificateNames,
+  };
+}
+
 // Örgü kumaşlarda sütun başlığı "Örgü", dokuma ve diğerinde "Çeşit"
 // (taslaktaki örnek raschel olduğu için "Örgü" yazıyordu).
 function structureLabel(type: string) {
@@ -83,7 +124,7 @@ export function PassportCard({
         <View style={styles.specCell}>
           <Text style={styles.specLabel}>Gramaj</Text>
           <Text style={styles.specValue} numberOfLines={1}>
-            {formatMeasure(product.weightGsm)} gr/m²
+            {formatMeasure(product.weightGsm)} g/m²
           </Text>
         </View>
         <View style={styles.specCell}>

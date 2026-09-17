@@ -18,6 +18,7 @@ import {
   extractPassport,
   fetchCertificateImage,
   fetchProduct,
+  fetchTestReportImage,
   updateProduct,
   type CertificateInput,
   type ExtractionFieldName,
@@ -25,6 +26,7 @@ import {
   type PassportExtractInput,
   type PassportInput,
   type ProductImageInput,
+  type TestReportInput,
   type YarnInput,
 } from '../../api/client';
 import { captureCompressedImage, pickCompressedImage, pickCompressedImages } from '../../features/imagePicker';
@@ -39,6 +41,7 @@ import {
   MAX_CERTIFICATES,
   MAX_COMPOSITION_ROWS,
   MAX_PRODUCT_IMAGES,
+  MAX_TEST_REPORTS,
   MAX_YARNS,
 } from '../../features/products/limits';
 import {
@@ -110,6 +113,30 @@ interface CertificateRow {
   image: DocImage;
 }
 
+interface TestReportRow {
+  key: string;
+  // Serbest metin: laboratuvarın yazdığı test adı listeye sığmıyor olabilir.
+  kind: string;
+  result: string;
+  // Kullanıcının yazdığı biçim: YYYY-AA-GG (boş bırakılabilir).
+  testedAt: string;
+  image: DocImage;
+}
+
+// Test türü için öneri çipleri (serbest metni doldurur, kısıtlamaz).
+const TEST_KIND_SUGGESTIONS = [
+  'Çekme',
+  'Boncuklanma (pilling)',
+  'Renk haslığı',
+  'Yıkama sonrası boyut değişimi',
+  'Gramaj',
+  'Patlama mukavemeti',
+];
+
+// Sunucudaki testReportSchema ile aynı (backend/src/passport.ts).
+const MAX_TEST_KIND_CHARS = 80;
+const MAX_TEST_RESULT_CHARS = 200;
+
 const TYPE_OPTIONS = PRODUCT_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }));
 const UNIT_OPTIONS = STOCK_UNITS.map((value) => ({
   value,
@@ -170,6 +197,13 @@ const emptyCertificateRow = (): CertificateRow => ({
   name: '',
   number: '',
   validUntil: '',
+  image: { kind: 'none' },
+});
+const emptyTestReportRow = (): TestReportRow => ({
+  key: newKey('rapor'),
+  kind: '',
+  result: '',
+  testedAt: '',
   image: { kind: 'none' },
 });
 
@@ -243,10 +277,12 @@ export function AddProductScreen({ navigation, route }: Props) {
   const [priceUnit, setPriceUnit] = useState<StockUnit>('m');
   const [yarnRows, setYarnRows] = useState<YarnRow[]>([]);
   const [certificateRows, setCertificateRows] = useState<CertificateRow[]>([]);
-  // İplik ve Sertifikalar kapalı gelir (kullanıcı kararı 2026-09-16); ürünün
-  // o bölümünde veri varsa açık gelsin.
+  const [testReportRows, setTestReportRows] = useState<TestReportRow[]>([]);
+  // İplik, Sertifikalar ve Test raporları kapalı gelir (kullanıcı kararı
+  // 2026-09-16); ürünün o bölümünde veri varsa açık gelsin.
   const [yarnOpen, setYarnOpen] = useState(false);
   const [certificateOpen, setCertificateOpen] = useState(false);
+  const [testReportOpen, setTestReportOpen] = useState(false);
   const [pickingDoc, setPickingDoc] = useState<string | null>(null);
 
   // --- Etiketten doldur (Adım 3) ---
@@ -348,6 +384,33 @@ export function AddProductScreen({ navigation, route }: Props) {
               setCertificateRows((prev) =>
                 prev.map((row) =>
                   row.image.kind === 'existing' && row.image.position === certificate.position
+                    ? { ...row, image: { ...row.image, uri: imageUrl } }
+                    : row
+                )
+              );
+            })
+            .catch(() => {});
+        }
+
+        const testReports = product.testReports ?? [];
+        setTestReportRows(
+          testReports.map((report) => ({
+            key: newKey('rapor'),
+            kind: report.kind,
+            result: report.result ?? '',
+            testedAt: toDateInput(report.testedAt),
+            image: report.hasImage ? { kind: 'existing', position: report.position, uri: null } : { kind: 'none' },
+          }))
+        );
+        setTestReportOpen(testReports.length > 0);
+        for (const report of testReports) {
+          if (!report.hasImage) continue;
+          fetchTestReportImage(productId, report.position)
+            .then(({ imageUrl }) => {
+              if (cancelled) return;
+              setTestReportRows((prev) =>
+                prev.map((row) =>
+                  row.image.kind === 'existing' && row.image.position === report.position
                     ? { ...row, image: { ...row.image, uri: imageUrl } }
                     : row
                 )
@@ -725,6 +788,40 @@ export function AddProductScreen({ navigation, route }: Props) {
     }
   };
 
+  // --- Test raporu satırları ---
+  // Test raporları çıkarımdan gelmiyor; fieldMeta'ya dokunulmuyor.
+  const updateTestReportRow = (key: string, patch: Partial<TestReportRow>) =>
+    setTestReportRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+
+  const addTestReportRow = () => {
+    if (testReportRows.length >= MAX_TEST_REPORTS) return;
+    haptics.selection();
+    setTestReportRows((prev) => [...prev, emptyTestReportRow()]);
+  };
+
+  const removeTestReportRow = (key: string) => {
+    haptics.selection();
+    setTestReportRows((prev) => prev.filter((row) => row.key !== key));
+  };
+
+  const addTestReportPhoto = async (key: string) => {
+    setPickingDoc(key);
+    setError(null);
+    try {
+      const picked = await pickCompressedImage();
+      if (!picked) return;
+      updateTestReportRow(key, { image: { kind: 'new', uri: picked.uri, dataUrl: picked.dataUrl } });
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    } finally {
+      setPickingDoc(null);
+    }
+  };
+
   // --- Doğrulama ---
   const stockNum = parseNumber(stock);
   const weightGsmNum = parseNumber(weightGsm);
@@ -745,11 +842,23 @@ export function AddProductScreen({ navigation, route }: Props) {
     (row) => row.validUntil.trim() && !DATE_PATTERN.test(row.validUntil.trim())
   );
 
+  // Türü boş ama başka bir alanı doldurulmuş satır kaydedilemez (sunucu kind
+  // zorunlu tutuyor); tamamen boş satır sessizce atılır.
+  const filledTestReportRows = testReportRows.filter(
+    (row) => row.kind.trim() || row.result.trim() || row.testedAt.trim() || row.image.kind !== 'none'
+  );
+  const testReportIncomplete = filledTestReportRows.some((row) => !row.kind.trim());
+  const testReportDateInvalid = testReportRows.some(
+    (row) => row.testedAt.trim() && !DATE_PATTERN.test(row.testedAt.trim())
+  );
+
   const formErrors: string[] = [];
   if (compositionIncomplete) formErrors.push('Kompozisyon satırlarında lif ve yüzdeyi birlikte doldurun (yüzde 0 ile 100 arası).');
   if (yarnIncomplete) formErrors.push('İplik satırlarında numara sıfırdan büyük olmalı ve birim seçilmeli.');
   if (certificateIncomplete) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
   if (certificateDateInvalid) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+  if (testReportIncomplete) formErrors.push('Her test raporu satırında test türünü yazın.');
+  if (testReportDateInvalid) formErrors.push('Test tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
 
   // Mevcut fotoğraflardan biri henüz yüklenmediyse önizleme boş ama sırası
   // biliniyor; kaydetmeyi engellemez.
@@ -766,8 +875,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     formErrors.length === 0;
 
   // Formdaki pasaport alanlarını sunucu sözleşmesine çevirir. Gönderilmeyen
-  // alana sunucu dokunmaz; test raporları bu formda düzenlenmediği için hiç
-  // gönderilmiyor (mevcutlar korunur).
+  // alana sunucu dokunmaz; test raporları artık bu formda düzenlendiği için
+  // HER KAYITTA tam liste gidiyor (hepsi silinirse boş dizi gider).
   const passportPayload = (): PassportInput => {
     const yarns: YarnInput[] = filledYarnRows.map((row) => ({
       role: row.role,
@@ -782,6 +891,19 @@ export function AddProductScreen({ navigation, route }: Props) {
         name: row.name,
         number: row.number.trim(),
         validUntil: row.validUntil.trim() ? row.validUntil.trim() : null,
+        image:
+          row.image.kind === 'new'
+            ? row.image.dataUrl
+            : row.image.kind === 'existing'
+              ? { existing: row.image.position }
+              : null,
+      }));
+    const testReports: TestReportInput[] = filledTestReportRows
+      .filter((row) => row.kind.trim())
+      .map((row) => ({
+        kind: row.kind.trim(),
+        result: row.result.trim(),
+        testedAt: row.testedAt.trim() ? row.testedAt.trim() : null,
         image:
           row.image.kind === 'new'
             ? row.image.dataUrl
@@ -811,6 +933,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         : {}),
       yarns,
       certificates,
+      testReports,
       widthType,
       moq: moqNum,
       // MOQ temizlendiyse birim de temizlenir.
@@ -1455,6 +1578,122 @@ export function AddProductScreen({ navigation, route }: Props) {
           </View>
         </CollapsibleSection>
 
+        <CollapsibleSection
+          title="Test raporları"
+          count={filledTestReportRows.length || undefined}
+          open={testReportOpen}
+          onToggle={() => setTestReportOpen((v) => !v)}
+        >
+          <View style={[styles.block, styles.formBlock]}>
+            {testReportRows.length === 0 ? (
+              <Text style={styles.labelHint}>
+                Laboratuvar sonuçları (çekme, haslık, boncuklanma) alıcının güvenini artırır.
+              </Text>
+            ) : null}
+            {testReportRows.map((row, index) => (
+              <View key={row.key} style={styles.rowCard}>
+                <View style={styles.rowCardHead}>
+                  <Text style={styles.rowCardTitle}>{index + 1}. test</Text>
+                  <Pressable
+                    onPress={() => removeTestReportRow(row.key)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${index + 1}. test raporu satırını kaldır`}
+                    style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
+                  >
+                    <Ionicons name="close" size={18} color={colors.textMuted} />
+                  </Pressable>
+                </View>
+                <TextField
+                  label="Test türü"
+                  value={row.kind}
+                  onChangeText={(kind) => updateTestReportRow(row.key, { kind })}
+                  placeholder="Örn. Renk haslığı"
+                  maxLength={MAX_TEST_KIND_CHARS}
+                />
+                <View style={styles.suggestRow}>
+                  {TEST_KIND_SUGGESTIONS.map((suggestion) => (
+                    <Pressable
+                      key={suggestion}
+                      onPress={() => {
+                        haptics.selection();
+                        updateTestReportRow(row.key, { kind: suggestion });
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Test türü: ${suggestion}`}
+                      hitSlop={8}
+                      style={({ pressed }) => [styles.suggestChip, pressed && styles.suggestChipPressed]}
+                    >
+                      <Text style={styles.suggestChipText}>{suggestion}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <TextField
+                  label="Sonuç (isteğe bağlı)"
+                  value={row.result}
+                  onChangeText={(result) => updateTestReportRow(row.key, { result })}
+                  placeholder="Örn. 4-5 (iyi)"
+                  maxLength={MAX_TEST_RESULT_CHARS}
+                />
+                <TextField
+                  label="Test tarihi (YYYY-AA-GG, isteğe bağlı)"
+                  value={row.testedAt}
+                  onChangeText={(testedAt) => updateTestReportRow(row.key, { testedAt })}
+                  placeholder="Örn. 2026-05-14"
+                  autoCapitalize="none"
+                />
+                <Text style={styles.label}>Belge fotoğrafı</Text>
+                <View style={styles.docRow}>
+                  {row.image.kind !== 'none' ? (
+                    row.image.uri ? (
+                      <Image source={{ uri: row.image.uri }} style={styles.docPhoto} />
+                    ) : (
+                      <View style={[styles.docPhoto, styles.photoLoading]}>
+                        <ActivityIndicator color={colors.chevron} />
+                      </View>
+                    )
+                  ) : (
+                    <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
+                      <Ionicons name="document-outline" size={20} color={colors.chevron} />
+                    </View>
+                  )}
+                  <View style={styles.docActions}>
+                    <PrimaryButton
+                      label={pickingDoc === row.key ? 'Seçiliyor...' : row.image.kind === 'none' ? 'Fotoğraf Ekle' : 'Değiştir'}
+                      variant="outline"
+                      onPress={() => addTestReportPhoto(row.key)}
+                      disabled={pickingDoc !== null}
+                      accessibilityLabel={`${index + 1}. test raporu fotoğrafı seç`}
+                    />
+                    {row.image.kind !== 'none' ? (
+                      <PrimaryButton
+                        label="Kaldır"
+                        variant="outline"
+                        onPress={() => {
+                          haptics.selection();
+                          updateTestReportRow(row.key, { image: { kind: 'none' } });
+                        }}
+                        accessibilityLabel={`${index + 1}. test raporu fotoğrafını kaldır`}
+                      />
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            ))}
+            {testReportRows.length < MAX_TEST_REPORTS ? (
+              <Pressable
+                onPress={addTestReportRow}
+                accessibilityRole="button"
+                accessibilityLabel="Test raporu satırı ekle"
+                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
+              >
+                <Ionicons name="add" size={18} color={colors.accent} />
+                <Text style={styles.addRowText}>Test raporu ekle</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </CollapsibleSection>
+
         {formErrors.map((message) => (
           <Text key={message} style={styles.error}>
             {message}
@@ -1630,6 +1869,19 @@ const styles = StyleSheet.create({
   warningTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   warningTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.warning },
   warningNote: { ...typography.caption, color: colors.text },
+  // Test türü öneri çipleri: serbest metin alanını dolduran kısayollar
+  // (ChipSelect değil, çünkü değer listeyle sınırlı değil).
+  suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -spacing.xs, marginBottom: spacing.md },
+  suggestChip: {
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  suggestChipPressed: { backgroundColor: colors.pressed },
+  suggestChipText: { ...typography.caption, color: colors.primary },
   docRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   docPhoto: {
     width: DOC_PHOTO_SIZE,

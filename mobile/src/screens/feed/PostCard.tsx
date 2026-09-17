@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PostVideo } from '../../components/PostVideo';
 import { PrimaryButton } from '../../components/PrimaryButton';
-import { PassportCard } from '../../components/PassportCard';
+import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
@@ -271,7 +271,9 @@ function PostCardComponent({
         )
       ) : null}
 
-      {product ? <PassportCard product={product} onPress={() => onOpenProduct(post)} /> : null}
+      {product ? (
+        <PassportCard product={toPassportCardProduct(product)} onPress={() => onOpenProduct(post)} />
+      ) : null}
 
       {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
