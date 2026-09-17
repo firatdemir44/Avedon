@@ -7,6 +7,12 @@ import type { ResultRow } from '../features/assistant/toolResult';
 interface Row {
   label: string;
   value: string;
+  /** Etiketin altındaki küçük gri açıklama (örn. toplam içindeki pay). */
+  note?: string;
+  /** Öne çıkan satır: üstünde ayırıcı çizgi, daha büyük ve kalın değer. */
+  strong?: boolean;
+  /** Dikkat çekilen satır (örn. en büyük maliyet kalemi): koyu etiket. */
+  highlight?: boolean;
 }
 
 // Hesaplayıcı ekranlarının sonuç kutusu (tonlu zemin, etiket + değer).
@@ -14,9 +20,12 @@ export function ResultCard({ rows }: { rows: Row[] }) {
   return (
     <View style={styles.card}>
       {rows.map((row) => (
-        <View key={row.label} style={styles.row}>
-          <Text style={styles.label}>{row.label}</Text>
-          <Text style={styles.value}>{row.value}</Text>
+        <View key={row.label} style={[styles.row, row.strong && styles.rowStrong]}>
+          <View style={styles.rowTexts}>
+            <Text style={[styles.label, (row.strong || row.highlight) && styles.labelStrong]}>{row.label}</Text>
+            {row.note ? <Text style={styles.note}>{row.note}</Text> : null}
+          </View>
+          <Text style={[styles.value, row.strong && styles.valueStrong]}>{row.value}</Text>
         </View>
       ))}
     </View>
@@ -89,17 +98,39 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.sm,
     paddingVertical: spacing.xs,
   },
+  rowStrong: {
+    borderTopWidth: 1,
+    borderTopColor: colors.borderStrong,
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+  rowTexts: { flexShrink: 1 },
   label: {
     ...typography.body,
+    color: colors.textMuted,
+  },
+  labelStrong: {
+    fontFamily: fonts.semibold,
+    color: colors.text,
+  },
+  note: {
+    ...typography.caption,
     color: colors.textMuted,
   },
   value: {
     ...typography.bodyStrong,
     fontFamily: fonts.bold,
     color: colors.primary,
+  },
+  valueStrong: {
+    fontFamily: fonts.monoSemibold,
+    fontSize: 19,
+    lineHeight: 25,
   },
   toolCard: {
     backgroundColor: colors.surface,
