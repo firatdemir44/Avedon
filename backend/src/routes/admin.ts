@@ -22,6 +22,8 @@ adminRouter.get('/companies', async (_req, res) => {
 
 const updateVerificationSchema = z.object({
   verification: z.enum(['dogrulanmamis', 'inceleniyor', 'dogrulanmis']),
+  // Faz 2 Adım 7: doğrulamanın nasıl yapıldığı (rozet açıklamasında gösterilir).
+  level: z.enum(['', 'belge', 'ziyaret']).optional(),
 });
 
 adminRouter.patch('/companies/:id/verification', async (req, res) => {
@@ -32,7 +34,12 @@ adminRouter.patch('/companies/:id/verification', async (req, res) => {
 
   const company = await prisma.company.update({
     where: { id: req.params.id },
-    data: { verification: parsed.data.verification },
+    data: {
+      verification: parsed.data.verification,
+      ...(parsed.data.verification === 'dogrulanmis'
+        ? { verifiedAt: new Date(), ...(parsed.data.level !== undefined ? { verificationLevel: parsed.data.level } : {}) }
+        : { verifiedAt: null, verificationLevel: '' }),
+    },
   });
   res.json({ company });
 });

@@ -39,6 +39,9 @@ model Company {
   address           String    @default("")
   mainMarkets       String    @default("")
   verification      String    @default("dogrulanmamis")
+  // Faz 2 Adım 7: doğrulamanın nasıl yapıldığı: "" | belge (vergi levhası/ticaret sicil) | ziyaret (yerinde ziyaret)
+  verificationLevel String    @default("")
+  verifiedAt        DateTime?
   companyCode       String    @unique
   // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:
   // istemci "logo var mı" bilgisini ve önbellek anahtarını buradan alır.
@@ -58,6 +61,8 @@ model Company {
   memories          CompanyMemory[]
   faqs              CompanyFaq[]
   machines          Machine[]
+  referencesGiven   CompanyReference[] @relation("ReferenceFrom")
+  referencesReceived CompanyReference[] @relation("ReferenceTo")
   questions         CompanyQuestion[]
 }
 
@@ -720,4 +725,24 @@ model Machine {
   @@index([companyId, position])
   @@index([group, kindKey])
   @@index([gauge, diameterInch])
+}
+
+// --- Faz 2, Adım 7: karşılıklı referans ---
+// fromCompany, toCompany için "bizim <relation>'imiz" der; toCompany onaylarsa iki firmanın
+// sayfasında görünür. relation: musteri | tedarikci. status: pending | confirmed | rejected
+model CompanyReference {
+  id            String   @id @default(cuid())
+  fromCompanyId String
+  fromCompany   Company  @relation("ReferenceFrom", fields: [fromCompanyId], references: [id], onDelete: Cascade)
+  toCompanyId   String
+  toCompany     Company  @relation("ReferenceTo", fields: [toCompanyId], references: [id], onDelete: Cascade)
+  relation      String
+  note          String   @default("")
+  status        String   @default("pending")
+  createdById   String
+  createdAt     DateTime @default(now())
+  respondedAt   DateTime?
+
+  @@unique([fromCompanyId, toCompanyId, relation])
+  @@index([toCompanyId, status])
 }

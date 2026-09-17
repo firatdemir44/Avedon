@@ -198,6 +198,7 @@ const searchSchema = z.object({
   contractOpen: z.enum(['1', 'true']).optional(),
   city: z.string().trim().max(60).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
+  offset: z.coerce.number().int().min(0).max(5000).optional(),
 });
 
 export type MachineSearch = z.infer<typeof searchSchema>;
@@ -219,6 +220,7 @@ export async function searchCapacity(query: MachineSearch, excludeCompanyId?: st
       ...(excludeCompanyId ? { id: { not: excludeCompanyId } } : {}),
     },
     take: query.limit ?? 20,
+    skip: query.offset ?? 0,
     orderBy: [{ contractOpen: 'desc' }, { capacityUpdatedAt: 'desc' }],
     select: { id: true, name: true, city: true, verification: true, logoUpdatedAt: true, ...CAPACITY_SELECT, machines: { where: machineWhere, orderBy: { position: 'asc' }, take: 8 } },
   });
@@ -236,6 +238,10 @@ machinesRouter.get(
   handle(async (req, res) => {
     const parsed = searchSchema.safeParse(req.query);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
-    res.json({ results: await searchCapacity(parsed.data, req.user!.companyId) });
+    // Bir fazlasını isteyip "daha var mı" bilgisini üret (ayrı sayım sorgusu yok).
+    const limit = parsed.data.limit ?? 20;
+    const rows = await searchCapacity({ ...parsed.data, limit: Math.min(50, limit + 1) }, req.user!.companyId);
+    const hasMore = rows.length > limit;
+    res.json({ results: rows.slice(0, limit), hasMore, nextOffset: hasMore ? (parsed.data.offset ?? 0) + limit : null });
   })
 );

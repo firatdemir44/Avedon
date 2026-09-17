@@ -14,7 +14,10 @@ export type NotificationKind =
   | 'quote_accepted'
   | 'quote_declined'
   | 'company_question_new'
-  | 'company_question_answered';
+  | 'company_question_answered'
+  | 'reference_request'
+  | 'reference_confirmed'
+  | 'reference_rejected';
 
 export interface NotificationData {
   productId?: string;
@@ -26,6 +29,7 @@ export interface NotificationData {
   questionId?: string;
   threadId?: string;
   companyId?: string;
+  referenceId?: string;
 }
 
 export interface NotifyInput {

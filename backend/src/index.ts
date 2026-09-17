@@ -22,6 +22,7 @@ import { assistantRouter } from './routes/assistant';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
+import { referencesRouter } from './routes/references';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { getStorageInfo } from './storageCheck';
@@ -78,6 +79,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/watch-rules', watchRulesRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/machines', machinesRouter);
+app.use('/api/references', referencesRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
