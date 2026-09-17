@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { toNotificationRow } from '../notifications';
-import { MAX_RULES_PER_USER, describeWatchQuery, parseRuleQuery, watchQuerySchema } from '../watch';
+import { MAX_RULES_PER_USER, describeAnyWatchQuery, parseRuleQuery, safeParseWatchInput } from '../watch';
 import { makeHandle } from './handle';
 
 // Faz 2, Adım 1: bildirimler ve izleme kuralları.
@@ -80,14 +80,14 @@ watchRulesRouter.post(
   '/',
   handle(async (req, res) => {
     const parsed = createSchema.safeParse(req.body);
-    const query = parsed.success ? watchQuerySchema.safeParse(parsed.data.query) : null;
+    const query = parsed.success ? safeParseWatchInput(parsed.data.query) : null;
     if (!parsed.success || !query?.success) {
       return res.status(400).json({ error: 'invalid_body', details: query && !query.success ? query.error.flatten() : undefined });
     }
     const count = await prisma.watchRule.count({ where: { userId: req.user!.id } });
     if (count >= MAX_RULES_PER_USER) return res.status(409).json({ error: 'too_many_rules', max: MAX_RULES_PER_USER });
     const row = await prisma.watchRule.create({
-      data: { userId: req.user!.id, name: parsed.data.name || describeWatchQuery(query.data), queryJson: JSON.stringify(query.data) },
+      data: { userId: req.user!.id, name: parsed.data.name || describeAnyWatchQuery(query.data), queryJson: JSON.stringify(query.data) },
       include: RULE_INCLUDE,
     });
     res.status(201).json({ rule: toRuleRow(row) });

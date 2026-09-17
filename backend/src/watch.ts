@@ -7,6 +7,7 @@ import { prisma } from './db';
 import { fiberLabel, certificateLabel } from './domain/glossary';
 import { notify } from './notifications';
 import { buildProductWhere, productQuerySchema } from './products';
+import { YARN_END_USES, YARN_FAMILIES, YARN_FILAMENT_TYPES, YARN_PRODUCT_TYPE, YARN_SPINNINGS, buildYarnWhere, yarnQuerySchema } from './yarns';
 
 export const MAX_RULES_PER_USER = 20;
 // Bir kullanıcıya günde en fazla bu kadar izleme bildirimi (toplu ürün girişinde sel olmasın).
@@ -34,6 +35,52 @@ export const watchQuerySchema = productQuerySchema
 
 export type WatchQuery = z.infer<typeof watchQuerySchema>;
 
+// İplik izleme (Faz 2, Adım 6): kural JSON'unda kind = "iplik"; süzgeç iplik dizini aramasıyla aynı.
+export const yarnWatchQuerySchema = yarnQuerySchema
+  .pick({ search: true, family: true, count: true, countMin: true, countMax: true, countUnit: true, ply: true, filaments: true, filamentType: true, spinning: true, combing: true, luster: true, endUse: true, colorState: true, fiber: true, certificate: true, sellerRole: true })
+  .extend({ kind: z.literal('iplik') })
+  .strict()
+  .refine((q) => Object.entries(q).some(([k, v]) => k !== 'kind' && v !== undefined && v !== ''), { message: 'empty_query' });
+
+export type YarnWatchQuery = z.infer<typeof yarnWatchQuerySchema>;
+export type AnyWatchQuery = WatchQuery | YarnWatchQuery;
+
+export function isYarnWatchQuery(q: AnyWatchQuery): q is YarnWatchQuery {
+  return (q as { kind?: string }).kind === 'iplik';
+}
+
+// İstemciden gelen ham süzgeç: kind = "iplik" ise iplik şeması, değilse kumaş şeması.
+export function safeParseWatchInput(raw: unknown) {
+  const isYarn = typeof raw === 'object' && raw !== null && (raw as { kind?: unknown }).kind === 'iplik';
+  return isYarn ? yarnWatchQuerySchema.safeParse(raw) : watchQuerySchema.safeParse(raw);
+}
+
+const labelsOf = (raw: string | undefined, list: readonly { key: string; label: string }[]) =>
+  (raw ?? '').split(',').map((k) => list.find((o) => o.key === k)?.label.split(' (')[0].split(' /')[0]).filter(Boolean).join('/');
+
+export function describeYarnWatchQuery(q: YarnWatchQuery): string {
+  const parts: string[] = ['İplik'];
+  const unit = q.countUnit ? { ne: 'Ne', nm: 'Nm', denye: 'denye', dtex: 'dtex', tex: 'tex' }[q.countUnit] : '';
+  if (q.count !== undefined) parts.push(`${q.count}${q.filaments ? `/${q.filaments}` : ''} ${unit}`.trim());
+  else if (q.countMin !== undefined || q.countMax !== undefined) parts.push(`${q.countMin ?? ''}-${q.countMax ?? ''} ${unit}`.trim());
+  else if (q.filaments) parts.push(`${q.filaments} filament`);
+  if (q.ply) parts.push(`${q.ply} kat`);
+  if (q.family) parts.push(labelsOf(q.family, YARN_FAMILIES));
+  if (q.filamentType) parts.push(q.filamentType.toUpperCase().replace(/,/g, '/'));
+  if (q.combing) parts.push(q.combing === 'penye' ? 'Penye' : 'Karde');
+  if (q.spinning) parts.push(labelsOf(q.spinning, YARN_SPINNINGS));
+  if (q.endUse) parts.push(labelsOf(q.endUse, YARN_END_USES));
+  if (q.fiber) parts.push(q.fiber.split(',').map(fiberLabel).join('/'));
+  if (q.certificate) parts.push(q.certificate.split(',').map(certificateLabel).join('/'));
+  if (q.search) parts.push(`"${q.search}"`);
+  void YARN_FILAMENT_TYPES;
+  return parts.filter(Boolean).join(' · ').slice(0, 80);
+}
+
+export function describeAnyWatchQuery(q: AnyWatchQuery) {
+  return isYarnWatchQuery(q) ? describeYarnWatchQuery(q) : describeWatchQuery(q);
+}
+
 // Kural adı verilmediyse süzgeçten okunur bir ad: "Raschel · Elastanlı Tül · Elastan ≥ %10 · 200+ gr/m²".
 export function describeWatchQuery(q: WatchQuery): string {
   const parts: string[] = [];
@@ -57,9 +104,9 @@ export function describeWatchQuery(q: WatchQuery): string {
   return parts.join(' · ').slice(0, 80) || 'İzleme';
 }
 
-export function parseRuleQuery(queryJson: string): WatchQuery | null {
+export function parseRuleQuery(queryJson: string): AnyWatchQuery | null {
   try {
-    const parsed = watchQuerySchema.safeParse(JSON.parse(queryJson));
+    const parsed = safeParseWatchInput(JSON.parse(queryJson));
     return parsed.success ? parsed.data : null;
   } catch {
     return null;
@@ -71,9 +118,10 @@ export function parseRuleQuery(queryJson: string): WatchQuery | null {
 export async function matchWatchRulesForProduct(productId: string): Promise<number> {
   const product = await prisma.product.findUnique({
     where: { id: productId },
-    select: { id: true, code: true, companyId: true, company: { select: { name: true } } },
+    select: { id: true, code: true, type: true, companyId: true, company: { select: { name: true } } },
   });
   if (!product) return 0;
+  const isYarn = product.type === YARN_PRODUCT_TYPE;
 
   const rules = await prisma.watchRule.findMany({
     where: { active: true, user: { OR: [{ companyId: null }, { companyId: { not: product.companyId } }] } },
@@ -84,8 +132,10 @@ export async function matchWatchRulesForProduct(productId: string): Promise<numb
   let sent = 0;
   for (const rule of rules) {
     const query = parseRuleQuery(rule.queryJson);
-    if (!query) continue;
-    const hit = await prisma.product.count({ where: { AND: [buildProductWhere(query), { id: product.id }] } });
+    // Kumaş kuralı ipliğe, iplik kuralı kumaşa bakmaz.
+    if (!query || isYarnWatchQuery(query) !== isYarn) continue;
+    const where = isYarnWatchQuery(query) ? buildYarnWhere(query) : buildProductWhere(query);
+    const hit = await prisma.product.count({ where: { AND: [where, { id: product.id }] } });
     if (!hit) continue;
     try {
       await prisma.watchMatch.create({ data: { ruleId: rule.id, productId: product.id } });
@@ -96,7 +146,7 @@ export async function matchWatchRulesForProduct(productId: string): Promise<numb
     if (today >= MAX_WATCH_NOTIFICATIONS_PER_DAY) continue;
     await notify(rule.userId, {
       kind: 'watch_match',
-      title: `İzlediğiniz kalitede yeni ürün: ${product.code}`,
+      title: isYarn ? `İzlediğiniz özellikte yeni iplik: ${product.code}` : `İzlediğiniz kalitede yeni ürün: ${product.code}`,
       body: `${product.company.name} · ${rule.name}`,
       data: { productId: product.id, ruleId: rule.id },
     });

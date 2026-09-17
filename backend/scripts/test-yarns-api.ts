@@ -108,6 +108,25 @@ async function main() {
     const co = await api('GET', `/companies/${mill.id}`);
     check('firma sayfası ürünlerinde iplik alanları', co.json?.company?.products?.some((p: any) => p.id === idC && p.yarn?.countLabel === '30/1 Ne'), co.json?.company?.products?.[0]);
 
+    console.log('İplik izleme');
+    check('boş iplik kuralı 400', (await api('POST', '/watch-rules', T, { query: { kind: 'iplik' } })).status === 400);
+    check('iplik kuralında kumaş alanı 400', (await api('POST', '/watch-rules', T, { query: { kind: 'iplik', gsmMin: 100 } })).status === 400);
+    const rule = await api('POST', '/watch-rules', T, { query: { kind: 'iplik', family: 'viskon', count: 30, countUnit: 'ne', endUse: 'yuvarlak_orme' } });
+    check('iplik kuralı 201, adı okunur', rule.status === 201 && /İplik · 30 Ne · Viskon/.test(rule.json?.rule?.name) && rule.json.rule.query.kind === 'iplik', rule.json);
+    const fabricRule = await api('POST', '/watch-rules', T, { query: { search: `VIS-${suffix}` } });
+    await api('POST', '/yarns', M, { code: `VIS-X-${suffix}`, family: 'viskon', count: 20, countUnit: 'ne', endUses: ['yuvarlak_orme'] });
+    const vis = await api('POST', '/yarns', M, { code: `VIS-${suffix}`, family: 'viskon', count: 30, countUnit: 'ne', spinning: 'vortex', endUses: ['yuvarlak_orme'] });
+    let notes: any[] = [];
+    for (let i = 0; i < 20; i++) {
+      notes = ((await api('GET', '/notifications', T)).json?.notifications ?? []).filter((n: any) => n.kind === 'watch_match');
+      if (notes.length) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    await new Promise((r) => setTimeout(r, 500));
+    notes = ((await api('GET', '/notifications', T)).json?.notifications ?? []).filter((n: any) => n.kind === 'watch_match');
+    check('eşleşen iplik bildirildi (yalnızca 30 Ne olan, yalnızca iplik kuralıyla)', notes.length === 1 && notes[0].data?.productId === vis.json?.yarn?.id && notes[0].data?.ruleId === rule.json?.rule?.id && /iplik/.test(notes[0].title), notes);
+    void fabricRule;
+
     console.log('Düzenleme ve sahiplik');
     const upd = await api('PATCH', `/yarns/${idC}`, M, { count: 40, stock: 8000, endUses: ['dokuma_cozgu'], spinning: 'ring' });
     check('güncelleme: 40/1, dtex ve özet yeniden hesaplanır', upd.json?.yarn?.yarn?.countLabel === '40/1 Ne' && Math.abs(upd.json.yarn.yarn.countDtex - 147.7) < 0.5 && /Ring/.test(upd.json.yarn.content) && upd.json.yarn.stock === 8000, upd.json?.yarn);
@@ -118,6 +137,7 @@ async function main() {
     check('silme ortak uçtan; YarnSpec de gider', (await api('DELETE', `/products/${idF}`, M)).status === 204 && (await prisma.yarnSpec.count({ where: { productId: idF } })) === 0);
   } finally {
     const companyIds = [mill.id, trader.id];
+    await prisma.watchRule.deleteMany({ where: { userId: { in: [um.id, ut.id] } } });
     await prisma.productFavorite.deleteMany({ where: { product: { companyId: { in: companyIds } } } });
     await prisma.productView.deleteMany({ where: { product: { companyId: { in: companyIds } } } });
     await prisma.product.deleteMany({ where: { companyId: { in: companyIds } } });

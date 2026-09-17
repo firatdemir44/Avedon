@@ -17,6 +17,7 @@ import {
   type YarnQuery,
 } from '../yarns';
 import { formatComposition } from '../domain/glossary';
+import { matchWatchRulesInBackground } from '../watch';
 import { makeHandle } from './handle';
 
 // Faz 2, Adım 6: iplik dizini. İplik bir Product satırıdır (type = "iplik") + YarnSpec;
@@ -131,6 +132,7 @@ yarnsRouter.post(
         await replacePassportRelations(tx, created.id, { composition: d.composition, certificates: d.certificates });
         return tx.product.findUniqueOrThrow({ where: { id: created.id }, select: PRODUCT_SELECT });
       });
+      matchWatchRulesInBackground(product.id);
       res.status(201).json({ yarn: { ...toProductRow(product, companyId), isFavorite: false } });
     } catch (err) {
       if (err instanceof PassportError) return res.status(400).json(fieldError(err.field, err.message));
