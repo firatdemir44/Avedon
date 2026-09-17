@@ -8,7 +8,7 @@ import { readMemory } from './memory';
 import { mockAssistantTurn } from './mock';
 import { personaBlock, personaFor } from './persona';
 import { ASSISTANT_SYSTEM_PROMPT, memoryBlock } from './system';
-import { buildTools, type MemorySuggestion, type ToolCallRecord } from './tools';
+import { buildTools, type MemorySuggestion, type ToolCallRecord, type WatchSuggestion } from './tools';
 
 type ApiMessage = Anthropic.Beta.Messages.BetaMessageParam;
 
@@ -19,6 +19,7 @@ export interface AssistantMessageView {
   text: string;
   toolCalls: ToolCallRecord[];
   memorySuggestions: MemorySuggestion[];
+  watchSuggestions: WatchSuggestion[];
   createdAt: Date;
 }
 
@@ -46,6 +47,7 @@ export function toView(row: { id: string; role: string; contentJson: string; cre
     text: parsed.text ?? '',
     toolCalls: parsed.toolCalls ?? [],
     memorySuggestions: parsed.memorySuggestions ?? [],
+    watchSuggestions: parsed.watchSuggestions ?? [],
     createdAt: row.createdAt,
   };
 }
@@ -143,8 +145,8 @@ ${memoryBlock(memory, company?.name ?? null)}` },
     usage = { inputTokens, outputTokens, iterations, mock: false };
   }
 
-  const userView = { text, toolCalls: [], memorySuggestions: [] };
-  const assistantView = { text: answer, toolCalls: toolSet.calls, memorySuggestions: toolSet.suggestions };
+  const userView = { text, toolCalls: [], memorySuggestions: [], watchSuggestions: [] };
+  const assistantView = { text: answer, toolCalls: toolSet.calls, memorySuggestions: toolSet.suggestions, watchSuggestions: toolSet.watchSuggestions };
 
   const [userRow, assistantRow] = await prisma.$transaction(async (tx) => {
     const u = await tx.assistantMessage.create({

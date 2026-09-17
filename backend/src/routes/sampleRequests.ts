@@ -4,6 +4,7 @@ import { prisma } from '../db';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { sendWhatsAppTemplate } from '../whatsapp';
+import { notify, notifyMany } from '../notifications';
 import {
   DELIVERY_MODES,
   SAMPLE_ACTOR_SELECT,
@@ -85,6 +86,15 @@ sampleRequestsRouter.post(
 
     // Bildirim, kayıt kesinleştikten sonra (geri alınan bir işlem için müşteriye
     // mesaj gitmesin).
+    await notifyMany(
+      product.company.users.map((u) => u.id).filter((id) => id !== req.user!.id),
+      {
+        kind: 'sample_request_new',
+        title: `Yeni numune talebi: ${product.code}`,
+        body: `${req.user!.firstName} ${req.user!.lastName}`,
+        data: { sampleRequestId: created.id, productId: product.id },
+      }
+    );
     for (const employee of product.company.users) {
       sendWhatsAppTemplate(employee.phone, [
         `${req.user!.firstName} ${req.user!.lastName}`,
@@ -213,6 +223,12 @@ sampleRequestsRouter.patch(
       const requester = await prisma.user.findUnique({
         where: { id: request.requesterId },
         select: { phone: true },
+      });
+      await notify(request.requesterId, {
+        kind: 'sample_request_status',
+        title: `${request.product.code}: ${chipLabelFor(parsed.data.status, request.deliveryMode)}`,
+        body: 'Numune talebinizin durumu güncellendi.',
+        data: { sampleRequestId: request.id, productId: request.productId },
       });
       if (requester) {
         sendWhatsAppTemplate(requester.phone, [

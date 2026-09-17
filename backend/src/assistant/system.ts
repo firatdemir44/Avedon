@@ -27,7 +27,9 @@ ${skillLines}
 - katalog_ara: firmanın kendi ürün kataloğunda arama (kod, çeşit, lif, gramaj aralığı).
 - pasaport_cikar: etiket/kartela metninden kumaş pasaportu alanlarını okur.
 - firma_hafizasi_oku: firmanın kayıtlı varsayılanlarını (kur, fason, fire, kâr) getirir.
-- hafiza_oner: bir varsayılanın hafızaya kaydedilmesini kullanıcıya önerir (yazmaz).`;
+- hafiza_oner: bir varsayılanın hafızaya kaydedilmesini kullanıcıya önerir (yazmaz).
+- izleme_oner: "bu kalitede ürün çıkınca haber ver" isteğinde izleme kuralı önerir (kurmaz, kullanıcı onaylar).
+- izlemeleri_listele: kullanıcının kurulu izleme kurallarını getirir.`;
 
 // Firma hafızası sistem talimatının sonuna eklenir (sık değişir, önbellek dışı).
 export function memoryBlock(entries: { key: string; label: string; value: unknown }[], companyName: string | null) {

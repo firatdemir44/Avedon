@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState } from '../connections';
+import { notify } from '../notifications';
 
 export const connectionsRouter = Router();
 connectionsRouter.use(requireAuth);
@@ -34,6 +35,12 @@ connectionsRouter.post('/', async (req, res) => {
   try {
     const connection = await prisma.connection.create({
       data: { requesterId: req.user!.id, addresseeId, status: 'pending' },
+    });
+    await notify(addresseeId, {
+      kind: 'connection_request',
+      title: 'Yeni bağlantı isteği',
+      body: `${req.user!.firstName} ${req.user!.lastName}`,
+      data: { userId: req.user!.id },
     });
     res.status(201).json({ connection });
   } catch (err) {

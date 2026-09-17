@@ -7,6 +7,7 @@ import { isValidSubtype, matchCatalogKeys } from '../catalog';
 import { knitSearchKeys } from '../domain/glossary';
 import { getAcceptedConnectionIds } from '../connections';
 import { findOrCreateConversation } from '../conversations';
+import { matchWatchRulesInBackground } from '../watch';
 import {
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
@@ -188,6 +189,8 @@ productsRouter.post(
         return tx.product.findUniqueOrThrow({ where: { id: created.id }, select: PRODUCT_SELECT });
       });
       const warnings = collectWarnings(product, resolved.warnings);
+      // Faz 2 Adım 1: izleme kuralları yanıtı bekletmeden taranır.
+      matchWatchRulesInBackground(product.id);
       res.status(201).json({ product: { ...toProductRow(product, req.user!.companyId), isFavorite: false }, warnings });
     } catch (err) {
       if (err instanceof PassportError) {

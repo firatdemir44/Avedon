@@ -107,6 +107,8 @@ model User {
   productViews         ProductView[]
   assistantThreads     AssistantThread[]
   whatsAppInbounds     WhatsAppInbound[]
+  notifications        Notification[]
+  watchRules           WatchRule[]
   createdAt            DateTime        @default(now())
 }
 
@@ -542,4 +544,48 @@ model WhatsAppInbound {
   processedAt DateTime?
 
   @@index([fromPhone, receivedAt])
+}
+
+// --- Faz 2, Adım 1: bildirimler ve akış izleme (docs/faz2-plani.md) ---
+// kind: sample_request_new | sample_request_status | connection_request | watch_match | quote_* (Adım 2)
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String
+  title     String
+  body      String    @default("")
+  // Ekranın nereye gideceği: { productId?, sampleRequestId?, userId?, ruleId?, postId? }
+  dataJson  String    @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
+// "Bu kalitede ürün çıkınca haber ver": queryJson = watch.ts watchQuerySchema (ürün süzgecinin alt kümesi).
+model WatchRule {
+  id            String       @id @default(cuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  queryJson     String
+  active        Boolean      @default(true)
+  lastMatchedAt DateTime?
+  createdAt     DateTime     @default(now())
+  matches       WatchMatch[]
+
+  @@index([userId])
+}
+
+// Aynı ürün aynı kural için iki kez bildirilmesin.
+model WatchMatch {
+  id        String    @id @default(cuid())
+  ruleId    String
+  rule      WatchRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime  @default(now())
+
+  @@unique([ruleId, productId])
 }

@@ -12,6 +12,7 @@ import { SKILLS, runSkill } from '../skills';
 import { runPassportExtract } from '../skills/passportExtract';
 import { MEMORY_KEYS, MEMORY_KEY_SET, memoryKeyDef } from './memoryKeys';
 import { readMemory } from './memory';
+import { describeWatchQuery, parseRuleQuery, watchQuerySchema, type WatchQuery } from '../watch';
 
 export interface ToolCallRecord {
   name: string;
@@ -30,6 +31,13 @@ export interface MemorySuggestion {
   reason: string;
 }
 
+// İzleme kuralı önerisi: asistan kurmaz, kullanıcı ekranda onaylar (POST /api/watch-rules).
+export interface WatchSuggestion {
+  name: string;
+  query: WatchQuery;
+  reason: string;
+}
+
 export interface ToolContext {
   userId: string;
   companyId: string | null;
@@ -41,6 +49,7 @@ export interface ToolSet {
   tools: BetaRunnableTool<any>[];
   calls: ToolCallRecord[];
   suggestions: MemorySuggestion[];
+  watchSuggestions: WatchSuggestion[];
 }
 
 const fiberKeys = FIBERS.map((f) => f.key) as [string, ...string[]];
@@ -48,6 +57,7 @@ const fiberKeys = FIBERS.map((f) => f.key) as [string, ...string[]];
 export function buildTools(ctx: ToolContext): ToolSet {
   const calls: ToolCallRecord[] = [];
   const suggestions: MemorySuggestion[] = [];
+  const watchSuggestions: WatchSuggestion[] = [];
 
   const skillTools = SKILLS.map((skill) =>
     betaZodTool({
@@ -167,5 +177,44 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner], calls, suggestions };
+  const izlemeOner = betaZodTool({
+    name: 'izleme_oner',
+    description:
+      'Kullanıcı "bu kalitede ürün çıkınca haber ver", "şu özellikte kumaş girilince bildir" dediğinde bir izleme kuralı ÖNERİR. Kurmaz; kullanıcı ekranda onaylar. Süzgeç alanları: çeşit, alt çeşit, lif (+ en az yüzde), gramaj aralığı, en aralığı, sertifika, en çok MOQ, en çok termin, serbest arama. En az bir alan dolu olmalı; kullanıcının söylemediği alanı ekleme.',
+    inputSchema: z.object({
+      type: z.enum(PRODUCT_TYPES).optional().describe('Çeşit anahtarı'),
+      subtype: z.string().max(40).optional().describe('Alt çeşit anahtarı (ör. suprem, elastanli_tul)'),
+      fiber: z.enum(fiberKeys).optional().describe('Lif anahtarı'),
+      fiberMinPercent: z.number().min(0).max(100).optional().describe('Bu lifin en az yüzdesi'),
+      gsmMin: z.number().positive().optional(),
+      gsmMax: z.number().positive().optional(),
+      widthMin: z.number().positive().optional(),
+      widthMax: z.number().positive().optional(),
+      certificate: z.string().max(60).optional().describe('Sertifika anahtarı (ör. oeko_tex_100, gots, grs)'),
+      moqMax: z.number().positive().optional(),
+      leadTimeMax: z.number().positive().optional(),
+      search: z.string().max(100).optional(),
+      reason: z.string().max(200).describe('Kullanıcıya gösterilecek kısa açıklama'),
+    }),
+    run: (args) => {
+      const { reason, ...rawQuery } = args;
+      const parsed = watchQuerySchema.safeParse(rawQuery);
+      if (!parsed.success) return 'Geçersiz izleme süzgeci: en az bir alan dolu ve geçerli olmalı.';
+      const name = describeWatchQuery(parsed.data);
+      watchSuggestions.push({ name, query: parsed.data, reason });
+      return `İzleme önerisi kullanıcıya gösterildi: ${name}. Kullanıcı onaylarsa kurulur; eşleşen yeni ürünlerde bildirim alır.`;
+    },
+  });
+
+  const izlemeleriListele = betaZodTool({
+    name: 'izlemeleri_listele',
+    description: 'Kullanıcının kurulu izleme kurallarını (ad, süzgeç, son eşleşme) getirir.',
+    inputSchema: z.object({}),
+    run: async () => {
+      const rows = await prisma.watchRule.findMany({ where: { userId: ctx.userId }, orderBy: { createdAt: 'desc' } });
+      return JSON.stringify({ rules: rows.map((r) => ({ name: r.name, active: r.active, query: parseRuleQuery(r.queryJson), lastMatchedAt: r.lastMatchedAt })) });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele], calls, suggestions, watchSuggestions };
 }

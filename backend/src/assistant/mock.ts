@@ -36,5 +36,17 @@ export async function mockAssistantTurn(text: string, toolSet: ToolSet): Promise
     return { text: `${MOCK_PREFIX}${mem[1]} değerini hafızaya kaydetmeyi öneriyorum.` };
   }
 
+  const watch = text.match(/^izle:\s*(\{[\s\S]*\})\s*$/i);
+  if (watch) {
+    let input: Record<string, unknown>;
+    try {
+      input = JSON.parse(watch[1]);
+    } catch {
+      return { text: `${MOCK_PREFIX}girdi JSON değil.` };
+    }
+    await callTool(toolSet, 'izleme_oner', { ...input, reason: 'Sahte asistan önerisi' });
+    return { text: `${MOCK_PREFIX}izleme kuralı öneriyorum.` };
+  }
+
   return { text: `${MOCK_PREFIX}"${text}" dedin.` };
 }

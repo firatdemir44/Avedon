@@ -57,13 +57,16 @@ const MAX_WHATSAPP_REPLY = 3500;
 
 // WhatsApp'ta kart yok: araç özetleri ve hafıza önerileri metnin altına eklenir.
 export function composeWhatsAppReply(turn: {
-  message: { text: string; toolCalls: { title: string; summary: string }[]; memorySuggestions: { label: string; value: unknown }[] };
+  message: { text: string; toolCalls: { title: string; summary: string }[]; memorySuggestions: { label: string; value: unknown }[]; watchSuggestions?: { name: string }[] };
 }) {
   const lines: string[] = [turn.message.text.trim()];
   for (const c of turn.message.toolCalls) lines.push(`\n${c.title}: ${c.summary}`);
   if (turn.message.memorySuggestions.length) {
     const items = turn.message.memorySuggestions.map((s) => `${s.label} = ${String(s.value)}`).join(', ');
     lines.push(`\nHafızaya kaydetmek için uygulamadaki Asistan sekmesinden onaylayın: ${items}.`);
+  }
+  if (turn.message.watchSuggestions?.length) {
+    lines.push(`\nİzleme kuralını kurmak için uygulamadaki Asistan sekmesinden onaylayın: ${turn.message.watchSuggestions.map((w) => w.name).join('; ')}.`);
   }
   const text = lines.join('\n').trim();
   return text.length > MAX_WHATSAPP_REPLY ? `${text.slice(0, MAX_WHATSAPP_REPLY - 1)}…` : text;
