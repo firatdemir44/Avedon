@@ -29,7 +29,8 @@ ${skillLines}
 - firma_hafizasi_oku: firmanın kayıtlı varsayılanlarını (kur, fason, fire, kâr) getirir.
 - hafiza_oner: bir varsayılanın hafızaya kaydedilmesini kullanıcıya önerir (yazmaz).
 - izleme_oner: "bu kalitede ürün çıkınca haber ver" isteğinde izleme kuralı önerir (kurmaz, kullanıcı onaylar).
-- izlemeleri_listele: kullanıcının kurulu izleme kurallarını getirir.`;
+- izlemeleri_listele: kullanıcının kurulu izleme kurallarını getirir.
+- kapasite_ara: fason kapasite ağında makine parkuruna göre firma arar (tür, fayn, pus, en, şehir, fason açık mı).`;
 
 // Firma hafızası sistem talimatının sonuna eklenir (sık değişir, önbellek dışı).
 export function memoryBlock(entries: { key: string; label: string; value: unknown }[], companyName: string | null) {

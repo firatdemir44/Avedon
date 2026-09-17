@@ -42,6 +42,12 @@ model Company {
   companyCode       String    @unique
   // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:
   // istemci "logo var mı" bilgisini ve önbellek anahtarını buradan alır.
+  // Faz 2 Adım 5: fason kapasite ağı. Aylık tonaj firmanın BEYANIDIR (Fırat 2026-09-17).
+  monthlyCapacityTons   Float?
+  capacityNote          String    @default("")
+  // Fason (dışarıya) kapasite açık mı
+  contractOpen          Boolean   @default(false)
+  capacityUpdatedAt     DateTime?
   logoUpdatedAt     DateTime?
   createdAt         DateTime  @default(now())
   users             User[]
@@ -51,6 +57,7 @@ model Company {
   assistantThreads  AssistantThread[]
   memories          CompanyMemory[]
   faqs              CompanyFaq[]
+  machines          Machine[]
   questions         CompanyQuestion[]
 }
 
@@ -680,4 +687,37 @@ model CompanyQuestion {
 
   @@index([companyId, status, createdAt])
   @@index([askerId, createdAt])
+}
+
+// --- Faz 2, Adım 5: makine parkı (parkur) ---
+// Makine türü SERBEST METİN (Fırat 2026-09-17: tür çok, üretici yazar); kindKey aramada
+// eşleşsin diye katlanmış hali. group: orme | dokuma | boya_terbiye | baski | konfeksiyon | iplik | diger
+model Machine {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  group        String
+  kind         String
+  kindKey      String
+  brand        String   @default("")
+  model        String   @default("")
+  year         Int?
+  // Pus (çap, inç) ve fayn (incelik); örme dışında boş kalır.
+  diameterInch Float?
+  gauge        Float?
+  feeders      Int?
+  needles      Int?
+  // Çalışma eni (cm): dokuma, raschel, ram vb.
+  workingWidthCm Float?
+  // Serbest özellik: tek plaka, çift plaka, jakar, elektronik...
+  feature      String   @default("")
+  count        Int      @default(1)
+  note         String   @default("")
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([companyId, position])
+  @@index([group, kindKey])
+  @@index([gauge, diameterInch])
 }

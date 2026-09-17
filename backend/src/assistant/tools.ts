@@ -12,6 +12,7 @@ import { SKILLS, runSkill } from '../skills';
 import { runPassportExtract } from '../skills/passportExtract';
 import { MEMORY_KEYS, MEMORY_KEY_SET, memoryKeyDef } from './memoryKeys';
 import { readMemory } from './memory';
+import { MACHINE_GROUPS, searchCapacity } from '../routes/machines';
 import { describeWatchQuery, parseRuleQuery, watchQuerySchema, type WatchQuery } from '../watch';
 
 export interface ToolCallRecord {
@@ -216,5 +217,29 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele], calls, suggestions, watchSuggestions };
+  const kapasiteAra = betaZodTool({
+    name: 'kapasite_ara',
+    description:
+      'Fason kapasite ağında arama: belirli makine parkuruna (tür, fayn, pus, çalışma eni) sahip firmaları bulur; firmanın beyan ettiği aylık tonajı ve fason kapasitesinin açık olup olmadığını döner. ' +
+      'Kullan: "28 fayn 30 pus süprem örecek fason arıyorum", "İzmir\'de boş raschel kapasitesi var mı", "ram makinesi olan boyahane" gibi sorularda. Fiyat ve doluluk takvimi dönmez; firmayla iletişime yönlendir.',
+    inputSchema: z.object({
+      group: z.enum(MACHINE_GROUPS.map((g) => g.key) as [string, ...string[]]).optional().describe('Makine grubu: orme, dokuma, boya_terbiye, baski, konfeksiyon, iplik, diger'),
+      kind: z.string().max(80).optional().describe('Makine türü, serbest metin (ör. "raschel", "ribana", "ram")'),
+      gauge: z.number().positive().optional().describe('Fayn (incelik)'),
+      diameterInch: z.number().positive().optional().describe('Pus (çap, inç)'),
+      widthMin: z.number().positive().optional().describe('En az çalışma eni (cm)'),
+      contractOpen: z.boolean().optional().describe('Yalnızca fason kapasitesi açık olanlar'),
+      city: z.string().max(60).optional(),
+    }),
+    run: async (args) => {
+      const results = await searchCapacity({ ...args, contractOpen: args.contractOpen ? '1' : undefined, limit: 8 }, ctx.companyId);
+      const summary = results.length
+        ? `${results.length} firma bulundu: ${results.map((r) => `${r.company.name} (${r.matchedCount} makine${r.capacity.contractOpen ? ', fason açık' : ''})`).join('; ')}`
+        : 'Bu parkura sahip firma bulunamadı.';
+      calls.push({ name: 'kapasite_ara', title: 'Fason kapasite araması', input: args, output: { results }, summary });
+      return JSON.stringify({ summary, results });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra], calls, suggestions, watchSuggestions };
 }
