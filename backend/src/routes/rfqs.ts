@@ -155,7 +155,7 @@ function convertPrice(value: number, from: string, to: string, gsm: number, widt
   return null;
 }
 
-async function compareView(rfqId: string, buyerId: string) {
+export async function compareView(rfqId: string, buyerId: string) {
   const rfq = await prisma.rfq.findFirst({ where: { id: rfqId, buyerId } });
   if (!rfq) return null;
   const requests = await prisma.quoteRequest.findMany({

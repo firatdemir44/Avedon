@@ -7,6 +7,7 @@ import * as z from 'zod/v4';
 import { PRODUCT_TYPES } from '../catalog';
 import { YARN_END_USES, YARN_FAMILIES, type YarnQuery } from '../yarns';
 import { searchYarns } from '../routes/yarns';
+import { MAX_RFQ_COMPANIES, compareView } from '../routes/rfqs';
 import { prisma } from '../db';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
@@ -272,5 +273,68 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra], calls, suggestions, watchSuggestions };
+  const teklifTopla = betaZodTool({
+    name: 'teklif_topla',
+    description:
+      'Kullanıcı bir kumaş ihtiyacı için birden çok firmadan teklif toplamak istediğinde PLATFORMDAKİ TÜM firmaların kataloğunda arar ve firma başına bir aday ürün ÖNERİR. İstek GÖNDERMEZ: adaylar ekranda kart olarak çıkar, kullanıcı işaretleyip onaylarsa istek gider. ' +
+      'Kullan: "180-200 gr pamuk elastan süprem, 2 ton, 3 hafta; teklif topla", "bu kaliteyi kimler yapıyor, fiyat alalım". Kullanıcının söylemediği süzgeci ekleme; miktar ve termin söylendiyse aktar. Fiyat dönmez. Sonuç boşsa süzgeci gevşetmeyi öner.',
+    inputSchema: z.object({
+      search: z.string().max(100).optional().describe('Serbest arama: alt çeşit adı, içerik'),
+      type: z.enum(PRODUCT_TYPES).optional().describe('Çeşit anahtarı'),
+      subtype: z.string().max(40).optional().describe('Alt çeşit anahtarı (ör. suprem)'),
+      fiber: z.enum(fiberKeys).optional().describe('Lif anahtarı'),
+      fiberMinPercent: z.number().min(0).max(100).optional(),
+      gsmMin: z.number().positive().optional(),
+      gsmMax: z.number().positive().optional(),
+      widthMin: z.number().positive().optional(),
+      certificate: z.string().max(60).optional().describe('Sertifika anahtarı'),
+      quantity: z.number().positive().optional().describe('İstenen miktar'),
+      unit: z.enum(['m', 'kg']).optional().describe('Miktar birimi'),
+      targetDate: z.string().max(10).optional().describe('İstenen termin tarihi, YYYY-AA-GG'),
+      note: z.string().max(300).optional().describe('Satıcılara gidecek kısa not'),
+    }),
+    run: async (args) => {
+      const { quantity, unit, targetDate, note, ...filters } = args;
+      if (!Object.values(filters).some((v) => v !== undefined && v !== '')) return 'En az bir ürün özelliği gerekli (çeşit, lif, gramaj...). Kullanıcıya ne aradığını sor.';
+      const where = buildProductWhere(filters);
+      const rows = await prisma.product.findMany({
+        where: { AND: [where, ...(ctx.companyId ? [{ companyId: { not: ctx.companyId } }] : [])] },
+        select: PRODUCT_SELECT,
+        orderBy: [{ stock: 'desc' }, { createdAt: 'desc' }],
+        take: 80,
+      });
+      // Firma başına tek aday (stok fazlası öne); en çok MAX_RFQ_COMPANIES firma.
+      const seen = new Set<string>();
+      const candidates = rows
+        .filter((r) => !seen.has(r.companyId) && seen.add(r.companyId))
+        .slice(0, MAX_RFQ_COMPANIES)
+        .map((r) => {
+          const p = toProductRow(r, null) as Record<string, unknown>;
+          return { id: r.id, code: r.code, companyId: r.companyId, companyName: r.company.name, verification: r.company.verification, type: r.type, subtype: r.subtype, content: r.content, weightGsm: r.weightGsm, widthCm: r.widthCm, stock: r.stock, stockUnit: r.stockUnit, moq: p.moq ?? null, moqUnit: p.moqUnit ?? '', leadTimeDays: p.leadTimeDays ?? null };
+        });
+      const summary = candidates.length
+        ? `${candidates.length} firmadan aday bulundu: ${candidates.map((c) => `${c.code} (${c.companyName})`).join('; ')}`
+        : 'Bu özelliklerde başka firmada ürün bulunamadı.';
+      calls.push({ name: 'teklif_topla', title: 'Teklif toplama adayları', input: args, output: { candidates, request: { quantity: quantity ?? null, unit: unit ?? null, targetDate: targetDate ?? null, note: note ?? '' } }, summary });
+      return JSON.stringify({ summary, candidates, uyari: 'İstek GÖNDERİLMEDİ. Kullanıcı karttan firmaları işaretleyip "Teklif iste" derse gider. Bunu kullanıcıya açıkça söyle.' });
+    },
+  });
+
+  const teklifleriOzetle = betaZodTool({
+    name: 'teklifleri_ozetle',
+    description:
+      'Kullanıcının çoklu teklif isteklerini ve gelen teklifleri getirir (kullanıcı ALICI olduğu için fiyatları görür): firma, isteğin birimine çevrilmiş birim fiyat, tahmini toplam, MOQ, termin, ödeme koşulu, en düşük fiyat / en kısa termin işaretleri. ' +
+      'Kullan: "teklifler geldi mi", "hangisi daha uygun", "teklifleri karşılaştır". rfqId verilmezse en son istek. Yorumlarken: farklı para birimlerini kıyaslama; MOQ ihtiyacın üstündeyse belirt; karar kullanıcının.',
+    inputSchema: z.object({ rfqId: z.string().max(40).optional() }),
+    run: async (args) => {
+      const rfqId = args.rfqId ?? (await prisma.rfq.findFirst({ where: { buyerId: ctx.userId }, orderBy: { createdAt: 'desc' }, select: { id: true } }))?.id;
+      const view = rfqId ? await compareView(rfqId, ctx.userId) : null;
+      if (!view) return 'Kullanıcının çoklu teklif isteği yok.';
+      const summary = `${view.title}: ${view.requestCount} firmaya soruldu, ${view.quotedCount} teklif geldi.`;
+      calls.push({ name: 'teklifleri_ozetle', title: 'Teklif karşılaştırması', input: args, output: { rfqId: view.id, title: view.title, requestCount: view.requestCount, quotedCount: view.quotedCount }, summary });
+      return JSON.stringify({ summary, rfq: view });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle], calls, suggestions, watchSuggestions };
 }
