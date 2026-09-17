@@ -2,6 +2,32 @@
 
 Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen kararları tutar. Yeni bir çalışma oturumuna başlarken önce burası kontrol edilir.
 
+## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
+
+Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu listedir. Bir iş kapanınca buradan silinir.
+
+**A. Fırat'ta bekleyenler**
+1. **SMS başvurusu (İleti Merkezi):** kod + `/api/health` `sms` teşhisi hazır. Başlık onayı şirket evrakı + KEP + e-Devlet BTK e-Kayıt ister (1-2 iş günü). Adımlar ve destek sorusu: `docs/sms-saglayici.md`. Hangi şirket adına başvurulacağı Fırat kararı.
+2. **Gerçek WhatsApp numarası / SIM:** şu an Meta test numarası (en çok 5 alıcı).
+3. **Telefonda kontrol:** Faz 2 (bildirim/izleme, teklif, Asistana sor, makine parkı, referanslar, iplik dizini) ve Faz 3 Adım 1-2 (çoklu teklif, karşılaştırma, asistanla teklif toplama). Adres: https://avedon-blond.vercel.app
+4. **Melide'nin ilk 3 ürünü:** kompozisyon satırları için bir kez açılıp kaydedilmeli.
+5. **Hesaplayıcılarda "görsel grafik" istekleri:** Fırat iletecek (2026-09-15'ten beri bekliyor).
+
+**B. SMS'e bağlı kod işleri**
+6. Faz 2 Adım 4: davet mekaniği ("tedarikçini davet et").
+7. İlk dış pilot firma öncesi son kontrol: `WHATSAPP_APP_SECRET` canlıda dolu, SMS health yeşil.
+
+**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 3 benzer kumaş arama → 7 AB Dijital Ürün Pasaportu → 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
+
+**D. Bilinen küçük eksikler (kod)**
+8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor); zil yalnızca Akış ekranında.
+9. Kumaş tarafında yalnızca arama metni varken "Bu aramayı izle" çıkmıyor; izleme kuralının adı ekrandan değiştirilemiyor.
+10. Video yalnızca akış gönderilerinde; kararlaştırılan kapsamın kalanı (ürün sayfası videosu, sohbette video) yapılmadı.
+11. WhatsApp'tan ürün taslağı (fotoğraf gönder → pasaport taslağı) yok; etiketten İPLİK çıkarma yok (yalnızca kumaş).
+12. Asistanın `teklif_topla` aracı yalnızca kumaş arıyor (iplik için `iplik_ara` + dizinde seçme kipi var).
+13. Teknik borç: kumaş ve iplik formlarında karışım/sertifika satır düzenleyicileri kopya (ortak bileşene çıkarılacak); `Product.imageUrl` eski sütunu silinecek; `mobile/MOBILE-DESIGN.md`'de Faz 2-3 ekran kalıpları yazılmadı.
+14. Evden telefonda GELİŞTİRME sürümü testi çözülmedi (canlı web adresi yettiği için ihtiyaç yok).
+
 ## Açık İşler
 
 - **SMS (Faz 1 Adım 8) EN SONA BIRAKILDI (Fırat kararı, 2026-09-17).** Karşılaştırma ve öneri hazır: `docs/sms-saglayici.md` (öneri İleti Merkezi). SMS bağlanana kadar gerçek kullanıcılar kendi başına giriş yapamaz (kod yalnızca sunucu kayıtlarında); dışarıdan ilk pilot firma alınmadan önceki son iş bu olmalı.
