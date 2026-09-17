@@ -475,6 +475,17 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               onPress={() => navigation.navigate('AddProduct')}
               style={styles.actionButton}
             />
+            {/* Faz 2, Adım 6: iplik kumaş formuyla eklenmiyor (ayrı uç ve ayrı
+                alanlar), o yüzden "Ürün Ekle"nin yanında kendi düğmesi. */}
+            <PrimaryButton
+              label="İplik Ekle"
+              icon="add"
+              variant="outline"
+              onPress={() => navigation.navigate('YarnForm')}
+              style={styles.actionButton}
+            />
+          </View>
+          <View style={styles.actionRow}>
             <PrimaryButton
               label="Gelen Talepler"
               variant="outline"

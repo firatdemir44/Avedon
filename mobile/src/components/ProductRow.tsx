@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ProductThumbnail } from './ProductThumbnail';
 import { StockValue } from './StockIndicator';
 import { formatMeasure } from '../features/calculators/parse';
-import { TYPE_LABELS, categoryLabel, usageLabel } from '../features/products/catalog';
+import { TYPE_LABELS, categoryLabel, isYarnType, usageLabel } from '../features/products/catalog';
 import { formatComposition } from '../features/products/glossaryLabels';
 import type { Product } from '../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
@@ -71,9 +71,12 @@ export function ProductRow({
   onRequestSample?: () => void;
   divider?: boolean;
 }) {
+  // İplikte (Faz 2, Adım 6) gramaj/en 0'dır: "0 g/m² · 0 cm" anlamsız olur.
+  // Onun yerine ipliğin özeti (numara + eğirme + lif) ve kg stoğu yazılır.
+  const isYarn = isYarnType(product.type);
   const category = categoryLabel(product.type, product.subtype ?? '');
-  const usage = usageSummary(product);
-  const summary = contentSummary(product);
+  const usage = isYarn ? '' : usageSummary(product);
+  const summary = isYarn ? product.yarn?.summary || product.content : contentSummary(product);
   const certificates = product.certificateNames ?? [];
   return (
     <Pressable
@@ -123,9 +126,11 @@ export function ProductRow({
         </View>
         <View style={styles.bottomRow}>
           <View style={styles.measures}>
-            <Text style={styles.measureText}>
-              {formatMeasure(product.weightGsm)} gr/m² · {formatMeasure(product.widthCm)} cm ·{' '}
-            </Text>
+            {isYarn ? null : (
+              <Text style={styles.measureText}>
+                {formatMeasure(product.weightGsm)} gr/m² · {formatMeasure(product.widthCm)} cm ·{' '}
+              </Text>
+            )}
             <StockValue stock={product.stock} unit={product.stockUnit} />
           </View>
           {onRequestSample ? (

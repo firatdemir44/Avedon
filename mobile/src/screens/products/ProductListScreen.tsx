@@ -26,6 +26,7 @@ import {
   watchQueryFromFilters,
   type ProductFilters,
 } from '../../features/products/filters';
+import { YarnDirectory } from '../yarns/YarnDirectoryScreen';
 import type { Company, Product } from '../../types';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -36,6 +37,12 @@ type Props = MainTabScreenProps<'ProductList'>;
 // Aşama A: klasör içinde alt çeşit çipleri, kullanım amacı kısayolları, filtreler.
 type ViewMode = 'all' | 'groups';
 const VIEW_MODE_KEY = 'avedon.productListViewMode';
+
+// Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. "Kumaş" mevcut katalog
+// (GET /api/products artık iplik döndürmüyor), "İplik" iplik dizini
+// (GET /api/yarns). Seçim cihazda hatırlanır, görünüm seçimi gibi.
+type Domain = 'kumas' | 'iplik';
+const DOMAIN_KEY = 'avedon.productListDomain';
 
 // Sunucuya ulaşılamazsa örnek veri; filtrelerin en temel ikisi uygulanır.
 function filterMock(search: string, filters: ProductFilters) {
@@ -59,6 +66,7 @@ export function ProductListScreen({ navigation, route }: Props) {
   const [offline, setOffline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [domain, setDomain] = useState<Domain>('kumas');
   const [openType, setOpenType] = useState<ProductType | null>(null);
   // null: klasördeki tüm ürünler · '': alt çeşidi belirtilmemiş olanlar
   const [openSubtype, setOpenSubtype] = useState<string | null>(null);
@@ -76,7 +84,19 @@ export function ProductListScreen({ navigation, route }: Props) {
         if (saved === 'all' || saved === 'groups') setViewMode(saved);
       })
       .catch(() => {});
+    AsyncStorage.getItem(DOMAIN_KEY)
+      .then((saved) => {
+        if (saved === 'kumas' || saved === 'iplik') setDomain(saved);
+      })
+      .catch(() => {});
   }, []);
+
+  const changeDomain = (next: Domain) => {
+    if (next === domain) return;
+    haptics.selection();
+    setDomain(next);
+    AsyncStorage.setItem(DOMAIN_KEY, next).catch(() => {});
+  };
 
   // Filtre ekranı "Uygula"da buraya döner.
   const appliedAt = route.params?.appliedAt;
@@ -453,8 +473,53 @@ export function ProductListScreen({ navigation, route }: Props) {
     <EmptyState icon="cube-outline" title="Henüz ürün yok" message="Üreticiler ürün ekledikçe katalog burada dolacak." />
   );
 
+  // Faz 2, Adım 6: "Kumaş | İplik" ayrımı en üstte, arama çubuğunun üstünde —
+  // hangi katalogda olduğunuz her şeyden önce görünsün.
+  const domainBar = (
+    <View style={styles.domainBar} accessibilityRole="tablist">
+      {(
+        [
+          { key: 'kumas', label: 'Kumaş', icon: 'layers-outline' },
+          { key: 'iplik', label: 'İplik', icon: 'git-commit-outline' },
+        ] as const
+      ).map((option) => {
+        const selected = domain === option.key;
+        return (
+          <Pressable
+            key={option.key}
+            onPress={() => changeDomain(option.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            accessibilityLabel={option.key === 'kumas' ? 'Kumaş kataloğu' : 'İplik dizini'}
+            style={({ pressed }) => [
+              styles.domainOption,
+              selected && styles.domainSelected,
+              pressed && !selected && styles.togglePressed,
+            ]}
+          >
+            <Ionicons name={option.icon} size={18} color={selected ? colors.primary : colors.textMuted} />
+            <Text style={[styles.domainText, selected && styles.domainTextSelected]}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  if (domain === 'iplik') {
+    return (
+      <View style={styles.container}>
+        {domainBar}
+        <YarnDirectory
+          onOpenProduct={(id) => navigation.navigate('ProductDetail', { productId: id })}
+          onAddYarn={user?.companyId ? () => navigation.navigate('YarnForm') : undefined}
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
+      {domainBar}
       <View style={styles.searchBar}>
         <SearchField
           value={query}
@@ -576,6 +641,28 @@ export function ProductListScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  // Kumaş | İplik ayrımı: beyaz şerit içinde iki eşit sekme, seçili olanın
+  // altında lacivert çizgi (görünüm seçimindeki dolu düğmelerden ayrılsın).
+  domainBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  domainOption: {
+    flex: 1,
+    minHeight: MIN_TOUCH,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  domainSelected: { borderBottomColor: colors.primary },
+  domainText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
+  domainTextSelected: { color: colors.primary },
   searchBar: {
     flexDirection: 'row',
     gap: spacing.sm,

@@ -54,6 +54,7 @@ import {
   TYPE_LABELS,
   USAGES,
   YARN_ROLES,
+  YARN_PRODUCT_TYPE,
   YARN_TYPES,
   YARN_UNITS,
   type ProductType,
@@ -324,7 +325,9 @@ export function AddProductScreen({ navigation, route }: Props) {
     fetchProduct(productId)
       .then(({ product }) => {
         if (cancelled) return;
-        setType(product.type);
+        // İplik bu formla düzenlenmez (YarnFormScreen'e gidilir); yine de
+        // yanlışlıkla açılırsa kumaş çeşidi alanı bozulmasın.
+        if (product.type !== YARN_PRODUCT_TYPE) setType(product.type);
         setTypeChosen(true);
         setSubtype(product.subtype ?? '');
         setUsages(product.usages ?? []);

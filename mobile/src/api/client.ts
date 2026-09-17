@@ -11,7 +11,7 @@ import type {
 } from '../types';
 import type { RegistrationDraft } from '../context/RegistrationContext';
 import { productQueryString, type ProductFilters, type WatchQuery } from '../features/products/filters';
-import type { StockUnit } from '../features/products/catalog';
+import type { AnyProductType, StockUnit } from '../features/products/catalog';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
 // değişkeniyle verin (örn. "https://api.avedon.com/api") — aksi halde web'de
@@ -322,6 +322,8 @@ export function deleteVideo(id: string) {
 
 // Akış kartındaki pasaport verisi (Faz 1, Adım 6).
 export type FeedProduct = {
+  // İplik ürünlerinde özet satırı; kumaşta null (eski sunucu hiç göndermez).
+  yarnSummary?: string | null;
   id: string;
   code: string;
   companyId: string;
@@ -458,7 +460,9 @@ export function deletePostComment(postId: string, commentId: string) {
   return request<void>(`/posts/${postId}/comments/${commentId}`, { method: 'DELETE' });
 }
 
-export type MyProductOption = { id: string; code: string; type: ProductType; subtype: string; hasImage: boolean };
+// type 'iplik' de olabilir (Faz 2, Adım 6): firmanın kendi ürünleri arasında
+// iplikler de var.
+export type MyProductOption = { id: string; code: string; type: AnyProductType; subtype: string; hasImage: boolean };
 
 // Gönderi ekranındaki ürün seçici: arama sunucuda yapılır, tek seferde en
 // fazla `limit` ürün gelir (varsayılan 30). `total` firmanın eşleşen toplam
@@ -548,7 +552,8 @@ export interface ProductWarnings {
 
 export interface NewProductInput extends PassportInput {
   code: string;
-  type: Product['type'];
+  // Yalnızca kumaş çeşitleri: iplik ayrı uçtan eklenir (POST /api/yarns).
+  type: ProductType;
   subtype: string;
   usages: string[];
   stock: number;
@@ -1495,6 +1500,156 @@ export function searchCapacity(params: CapacitySearchParams) {
   if (params.offset) query.set('offset', String(params.offset));
   const suffix = query.toString();
   return request<CapacitySearchPage>(`/machines/search${suffix ? `?${suffix}` : ''}`);
+}
+
+// --- İplik dizini (Faz 2, Adım 6) --------------------------------------------
+// Sunucu: backend/src/routes/yarns.ts. İplik bir Product satırıdır
+// (type 'iplik', stockUnit 'kg') + YarnSpec. DETAY, FOTOĞRAF, FAVORİ, SİLME,
+// TEKLİF ve NUMUNE uçları /api/products altındakilerle ORTAK; yalnızca liste,
+// oluşturma ve güncelleme ayrıdır. `PATCH /api/products/:id` iplik için 400
+// `use_yarn_endpoint` döner.
+
+export interface YarnOption {
+  key: string;
+  label: string;
+}
+
+export interface YarnOptions {
+  families: readonly YarnOption[];
+  countUnits: readonly YarnOption[];
+  spinnings: readonly YarnOption[];
+  combings: readonly YarnOption[];
+  filamentTypes: readonly YarnOption[];
+  lusters: readonly YarnOption[];
+  endUses: readonly YarnOption[];
+  colorStates: readonly YarnOption[];
+  sellerRoles: readonly YarnOption[];
+}
+
+export function fetchYarnOptions() {
+  return request<YarnOptions>('/yarns/options');
+}
+
+// Virgülle ayrılan alanlar (family, filamentType, spinning, endUse, colorState)
+// dizi olarak verilir. `countUnit` verilirse numara BİRİMDEN BAĞIMSIZ aranır
+// (150 denye ≈ 167 dtex) ve tek değerde ±%4 tolerans uygulanır.
+export interface YarnSearchParams {
+  search?: string;
+  family?: string[];
+  count?: number;
+  countMin?: number;
+  countMax?: number;
+  countUnit?: string;
+  ply?: number;
+  filaments?: number;
+  filamentType?: string[];
+  spinning?: string[];
+  combing?: string;
+  luster?: string;
+  endUse?: string[];
+  colorState?: string;
+  fiber?: string[];
+  certificate?: string[];
+  sellerRole?: string;
+  inStock?: boolean;
+  companyId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface YarnSearchPage {
+  yarns: Product[];
+  hasMore: boolean;
+  nextOffset: number | null;
+}
+
+export function yarnQueryString(params: YarnSearchParams) {
+  const query = new URLSearchParams();
+  const setList = (key: string, values?: string[]) => {
+    const list = (values ?? []).filter(Boolean);
+    if (list.length) query.set(key, list.join(','));
+  };
+  const setNumber = (key: string, value?: number) => {
+    if (value !== undefined && Number.isFinite(value)) query.set(key, String(value));
+  };
+  if (params.search?.trim()) query.set('search', params.search.trim());
+  setList('family', params.family);
+  setNumber('count', params.count);
+  setNumber('countMin', params.countMin);
+  setNumber('countMax', params.countMax);
+  if (params.countUnit) query.set('countUnit', params.countUnit);
+  setNumber('ply', params.ply);
+  setNumber('filaments', params.filaments);
+  setList('filamentType', params.filamentType);
+  setList('spinning', params.spinning);
+  if (params.combing) query.set('combing', params.combing);
+  if (params.luster) query.set('luster', params.luster);
+  setList('endUse', params.endUse);
+  if (params.colorState) query.set('colorState', params.colorState);
+  setList('fiber', params.fiber);
+  setList('certificate', params.certificate);
+  if (params.sellerRole) query.set('sellerRole', params.sellerRole);
+  if (params.inStock) query.set('inStock', '1');
+  if (params.companyId) query.set('companyId', params.companyId);
+  setNumber('limit', params.limit);
+  setNumber('offset', params.offset);
+  const suffix = query.toString();
+  return suffix ? `?${suffix}` : '';
+}
+
+export function searchYarns(params: YarnSearchParams) {
+  return request<YarnSearchPage>(`/yarns${yarnQueryString(params)}`);
+}
+
+// Sunucudaki createYarnSchema `.strict()`: bilinmeyen alan 400 döner, bu
+// yüzden gövdeye yalnızca buradaki alanlar konur.
+export interface NewYarnInput {
+  code: string;
+  stock?: number;
+  family: string;
+  count: number;
+  countUnit: string;
+  ply?: number;
+  filaments?: number | null;
+  spinning?: string;
+  combing?: string;
+  filamentType?: string;
+  luster?: string;
+  twistDirection?: '' | 'S' | 'Z';
+  twistTpm?: number | null;
+  endUses?: string[];
+  colorState?: string;
+  color?: string;
+  variety?: string;
+  origin?: string;
+  brand?: string;
+  coneWeightKg?: number | null;
+  sellerRole?: string;
+  composition?: CompositionItem[];
+  certificates?: CertificateInput[];
+  note?: string;
+  moq?: number | null;
+  leadTimeDays?: number | null;
+  priceValue?: number | null;
+  priceCurrency?: string;
+  // data URL'ler; ilki kapak.
+  images?: string[];
+}
+
+// 400 invalid_body (details.fieldErrors) · composition toplamı 100 değilse
+// details.fieldErrors.composition = ['composition_total_not_100'].
+export function createYarn(payload: NewYarnInput) {
+  return request<{ yarn: Product }>('/yarns', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+// Kısmi güncelleme: gönderilmeyen alana sunucu dokunmaz. `images` verilirse
+// fotoğrafların tamamı bu liste olur (yeni data URL ya da { existing: n }).
+export type UpdateYarnInput = Partial<Omit<NewYarnInput, 'images'>> & {
+  images?: ProductImageInput[];
+};
+
+export function updateYarn(id: string, payload: UpdateYarnInput) {
+  return request<{ yarn: Product }>(`/yarns/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
 // --- Karşılıklı referanslar (Faz 2, Adım 7) ----------------------------------

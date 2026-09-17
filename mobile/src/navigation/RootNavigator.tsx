@@ -32,6 +32,8 @@ import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
 import { MachineParkScreen } from '../screens/machines/MachineParkScreen';
 import { MachineFormScreen } from '../screens/machines/MachineFormScreen';
 import { CapacitySearchScreen } from '../screens/machines/CapacitySearchScreen';
+import { YarnDirectoryScreen } from '../screens/yarns/YarnDirectoryScreen';
+import { YarnFormScreen } from '../screens/yarns/YarnFormScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { FabricCostCalculator } from '../screens/calculators/FabricCostCalculator';
 import { GarmentCostCalculator } from '../screens/calculators/GarmentCostCalculator';
@@ -208,6 +210,18 @@ export function RootNavigator() {
               name="CapacitySearch"
               component={CapacitySearchScreen}
               options={{ headerShown: true, title: 'Fason Kapasite Ara' }}
+            />
+            {/* İplik dizini (Faz 2, Adım 6). YarnForm başlığını ekranın
+                kendisi ayarlıyor (ekle/düzenle). */}
+            <Stack.Screen
+              name="YarnDirectory"
+              component={YarnDirectoryScreen}
+              options={{ headerShown: true, title: 'İplik Dizini' }}
+            />
+            <Stack.Screen
+              name="YarnForm"
+              component={YarnFormScreen}
+              options={{ headerShown: true, title: 'İplik Ekle' }}
             />
             <Stack.Screen
               name="CalculatorsList"

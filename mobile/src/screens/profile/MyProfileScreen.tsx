@@ -43,6 +43,8 @@ export function MyProfileScreen({ navigation }: Props) {
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
     { key: 'quoteRequests', title: 'Tekliflerim', onPress: () => navigation.navigate('QuoteRequests') },
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
+    // Faz 2, Adım 6: iplik dizini (Ürünler sekmesindeki "İplik" ile aynı ekran).
+    { key: 'yarnDirectory', title: 'İplik Dizini', onPress: () => navigation.navigate('YarnDirectory') },
     // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
     { key: 'capacitySearch', title: 'Fason Kapasite Ara', onPress: () => navigation.navigate('CapacitySearch') },
     user?.companyId

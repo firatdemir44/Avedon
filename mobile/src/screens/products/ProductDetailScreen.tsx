@@ -30,13 +30,15 @@ import { PassportCard, toPassportCardProduct } from '../../components/PassportCa
 import {
   STOCK_UNIT_LABELS,
   finishTagLabel,
+  isYarnType,
   usageLabel,
   yarnRoleLabel,
   yarnTypeLabel,
   yarnUnitLabel,
 } from '../../features/products/catalog';
 import { certificateLabel, effectiveWidthCm, fiberLabel } from '../../features/products/glossaryLabels';
-import { formatMeasure } from '../../features/calculators/parse';
+import { optionLabel, otherCountLabels, useYarnOptions } from '../../features/yarns/catalog';
+import { formatMeasure, toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -71,6 +73,28 @@ function formatPrice(price: { value: number; currency: string; unit: string }) {
   return `${formatMeasure(price.value)} ${price.currency}${unit}`;
 }
 
+// Kumaş pasaportundaki iplik satırını iplik dizini süzgecine çevirir
+// ("Kim satıyor?" bağlantısı, Faz 2, Adım 6). Kumaş formundaki iplik tipi
+// (catalog.ts YARN_TYPES) dizindeki eğirme / penye-karde / filament tipi
+// alanlarına dağılıyor; karşılığı olmayan tip (örn. "diger") atılır.
+const YARN_TYPE_TO_SPINNING: Record<string, string> = {
+  kompakt: 'kompakt',
+  open_end: 'open_end',
+  vortex: 'vortex',
+};
+const YARN_TYPE_TO_COMBING: Record<string, string> = { penye: 'penye', karde: 'karde' };
+const YARN_TYPE_TO_FILAMENT: Record<string, string> = { dty: 'dty', fdy: 'fdy', poy: 'poy' };
+
+function yarnDirectoryPreset(yarn: { count: number; unit: string; yarnType: string }) {
+  return {
+    count: toInputNumber(yarn.count),
+    countUnit: yarn.unit,
+    spinning: YARN_TYPE_TO_SPINNING[yarn.yarnType],
+    combing: YARN_TYPE_TO_COMBING[yarn.yarnType],
+    filamentType: YARN_TYPE_TO_FILAMENT[yarn.yarnType],
+  };
+}
+
 // "30 Ne · 2 kat · Penye (ring)" (rol varsa başta).
 function formatYarn(yarn: { role: string; count: number; unit: string; ply: number; yarnType: string }) {
   const parts = [`${formatMeasure(yarn.count)} ${yarnUnitLabel(yarn.unit)}`];
@@ -86,6 +110,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { user } = useSession();
   const insets = useSafeAreaInsets();
+  // İplik etiketleri (Faz 2, Adım 6); kumaşta kullanılmaz ama kanca koşulsuz.
+  const yarnOptions = useYarnOptions();
   // Düzenleme ekranından dönünce güncel veri görünsün diye odakta yenileniyor
   // (ilk yüklemeden sonra sessizce).
   const { data: product, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -139,13 +165,17 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const isOwnProduct = !!user?.companyId && user.companyId === product.companyId;
   const company = product.company;
   const openCompany = () => navigation.navigate('CompanyProfile', { companyId: product.companyId });
-  const usages = (product.usages ?? []).map(usageLabel).join(', ');
+  // İplik (Faz 2, Adım 6): kumaşa özel her şey (pasaport kartı, gramaj/en,
+  // örgü, apre, kumaş iplik satırları) gizlenir; yerine iplik özellik tablosu.
+  const isYarn = isYarnType(product.type);
+  const yarnSpec = product.yarn ?? null;
+  const usages = isYarn ? '' : (product.usages ?? []).map(usageLabel).join(', ');
 
   // --- Kumaş pasaportu ---
   const composition = product.composition ?? [];
   const compositionTotal = composition.reduce((sum, item) => sum + item.percent, 0);
-  const finishTags = product.finishTags ?? [];
-  const yarns = product.yarns ?? [];
+  const finishTags = isYarn ? [] : product.finishTags ?? [];
+  const yarns = isYarn ? [] : product.yarns ?? [];
   const testReports = product.testReports ?? [];
   // Detay yanıtı sertifikaların tamamını taşır; liste yanıtında yalnızca adlar var.
   const certificates =
@@ -171,17 +201,85 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   // "80 cm tek yüz tüp eni · hesap eni 160 cm". Diğer durumlarda en yalnızca
   // pasaport kartında görünür (tekrar edilmez).
   const widthSpec =
-    product.widthType === 'tup' && product.widthMeaning === 'tup_tek_yuz'
+    !isYarn && product.widthType === 'tup' && product.widthMeaning === 'tup_tek_yuz'
       ? `${formatMeasure(product.widthCm)} cm tek yüz tüp eni · hesap eni ${formatMeasure(
           product.effectiveWidthCm ?? effectiveWidthCm(product.widthCm, product.widthMeaning)
         )} cm`
       : '';
 
+  // İplik özellik tablosu: numara (+ diğer birimlerdeki karşılığı), çeşit,
+  // eğirme, penye/karde, filament, parlaklık, büküm, kullanım yeri, renk,
+  // menşe/marka/bobin. Boş alanlar hiç satır açmaz.
+  const yarnSpecs: { label: string; value: string; sans?: boolean }[] = yarnSpec
+    ? [
+        { label: 'Numara', value: yarnSpec.countLabel },
+        ...(yarnSpec.ply > 1 ? [{ label: 'Kat', value: String(yarnSpec.ply) }] : []),
+        { label: 'İplik çeşidi', value: optionLabel(yarnOptions.families, yarnSpec.family), sans: true },
+        ...(yarnSpec.variety ? [{ label: 'Çeşit / yapı', value: yarnSpec.variety, sans: true }] : []),
+        ...(yarnSpec.spinning
+          ? [{ label: 'Eğirme', value: optionLabel(yarnOptions.spinnings, yarnSpec.spinning), sans: true }]
+          : []),
+        ...(yarnSpec.combing
+          ? [{ label: 'Penye / karde', value: optionLabel(yarnOptions.combings, yarnSpec.combing), sans: true }]
+          : []),
+        ...(yarnSpec.filaments != null ? [{ label: 'Filament sayısı', value: String(yarnSpec.filaments) }] : []),
+        ...(yarnSpec.filamentType
+          ? [{ label: 'Filament tipi', value: optionLabel(yarnOptions.filamentTypes, yarnSpec.filamentType), sans: true }]
+          : []),
+        ...(yarnSpec.luster
+          ? [{ label: 'Parlaklık', value: optionLabel(yarnOptions.lusters, yarnSpec.luster), sans: true }]
+          : []),
+        ...(yarnSpec.twistDirection || yarnSpec.twistTpm != null
+          ? [
+              {
+                label: 'Büküm',
+                value: [yarnSpec.twistDirection, yarnSpec.twistTpm != null ? `${formatMeasure(yarnSpec.twistTpm)} T/m` : '']
+                  .filter(Boolean)
+                  .join(' · '),
+              },
+            ]
+          : []),
+        ...(yarnSpec.endUses.length
+          ? [
+              {
+                label: 'Kullanım yeri',
+                value: yarnSpec.endUses.map((key) => optionLabel(yarnOptions.endUses, key)).join(', '),
+                sans: true,
+              },
+            ]
+          : []),
+        ...(yarnSpec.colorState || yarnSpec.color
+          ? [
+              {
+                label: 'Renk',
+                value: [optionLabel(yarnOptions.colorStates, yarnSpec.colorState), yarnSpec.color]
+                  .filter(Boolean)
+                  .join(' · '),
+                sans: true,
+              },
+            ]
+          : []),
+        ...(yarnSpec.origin ? [{ label: 'Menşe', value: yarnSpec.origin, sans: true }] : []),
+        ...(yarnSpec.brand ? [{ label: 'Marka', value: yarnSpec.brand, sans: true }] : []),
+        ...(yarnSpec.coneWeightKg != null
+          ? [{ label: 'Bobin', value: `${formatMeasure(yarnSpec.coneWeightKg)} kg` }]
+          : []),
+        { label: 'Stok', value: `${formatMeasure(product.stock)} kg` },
+        ...(yarnSpec.sellerRole
+          ? [{ label: 'Satıcı', value: optionLabel(yarnOptions.sellerRoles, yarnSpec.sellerRole), sans: true }]
+          : []),
+      ]
+    : [];
+
+  // "30/1 Ne" kayıtlıysa diğer sistemlerdeki karşılığı küçük gri satırda.
+  const otherCounts = yarnSpec ? otherCountLabels(yarnSpec.countDtex, yarnSpec.countUnit) : '';
+
   const specs: { label: string; value: string; sans?: boolean }[] = [
     ...(widthSpec ? [{ label: 'En', value: widthSpec }] : []),
     ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
     // Kompozisyon satırları varsa içerik metni ayrı blokta gösteriliyor.
-    ...(composition.length ? [] : [{ label: 'İçerik', value: product.content }]),
+    // İplikte özet zaten yukarıdaki iplik tablosunda; içerik metni tekrar olmaz.
+    ...(composition.length || isYarn ? [] : [{ label: 'İçerik', value: product.content }]),
     ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
   ];
 
@@ -296,9 +394,35 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             onOpenImage={setViewerUrl}
             overlay={favoriteButton}
           />
-          {/* Akıştaki kartın aynısı; ürün sayfasında dokunulamaz (onPress yok). */}
-          <PassportCard product={passportCardProduct} />
+          {/* Akıştaki kartın aynısı; ürün sayfasında dokunulamaz (onPress yok).
+              İplikte kumaş pasaportu kartı gösterilmez (gramaj/en 0). */}
+          {isYarn ? (
+            <View style={styles.yarnHead}>
+              <Text style={styles.yarnCode}>{product.code}</Text>
+              <Text style={styles.yarnSummary}>{yarnSpec?.summary || product.content}</Text>
+            </View>
+          ) : (
+            <PassportCard product={passportCardProduct} />
+          )}
         </View>
+
+        {isYarn && yarnSpecs.length ? (
+          <View>
+            <SectionHeader title="İplik özellikleri" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.specBlock]}>
+              {yarnSpecs.map((spec, index) => (
+                <SpecRow
+                  key={spec.label}
+                  label={spec.label}
+                  value={spec.value}
+                  sans={spec.sans}
+                  last={index === yarnSpecs.length - 1}
+                />
+              ))}
+              {otherCounts ? <Text style={styles.passportNote}>Diğer birimlerde: {otherCounts}</Text> : null}
+            </View>
+          </View>
+        ) : null}
 
         {specs.length ? (
           <View style={[styles.block, styles.specBlock]}>
@@ -422,6 +546,23 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                     <Text style={styles.docTitle}>{yarn.role ? yarnRoleLabel(yarn.role) : `${index + 1}. iplik`}</Text>
                     <Text style={styles.yarnValue}>{formatYarn(yarn)}</Text>
                   </View>
+                  {/* Faz 2, Adım 6: iplik dizinini bu numarayla ön dolu açar.
+                      Satırın YANINDA ayrı bir dokunma alanı (web'de iç içe
+                      düğme olmasın). */}
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('YarnDirectory', {
+                        preset: yarnDirectoryPreset(yarn),
+                        presetKey: Date.now(),
+                      })
+                    }
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${formatYarn(yarn)} ipliğini kimler satıyor, iplik dizininde ara`}
+                    style={({ pressed }) => [styles.sellerLink, pressed && styles.assistantLinkPressed]}
+                  >
+                    <Text style={styles.sellerLinkText}>Kim satıyor?</Text>
+                  </Pressable>
                 </View>
               ))}
             </View>
@@ -558,10 +699,15 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         )}
         {isOwnProduct ? (
           <PrimaryButton
-            label="Ürünü Düzenle"
+            label={isYarn ? 'İpliği Düzenle' : 'Ürünü Düzenle'}
             icon="create-outline"
             size="lg"
-            onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
+            // İplik kumaş formuyla düzenlenmez (sunucu 400 use_yarn_endpoint).
+            onPress={() =>
+              isYarn
+                ? navigation.navigate('YarnForm', { yarnId: product.id })
+                : navigation.navigate('AddProduct', { productId: product.id })
+            }
             style={styles.actionMain}
           />
         ) : (
@@ -636,6 +782,13 @@ const styles = StyleSheet.create({
   docTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
   docMeta: { ...typography.caption, color: colors.textMuted },
   yarnValue: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
+  // İplikte pasaport kartının yerini alan sade başlık bloğu.
+  yarnHead: { gap: 2 },
+  yarnCode: { ...typography.mono, fontFamily: fonts.monoSemibold, fontSize: 15, color: colors.primary },
+  yarnSummary: { ...typography.subtitle, color: colors.text },
+  // Kumaş pasaportundaki iplik satırının yanındaki "Kim satıyor?" bağlantısı.
+  sellerLink: { minHeight: MIN_TOUCH, justifyContent: 'center', paddingLeft: spacing.sm },
+  sellerLinkText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
   // Çıkarımdan gelen alanlar için onay şeridi (yalnızca ürünün sahibine).
   pendingBanner: {
     backgroundColor: colors.warningSoft,

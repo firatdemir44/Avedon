@@ -1,9 +1,42 @@
 // Avedon MVP - temel veri modeli
 // Bkz. avedon-mvp-spec.md bölüm 4.1 - 4.4
-import type { ProductType, StockUnit } from '../features/products/catalog';
+import type { AnyProductType, ProductType, StockUnit } from '../features/products/catalog';
 import type { WidthType } from '../features/products/glossaryLabels';
 
-export type { ProductType, StockUnit };
+export type { AnyProductType, ProductType, StockUnit };
+
+// --- İplik dizini (Faz 2, Adım 6) ---
+// Sunucu sözleşmesi: backend/src/yarns.ts toYarnSpecRow. İplik de bir üründür
+// (type === 'iplik', stockUnit 'kg', weightGsm/widthCm 0); kumaşa özel alanlar
+// anlamsızdır, bunun yerine bu satır dolu gelir.
+export interface YarnSpec {
+  // catalog anahtarları: features/yarns/catalog.ts
+  family: string;
+  count: number;
+  countUnit: string;
+  ply: number;
+  // Tek katın dtex karşılığı; birimden bağımsız karşılaştırma ve çevrim için.
+  countDtex: number;
+  filaments: number | null;
+  spinning: string;
+  combing: string;
+  filamentType: string;
+  luster: string;
+  twistDirection: '' | 'S' | 'Z' | (string & {});
+  twistTpm: number | null;
+  endUses: string[];
+  colorState: string;
+  color: string;
+  variety: string;
+  origin: string;
+  brand: string;
+  coneWeightKg: number | null;
+  sellerRole: string;
+  // Sunucunun ürettiği okunur metinler: "30/1 Ne", "150/48 denye".
+  countLabel: string;
+  // "30/1 Ne Penye Kompakt Pamuk"
+  summary: string;
+}
 
 // --- Kumaş pasaportu (Faz 1) ---
 // Sunucu sözleşmesi: backend/src/passport.ts toPassportRow.
@@ -75,8 +108,9 @@ export interface Product {
   id: string;
   companyId: string;
   code: string;
-  // Katalog anahtarları: features/products/catalog.ts
-  type: ProductType;
+  // Katalog anahtarları: features/products/catalog.ts. 'iplik' de olabilir
+  // (Faz 2, Adım 6) — o zaman aşağıdaki `yarn` dolu, kumaş alanları boştur.
+  type: AnyProductType;
   subtype: string; // alt çeşit, boş = belirtilmemiş
   usages: string[]; // kullanım amaçları
   stock: number;
@@ -115,6 +149,8 @@ export interface Product {
   pendingFieldCount?: number;
   // Yalnızca sahibine gelir.
   price?: ProductPrice | null;
+  // İplikte dolu, kumaşta null. Eski sunucu bu alanı hiç göndermeyebilir.
+  yarn?: YarnSpec | null;
 }
 
 export type SampleRequestStatus = 'talep_edildi' | 'onaylandi' | 'hazirlandi' | 'teslim_edildi';

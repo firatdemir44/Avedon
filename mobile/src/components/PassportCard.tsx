@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } fro
 import { Ionicons } from '@expo/vector-icons';
 import { StockDot, formatStock } from './StockIndicator';
 import { formatMeasure } from '../features/calculators/parse';
-import { STOCK_UNIT_LABELS, subtypeLabel, typeLabel, type StockUnit } from '../features/products/catalog';
+import { STOCK_UNIT_LABELS, isYarnType, subtypeLabel, typeLabel, type StockUnit } from '../features/products/catalog';
 import {
   certificateLabel,
   effectiveWidthCm,
@@ -33,6 +33,8 @@ export interface PassportCardProduct {
   leadTimeDays: number | null;
   composition: CompositionItem[];
   certificateNames: string[];
+  // İplikte özet satırı ("30/1 Ne Penye Kompakt Pamuk"); kumaşta boş.
+  yarnSummary: string;
 }
 
 // Kartı besleyen kaynak: akış ürünü (FeedProduct, alanların hepsi dolu) ya da
@@ -55,6 +57,9 @@ export interface PassportCardSource {
   certificateNames?: string[] | null;
   // Detay yanıtı sertifikaların tamamını taşır; adlar yoksa buradan alınır.
   certificates?: { name: string }[] | null;
+  // Akış ürünü yarnSummary, katalog/detay ürünü yarn.summary taşır.
+  yarnSummary?: string | null;
+  yarn?: { summary: string } | null;
 }
 
 export function toPassportCardProduct(product: PassportCardSource): PassportCardProduct {
@@ -75,6 +80,7 @@ export function toPassportCardProduct(product: PassportCardSource): PassportCard
     leadTimeDays: product.leadTimeDays ?? null,
     composition: product.composition ?? [],
     certificateNames,
+    yarnSummary: product.yarnSummary ?? product.yarn?.summary ?? '',
   };
 }
 
@@ -97,6 +103,11 @@ function commercialSummary(product: PassportCardProduct) {
 
 export function passportAccessibilityLabel(product: PassportCardProduct) {
   const structure = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
+  // İplikte ölçüler okunmaz (gramaj/en 0).
+  if (isYarnType(product.type)) {
+    const blend = product.composition.length ? `, ${formatComposition(product.composition)}` : '';
+    return `İplik. ${product.code}${product.yarnSummary ? `, ${product.yarnSummary}` : ''}${blend}, ${commercialSummary(product)}`;
+  }
   const composition = product.composition.length ? `, ${formatComposition(product.composition)}` : '';
   const effective =
     product.widthMeaning === 'tup_tek_yuz'
@@ -124,6 +135,9 @@ export function PassportCard({
   const widthHint = widthHintLabel(product.widthType, product.widthMeaning);
   const composition = product.composition.length ? formatComposition(product.composition) : '';
   const certificates = product.certificateNames ?? [];
+  // İplikte (Faz 2, Adım 6) gramaj/en 0'dır: üç sütunlu ölçü satırı hiç
+  // çizilmez, kart kod + karışım + stok satırından ibaret kalır.
+  const isYarn = isYarnType(product.type);
 
   const inner = (
     <View style={styles.inner}>
@@ -132,11 +146,17 @@ export function PassportCard({
           {product.code}
         </Text>
         <Text style={styles.kicker} numberOfLines={1}>
-          KUMAŞ PASAPORTU
+          {isYarn ? 'İPLİK' : 'KUMAŞ PASAPORTU'}
         </Text>
       </View>
 
-      <View style={styles.specRow}>
+      {isYarn && product.yarnSummary ? (
+        <Text style={styles.specValue} numberOfLines={2}>
+          {product.yarnSummary}
+        </Text>
+      ) : null}
+
+      <View style={[styles.specRow, isYarn && styles.hidden]}>
         <View style={styles.specCell}>
           <Text style={styles.specLabel}>Gramaj</Text>
           <Text style={styles.specValue} numberOfLines={1}>
@@ -226,6 +246,7 @@ const styles = StyleSheet.create({
   code: { fontFamily: fonts.monoSemibold, fontSize: 15, lineHeight: 20, color: colors.primary, flexShrink: 1 },
   kicker: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, letterSpacing: 0.5, color: colors.textMuted },
   specRow: { flexDirection: 'row', gap: 6 },
+  hidden: { display: 'none' },
   specCell: { flex: 1, minWidth: 0 },
   specLabel: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
   specValue: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.text },

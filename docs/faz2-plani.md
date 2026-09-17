@@ -1,6 +1,6 @@
 # Faz 2 (Ağ) - sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** onaylandı (kararlar 2026-09-17, aşağıda); Adım 1 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 2 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 3 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 5 tamamlandı (2026-09-18); Adım 7 tamamlandı (2026-09-18, telefonda kontrol bekliyor); kalan: Adım 6 (iplik alanları Fırat'tan), Adım 4 (SMS bağlanınca) · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 2, §5 beceri 11-15 · **Tarih:** 2026-09-17 · **Durum:** onaylandı (kararlar 2026-09-17, aşağıda); Adım 1 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 2 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 3 tamamlandı (2026-09-17, telefonda kontrol bekliyor); Adım 5 tamamlandı (2026-09-18); Adım 7 tamamlandı (2026-09-18, telefonda kontrol bekliyor); Adım 6 tamamlandı (2026-09-18, telefonda kontrol bekliyor); kalan yalnızca Adım 4 (davet; SMS ile birlikte en sonda). Eski not: Adım 6 (iplik alanları Fırat'tan), Adım 4 (SMS bağlanınca) · Hazırlayan: Claude (Fable 5.1), Faz 1 kodu üzerinden.
 
 Faz 1'in bıraktığı zemin: kumaş pasaportu (yapılı ürün verisi), etiketten doldurma, 11 hesap becerisi, firma asistanı (İpek/Mert, firma hafızası, sunucuda sohbet), akışta pasaport kartları (Numune talep et / Takibe al / Teklif iste), WhatsApp'tan asistan. Faz 2'nin amacı **ağ etkisi**: bir firmanın kataloğu ve asistanı, başka firmalar için de iş görmeye başlar.
 
@@ -79,7 +79,7 @@ Faz 1'in bıraktığı zemin: kumaş pasaportu (yapılı ürün verisi), etikett
 2. **Teklif istemek için bağlantı ŞART DEĞİL:** firmalar bağlantısız da teklif isteyebilir (Adım 2'de bugünkü 403 + bağlantı önerisi kalkar; istek doğrudan satıcıya düşer).
 3. **Satıcı asistanı fiyat VERMEZ:** fiyat yalnızca teklifle gider; firma ayarıyla açma seçeneği de olmayacak.
 4. **Makine parkı:** pus, fayn, sistem sayısı, en dahil bütün makine bilgileri tutulur. Kapasite **parkur** (makine parkı) olarak bildirilir; ayrıca firmanın beyan ettiği **aylık tonaj** kaydedilir.
-5. **İplik ürünü alanları:** Fırat ayrıca bildirecek (Adım 6 o zamana kadar bekler).
+5. **İplik ürünü alanları (Fırat, 2026-09-18):** kullanım yeri ÖNEMLİ (triko / yuvarlak örme / dokuma çözgü-atkı / raşel-çözgülü örme; torsiyonlu olabilir); mukavemet/Uster YOK, fazla ayrıntıya girilmez; üretici de tüccar da girer; ana alanlar lif ailesine göre ayrılır (polyester, viskon, pamuk, özel karışım...); fantezi (şönil, buklet, lüreks) ayrı alan; **elastan ve gipe fantezi DEĞİL, ayrı alan**; iplik ararken ana sorgular: denye/numara, filament, iplik çeşidi.
 6. **WhatsApp gerçek numara / SIM ve SMS:** en sona.
 
 ## Eski soru listesi (cevaplandı)

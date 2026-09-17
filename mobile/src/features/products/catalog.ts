@@ -8,6 +8,18 @@
 export const PRODUCT_TYPES = ['orme', 'raschel', 'dokuma', 'dantel', 'triko', 'diger'] as const;
 export type ProductType = (typeof PRODUCT_TYPES)[number];
 
+// İplik de bir üründür (Faz 2, Adım 6) ama KUMAŞ çeşidi değildir: kumaş
+// kataloğunun çeşit listesine (PRODUCT_TYPES) girmez, kendi dizininde
+// (/api/yarns) listelenir. Sunucudaki YARN_PRODUCT_TYPE ile aynı.
+export const YARN_PRODUCT_TYPE = 'iplik';
+export type YarnProductType = typeof YARN_PRODUCT_TYPE;
+// Ürün satırlarında görülebilecek bütün türler.
+export type AnyProductType = ProductType | YarnProductType;
+
+export function isYarnType(type: string): type is YarnProductType {
+  return type === YARN_PRODUCT_TYPE;
+}
+
 export const TYPE_LABELS: Record<ProductType, string> = {
   orme: 'Örme',
   raschel: 'Raschel',
@@ -172,7 +184,9 @@ export const STOCK_UNIT_LABELS: Record<StockUnit, { short: string; long: string 
 };
 
 // Sunucu yeni bir çeşit gönderirse (uygulama güncellenmemişse) anahtarın kendisi görünür.
+// İplik TYPE_LABELS'ta değil (o kumaş çeşitlerinin listesi), etiketi burada.
 export function typeLabel(type: string) {
+  if (isYarnType(type)) return 'İplik';
   return TYPE_LABELS[type as ProductType] ?? type;
 }
 

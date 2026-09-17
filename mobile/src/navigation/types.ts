@@ -4,6 +4,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProductFilters } from '../features/products/filters';
 import type { PassportImport } from '../features/products/passportImport';
 import type { ExtractOutcome } from '../api/client';
+import type { YarnDirectoryPreset } from '../screens/yarns/YarnDirectoryScreen';
 
 // ÖNEMLİ: Hiçbir rota adı hem sekme hem yığın listesinde bulunamaz.
 // React Navigation, navigate çağrısını önce çağıran ekranın KENDİ navigatörüne
@@ -82,6 +83,12 @@ export type RootStackParamList = {
   MachinePark: undefined;
   MachineForm: { machineId?: string } | undefined;
   CapacitySearch: undefined;
+  // İplik dizini (Faz 2, Adım 6). preset: kumaş pasaportundaki "Kim satıyor?"
+  // bağlantısı dizini o numara/birimle ön dolu açar; presetKey her açılışta
+  // değişir ki aynı ön dolgu ikinci kez de uygulansın.
+  YarnDirectory: { preset?: YarnDirectoryPreset; presetKey?: number } | undefined;
+  // yarnId verilirse düzenleme kipinde açılır (iplik detayındaki "Düzenle").
+  YarnForm: { yarnId?: string } | undefined;
   // Hesaplayıcı listesi artık sekmede değil, yığında: alt menüdeki yeri
   // "Asistan"a geçti, listeye asistandaki "Tüm hesaplayıcılar" çipinden gelinir.
   CalculatorsList: undefined;

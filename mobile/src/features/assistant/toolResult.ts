@@ -1,6 +1,7 @@
 import type { AssistantToolCall } from '../../api/client';
 import { categoryLabel } from '../products/catalog';
 import { certificateLabel, formatComposition, widthTypeLabel } from '../products/glossaryLabels';
+import { YARN_END_USES, optionLabel } from '../yarns/catalog';
 
 // Asistanın çağırdığı aracın çıktısını sonuç kartındaki satırlara çevirir.
 //
@@ -300,6 +301,31 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
       return {
         ...base,
         unit: rows.length ? `${rows.length} firma` : undefined,
+        rows,
+        text: rows.length ? undefined : call.summary,
+      };
+    }
+    // Faz 2, Adım 6: iplik dizini araması. Satıra dokununca iplik sayfası
+    // açılır (katalog satırındaki ürün deseninin aynısı).
+    case 'iplik_ara': {
+      for (const item of asArray(out.results)) {
+        const result = asObject(item);
+        const company = asObject(result.company);
+        const stockKg = asNumber(result.stockKg);
+        const endUses = asArray(result.endUses)
+          .map((key) => optionLabel(YARN_END_USES, asText(key)))
+          .filter(Boolean);
+        const note = [asText(company.name), asText(result.code), endUses.join(', ')].filter(Boolean).join(' · ');
+        rows.push({
+          label: asText(result.summary) || asText(result.content) || 'İplik',
+          value: stockKg != null ? `${formatNumber(stockKg, 0)} kg` : '',
+          note: note || undefined,
+          productId: asText(result.id) || undefined,
+        });
+      }
+      return {
+        ...base,
+        unit: rows.length ? `${rows.length} iplik` : undefined,
         rows,
         text: rows.length ? undefined : call.summary,
       };

@@ -100,6 +100,8 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
   { label: 'Ürün izle', starter: 'PA lycra süprem 200 gr üstü çıkınca haber ver' },
   // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
   { label: 'Fason kapasite', starter: '28 fayn 30 pus süprem örecek fason arıyorum' },
+  // Faz 2, Adım 6: iplik dizini araması.
+  { label: 'İplik ara', starter: '150/48 DTY polyester ipliği kim satıyor?' },
 ];
 
 // Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
@@ -482,6 +484,13 @@ export function AssistantScreen({ navigation }: Props) {
                     formula={view.formula}
                     // Faz 2, Adım 5: kapasite sonucundaki firma satırı firma
                     // sayfasını Makine parkı sekmesiyle açar.
+                    // Faz 2, Adım 6: iplik araması satırı iplik sayfasını açar
+                    // (katalog satırındaki desenin aynısı).
+                    onProductPress={
+                      call.name === 'iplik_ara' || call.name === 'katalog_ara'
+                        ? (productId) => navigation.navigate('ProductDetail', { productId })
+                        : undefined
+                    }
                     onCompanyPress={
                       call.name === 'kapasite_ara'
                         ? (companyId) => navigation.navigate('CompanyProfile', { companyId, initialTab: 'machines' })

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { getConnectionState, isConnectedAccepted } from './connections';
+import { YARN_SPEC_SELECT, toYarnSpecRow } from './yarns';
 import { VIDEO_SELECT, toVideoRow, type VideoRecord } from './videoFields';
 
 export type PostVisibility = 'public' | 'connections';
@@ -35,6 +36,8 @@ export const POST_PRODUCT_SELECT = {
   leadTimeDays: true,
   compositions: { select: { fiber: true, percent: true }, orderBy: { position: 'asc' } },
   certificates: { select: { name: true }, orderBy: { position: 'asc' } },
+  // İplik ürünlerinde akış kartı özet satırı ("30/1 Ne Penye Kompakt Pamuk").
+  yarnSpec: { select: YARN_SPEC_SELECT },
   // Gönderide kendi fotoğrafı yoksa akış kartı ürünün kapak fotoğrafını
   // gösteriyor; fotoğrafın kendisi yine ayrı uçtan çekiliyor.
   _count: { select: { images: true } },
@@ -103,6 +106,7 @@ type PostWithIncludes = {
         leadTimeDays: number | null;
         compositions: { fiber: string; percent: number }[];
         certificates: { name: string }[];
+        yarnSpec?: Parameters<typeof toYarnSpecRow>[0];
         _count: { images: number };
       }
     | null;
@@ -125,8 +129,9 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     editedAt: post.editedAt,
     author: post.author,
     product: post.product
-      ? (({ _count, compositions, certificates, ...product }) => ({
+      ? (({ _count, compositions, certificates, yarnSpec, ...product }) => ({
           ...product,
+          yarnSummary: toYarnSpecRow(yarnSpec)?.summary ?? null,
           hasImage: _count.images > 0,
           composition: compositions,
           certificateNames: certificates.map((c) => c.name),
