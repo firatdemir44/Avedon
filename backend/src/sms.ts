@@ -7,7 +7,9 @@ import crypto from 'crypto';
 //   hash = HMAC-SHA256(veri: API anahtarı, anahtar: gizli anahtar), hex
 // Ortam değişkenleri çağrı anında okunur (whatsapp.ts ile aynı desen):
 //   SMS_PROVIDER=iletimerkezi | mock   (boş = kapalı: kod yalnızca sunucu kaydına düşer)
-//   ILETIMERKEZI_KEY, ILETIMERKEZI_SECRET, ILETIMERKEZI_SENDER (onaylı başlık, en çok 11 karakter)
+//   ILETIMERKEZI_KEY, ILETIMERKEZI_SENDER (onaylı başlık, en çok 11 karakter) ve şunlardan BİRİ:
+//   ILETIMERKEZI_HASH   (panel "API Hash"i hazır veriyorsa: Ayarlar > Güvenlik > API Erişimi; güncel doküman 2026-09-22)
+//   ILETIMERKEZI_SECRET (panel gizli anahtar veriyorsa; hash burada HMAC-SHA256 ile hesaplanır)
 const BASE = 'https://api.iletimerkezi.com/v1';
 
 const STATUS_HINTS: Record<string, string> = {
@@ -36,8 +38,9 @@ function config() {
   const provider = (process.env.SMS_PROVIDER ?? '').trim().toLowerCase();
   const key = (process.env.ILETIMERKEZI_KEY ?? '').trim();
   const secret = (process.env.ILETIMERKEZI_SECRET ?? '').trim();
+  const hash = (process.env.ILETIMERKEZI_HASH ?? '').trim();
   const sender = (process.env.ILETIMERKEZI_SENDER ?? '').trim();
-  return { provider, key, secret, sender, ready: provider === 'iletimerkezi' && !!key && !!secret && !!sender };
+  return { provider, key, secret, hash, sender, ready: provider === 'iletimerkezi' && !!key && (!!secret || !!hash) && !!sender };
 }
 
 export function isSmsConfigured() {
@@ -46,7 +49,8 @@ export function isSmsConfigured() {
 }
 
 function auth(c: ReturnType<typeof config>) {
-  return { key: c.key, hash: crypto.createHmac('sha256', c.secret).update(c.key).digest('hex') };
+  // Panelin verdiği hazır hash varsa o kullanılır; yoksa gizli anahtardan hesaplanır.
+  return { key: c.key, hash: c.hash || crypto.createHmac('sha256', c.secret).update(c.key).digest('hex') };
 }
 
 async function post(path: string, body: unknown): Promise<{ code: string; message: string; json: any }> {
@@ -128,6 +132,7 @@ export async function smsStatus() {
     configured: isSmsConfigured(),
     keySet: !!c.key,
     secretSet: !!c.secret,
+    hashSet: !!c.hash,
     senderSet: !!c.sender,
     senderLength: c.sender.length,
     senderTooLong: c.sender.length > 11,

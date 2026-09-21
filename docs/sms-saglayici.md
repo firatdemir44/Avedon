@@ -46,3 +46,9 @@ Amaç: telefon doğrulama kodunun (OTP) gerçek SMS ile gitmesi. Kodda hazır ol
 - İleti Merkezi hesabı ve başvuru **Melide İnşaat San. ve Tic. Ltd. Şti.** üzerinden açıldı; başlık talebi **AVEDON** adıyla yapıldı, **onay bekleniyor**.
 - Risk: başlık unvandan farklı olduğu için sağlayıcı "şirket-marka ilişkisini ispatlayan ek belge" (marka tescili) isteyebilir. İsterse iki yol: (a) "MELIDE" başlığıyla ikinci talep (hemen onaylanır; SMS metni zaten "Avedon dogrulama kodunuz" diye başlıyor), (b) AVEDON için TÜRKPATENT marka başvurusu.
 - Onay gelince Render'a girilecekler: `SMS_PROVIDER=iletimerkezi`, `ILETIMERKEZI_KEY`, `ILETIMERKEZI_SECRET`, `ILETIMERKEZI_SENDER=<onaylanan başlık, birebir>`. Önce panelde Ayarlar > Güvenlik > Erişim İzinleri > "API kullanımına izin ver". Doğrulama: `/api/health` → `sms.account.ok: true`.
+
+## Güncelleme (2026-09-22)
+
+- Abonelik ONAYLANDI (Fırat'a SMS geldi); sıradaki: başlık talebi `panel.iletimerkezi.com/settings/sms/senders`.
+- Güncel API dokümanı (iletimerkezi.com/docs/api/authentication): panel **Ayarlar > Güvenlik > API Erişimi** sayfasında **"API Anahtarı"** ve hazır **"API Hash"** verir ("Hash kendiniz üretmeyin"). Eski doküman/örnekler gizli anahtardan HMAC hesaplıyordu. Kod ikisini de destekler: `ILETIMERKEZI_HASH` (hazır) ya da `ILETIMERKEZI_SECRET` (hesaplanır). Health: `sms.hashSet`.
+- Fırat panelde "API Erişimi"ni bulamadı (2026-09-22): menü adı/yeri panelde farklı olabilir; ekran fotoğrafıyla netleştirilecek. Yardım makalesi yolu muğlak veriyor ("ayarlar veya güvenlik alanındaki API bölümü").
