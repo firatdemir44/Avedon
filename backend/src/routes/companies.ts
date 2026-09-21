@@ -88,7 +88,7 @@ companiesRouter.get(
         // Ürün fotoğrafları burada da dönmüyor: bir firmanın tüm kataloğu tek
         // yanıtta geldiği için en çok şişen yer burasıydı (bkz. src/products.ts).
         products: { select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' } },
-        users: { select: { id: true, firstName: true, lastName: true, position: true } },
+        users: { select: { id: true, firstName: true, lastName: true, position: true, avatarUpdatedAt: true } },
         // Fotoğrafların kendisi değil yalnızca sayıları dönüyor.
         photos: { select: { kind: true } },
       },

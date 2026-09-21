@@ -104,6 +104,10 @@ model User {
   // Asistan kişiliği: "" (seçilmedi) | ipek | mert (assistant/persona.ts).
   assistantPersona     String          @default("")
   isAdmin              Boolean         @default(false)
+  // Kişisel profil fotoğrafı (Fırat 2026-09-21). Fotoğrafın kendisi UserAvatar'da; burada yalnızca
+  // "var mı / ne zaman değişti" bilgisi (istemci önbellek anahtarı; firma logosuyla aynı desen).
+  avatarUpdatedAt      DateTime?
+  avatar               UserAvatar?
   companyId            String?
   company              Company?        @relation(fields: [companyId], references: [id])
   sampleRequests       SampleRequest[]
@@ -894,4 +898,13 @@ model DealReview {
 
   @@unique([dealId, authorRole])
   @@index([targetCompanyId])
+}
+
+// Kişisel profil fotoğrafı: ayrı tabloda, çünkü kullanıcı satırı pek çok yanıtta (oturum, gönderi
+// yazarı, sohbet) tümüyle dönüyor; base64 fotoğraf o yanıtlara girmemeli (CompanyLogo ile aynı gerekçe).
+model UserAvatar {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  imageUrl  String
+  updatedAt DateTime @updatedAt
 }

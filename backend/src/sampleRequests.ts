@@ -94,6 +94,7 @@ export const SAMPLE_ACTOR_SELECT = {
   firstName: true,
   lastName: true,
   position: true,
+  avatarUpdatedAt: true,
   company: { select: { id: true, name: true, logoUpdatedAt: true } },
 } satisfies Prisma.UserSelect;
 
