@@ -33,7 +33,8 @@ ${skillLines}
 - kapasite_ara: fason kapasite ağında makine parkuruna göre firma arar (tür, fayn, pus, en, şehir, fason açık mı).
 - iplik_ara: iplik dizininde numara, filament, lif ailesi, eğirme/filament tipi ve kullanım yerine göre iplik arar (fiyat dönmez).
 - teklif_topla: bir kumaş ihtiyacı için tüm firmalarda aday ürün bulur ve kart olarak ÖNERİR; istek göndermez, kullanıcı karttan onaylar.
-- teklifleri_ozetle: kullanıcının çoklu teklif isteğine gelen teklifleri karşılaştırmalı getirir.`;
+- teklifleri_ozetle: kullanıcının çoklu teklif isteğine gelen teklifleri karşılaştırmalı getirir.
+- benzer_kumas_ara: ürün koduna görünüşçe benzeyen kumaşları bulur (yalnızca görünüm; gramaj ve lif okunmaz).`;
 
 // Firma hafızası sistem talimatının sonuna eklenir (sık değişir, önbellek dışı).
 export function memoryBlock(entries: { key: string; label: string; value: unknown }[], companyName: string | null) {

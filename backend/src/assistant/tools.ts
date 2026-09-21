@@ -8,6 +8,8 @@ import { PRODUCT_TYPES } from '../catalog';
 import { YARN_END_USES, YARN_FAMILIES, type YarnQuery } from '../yarns';
 import { searchYarns } from '../routes/yarns';
 import { MAX_RFQ_COMPANIES, compareView } from '../routes/rfqs';
+import { findSimilarProducts, usable } from '../looks';
+import { describeLook, parseLook } from '../skills/fabricLook/schema';
 import { prisma } from '../db';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
@@ -336,5 +338,30 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle], calls, suggestions, watchSuggestions };
+  const benzerKumasAra = betaZodTool({
+    name: 'benzer_kumas_ara',
+    description:
+      'Verilen ürün KODUNA görünüşçe benzeyen kumaşları platformda bulur (desen, renk, yüzey, doku, şeffaflık; ayrıca aynı çeşit ve yakın gramaj öne geçer). ' +
+      'Kullan: "MLD-R0034 koduna benzer kumaş kimde var", "şu ürünümün muadili var mı". Yalnızca GÖRÜNÜM karşılaştırılır; gramaj ve lif fotoğraftan okunmaz, bunu kullanıcıya söyle. ' +
+      'Kullanıcı elindeki bir fotoğrafla aramak istiyorsa Ürünler ekranındaki kamera düğmesine ("Fotoğrafla Kumaş Ara") yönlendir. Fiyat dönmez.',
+    inputSchema: z.object({ code: z.string().min(1).max(40).describe('Ürün kodu (kendi kataloğundan ya da platformdaki herhangi bir üründen)') }),
+    run: async (args) => {
+      const code = args.code.trim();
+      const base =
+        (ctx.companyId ? await prisma.product.findFirst({ where: { companyId: ctx.companyId, code }, select: { id: true, code: true, type: true, weightGsm: true, look: { select: { lookJson: true } } } }) : null) ??
+        (await prisma.product.findFirst({ where: { code }, select: { id: true, code: true, type: true, weightGsm: true, look: { select: { lookJson: true } } } }));
+      if (!base) return `"${code}" kodlu ürün bulunamadı. Kodu kullanıcıdan doğrula.`;
+      const look = base.look ? parseLook(base.look.lookJson) : null;
+      if (!look || !usable(look)) return `${base.code} için görünüm kartı yok (ürünün fotoğrafı yok ya da fotoğrafta kumaş seçilemedi). Kullanıcıya ürüne net bir kumaş fotoğrafı eklemesini öner.`;
+      const found = await findSimilarProducts(look, { excludeProductId: base.id, viewerCompanyId: null, base: { type: base.type, weightGsm: base.weightGsm }, limit: 8 });
+      const results = found.map((r) => ({ id: r.product.id, code: r.product.code, company: r.product.company, similarity: r.similarity, reasons: r.reasons, summary: r.look.summary, weightGsm: r.product.weightGsm, widthCm: r.product.widthCm, content: r.product.content }));
+      const summary = results.length
+        ? `${base.code} ürününe görünüşçe benzeyen ${results.length} ürün: ${results.map((r) => `${r.code} (${r.company.name}, %${r.similarity})`).join('; ')}`
+        : `${base.code} ürününe görünüşçe benzeyen ürün bulunamadı.`;
+      calls.push({ name: 'benzer_kumas_ara', title: 'Benzer kumaş araması', input: args, output: { base: { id: base.id, code: base.code, look: describeLook(look) }, results }, summary });
+      return JSON.stringify({ summary, results, not: 'Yalnızca görünüm karşılaştırıldı; gramaj ve içerik için ürün sayfasına bakılmalı.' });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra], calls, suggestions, watchSuggestions };
 }
