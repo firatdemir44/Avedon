@@ -25,7 +25,7 @@ import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { DealStatusBadge } from '../../components/DealStatusBadge';
 import { DATE_PATTERN, formatQuantity, formatQuoteDate } from '../../features/quotes/format';
-import { dealTimeline, reviewCriteria, type DealCriterion } from '../../features/deals/timeline';
+import { dealTimeline, reviewCriteria, type DealCriterion, type DealStep } from '../../features/deals/timeline';
 import { formatDateTime } from '../../features/time';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
@@ -50,6 +50,8 @@ export function DealDetailScreen({ route, navigation }: Props) {
   const [deliveredAt, setDeliveredAt] = useState('');
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [disputeNote, setDisputeNote] = useState('');
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   if (status === 'loading') {
     return (
@@ -137,15 +139,19 @@ export function DealDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  // İtiraz formundaki desen: onay penceresi yerine satır içi küçük form.
+  // Neden isteğe bağlı; karşı taraf iptalin sebebini görebilsin diye sorulur.
   const cancel = async () => {
-    const ok = await confirmAction({
-      title: 'Siparişi iptal olarak işaretle',
-      message: 'Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.',
-      confirmLabel: 'İptal olarak işaretle',
-      destructive: true,
-    });
-    if (!ok) return;
-    await runAction('cancel', () => cancelDeal(deal.id), 'Sipariş iptal olarak işaretlenemedi');
+    const reason = cancelReason.trim();
+    const fresh = await runAction(
+      'cancel',
+      () => cancelDeal(deal.id, reason || undefined),
+      'Sipariş iptal olarak işaretlenemedi'
+    );
+    if (fresh) {
+      setCancelReason('');
+      setCancelOpen(false);
+    }
   };
 
   const sendReview = (input: DealReviewInput) =>
@@ -217,17 +223,8 @@ export function DealDetailScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        {deal.status === 'itiraz' && deal.disputeNote ? (
-          <View style={styles.padded}>
-            <View style={styles.dangerBox} accessibilityRole="alert">
-              <Ionicons name="alert-circle-outline" size={16} color={colors.danger} />
-              <View style={styles.boxTexts}>
-                <Text style={styles.dangerTitle}>Alıcı teslim beyanına itiraz etti</Text>
-                <Text style={styles.dangerText}>{deal.disputeNote}</Text>
-              </View>
-            </View>
-          </View>
-        ) : null}
+        {/* İtiraz notu artık zaman çizelgesindeki teslim adımının altında
+            (ayrı kutu tekrar oluyordu). */}
 
         {deal.status === 'iptal' ? (
           <View style={styles.padded}>
@@ -318,12 +315,44 @@ export function DealDetailScreen({ route, navigation }: Props) {
         {/* --- İki taraf: teslim tamamlanmadan iptal işareti --- */}
         {deal.status !== 'teslim_edildi' && deal.status !== 'iptal' ? (
           <View style={styles.padded}>
-            <PrimaryButton
-              label={busy === 'cancel' ? 'İşaretleniyor...' : 'Siparişi iptal olarak işaretle'}
-              variant="outline"
-              disabled={!!busy}
-              onPress={cancel}
-            />
+            {cancelOpen ? (
+              <View style={styles.inlineForm}>
+                <Text style={styles.blockNote}>
+                  Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.
+                </Text>
+                <TextField
+                  label="Neden (isteğe bağlı)"
+                  value={cancelReason}
+                  onChangeText={(text) => setCancelReason(text.slice(0, 300))}
+                  placeholder="Örn. Karşılıklı anlaşarak vazgeçtik"
+                  multiline
+                />
+                <View style={styles.rowButtons}>
+                  <PrimaryButton
+                    label="Vazgeç"
+                    variant="outline"
+                    disabled={!!busy}
+                    onPress={() => {
+                      setCancelOpen(false);
+                      setCancelReason('');
+                    }}
+                  />
+                  <PrimaryButton
+                    label={busy === 'cancel' ? 'İşaretleniyor...' : 'İptal olarak işaretle'}
+                    disabled={!!busy}
+                    onPress={cancel}
+                    style={styles.rowMain}
+                  />
+                </View>
+              </View>
+            ) : (
+              <PrimaryButton
+                label="Siparişi iptal olarak işaretle"
+                variant="outline"
+                disabled={!!busy}
+                onPress={() => setCancelOpen(true)}
+              />
+            )}
           </View>
         ) : null}
 
@@ -347,7 +376,7 @@ function TimelineStep({
   isLast,
   nextDone,
 }: {
-  step: { label: string; description?: string; occurredAt: string | null; done: boolean };
+  step: DealStep;
   isLast: boolean;
   nextDone: boolean;
 }) {
@@ -367,6 +396,14 @@ function TimelineStep({
           <Text style={styles.stepMuted}>Bekleniyor</Text>
         ) : null}
         {step.description ? <Text style={styles.stepMuted}>{step.description}</Text> : null}
+        {/* İtiraz: beyan silinmiyor, altına uyarı satırı olarak ekleniyor. */}
+        {step.warning ? (
+          <View style={styles.stepWarnRow} accessibilityRole="alert">
+            <Ionicons name="alert-circle-outline" size={15} color={colors.warning} />
+            <Text style={styles.stepWarnText}>{step.warning}</Text>
+          </View>
+        ) : null}
+        {step.hint ? <Text style={styles.stepMuted}>{step.hint}</Text> : null}
       </View>
     </View>
   );
@@ -557,6 +594,8 @@ const styles = StyleSheet.create({
   stepLabelPending: { color: colors.textMuted },
   stepTime: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   stepMuted: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
+  stepWarnRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, paddingTop: 2 },
+  stepWarnText: { ...typography.label, fontFamily: fonts.regular, color: colors.warning, flexShrink: 1 },
 
   actionBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md, gap: spacing.sm },
   blockTitle: { ...typography.subtitle, color: colors.text },
@@ -586,17 +625,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   okText: { ...typography.label, fontFamily: fonts.semibold, color: colors.success, flexShrink: 1 },
-  dangerBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  dangerTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
-  dangerText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
   grayBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',

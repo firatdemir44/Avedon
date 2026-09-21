@@ -7,12 +7,17 @@ export interface DealStep {
   key: 'created' | 'delivered' | 'confirmed';
   label: string;
   description?: string;
+  /** Uyarı renginde gösterilen satır (itiraz notu). */
+  warning?: string;
+  /** Uyarının altındaki nötr ipucu (yalnızca ilgili tarafa). */
+  hint?: string;
   occurredAt: string | null;
   done: boolean;
 }
 
 export function dealTimeline(deal: DealView): DealStep[] {
   const cancelled = deal.status === 'iptal';
+  const disputed = deal.status === 'itiraz';
   return [
     {
       key: 'created',
@@ -24,10 +29,13 @@ export function dealTimeline(deal: DealView): DealStep[] {
     {
       key: 'delivered',
       label: 'Satıcı teslim ettiğini bildirdi',
-      // İtirazdan sonra beyan geçersiz sayılır: adım yine bekliyor görünür.
-      description: deal.status === 'itiraz' ? 'Alıcı itiraz etti, beyan bekleniyor' : undefined,
-      occurredAt: deal.status === 'itiraz' ? null : deal.sellerDeliveredAt,
-      done: deal.status !== 'itiraz' && !!deal.sellerDeliveredAt && !cancelled,
+      // İtirazda beyan SİLİNMEZ: adım tarihiyle durur, itiraz altına uyarı
+      // satırı olarak eklenir (adımın "yeniden bekliyor" görünmesi, satıcının
+      // hiç beyanda bulunmadığı izlenimini veriyordu).
+      warning: disputed ? `Alıcı itiraz etti${deal.disputeNote ? `: ${deal.disputeNote}` : ''}` : undefined,
+      hint: disputed && deal.role === 'seller' ? 'Yeniden teslim bildirebilirsiniz.' : undefined,
+      occurredAt: deal.sellerDeliveredAt,
+      done: !!deal.sellerDeliveredAt && !cancelled,
     },
     {
       key: 'confirmed',

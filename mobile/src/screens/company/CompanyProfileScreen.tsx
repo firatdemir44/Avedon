@@ -26,6 +26,7 @@ import {
   fetchCompanyMachines,
   fetchCompanyQuestions,
   fetchCompanyReferences,
+  fetchCompanyTrust,
   fetchDeals,
   fetchQuoteRequests,
   likePost,
@@ -34,6 +35,7 @@ import {
   type CompanyCapacity,
   type CompanyReference,
   type CompanyReferences,
+  type CompanyTrust,
   type FeedPost,
   type Machine,
   type ReferenceRelation,
@@ -56,6 +58,7 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { ListRow } from '../../components/ListRow';
 import { ProductRow } from '../../components/ProductRow';
 import { SectionHeader } from '../../components/SectionHeader';
+import { TrustSummaryCard } from '../../components/TrustSummaryCard';
 import { ChipSelect } from '../../components/ChipSelect';
 import { TextField } from '../../components/TextField';
 import { CompanyPhotoGallery } from '../../components/CompanyPhotoGallery';
@@ -205,6 +208,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     useCallback(() => {
       if (tab === 'about') loadReferences();
     }, [tab, loadReferences])
+  );
+
+  // Güven özeti (Faz 3, Adım 5): referanslar/makine parkı deseni — ayrı ve
+  // SESSİZ istek, yalnızca Hakkında sekmesi açıkken. Hata olursa kart gizlenir
+  // (sayfanın geri kalanı yarım kalmasın).
+  const [trust, setTrust] = useState<CompanyTrust | null>(null);
+
+  const loadTrust = useCallback(() => {
+    if (!viewedCompanyId) return;
+    fetchCompanyTrust(viewedCompanyId)
+      .then(({ trust: fetched }) => setTrust(fetched))
+      .catch(() => setTrust(null));
+  }, [viewedCompanyId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (tab === 'about') loadTrust();
+    }, [tab, loadTrust])
   );
 
   // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
@@ -638,8 +659,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </View>
   );
 
+  // Güven özeti kartı Referanslar bölümünün HEMEN ÜSTÜNDE duruyor; ikisi
+  // birlikte taşınsın diye aynı parçanın içindeler.
   const referencesContent = (
     <View>
+      {trust ? <TrustSummaryCard trust={trust} /> : null}
+
       <SectionHeader title="Referanslar" count={refs?.confirmedCount} />
 
       {refsLoading && !refs ? (

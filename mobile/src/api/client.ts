@@ -2072,6 +2072,43 @@ export function fetchCompanyReferences(companyId: string) {
   return request<CompanyReferences>(`/references/company/${companyId}`);
 }
 
+// --- Güven özeti (Faz 3, Adım 5) -------------------------------------------
+// TEK PUAN YOK: yalnızca bileşenler döner. Ödeme ile ilgili hiçbir ölçüt yok.
+// Verisi az olan firma cezalandırılmaz: eşik altındaki oran/ortalama `null`
+// gelir ve ekranda uyarı rengiyle değil nötr "yeterli veri yok" metniyle geçer.
+export interface CompanyTrustRatings {
+  quality?: number | null;
+  timing?: number | null;
+  communication?: number | null;
+  seriousness?: number | null;
+}
+
+export interface CompanyTrust {
+  company: { id: string; name: string };
+  verification: { status: VerificationStatus; level: '' | 'belge' | 'ziyaret'; verifiedAt: string | null };
+  memberSince: string;
+  confirmedReferenceCount: number;
+  asSeller: {
+    completedDeals: number;
+    onTimeRate: number | null;
+    reviewCount: number;
+    ratings: CompanyTrustRatings | null;
+  };
+  asBuyer: {
+    completedDeals: number;
+    reviewCount: number;
+    ratings: CompanyTrustRatings | null;
+  };
+  quoteResponse: { requestCount: number; responseRate: number; medianHours: number | null } | null;
+  thresholds: { deals: number; reviews: number; requests: number };
+  method: string;
+}
+
+// Oturumsuz çalışır (firma sayfasındaki "Güven özeti" kartı). 404 company_not_found.
+export function fetchCompanyTrust(companyId: string) {
+  return request<{ trust: CompanyTrust }>(`/trust/company/${companyId}`);
+}
+
 // 400 own_company · 403 no_company · 409 already_exists (gövdede `status`) ·
 // 409 too_many_references.
 export function createReference(input: { toCompanyId: string; relation: ReferenceRelation; note?: string }) {
