@@ -12,6 +12,10 @@ interface SessionContextValue {
   isRestoring: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  // Oturumdaki kullanıcının bir bölümünü günceller (ör. profil fotoğrafı
+  // yüklenince avatarUpdatedAt): ekranlar /api/me'yi yeniden çekmeden anında
+  // tazelensin diye. Kalıcı saklama da güncellenir.
+  updateUser: (patch: Partial<User>) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | undefined>(undefined);
@@ -69,6 +73,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setStoredToken(TOKEN_STORAGE_KEY, token).catch(() => {});
   };
 
+  const updateUser = (patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  };
+
   const logout = () => {
     setAuthToken(null);
     setUser(null);
@@ -76,7 +89,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     deleteStoredToken(TOKEN_STORAGE_KEY).catch(() => {});
   };
 
-  const value = useMemo<SessionContextValue>(() => ({ user, isRestoring, login, logout }), [user, isRestoring]);
+  const value = useMemo<SessionContextValue>(
+    () => ({ user, isRestoring, login, logout, updateUser }),
+    [user, isRestoring]
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

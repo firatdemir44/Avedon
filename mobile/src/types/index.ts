@@ -69,6 +69,10 @@ export interface User {
   phoneVerified: boolean;
   isAdmin: boolean;
   companyId: string | null;
+  // Kişisel profil fotoğrafının son yüklenme anı; null/yok = fotoğraf yok.
+  // Fotoğrafın kendisi kullanıcı yanıtlarında gelmez, ayrı uçtan çekilir ve bu
+  // değer önbellek anahtarıdır (firma logosundaki logoUpdatedAt ile aynı desen).
+  avatarUpdatedAt?: string | null;
 }
 
 export interface Company {

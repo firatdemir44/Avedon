@@ -144,7 +144,9 @@ export type RootStackParamList = {
   Profile: { userId: string };
   Connections: undefined;
   ConnectionRequests: undefined;
-  Chat: { conversationId: string; title: string };
+  // userId/avatarUpdatedAt: başlıktaki kişi avatarı için (eski bağlantılarda
+  // olmayabilir; yoksa yalnızca ad yazılır).
+  Chat: { conversationId: string; title: string; userId?: string; avatarUpdatedAt?: string | null };
   NewConversation: undefined;
   // postId verilirse ekran düzenleme modunda açılır. productId: ürün sayfasındaki
   // "Gönderide Paylaş"tan gelindiğinde o ürün seçili açılır.

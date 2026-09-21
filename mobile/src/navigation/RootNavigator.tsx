@@ -61,7 +61,7 @@ import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
-import { ChatScreen } from '../screens/messages/ChatScreen';
+import { ChatScreen, ChatHeaderTitle } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
 import { SelectProductScreen } from '../screens/feed/SelectProductScreen';
@@ -363,7 +363,15 @@ export function RootNavigator() {
             <Stack.Screen
               name="Chat"
               component={ChatScreen}
-              options={({ route }) => ({ headerShown: true, title: route.params.title })}
+              options={({ route }) => ({
+                headerShown: true,
+                title: route.params.title,
+                // Başlıkta karşı tarafın fotoğrafı + adı (LinkedIn/WhatsApp
+                // deseni); userId gelmediyse varsayılan başlık kalır.
+                headerTitle: route.params.userId
+                  ? () => <ChatHeaderTitle title={route.params.title} userId={route.params.userId!} avatarUpdatedAt={route.params.avatarUpdatedAt} />
+                  : undefined,
+              })}
             />
             <Stack.Screen
               name="NewConversation"

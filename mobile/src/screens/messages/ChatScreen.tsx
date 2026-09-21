@@ -27,6 +27,7 @@ import {
 import { formatClockTime, formatDayLabel, isSameCalendarDay } from '../../features/time';
 import { haptics } from '../../features/haptics';
 import { SkeletonList } from '../../components/Skeleton';
+import { UserAvatar } from '../../components/UserAvatar';
 import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
@@ -445,4 +446,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendDisabled: { opacity: 0.4 },
+});
+
+// Sohbet başlığı: karşı tarafın fotoğrafı + adı. Stack başlığı lacivert
+// olduğu için avatar "onPrimary" görünümde ve yazı beyaz.
+export function ChatHeaderTitle({
+  title,
+  userId,
+  avatarUpdatedAt,
+}: {
+  title: string;
+  userId: string;
+  avatarUpdatedAt?: string | null;
+}) {
+  const [firstName, ...rest] = title.split(' ');
+  return (
+    <View style={headerStyles.row}>
+      <UserAvatar
+        userId={userId}
+        firstName={firstName}
+        lastName={rest.join(' ')}
+        avatarUpdatedAt={avatarUpdatedAt}
+        size={30}
+        variant="onPrimary"
+      />
+      <Text style={headerStyles.title} numberOfLines={1}>
+        {title}
+      </Text>
+    </View>
+  );
+}
+
+const headerStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  title: { ...typography.heading, color: colors.primaryText, flexShrink: 1 },
 });

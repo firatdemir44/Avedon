@@ -25,6 +25,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { SkeletonList } from '../../components/Skeleton';
+import { UserAvatar } from '../../components/UserAvatar';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
@@ -140,6 +141,14 @@ export function PostCommentsScreen({ route, navigation }: Props) {
                 ]}
               >
                 <View style={styles.rowHeader}>
+                  {/* Yorum kişiseldir: yazarın fotoğrafı (yoksa baş harfleri). */}
+                  <UserAvatar
+                    userId={item.author.id}
+                    firstName={item.author.firstName}
+                    lastName={item.author.lastName}
+                    avatarUpdatedAt={item.author.avatarUpdatedAt}
+                    size={28}
+                  />
                   <Text style={styles.authorLine} numberOfLines={1}>
                     <Text style={styles.authorName}>{authorName}</Text>
                     {item.author.company ? <Text style={styles.authorCompany}> · {item.author.company.name}</Text> : null}
@@ -217,7 +226,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.sm,
   },
-  body: { ...typography.body, color: colors.text },
+  // Yazı, başlıktaki 28 px avatarın sağ kenarına hizalansın.
+  body: { ...typography.body, color: colors.text, marginLeft: 28 + spacing.sm },
   composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',

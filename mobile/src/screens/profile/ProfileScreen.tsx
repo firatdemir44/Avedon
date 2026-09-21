@@ -80,6 +80,8 @@ export function ProfileScreen({ navigation, route }: Props) {
       navigation.navigate('Chat', {
         conversationId: conversation.id,
         title: `${profile.firstName} ${profile.lastName}`,
+        userId: profile.id,
+        avatarUpdatedAt: profile.avatarUpdatedAt,
       });
     }, 'Sohbet açılamadı');
 

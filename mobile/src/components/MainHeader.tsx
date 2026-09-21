@@ -7,7 +7,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { useSession } from '../context/SessionContext';
 import { NotificationBell } from './NotificationBell';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import { UserAvatar } from './UserAvatar';
+import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
 
 // Dört ana sekmenin (Akış, Ürünler, Asistan, Mesajlar) ortak üst başlığı
 // (Fırat 2026-09-21, referans LinkedIn üst çubuğu): solda yuvarlak profil
@@ -22,15 +23,11 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useSession();
 
-  const initials = user
-    ? `${user.firstName?.charAt(0) ?? ''}${user.lastName?.charAt(0) ?? ''}`.toLocaleUpperCase('tr-TR')
-    : '';
-
   return (
     <View style={[styles.bar, { paddingTop: insets.top }]}>
       <View style={styles.row}>
-        {/* Kişi profili: firma logosu DEĞİL, kullanıcının baş harfleri
-            (kullanıcı fotoğrafı alanı henüz yok). */}
+        {/* Kişi profili: firma logosu DEĞİL, kullanıcının kendi fotoğrafı
+            (yoksa baş harfleri) — LinkedIn üst çubuğundaki gibi. */}
         <Pressable
           onPress={() => navigation.navigate('MyProfile')}
           accessibilityRole="button"
@@ -38,13 +35,14 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
           hitSlop={6}
           style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
         >
-          <View style={styles.avatar}>
-            {initials ? (
-              <Text style={styles.avatarText}>{initials}</Text>
-            ) : (
-              <Ionicons name="person" size={20} color={colors.primary} />
-            )}
-          </View>
+          <UserAvatar
+            userId={user?.id}
+            firstName={user?.firstName}
+            lastName={user?.lastName}
+            avatarUpdatedAt={user?.avatarUpdatedAt}
+            size={AVATAR}
+            variant="onPrimary"
+          />
         </Pressable>
 
         <Pressable
@@ -88,16 +86,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   pressed: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  avatar: {
-    width: AVATAR,
-    height: AVATAR,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarText: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 20, color: colors.primary },
   // Lacivert bant üzerinde okunaklı olsun diye beyaza yakın zemin; köşeler
   // tam yuvarlak (bu kutu "hap biçimli düğme yok" kuralının istisnası,
   // referans görseldeki arama kutusu).

@@ -33,6 +33,7 @@ import {
   respondToReference,
   unlikePost,
   type CompanyCapacity,
+  type CompanyEmployee,
   type CompanyReference,
   type CompanyReferences,
   type CompanyTrust,
@@ -56,6 +57,7 @@ import { useSession } from '../../context/SessionContext';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { ListRow } from '../../components/ListRow';
+import { UserAvatar } from '../../components/UserAvatar';
 import { ProductRow } from '../../components/ProductRow';
 import { SectionHeader } from '../../components/SectionHeader';
 import { TrustSummaryCard } from '../../components/TrustSummaryCard';
@@ -1253,11 +1255,20 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               </View>
             );
           }
-          const person = item as { id: string; firstName: string; lastName: string; position: string };
+          const person = item as CompanyEmployee;
           return (
             <ListRow
               title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
               subtitle={person.position}
+              left={
+                <UserAvatar
+                  userId={person.id}
+                  firstName={person.firstName}
+                  lastName={person.lastName}
+                  avatarUpdatedAt={person.avatarUpdatedAt}
+                  size={36}
+                />
+              }
               minHeight={60}
               divider={index < people.length - 1}
               onPress={() => navigation.navigate('Profile', { userId: person.id })}

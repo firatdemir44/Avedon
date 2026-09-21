@@ -11,7 +11,7 @@ import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../comp
 import { refreshControl } from '../../components/refresh';
 import { HeaderButton } from '../../components/HeaderButton';
 import { SearchField } from '../../components/SearchField';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { UserAvatar } from '../../components/UserAvatar';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Conversations'>;
@@ -125,7 +125,14 @@ export function ConversationsListScreen({ navigation }: Props) {
           const timeLabel = formatListTime(item.lastMessageAt);
           return (
             <Pressable
-              onPress={() => navigation.navigate('Chat', { conversationId: item.id, title: name })}
+              onPress={() =>
+                navigation.navigate('Chat', {
+                  conversationId: item.id,
+                  title: name,
+                  userId: item.user.id,
+                  avatarUpdatedAt: item.user.avatarUpdatedAt,
+                })
+              }
               accessibilityRole={Platform.OS === 'web' ? 'link' : 'button'}
               accessibilityLabel={[name, company?.name, unread ? `${item.unreadCount} okunmamış mesaj` : null]
                 .filter(Boolean)
@@ -137,10 +144,13 @@ export function ConversationsListScreen({ navigation }: Props) {
                 pressed && styles.pressed,
               ]}
             >
-              <CompanyAvatar
-                name={company?.name ?? item.user.firstName}
-                companyId={company?.id}
-                logoUpdatedAt={company?.logoUpdatedAt}
+              {/* Sohbet karşı taraftaki KİŞİ ile: kişinin fotoğrafı (yoksa
+                  baş harfleri); firma adı hemen altında yazıyor. */}
+              <UserAvatar
+                userId={item.user.id}
+                firstName={item.user.firstName}
+                lastName={item.user.lastName}
+                avatarUpdatedAt={item.user.avatarUpdatedAt}
                 size={44}
               />
               <View style={styles.texts}>

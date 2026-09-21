@@ -108,6 +108,48 @@ export async function pickLookPhoto(
   throw new Error('image_too_large');
 }
 
+/**
+ * Kişisel profil fotoğrafı: kare kırpma (allowsEditing + aspect 1:1), 512 px ve
+ * JPEG ~%70. Sonuç sunucunun karakter sınırını aşarsa kademeli olarak daha da
+ * küçültülür; en küçüğü de sığmazsa `image_too_large` fırlatır.
+ */
+export async function pickAvatarPhoto(
+  source: 'camera' | 'gallery',
+  maxChars: number
+): Promise<CompressedImage | null> {
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) throw new Error('camera_permission_denied');
+  } else {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) throw new Error('permission_denied');
+  }
+
+  // Kare kırpma penceresi: web'de expo-image-picker bunu desteklemiyor, orada
+  // sessizce atlanır ve fotoğraf olduğu gibi gelir (avatar zaten "cover").
+  const options: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [1, 1],
+  };
+  const result =
+    source === 'camera'
+      ? await ImagePicker.launchCameraAsync(options)
+      : await ImagePicker.launchImageLibraryAsync(options);
+  if (result.canceled || !result.assets[0]) return null;
+  const asset = result.assets[0];
+
+  for (const [maxSide, compress] of [
+    [512, 0.7],
+    [384, 0.6],
+    [256, 0.5],
+  ] as const) {
+    const image = await shrink(asset, maxSide, compress, true);
+    if (image && image.dataUrl.length <= maxChars) return image;
+  }
+  throw new Error('image_too_large');
+}
+
 async function shrink(
   asset: ImagePicker.ImagePickerAsset,
   maxWidth: number,

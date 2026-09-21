@@ -1,15 +1,19 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { fetchIncomingConnectionRequests } from '../../api/client';
+import { MAX_AVATAR_CHARS, fetchIncomingConnectionRequests, uploadMyAvatar } from '../../api/client';
+import { confirmAction } from '../../features/confirm';
+import { pickAvatarPhoto } from '../../features/imagePicker';
+import { setCachedUserAvatar, userAvatarKey } from '../../features/users/userAvatarCache';
 import { ListRow } from '../../components/ListRow';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { SkeletonDetail } from '../../components/Skeleton';
 import { InlineError } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
-import { colors, fonts, radius, spacing } from '../../theme';
+import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MyProfile'>;
 
@@ -18,9 +22,91 @@ type MenuItem = { key: string; title: string; onPress: () => void; badge?: numbe
 // Kendi profilim + uygulamanın menü merkezi (taslak CProfil.dc.html): kimlik
 // bloğu, tek beyaz blokta çizgili menü satırları, ayrı blokta Çıkış.
 export function MyProfileScreen({ navigation }: Props) {
-  const { user, logout } = useSession();
+  const { user, logout, updateUser } = useSession();
   const { profile, loading, error, reload } = useUserProfile(user?.id ?? '');
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const hasPhoto = !!user?.avatarUpdatedAt;
+
+  // Fotoğrafı seç/çek → 512 px kareye küçült → sunucuya yükle. Başarılı olunca
+  // oturumdaki kullanıcı güncellenir (üst çubuktaki avatar anında değişsin) ve
+  // yeni fotoğraf önbelleğe konur (aynı fotoğraf için ikinci istek gitmesin).
+  const changePhoto = async (source: 'camera' | 'gallery') => {
+    if (!user) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const picked = await pickAvatarPhoto(source, MAX_AVATAR_CHARS);
+      if (!picked) return;
+      const { avatarUpdatedAt } = await uploadMyAvatar(picked.dataUrl);
+      if (avatarUpdatedAt) setCachedUserAvatar(userAvatarKey(user.id, avatarUpdatedAt), picked.dataUrl);
+      updateUser({ avatarUpdatedAt });
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      setPhotoError(
+        code === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : code === 'camera_permission_denied'
+            ? 'Kameraya erişim izni verilmedi.'
+            : code === 'image_too_large'
+              ? 'Fotoğraf çok büyük, daha küçük bir fotoğraf deneyin.'
+              : 'Fotoğraf yüklenemedi, tekrar deneyin.'
+      );
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!user) return;
+    const ok = await confirmAction({
+      title: 'Fotoğrafı kaldır',
+      message: 'Profil fotoğrafınız kaldırılacak. Yerine baş harfleriniz görünecek.',
+      confirmLabel: 'Kaldır',
+      destructive: true,
+    });
+    if (!ok) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await uploadMyAvatar(null);
+      updateUser({ avatarUpdatedAt: null });
+    } catch {
+      setPhotoError('Fotoğraf kaldırılamadı, tekrar deneyin.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const photoActions = (
+    <View style={styles.photoActions}>
+      <View style={styles.photoButtons}>
+        <PrimaryButton
+          label={photoBusy ? 'İşleniyor...' : hasPhoto ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
+          variant="secondary"
+          size="sm"
+          disabled={photoBusy}
+          onPress={() => changePhoto('gallery')}
+        />
+        {/* Web'de tarayıcı kamerası yok (bkz. features/imagePicker). */}
+        {Platform.OS !== 'web' ? (
+          <PrimaryButton
+            label="Kamera"
+            variant="secondary"
+            size="sm"
+            disabled={photoBusy}
+            onPress={() => changePhoto('camera')}
+          />
+        ) : null}
+        {hasPhoto ? (
+          <PrimaryButton label="Kaldır" variant="secondary" size="sm" disabled={photoBusy} onPress={removePhoto} />
+        ) : null}
+      </View>
+      {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+    </View>
+  );
 
   // Zil artık ortak ana başlıkta (components/MainHeader); bu ekran yığına
   // taşındığı için kendi başlığında ayrıca gösterilmiyor.
@@ -80,6 +166,9 @@ export function MyProfileScreen({ navigation }: Props) {
         ) : profile ? (
           <ProfileIdentity
             profile={profile}
+            avatarSize={88}
+            avatarUpdatedAt={user?.avatarUpdatedAt ?? null}
+            belowIdentity={photoActions}
             onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
           />
         ) : (
@@ -122,6 +211,9 @@ const styles = StyleSheet.create({
   content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
   block: { backgroundColor: colors.surface },
   bannerWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
+  photoActions: { paddingBottom: spacing.gutter, gap: spacing.xs },
+  photoButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  photoError: { ...typography.caption, color: colors.danger },
   countBadge: {
     minWidth: 20,
     height: 20,

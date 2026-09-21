@@ -133,7 +133,7 @@ export function registerUser(draft: RegistrationDraft) {
   });
 }
 
-export type CompanyEmployee = Pick<User, 'id' | 'firstName' | 'lastName' | 'position'>;
+export type CompanyEmployee = Pick<User, 'id' | 'firstName' | 'lastName' | 'position' | 'avatarUpdatedAt'>;
 
 export function fetchCompany(id: string) {
   return request<{ company: Company & { products: Product[]; users: CompanyEmployee[] } }>(`/companies/${id}`);
@@ -180,7 +180,10 @@ export function updateCompany(id: string, input: UpdateCompanyInput) {
   });
 }
 
-export type PublicUserProfile = Pick<User, 'id' | 'firstName' | 'lastName' | 'position' | 'accountType'> & {
+export type PublicUserProfile = Pick<
+  User,
+  'id' | 'firstName' | 'lastName' | 'position' | 'accountType' | 'avatarUpdatedAt'
+> & {
   phone?: string;
   company: Pick<Company, 'id' | 'name' | 'verification' | 'logoUpdatedAt'> | null;
 };
@@ -188,6 +191,24 @@ export type PublicUserProfile = Pick<User, 'id' | 'firstName' | 'lastName' | 'po
 export function fetchUserProfile(id: string) {
   return request<{ user: PublicUserProfile }>(`/users/${id}`);
 }
+
+// Kişisel profil fotoğrafı (firma logosuyla aynı desen): fotoğrafın kendisi
+// kullanıcı nesnelerinde gelmez, yalnızca `avatarUpdatedAt` gelir; fotoğraf
+// gerektiğinde bu uçtan çekilir ve zaman damgası önbellek anahtarı olur.
+export function fetchUserAvatar(id: string) {
+  return request<{ imageUrl: string }>(`/users/${id}/avatar`);
+}
+
+// image: yeni fotoğraf için data URL, kaldırmak için null.
+export function uploadMyAvatar(image: string | null) {
+  return request<{ avatarUpdatedAt: string | null }>('/users/me/avatar', {
+    method: 'PUT',
+    body: JSON.stringify({ image }),
+  });
+}
+
+// Sunucudaki sınır (backend/src/routes/users.ts MAX_AVATAR_CHARS).
+export const MAX_AVATAR_CHARS = 400_000;
 
 export type ConnectionStatus = 'none' | 'pending_sent' | 'pending_received' | 'accepted';
 export interface ConnectionStatusResult {
@@ -232,6 +253,7 @@ export type ConversationParticipant = {
   firstName: string;
   lastName: string;
   position: string;
+  avatarUpdatedAt: string | null;
   company: { id: string; name: string; logoUpdatedAt: string | null } | null;
 };
 
@@ -297,6 +319,7 @@ export type PostAuthor = {
   firstName: string;
   lastName: string;
   position: string;
+  avatarUpdatedAt: string | null;
   company: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null } | null;
 };
 
