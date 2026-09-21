@@ -15,6 +15,8 @@ export const registerSchema = z.object({
   taxId: z.string().optional(),
   companyCode: z.string().optional(),
   verificationToken: z.string().min(1),
+  // Davet bağlantısıyla gelindiyse (Faz 2, Adım 4); geçersiz kod kaydı engellemez.
+  inviteCode: z.string().trim().max(20).optional(),
 });
 
 // Bir üründe en fazla bu kadar fotoğraf (tasarımdaki kaydırmalı galeri).

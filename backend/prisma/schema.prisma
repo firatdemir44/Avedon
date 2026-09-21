@@ -928,3 +928,26 @@ model ProductDraft {
 
   @@index([userId, status, createdAt])
 }
+
+// Davet (Faz 2, Adım 4). İlişki yok (mevcut tablolar yeniden kurulmasın); bütünlük uygulama katmanında.
+model Invite {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  inviterId        String
+  inviterCompanyId String?
+  inviteeName      String    @default("")
+  // Yazıldıysa (0XXXXXXXXXX): bu numara kayıt olunca doğrudan bağlantı kurulur.
+  inviteePhone     String    @default("")
+  // "" | tedarikci | musteri (davet edilenin, davet edene göre rolü)
+  relation         String    @default("")
+  note             String    @default("")
+  // pending | joined | cancelled
+  status           String    @default("pending")
+  joinCount        Int       @default(0)
+  joinedUserId     String?
+  joinedAt         DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([inviterId, createdAt])
+  @@index([inviteePhone])
+}

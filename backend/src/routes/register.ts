@@ -4,6 +4,7 @@ import { prisma } from '../db';
 import { registerSchema } from '../validation';
 import { normalizePhone } from '../phone';
 import { verifyRegistrationTicket, signSessionToken } from '../auth';
+import { applyInvitesOnRegistration } from '../invites';
 
 export const registerRouter = Router();
 
@@ -68,6 +69,9 @@ registerRouter.post('/', async (req, res) => {
       },
       include: { company: true },
     });
+
+    // Davetle geldiyse (kodla ya da numarasına açık davetle) bağlantı kurulur; hata kaydı bozmaz.
+    await applyInvitesOnRegistration(user, data.inviteCode).catch((err) => console.error('[register] davet uygulanamadı:', err));
 
     res.status(201).json({ token: signSessionToken(user.id), user });
   } catch (err) {

@@ -24,7 +24,8 @@ export type NotificationKind =
   | 'deal_disputed'
   | 'deal_cancelled'
   | 'deal_review'
-  | 'product_draft';
+  | 'product_draft'
+  | 'invite_joined';
 
 export interface NotificationData {
   productId?: string;
@@ -39,6 +40,7 @@ export interface NotificationData {
   referenceId?: string;
   dealId?: string;
   draftId?: string;
+  inviteId?: string;
 }
 
 export interface NotifyInput {
