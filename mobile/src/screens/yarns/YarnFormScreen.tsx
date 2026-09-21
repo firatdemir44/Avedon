@@ -15,14 +15,17 @@ import {
   ApiError,
   createYarn,
   deleteProduct,
+  extractYarnLabel,
   fetchCertificateImage,
   fetchProduct,
   updateYarn,
   type CertificateInput,
   type NewYarnInput,
   type ProductImageInput,
+  type YarnLabelExtractInput,
+  type YarnLabelOutcome,
 } from '../../api/client';
-import { pickCompressedImage } from '../../features/imagePicker';
+import { captureCompressedImage, pickCompressedImage, pickCompressedImages } from '../../features/imagePicker';
 import {
   getCachedGalleryImage,
   loadGalleryImage,
@@ -102,6 +105,35 @@ const TWIST_OPTIONS = [
   { value: 'Z', label: 'Z' },
 ];
 
+// --- Etiketten doldur (iplik) ---
+// Sunucu: POST /api/yarns/extract. Fiyat/stok HİÇ gelmez (tasarım gereği).
+const MAX_LABEL_IMAGES = 3;
+const MAX_LABEL_TEXT = 4000;
+
+const LABEL_WARNINGS: Record<string, string> = {
+  composition_total_not_100: 'Karışım toplamı 100 etmiyor; elle kontrol edin.',
+  count_unit_missing: 'Numaranın birimi okunamadı.',
+};
+
+function labelErrorMessage(err: unknown) {
+  const code = err instanceof ApiError ? err.code : undefined;
+  if (code === 'extract_not_configured') return 'Etiketten doldurma bu sunucuda etkin değil.';
+  if (code === 'extract_input_required') return 'Okunacak bir fotoğraf ya da metin seçin.';
+  if (code === 'unsupported_image') return 'Bu fotoğraf biçimi okunamıyor, başka bir fotoğraf deneyin.';
+  if (code === 'invalid_body') return 'Gönderilen bilgi okunamadı; fotoğrafı küçültüp tekrar deneyin.';
+  if (err instanceof ApiError && err.status === 0) return 'Etiket okuma zaman aşımına uğradı, tekrar deneyin.';
+  return 'Etiket okunamadı, tekrar deneyin ya da elle girin.';
+}
+
+// Özet satırındaki alan adları (dolan alanlar bu adlarla sayılır).
+interface LabelSummary {
+  recognized: boolean;
+  filled: string[];
+  warnings: string[];
+  notes: string;
+  leftovers: string[];
+}
+
 // Sunucu hata kodları → ekranda görünen Türkçe metin.
 function saveErrorMessage(err: unknown) {
   if (err instanceof ApiError) {
@@ -168,6 +200,20 @@ export function YarnFormScreen({ navigation, route }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Etiketten doldur ---
+  // Kaynak seçimi ekran içinde açılır (web'de Alert.alert yok).
+  const [labelOpen, setLabelOpen] = useState(false);
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+  const [extracting, setExtracting] = useState(false);
+  const [labelError, setLabelError] = useState<string | null>(null);
+  const [labelSummary, setLabelSummary] = useState<LabelSummary | null>(null);
+  // Varsayılanı olan alanlar (aile, numara birimi, kat) hiçbir zaman "boş"
+  // görünmediği için, kullanıcı dokunduysa üzerine yazılmasın diye ayrı izlenir.
+  const [familyTouched, setFamilyTouched] = useState(false);
+  const [countUnitTouched, setCountUnitTouched] = useState(false);
+  const [plyTouched, setPlyTouched] = useState(false);
+
   useLayoutEffect(() => {
     navigation.setOptions({ title: isEditing ? 'İpliği Düzenle' : 'İplik Ekle' });
   }, [navigation, isEditing]);
@@ -190,6 +236,10 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
         const spec = product.yarn;
         if (spec) {
+          // Kayıttan gelen değerlerin üzerine etiket yazmasın.
+          setFamilyTouched(true);
+          setCountUnitTouched(true);
+          setPlyTouched(true);
           setFamily(spec.family);
           setCount(toInputNumber(spec.count));
           setCountUnit(spec.countUnit);
@@ -280,6 +330,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
   const changeFamily = (next: string) => {
     haptics.selection();
+    setFamilyTouched(true);
     setFamily(next);
     // Aileye uymayan alanlar temizlenir ki kayıtta yanlış bilgi gitmesin.
     const nextFields = yarnFields(next);
@@ -379,6 +430,179 @@ export function YarnFormScreen({ navigation, route }: Props) {
     } finally {
       setPickingDoc(null);
     }
+  };
+
+  // --- Etiketten doldur ---
+  // Kural: yalnızca formda BOŞ olan alanlar doldurulur; kullanıcının elle
+  // girdiği hiçbir değer değiştirilmez. Aile en başta uygulanır, çünkü
+  // görünen alanlar (eğirme, filament...) aileye göre değişiyor.
+  const applyLabel = (outcome: YarnLabelOutcome) => {
+    if (!outcome.recognized) {
+      setLabelSummary({ recognized: false, filled: [], warnings: [], notes: '', leftovers: [] });
+      return;
+    }
+    const s = outcome.suggestion;
+    const filled: string[] = [];
+    const leftovers: string[] = [];
+
+    const fillText = (label: string, value: string, current: string, setter: (v: string) => void) => {
+      if (value && !current.trim()) {
+        setter(value);
+        filled.push(label);
+      }
+    };
+    const fillNumber = (label: string, value: number | null, current: string, setter: (v: string) => void) => {
+      if (value != null && !current.trim()) {
+        setter(toInputNumber(value));
+        filled.push(label);
+      }
+    };
+    const fillOption = (
+      label: string,
+      value: string,
+      current: string,
+      list: readonly { key: string }[],
+      setter: (v: string) => void
+    ) => {
+      if (value && !current && list.some((o) => o.key === value)) {
+        setter(value);
+        filled.push(label);
+      }
+    };
+
+    // 1) Aile (görünen alanları belirler).
+    let nextFamily = family;
+    if (s.family && !familyTouched && options.families.some((o) => o.key === s.family)) {
+      nextFamily = s.family;
+      setFamily(s.family);
+      setFamilyTouched(true);
+      filled.push('iplik çeşidi');
+    }
+    const nextFields = yarnFields(nextFamily);
+
+    fillText('kod', s.code, code, setCode);
+    fillNumber('numara', s.count, count, setCount);
+    if (s.countUnit && !countUnitTouched && options.countUnits.some((o) => o.key === s.countUnit)) {
+      setCountUnit(s.countUnit);
+      setCountUnitTouched(true);
+      filled.push('numara birimi');
+    }
+    if (s.ply != null && !plyTouched) {
+      setPly(String(s.ply));
+      setPlyTouched(true);
+      filled.push('kat');
+    }
+
+    if (nextFields.staple) {
+      fillOption('eğirme sistemi', s.spinning, spinning, options.spinnings, setSpinning);
+      fillOption('penye / karde', s.combing, combing, options.combings, setCombing);
+      if (s.twistDirection && !twistDirection) {
+        setTwistDirection(s.twistDirection);
+        filled.push('büküm yönü');
+      }
+      fillNumber('büküm (T/m)', s.twistTpm, twistTpm, setTwistTpm);
+    }
+    if (nextFields.filament) {
+      fillNumber('filament sayısı', s.filaments, filaments, setFilaments);
+      fillOption('filament tipi', s.filamentType, filamentType, options.filamentTypes, setFilamentType);
+      fillOption('parlaklık', s.luster, luster, options.lusters, setLuster);
+    }
+
+    fillOption('renk durumu', s.colorState, colorState, options.colorStates, setColorState);
+    fillText('renk', s.color, color, setColor);
+    fillText('çeşit / yapı', s.variety, variety, setVariety);
+    fillText('marka', s.brand, brand, setBrand);
+    fillText('menşe', s.origin, origin, setOrigin);
+    fillNumber('bobin ağırlığı', s.coneWeightKg, coneWeightKg, setConeWeightKg);
+
+    // Karışım: formda dolu satır varsa hiç dokunulmaz.
+    const hasComposition = compositionRows.some((row) => row.fiber || row.percent.trim());
+    const newComposition = s.composition.filter((item) => FIBERS.some((f) => f.key === item.fiber));
+    if (!hasComposition && newComposition.length) {
+      setCompositionRows(
+        newComposition.map((item) => ({
+          key: newKey('lif'),
+          fiber: item.fiber,
+          percent: toInputNumber(item.percent),
+        }))
+      );
+      filled.push('karışım');
+    } else if (s.compositionText && (hasComposition || !newComposition.length)) {
+      leftovers.push(`Karışım metni forma aktarılmadı: ${s.compositionText}`);
+    }
+
+    // Sertifikalar: formda satır varsa dokunulmaz.
+    const knownCertificates = s.certificates.filter((key) => CERTIFICATES.some((c) => c.key === key));
+    if (!certificateRows.length && knownCertificates.length) {
+      setCertificateRows(knownCertificates.slice(0, MAX_CERTIFICATES).map((name) => ({ ...emptyCertificateRow(), name })));
+      setCertificateOpen(true);
+      filled.push('sertifikalar');
+    } else if (s.certificatesText && (certificateRows.length || !knownCertificates.length)) {
+      leftovers.push(`Sertifika metni forma aktarılmadı: ${s.certificatesText}`);
+    }
+
+    setLabelSummary({
+      recognized: true,
+      filled,
+      warnings: outcome.warnings.map((w) => LABEL_WARNINGS[w] ?? w),
+      notes: outcome.notes,
+      leftovers,
+    });
+  };
+
+  const runLabelExtract = async (input: YarnLabelExtractInput) => {
+    setLabelOpen(false);
+    setExtracting(true);
+    setLabelError(null);
+    setLabelSummary(null);
+    try {
+      const outcome = await extractYarnLabel(input);
+      haptics.success();
+      setPasteOpen(false);
+      setPasteText('');
+      applyLabel(outcome);
+    } catch (err) {
+      haptics.error();
+      setLabelError(labelErrorMessage(err));
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const labelFromCamera = async () => {
+    setLabelError(null);
+    try {
+      const picked = await captureCompressedImage();
+      if (!picked) return;
+      await runLabelExtract({ images: [picked.dataUrl] });
+    } catch (err) {
+      setLabelError(
+        err instanceof Error && err.message === 'camera_permission_denied'
+          ? 'Kameraya erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen tekrar deneyin.'
+      );
+    }
+  };
+
+  const labelFromGallery = async () => {
+    setLabelError(null);
+    try {
+      const picked = await pickCompressedImages(MAX_LABEL_IMAGES);
+      if (!picked.length) return;
+      await runLabelExtract({ images: picked.map((image) => image.dataUrl) });
+    } catch (err) {
+      setLabelError(
+        err instanceof Error && err.message === 'permission_denied'
+          ? 'Galeriye erişim izni verilmedi.'
+          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+      );
+    }
+  };
+
+  const labelFromText = async () => {
+    const trimmed = pasteText.trim();
+    if (!trimmed) return;
+    await runLabelExtract({ text: trimmed.slice(0, MAX_LABEL_TEXT) });
   };
 
   // --- Doğrulama ---
@@ -586,6 +810,120 @@ export function YarnFormScreen({ navigation, route }: Props) {
           <Text style={styles.hint}>İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokunun.</Text>
         </View>
 
+        <SectionHeader title="Etiketten doldur" />
+        <View style={[styles.block, styles.labelBlock]}>
+          <Text style={styles.labelHint}>
+            Bobin etiketini okutup formu dolduralım. Yalnızca boş alanlar doldurulur; yazdıklarınız değişmez.
+          </Text>
+          <View style={styles.labelRow}>
+            <PrimaryButton
+              label={extracting ? 'Etiket okunuyor…' : 'Etiketten doldur'}
+              variant="outline"
+              icon="scan-outline"
+              disabled={extracting}
+              onPress={() => {
+                haptics.selection();
+                setLabelError(null);
+                setLabelOpen((v) => !v);
+              }}
+              style={styles.labelButton}
+            />
+            {extracting ? <ActivityIndicator color={colors.primary} /> : null}
+          </View>
+
+          {labelOpen && !extracting ? (
+            <View style={styles.sourceBox}>
+              {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
+              {Platform.OS !== 'web' ? (
+                <ListRow
+                  title="Fotoğraf çek"
+                  left={<Ionicons name="camera-outline" size={20} color={colors.primary} />}
+                  onPress={labelFromCamera}
+                />
+              ) : null}
+              <ListRow
+                title="Galeriden seç"
+                subtitle={`En fazla ${MAX_LABEL_IMAGES} fotoğraf`}
+                left={<Ionicons name="images-outline" size={20} color={colors.primary} />}
+                onPress={labelFromGallery}
+              />
+              <ListRow
+                title="Metin yapıştır"
+                subtitle="WhatsApp'tan gelen iplik bilgisi"
+                left={<Ionicons name="clipboard-outline" size={20} color={colors.primary} />}
+                divider={false}
+                onPress={() => {
+                  haptics.selection();
+                  setLabelOpen(false);
+                  setPasteOpen(true);
+                }}
+              />
+            </View>
+          ) : null}
+
+          {pasteOpen ? (
+            <View style={styles.pasteBox}>
+              <TextField
+                label="İplik bilgisi"
+                value={pasteText}
+                onChangeText={setPasteText}
+                placeholder="Bobin etiketindeki ya da WhatsApp'tan gelen iplik bilgisini yapıştırın"
+                multiline
+                maxLength={MAX_LABEL_TEXT}
+              />
+              <View style={styles.pasteActions}>
+                <PrimaryButton
+                  label="Oku"
+                  disabled={!pasteText.trim() || extracting}
+                  onPress={labelFromText}
+                  style={styles.pasteAction}
+                />
+                <PrimaryButton
+                  label="Kapat"
+                  variant="outline"
+                  onPress={() => {
+                    haptics.selection();
+                    setPasteOpen(false);
+                  }}
+                  style={styles.pasteAction}
+                />
+              </View>
+            </View>
+          ) : null}
+
+          {labelSummary && !labelSummary.recognized ? (
+            <Text style={styles.labelWarning}>
+              Bu görselde iplik etiketi okunamadı. Etiketi yakından ve net çekip yeniden deneyin.
+            </Text>
+          ) : null}
+          {labelSummary?.recognized ? (
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryText}>
+                {labelSummary.filled.length
+                  ? `${labelSummary.filled.length} alan dolduruldu: ${labelSummary.filled.join(', ')}.`
+                  : 'Etiket okundu ama formdaki boş alanlara yazılacak yeni bilgi çıkmadı.'}
+              </Text>
+              {labelSummary.notes ? (
+                <Text style={styles.summaryNote}>Etiketten notlar: {labelSummary.notes}</Text>
+              ) : null}
+              {labelSummary.leftovers.map((line) => (
+                <Text key={line} style={styles.summaryNote}>
+                  {line}
+                </Text>
+              ))}
+              {labelSummary.warnings.map((line) => (
+                <Text key={line} style={styles.labelWarning}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+          <Text style={styles.hintInline}>
+            Fiyat ve stok etiketten alınmaz. Kaydetmeden önce alanları kontrol edin.
+          </Text>
+          {labelError ? <Text style={styles.labelError}>{labelError}</Text> : null}
+        </View>
+
         <SectionHeader title="İplik" />
         <View style={[styles.block, styles.formBlock]}>
           <TextField label="Ürün Kodu" value={code} onChangeText={setCode} placeholder="Örn. IPL-3010" />
@@ -618,11 +956,28 @@ export function YarnFormScreen({ navigation, route }: Props) {
               />
             </View>
             <View style={styles.fieldHalf}>
-              <TextField label="Kat" value={ply} onChangeText={setPly} placeholder="1" keyboardType="number-pad" />
+              <TextField
+                label="Kat"
+                value={ply}
+                onChangeText={(value) => {
+                  setPlyTouched(true);
+                  setPly(value);
+                }}
+                placeholder="1"
+                keyboardType="number-pad"
+              />
             </View>
           </View>
           <Text style={styles.label}>Numara birimi</Text>
-          <ChipSelect options={optionValues(options.countUnits)} value={countUnit} onChange={setCountUnit} compact />
+          <ChipSelect
+            options={optionValues(options.countUnits)}
+            value={countUnit}
+            onChange={(value) => {
+              setCountUnitTouched(true);
+              setCountUnit(value);
+            }}
+            compact
+          />
 
           {fields.staple ? (
             <>
@@ -987,8 +1342,36 @@ const styles = StyleSheet.create({
   },
   addTileText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
   hint: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm },
+  hintInline: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm },
   label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
   labelHint: { ...typography.caption, color: colors.textMuted, marginTop: -2, marginBottom: spacing.sm },
+  // Etiketten doldur bloğu: açıklama + çerçeveli düğme, altında ekran içinde
+  // açılan kaynak listesi (web'de Alert.alert çalışmıyor).
+  labelBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, paddingBottom: spacing.sm },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  labelButton: { flex: 1 },
+  sourceBox: {
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+  },
+  pasteBox: { marginTop: spacing.sm },
+  pasteActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
+  pasteAction: { flex: 1 },
+  summaryBox: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.surfaceTonal,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    gap: 4,
+  },
+  summaryText: { ...typography.caption, color: colors.text },
+  summaryNote: { ...typography.caption, color: colors.textMuted },
+  labelWarning: { ...typography.caption, color: colors.warning, marginTop: spacing.sm },
+  labelError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
   fieldRow: { flexDirection: 'row', gap: spacing.sm },
   fieldHalf: { flex: 1 },
   rowCard: {

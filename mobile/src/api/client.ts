@@ -2036,6 +2036,68 @@ export function updateYarn(id: string, payload: UpdateYarnInput) {
   return request<{ yarn: Product }>(`/yarns/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
 }
 
+// --- İplik: etiketten doldur -------------------------------------------------
+// Sunucu: `POST /api/yarns/extract` (backend/src/skills/yarnExtract). Model
+// YALNIZCA okur; emin olmadığı alan boş ('' ya da null) gelir. Fiyat, stok ve
+// MOQ şemada HİÇ yoktur (etikette yazsa da alınmaz). Kaydetmez, öneri döner.
+
+export interface YarnLabelSuggestion {
+  code: string;
+  family: string;
+  count: number | null;
+  countUnit: string;
+  ply: number | null;
+  filaments: number | null;
+  spinning: string;
+  combing: string;
+  filamentType: string;
+  luster: string;
+  twistDirection: '' | 'S' | 'Z';
+  twistTpm: number | null;
+  colorState: string;
+  color: string;
+  /** Yalnızca toplamı 100 olan karışım gelir; aksi halde boş dizi + compositionText. */
+  composition: CompositionItem[];
+  compositionText: string;
+  variety: string;
+  brand: string;
+  origin: string;
+  coneWeightKg: number | null;
+  /** Sözlükte tanınan sertifika ANAHTARLARI; tanınmayanlar yalnızca metinde. */
+  certificates: string[];
+  certificatesText: string;
+}
+
+/** 'composition_total_not_100' | 'count_unit_missing' */
+export type YarnLabelWarning = string;
+
+export interface YarnLabelOutcome {
+  recognized: boolean;
+  confidence: number;
+  suggestion: YarnLabelSuggestion;
+  warnings: YarnLabelWarning[];
+  notes: string;
+  meta: { model: string; mock: boolean };
+}
+
+export interface YarnLabelExtractInput {
+  /** data URL (image/jpeg|png|webp|gif), en çok 3 */
+  images?: string[];
+  /** en çok 4000 karakter */
+  text?: string;
+}
+
+// Hatalar: 503 extract_not_configured · 502 extract_failed · 400
+// extract_input_required / unsupported_image / invalid_body.
+export function extractYarnLabel(input: YarnLabelExtractInput) {
+  return request<YarnLabelOutcome>(
+    '/yarns/extract',
+    { method: 'POST', body: JSON.stringify(input) },
+    // Model çağrısı 3-10 sn sürebiliyor; model uçlarındaki uzun zaman aşımı.
+    LLM_REQUEST_TIMEOUT_MS
+  );
+}
+
 // --- Karşılıklı referanslar (Faz 2, Adım 7) ----------------------------------
 // Sunucu: backend/src/routes/references.ts. Bir firma diğerini "müşterimiz" ya
 // da "tedarikçimiz" olarak gösterir; karşı taraf onaylayınca iki firmanın
