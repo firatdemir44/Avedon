@@ -7,6 +7,7 @@ import {
   ApiError,
   cancelQuoteRequest,
   draftQuote,
+  fetchDealByQuoteRequest,
   fetchQuoteRequest,
   respondQuote,
   saveQuote,
@@ -124,6 +125,25 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const [busy, setBusy] = useState<null | 'draft' | 'save' | 'send' | 'accept' | 'decline' | 'cancel'>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
+  // Faz 3, Adım 4: kabul edilen teklifin sipariş kaydı. Kabul yanıtından
+  // (dealId) ya da ekran açılışında /deals/by-request'ten gelir; 404 "henüz
+  // yok" demektir, o zaman düğme hiç çıkmaz.
+  const [dealId, setDealId] = useState<string | null>(null);
+  const [justAccepted, setJustAccepted] = useState(false);
+
+  useEffect(() => {
+    if (request?.status !== 'accepted' || dealId) return;
+    let cancelled = false;
+    // Ayrı ve sessiz istek: sayfanın yüklenmesini bekletmez, hata yutulur.
+    fetchDealByQuoteRequest(request.id)
+      .then(({ deal }) => {
+        if (!cancelled) setDealId(deal.id);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [request?.id, request?.status, dealId]);
 
   // Form yalnızca ekran ilk açıldığında (istek başına bir kez) dolduruluyor:
   // odak yenilemesi kullanıcının yazdığını silmesin.
@@ -170,18 +190,18 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const updateForm = (patch: Partial<QuoteForm>) =>
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
 
-  const runAction = async (
+  const runAction = async <T extends { request: QuoteRequestRow }>(
     kind: Exclude<typeof busy, null>,
-    action: () => Promise<{ request: QuoteRequestRow }>,
+    action: () => Promise<T>,
     fallback: string
-  ) => {
+  ): Promise<T | null> => {
     setBusy(kind);
     setActionError(null);
     try {
-      const { request: fresh } = await action();
-      setData(fresh);
+      const result = await action();
+      setData(result.request);
       haptics.success();
-      return fresh;
+      return result;
     } catch (err) {
       haptics.error();
       const code = err instanceof ApiError ? err.code : undefined;
@@ -273,7 +293,12 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
       destructive: action === 'decline',
     });
     if (!confirmed) return;
-    await runAction(action, () => respondQuote(request.id, action), 'Teklif yanıtlanamadı');
+    const result = await runAction(action, () => respondQuote(request.id, action), 'Teklif yanıtlanamadı');
+    // Kabul edilince sunucu sipariş kaydını açıyor ve kimliğini yanıtta veriyor.
+    if (result && action === 'accept' && result.dealId) {
+      setDealId(result.dealId);
+      setJustAccepted(true);
+    }
   };
 
   const cancel = async () => {
@@ -333,6 +358,24 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
             </Pressable>
           ) : null}
         </View>
+
+        {/* Faz 3, Adım 4: kabul edilen teklifin sipariş kaydına geçiş. */}
+        {dealId ? (
+          <View style={styles.dealWrap}>
+            {justAccepted ? (
+              <View style={styles.okBox}>
+                <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
+                <Text style={styles.okText}>Teklifi kabul ettiniz. Sipariş kaydı açıldı.</Text>
+              </View>
+            ) : null}
+            <PrimaryButton
+              label="Siparişi aç"
+              variant="outline"
+              icon="cube-outline"
+              onPress={() => navigation.navigate('DealDetail', { dealId })}
+            />
+          </View>
+        ) : null}
 
         {isSeller ? (
           <SellerSection
@@ -666,6 +709,17 @@ const styles = StyleSheet.create({
   infoBlock: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.gutter },
   infoText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, flex: 1 },
   quoteWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
+  dealWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
+  okBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: spacing.sm,
+  },
+  okText: { ...typography.caption, color: colors.success, flexShrink: 1 },
   sectionNote: { ...typography.caption, color: colors.textMuted },
   // Kesik çizgili teklif kartı: akıştaki pasaport kartıyla aynı görsel dil.
   quoteFrame: {

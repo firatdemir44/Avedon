@@ -50,6 +50,8 @@ import { IncomingSampleRequestsScreen } from '../screens/samples/IncomingSampleR
 import { QuoteRequestFormScreen } from '../screens/quotes/QuoteRequestFormScreen';
 import { QuoteRequestDetailScreen } from '../screens/quotes/QuoteRequestDetailScreen';
 import { QuoteRequestsScreen } from '../screens/quotes/QuoteRequestsScreen';
+import { DealDetailScreen } from '../screens/deals/DealDetailScreen';
+import { DealsScreen } from '../screens/deals/DealsScreen';
 import { RfqFormScreen } from '../screens/quotes/RfqFormScreen';
 import { RfqCompareScreen } from '../screens/quotes/RfqCompareScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
@@ -306,6 +308,17 @@ export function RootNavigator() {
               name="QuoteRequests"
               component={QuoteRequestsScreen}
               options={{ headerShown: true, title: 'Tekliflerim' }}
+            />
+            {/* Faz 3, Adım 4: kabul edilen teklifin sipariş kaydı. */}
+            <Stack.Screen
+              name="DealDetail"
+              component={DealDetailScreen}
+              options={{ headerShown: true, title: 'Sipariş' }}
+            />
+            <Stack.Screen
+              name="Deals"
+              component={DealsScreen}
+              options={{ headerShown: true, title: 'Siparişlerim' }}
             />
             <Stack.Screen
               name="RfqForm"

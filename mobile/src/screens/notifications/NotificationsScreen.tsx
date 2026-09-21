@@ -30,6 +30,9 @@ function iconFor(kind: string): IconName {
   // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
   // quote_accepted, quote_declined.
   if (kind.startsWith('quote')) return 'pricetag-outline';
+  // Sipariş kaydı ve karşılıklı değerlendirme (Faz 3, Adım 4).
+  if (kind === 'deal_review') return 'star-outline';
+  if (kind.startsWith('deal')) return 'cube-outline';
   // Satıcı asistanı (Faz 2, Adım 3): soru geldi / soru cevaplandı.
   if (kind.startsWith('company_question')) return 'sparkles-outline';
   // Karşılıklı referanslar (Faz 2, Adım 7).
@@ -87,7 +90,14 @@ export function NotificationsScreen({ navigation }: Props) {
   const open = useCallback(
     (item: AppNotification) => {
       if (!item.read) markRead([item.id]);
-      const { productId, sampleRequestId, quoteRequestId, userId, companyId } = item.data ?? {};
+      const { productId, sampleRequestId, quoteRequestId, userId, companyId, dealId } = item.data ?? {};
+      // Faz 3, Adım 4: sipariş bildirimleri ve dealId taşıyan "teklif kabul
+      // edildi" bildirimi doğrudan sipariş kaydına gider.
+      if (item.kind.startsWith('deal') || (item.kind === 'quote_accepted' && dealId)) {
+        if (dealId) navigation.navigate('DealDetail', { dealId });
+        else navigation.navigate('Deals');
+        return;
+      }
       // Faz 2, Adım 3: satıcıya gelen soru → gelen sorular listesi; alıcıya
       // gelen cevap → o firmanın asistanı (firma adı bildirimde yok, ekran
       // iplik açılınca sunucudan alır).

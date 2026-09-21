@@ -122,6 +122,11 @@ export type RootStackParamList = {
     prefill?: { quantity?: number; unit?: 'm' | 'kg'; targetDate?: string; note?: string };
   };
   RfqCompare: { rfqId: string };
+  // Sipariş kaydı ve karşılıklı değerlendirme (Faz 3, Adım 4). Kayıt kabul
+  // edilen tekliften doğar; platform ödeme almaz, sevkiyat izlemez.
+  DealDetail: { dealId: string };
+  // role: hangi sekme açık gelsin (firması olmayanda yalnızca 'buyer').
+  Deals: { role?: 'buyer' | 'seller' } | undefined;
   GarmentVisualCost: undefined;
   Profile: { userId: string };
   Connections: undefined;

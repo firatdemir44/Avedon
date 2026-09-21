@@ -26,6 +26,7 @@ import {
   fetchCompanyMachines,
   fetchCompanyQuestions,
   fetchCompanyReferences,
+  fetchDeals,
   fetchQuoteRequests,
   likePost,
   respondToReference,
@@ -103,10 +104,17 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const [openQuoteRequests, setOpenQuoteRequests] = useState(0);
   // Faz 2, Adım 3: asistana gelip henüz cevaplanmamış soru sayısı (aynı desen).
   const [openQuestions, setOpenQuestions] = useState(0);
+  // Faz 3, Adım 4: firmanın değerlendirme bekleyen sipariş kayıtları.
+  const [pendingDealReviews, setPendingDealReviews] = useState(0);
   useFocusEffect(
     useCallback(() => {
       if (!isOwnCompany) return;
       let cancelled = false;
+      fetchDeals('seller')
+        .then(({ deals }) => {
+          if (!cancelled) setPendingDealReviews(deals.filter((d) => d.canReview).length);
+        })
+        .catch(() => {});
       fetchQuoteRequests('seller')
         .then(({ requests }) => {
           if (!cancelled) setOpenQuoteRequests(requests.filter((r) => r.status === 'open').length);
@@ -501,6 +509,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             variant="outline"
             icon="pricetag-outline"
             onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
+          />
+          {/* Faz 3, Adım 4: firmanın satış kayıtları. Değerlendirme bekleyen
+              varsa sayısı düğmede yazıyor (teklif isteği düğmesindeki desen). */}
+          <PrimaryButton
+            label={pendingDealReviews ? `Siparişler (${pendingDealReviews} değerlendirme bekliyor)` : 'Siparişler'}
+            variant="outline"
+            icon="cube-outline"
+            onPress={() => navigation.navigate('Deals', { role: 'seller' })}
           />
           {/* Faz 2, Adım 3: asistana gelen alıcı soruları. */}
           <PrimaryButton

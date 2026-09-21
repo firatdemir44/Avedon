@@ -48,6 +48,8 @@ export function MyProfileScreen({ navigation }: Props) {
     { key: 'sampleRequests', title: 'Taleplerim', onPress: () => navigation.navigate('MySampleRequests') },
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
     { key: 'quoteRequests', title: 'Tekliflerim', onPress: () => navigation.navigate('QuoteRequests') },
+    // Faz 3, Adım 4: kabul edilen tekliften doğan sipariş kayıtları.
+    { key: 'deals', title: 'Siparişlerim', onPress: () => navigation.navigate('Deals') },
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
     // Faz 2, Adım 6: iplik dizini (Ürünler sekmesindeki "İplik" ile aynı ekran).
     { key: 'yarnDirectory', title: 'İplik Dizini', onPress: () => navigation.navigate('YarnDirectory') },

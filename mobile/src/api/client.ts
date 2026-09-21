@@ -819,8 +819,10 @@ export function sendQuote(id: string) {
   return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/quote/send`, { method: 'POST' });
 }
 
+// Kabul edilince sunucu sipariş kaydını (deal) kendiliğinden açar ve kimliğini
+// yanıtta döner (Faz 3, Adım 4). Eski sunucuda alan yok: undefined gelebilir.
 export function respondQuote(id: string, action: 'accept' | 'decline') {
-  return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/respond`, {
+  return request<{ request: QuoteRequestRow; dealId?: string | null }>(`/quotes/requests/${id}/respond`, {
     method: 'POST',
     body: JSON.stringify({ action }),
   });
@@ -828,6 +830,114 @@ export function respondQuote(id: string, action: 'accept' | 'decline') {
 
 export function cancelQuoteRequest(id: string) {
   return request<{ request: QuoteRequestRow }>(`/quotes/requests/${id}/cancel`, { method: 'POST' });
+}
+
+// --- Sipariş kaydı ve karşılıklı değerlendirme (Faz 3, Adım 4) --------------
+// Sunucu: backend/src/routes/deals.ts. Kayıt kabul edilen tekliften doğar.
+// Platform ödeme almaz, sevkiyat izlemez: ekranda görünen her şey iki tarafın
+// BEYANIDIR. Ödeme konusuna hiçbir metinde girilmez.
+
+export type DealStatus = 'acik' | 'teslim_bildirildi' | 'teslim_edildi' | 'itiraz' | 'iptal';
+
+// Alıcı bu kadar gün yanıt vermezse teslim onaylanmış sayılır (AUTO_CONFIRM_DAYS).
+export const DEAL_AUTO_CONFIRM_DAYS = 7;
+// Değerlendirmeler iki taraf da yazınca ya da teslim onayından bu kadar gün
+// sonra görünür olur (REVIEW_REVEAL_DAYS).
+export const DEAL_REVIEW_REVEAL_DAYS = 14;
+
+// Alıcı üç ölçüt (quality/timing/communication), satıcı iki ölçüt
+// (communication/seriousness) verir; karşılığı olmayan ölçüt null gelir.
+export interface DealReview {
+  authorRole: 'buyer' | 'seller';
+  quality: number | null;
+  timing: number | null;
+  communication: number;
+  seriousness: number | null;
+  comment: string;
+  createdAt: string;
+}
+
+export interface DealView {
+  id: string;
+  // Rol sunucudan gelir, istemci karar vermez (teklif detayındaki desen).
+  role: 'buyer' | 'seller';
+  status: DealStatus;
+  quoteRequestId: string;
+  product: { id: string; code: string };
+  quantity: number;
+  unit: StockUnit;
+  // Satıcının teklifindeki terminden hesaplanır; teklifte termin yoksa alıcının
+  // istediği tarih, o da yoksa null.
+  agreedDeliveryDate: string | null;
+  sellerDeliveredAt: string | null;
+  buyerConfirmedAt: string | null;
+  // Anlaşılan tarih ya da teslim beyanı yoksa null; 0 "zamanında" demektir.
+  lateDays: number | null;
+  disputeNote: string;
+  cancelledByRole: 'buyer' | 'seller' | null | '';
+  cancelReason: string;
+  createdAt: string;
+  sellerCompany: { id: string; name: string; verification: VerificationStatus } | null;
+  buyer: { id: string; name: string; company: { id: string; name: string } | null } | null;
+  canReview: boolean;
+  myReview: DealReview | null;
+  // Görünürlük kuralı sağlanana kadar karşı tarafın yazdığı gelmez; yalnızca
+  // "yazdı" bilgisi (theirReviewPending) gelir.
+  theirReview: DealReview | null;
+  theirReviewPending: boolean;
+}
+
+export function fetchDeals(role: 'buyer' | 'seller' = 'buyer') {
+  const query = role === 'seller' ? '?role=seller' : '?role=buyer';
+  return request<{ deals: DealView[] }>(`/deals${query}`);
+}
+
+export function fetchDeal(id: string) {
+  return request<{ deal: DealView }>(`/deals/${id}`);
+}
+
+// 404 deal_not_found: bu teklif isteğinden henüz sipariş doğmamış.
+export function fetchDealByQuoteRequest(quoteRequestId: string) {
+  return request<{ deal: DealView }>(`/deals/by-request/${quoteRequestId}`);
+}
+
+// Satıcı beyanı. deliveredAt verilmezse sunucu bugünü yazar.
+// 400 future_date / before_deal, 409 invalid_status.
+export function markDealDelivered(id: string, deliveredAt?: string) {
+  return request<{ deal: DealView }>(`/deals/${id}/deliver`, {
+    method: 'POST',
+    body: JSON.stringify(deliveredAt ? { deliveredAt } : {}),
+  });
+}
+
+export function confirmDealDelivery(id: string) {
+  return request<{ deal: DealView }>(`/deals/${id}/confirm`, { method: 'POST' });
+}
+
+export function disputeDeal(id: string, note: string) {
+  return request<{ deal: DealView }>(`/deals/${id}/dispute`, {
+    method: 'POST',
+    body: JSON.stringify({ note }),
+  });
+}
+
+export function cancelDeal(id: string, reason?: string) {
+  return request<{ deal: DealView }>(`/deals/${id}/cancel`, {
+    method: 'POST',
+    body: JSON.stringify(reason ? { reason } : {}),
+  });
+}
+
+export type DealReviewInput =
+  | { quality: number; timing: number; communication: number; comment?: string }
+  | { communication: number; seriousness: number; comment?: string };
+
+// 409 not_completed (teslim onaylanmadan değerlendirilemez) / already_reviewed.
+export function reviewDeal(id: string, input: DealReviewInput) {
+  return request<{ deal: DealView }>(`/deals/${id}/review`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 // --- Çoklu teklif isteme ve karşılaştırma (Faz 3, Adım 1) --------------------
@@ -1110,7 +1220,15 @@ export type NotificationKind =
   // (isteği gönderen ya da cevaplayan karşı firma).
   | 'reference_request'
   | 'reference_confirmed'
-  | 'reference_rejected';
+  | 'reference_rejected'
+  // Faz 3, Adım 4 (sipariş kaydı): hepsinde data.dealId dolu. 'quote_accepted'
+  // bildiriminde de artık data.dealId var.
+  | 'deal_created'
+  | 'deal_delivered'
+  | 'deal_confirmed'
+  | 'deal_disputed'
+  | 'deal_cancelled'
+  | 'deal_review';
 
 export interface NotificationData {
   productId?: string;
@@ -1125,6 +1243,8 @@ export interface NotificationData {
   companyId?: string;
   // Karşılıklı referanslar (Faz 2, Adım 7).
   referenceId?: string;
+  // Sipariş kaydı (Faz 3, Adım 4).
+  dealId?: string;
 }
 
 export interface AppNotification {
