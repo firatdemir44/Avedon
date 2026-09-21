@@ -39,3 +39,10 @@ Amaç: telefon doğrulama kodunun (OTP) gerçek SMS ile gitmesi. Kodda hazır ol
 1. **Abonelik başvurusu:** panel > **Ayarlar > Hesap Bilgileri > Abonelik Başvurusu** (4 adım: başvuran, kurum türü + T.C. kimlik no, tesis adresi + 10 haneli adres kodu, özet). Sonra **e-Devlet > "e-Kayıt Başvurusu Onay İşlemleri"**, işletme: **EMARKA İLETİŞİM VE BİLGİ TEKNOLOJİLERİ A.Ş.**; onay NFC ile: çipli kimlik + NFC'li telefon + e-Devlet Kapısı mobil uygulaması (~10 dk).
 2. **Başlık talebi:** panel > **Ayarlar > SMS > Başlıklar > "Yeni SMS Başlığı Talebi"** (başlık adı + tipi). Evraklar ıslak imzalı taranmış PDF ya da e-imzalı PDF olarak KEP ile gönderilir (KEP adresi yardım makalesinde: /yardim-merkezi/baslik-talebi-originator-nasil-acilir). Sonuç SMS + e-posta ile bildirilir; durum aynı menüden izlenir.
 3. **Başlık adı riski:** başlık şirket unvanıyla tutarlı olmalı; unvandan farklı bir MARKA adı ("AVEDON") için "şirket-marka ilişkisini ispatlayan ek belge" (pratikte marka tescili) istenebilir. **Hızlı yol:** başlığı şirket unvanındaki addan seçmek (ör. "MELIDE"); SMS metni zaten "Avedon dogrulama kodunuz: ..." diye başlıyor. "AVEDON" başlığı marka tescili olunca ikinci başlık olarak eklenir; kodda yalnızca `ILETIMERKEZI_SENDER` değişir.
+
+## Başvuru durumu (2026-09-21, Fırat)
+
+- Uygulama adı **Avedon** olarak kalıyor (isim değişikliği arayışı kapandı; adaylar sohbette tartışıldı: Tekso, Koza, Kloto, Arakne...).
+- İleti Merkezi hesabı ve başvuru **Melide İnşaat San. ve Tic. Ltd. Şti.** üzerinden açıldı; başlık talebi **AVEDON** adıyla yapıldı, **onay bekleniyor**.
+- Risk: başlık unvandan farklı olduğu için sağlayıcı "şirket-marka ilişkisini ispatlayan ek belge" (marka tescili) isteyebilir. İsterse iki yol: (a) "MELIDE" başlığıyla ikinci talep (hemen onaylanır; SMS metni zaten "Avedon dogrulama kodunuz" diye başlıyor), (b) AVEDON için TÜRKPATENT marka başvurusu.
+- Onay gelince Render'a girilecekler: `SMS_PROVIDER=iletimerkezi`, `ILETIMERKEZI_KEY`, `ILETIMERKEZI_SECRET`, `ILETIMERKEZI_SENDER=<onaylanan başlık, birebir>`. Önce panelde Ayarlar > Güvenlik > Erişim İzinleri > "API kullanımına izin ver". Doğrulama: `/api/health` → `sms.account.ok: true`.
