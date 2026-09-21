@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { OtpCodeField } from '../../components/OtpCodeField';
+import { InviteBanner } from '../../components/InviteBanner';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, requestOtp, verifyOtp } from '../../api/client';
 import { haptics } from '../../features/haptics';
@@ -117,6 +118,9 @@ export function LoginScreen({ navigation }: Props) {
             />
             <Text style={styles.brandTagline}>Kaliteli kumaş aramanın yenilikçi yolu</Text>
           </View>
+
+          {/* Davet bağlantısıyla gelindiyse kim davet etti (Faz 2, Adım 4). */}
+          <InviteBanner />
 
           <View style={styles.content}>
             <Text style={styles.title}>Giriş Yap</Text>

@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
+import { InviteBanner } from '../../components/InviteBanner';
 import { useRegistration } from '../../context/RegistrationContext';
 import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
 import type { AccountType } from '../../types';
@@ -36,7 +37,13 @@ export function RoleSelectionScreen({ navigation }: Props) {
   };
 
   return (
-    <OnboardingLayout step={1} totalSteps={6} title="Nasıl katılmak istersiniz?" subtitle="Hesap türünüzü seçin">
+    <OnboardingLayout
+      step={1}
+      totalSteps={6}
+      title="Nasıl katılmak istersiniz?"
+      subtitle="Hesap türünüzü seçin"
+      banner={<InviteBanner />}
+    >
       <View style={styles.list}>
         {OPTIONS.map((option) => (
           <Pressable

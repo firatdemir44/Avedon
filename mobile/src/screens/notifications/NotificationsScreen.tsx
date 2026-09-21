@@ -41,6 +41,8 @@ function iconFor(kind: string): IconName {
   if (kind.startsWith('reference')) return 'ribbon-outline';
   // WhatsApp'tan gelen etiket fotoğrafından hazırlanan ürün taslağı.
   if (kind === 'product_draft') return 'logo-whatsapp';
+  // Davetler (Faz 2, Adım 4): davet ettiğiniz kişi katıldı.
+  if (kind === 'invite_joined') return 'person-add-outline';
   return 'notifications-outline';
 }
 
@@ -173,6 +175,12 @@ export function NotificationsScreen({ navigation }: Props) {
       if (item.kind === 'connection_accepted') {
         if (userId) navigation.navigate('Profile', { userId });
         else navigation.navigate('Connections');
+        return;
+      }
+      // Faz 2, Adım 4: davet ettiğiniz kişi kayıt oldu.
+      if (item.kind === 'invite_joined') {
+        if (userId) navigation.navigate('Profile', { userId });
+        else navigation.navigate('Invites');
         return;
       }
       // Tanınmayan tür: yalnızca okundu olur, ekran değişmez.

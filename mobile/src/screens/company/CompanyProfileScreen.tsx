@@ -576,6 +576,17 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             icon="create-outline"
             onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
           />
+          {/* Faz 2, Adım 4: davet. Bu blokta zaten beş düğme var, altıncısını
+              koymuyoruz; küçük metin bağlantısı yeterli. */}
+          <Pressable
+            onPress={() => navigation.navigate('Invites')}
+            accessibilityRole="button"
+            accessibilityLabel="Tedarikçi ya da müşteri davet et"
+            style={({ pressed }) => [styles.inviteLink, pressed && styles.inviteLinkPressed]}
+          >
+            <Ionicons name="person-add-outline" size={16} color={colors.accent} />
+            <Text style={styles.inviteLinkText}>Tedarikçi ya da müşteri davet et</Text>
+          </Pressable>
         </View>
       ) : (
         // Faz 2, Adım 3: başka bir firmanın sayfasında asistanına soru sorma.
@@ -1450,6 +1461,16 @@ const styles = StyleSheet.create({
   tagText: { ...typography.caption, fontFamily: fonts.semibold },
   taxId: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
   actions: { marginTop: 12, gap: spacing.sm },
+  // Davet bağlantısı (Faz 2, Adım 4): düğme değil, küçük metin bağlantısı.
+  inviteLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: MIN_TOUCH,
+  },
+  inviteLinkPressed: { opacity: 0.6 },
+  inviteLinkText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1, paddingHorizontal: spacing.sm },
   // WhatsApp taslak satırı: düğmelerin arasında beyaz blok.

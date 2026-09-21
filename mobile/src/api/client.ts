@@ -1284,7 +1284,10 @@ export type NotificationKind =
   | 'deal_review'
   // WhatsApp'tan gelen etiket fotoğrafından hazırlanan ürün taslağı;
   // data.draftId dolu (bkz. fetchProductDraft).
-  | 'product_draft';
+  | 'product_draft'
+  // Faz 2, Adım 4 (davetler): davet ettiğiniz kişi kayıt oldu.
+  // data.userId (katılan kişi) + data.inviteId.
+  | 'invite_joined';
 
 export interface NotificationData {
   productId?: string;
@@ -1303,6 +1306,8 @@ export interface NotificationData {
   dealId?: string;
   // WhatsApp ürün taslağı.
   draftId?: string;
+  // Davetler (Faz 2, Adım 4).
+  inviteId?: string;
 }
 
 export interface AppNotification {
@@ -2331,6 +2336,59 @@ export interface PriceIndex {
 
 export function fetchPriceIndex(productId: string) {
   return request<PriceIndex>(`/price-index/product/${productId}`);
+}
+
+// --- Davetler (Faz 2, Adım 4) ------------------------------------------------
+// "Tedarikçini / müşterini davet et". Platform SMS GÖNDERMEZ: sunucu hazır bir
+// paylaşım metni (`shareText`) üretir, kullanıcı onu kendi WhatsApp'ından yollar.
+// Davette telefon yazılıysa ve kayıt olan numara aynıysa iki kişi DOĞRUDAN
+// bağlantılı olur; aksi halde davet edene bekleyen bağlantı isteği düşer.
+
+export type InviteRelation = '' | 'tedarikci' | 'musteri';
+
+export interface Invite {
+  id: string;
+  code: string;
+  name: string;
+  phone: string;
+  relation: InviteRelation;
+  note: string;
+  status: 'pending' | 'joined';
+  joinCount: number;
+  createdAt: string;
+  joinedAt: string | null;
+  joinedUser: { id: string; firstName: string; lastName: string } | null;
+  url: string;
+  // Paylaşılacak HAZIR metin: içinde kayıt bağlantısı ve davet kodu var.
+  shareText: string;
+}
+
+export interface InvitePreview {
+  code: string;
+  inviterName: string;
+  inviterCompany: string | null;
+  relation: InviteRelation;
+}
+
+export function fetchInvites() {
+  return request<{ invites: Invite[]; joinedCount: number; dailyLimit: number }>('/invites');
+}
+
+// Aynı numaraya bekleyen davet varsa sunucu 200 + reused:true ile var olanı döner.
+export function createInvite(input: { name?: string; phone?: string; relation?: InviteRelation; note?: string }) {
+  return request<{ invite: Invite; reused: boolean }>('/invites', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function cancelInvite(id: string) {
+  return request<void>(`/invites/${id}`, { method: 'DELETE' });
+}
+
+// Oturumsuz: davet bağlantısıyla gelen kişiye "kim davet etti" karşılaması.
+export function fetchInviteByCode(code: string) {
+  return request<{ invite: InvitePreview }>(`/invites/code/${encodeURIComponent(code)}`);
 }
 
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };

@@ -147,6 +147,8 @@ export function MyProfileScreen({ navigation }: Props) {
     { key: 'watchRules', title: 'İzlediklerim', onPress: () => navigation.navigate('WatchRules') },
     { key: 'recentlyViewed', title: 'Son Baktıklarım', onPress: () => navigation.navigate('RecentlyViewedProducts') },
     { key: 'connections', title: 'Bağlantılarım', onPress: () => navigation.navigate('Connections') },
+    // Faz 2, Adım 4: tedarikçi/müşteri daveti (hazır metin, WhatsApp'tan paylaşılır).
+    { key: 'invites', title: 'Davet Et', onPress: () => navigation.navigate('Invites') },
     {
       key: 'connectionRequests',
       title: 'Bağlantı İstekleri',

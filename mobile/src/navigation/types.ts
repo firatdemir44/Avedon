@@ -152,6 +152,9 @@ export type RootStackParamList = {
   Profile: { userId: string };
   Connections: undefined;
   ConnectionRequests: undefined;
+  // Davetler (Faz 2, Adım 4): "tedarikçini / müşterini davet et". Davet
+  // oluşturma formu + Davetlerim listesi tek ekranda.
+  Invites: undefined;
   // userId/avatarUpdatedAt: başlıktaki kişi avatarı için (eski bağlantılarda
   // olmayabilir; yoksa yalnızca ad yazılır).
   Chat: { conversationId: string; title: string; userId?: string; avatarUpdatedAt?: string | null };

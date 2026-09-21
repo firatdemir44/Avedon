@@ -14,7 +14,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 5. **Hesaplayıcılarda "görsel grafik" istekleri:** Fırat iletecek (2026-09-15'ten beri bekliyor).
 
 **B. SMS'e bağlı kod işleri**
-6. Faz 2 Adım 4: davet mekaniği ("tedarikçini davet et").
+6. ~~Faz 2 Adım 4: davet mekaniği~~ TAMAMLANDI 2026-09-21 (sunucu 8bed57e, test 21/21; mobil: Davet Et ekranı, WhatsApp paylaşımı, davetlerim, kayıt tarafında karşılama şeridi + davet kodu alanı). **Telefonda kontrol bekliyor** (wa.me açılışı, ?davet= bağlantısıyla kayıt).
 7. İlk dış pilot firma öncesi son kontrol: `WHATSAPP_APP_SECRET` canlıda dolu, SMS health yeşil.
 
 **C. Faz 3:** 7 adımın hepsi kodlandı (2026-09-21). Sipariş geçmişi, güven özeti ve fiyat endeksi gerçek kullanıcı verisiyle dolacak; SMS girişi açılmadan canlıda boş görünürler (beklenen).

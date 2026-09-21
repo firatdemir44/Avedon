@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import { SessionProvider } from './src/context/SessionContext';
+import { captureInviteCodeFromUrl } from './src/features/invites/storedCode';
 
 // Yazı tipleri yüklenene kadar açılış ekranı dursun; yoksa ilk karede sistem
 // yazı tipi görünüp Plex'e sıçrardı.
@@ -34,6 +35,12 @@ export default function App() {
   useEffect(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);
+
+  // Davet bağlantısıyla açıldıysa (`?davet=KOD`) kodu cihaza yaz; kayıt akışı
+  // oradan okuyup "Davet kodu" alanını dolduruyor (Faz 2, Adım 4).
+  useEffect(() => {
+    void captureInviteCodeFromUrl();
+  }, []);
 
   if (!ready) return null;
 

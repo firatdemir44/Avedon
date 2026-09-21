@@ -8,6 +8,7 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { ListRow } from '../../components/ListRow';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { colors, spacing } from '../../theme';
@@ -45,11 +46,23 @@ export function ConnectionsListScreen({ navigation }: Props) {
         contentContainerStyle={styles.listContent}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
-          error ? (
-            <View style={styles.bannerWrap}>
-              <InlineError message={friendlyMessage(error, 'Bağlantılar alınamadı')} onRetry={reload} />
+          <>
+            {error ? (
+              <View style={styles.bannerWrap}>
+                <InlineError message={friendlyMessage(error, 'Bağlantılar alınamadı')} onRetry={reload} />
+              </View>
+            ) : null}
+            {/* Faz 2, Adım 4: bağlantı listesi boş ya da dolu olsun, davet
+                buradan da başlatılabilsin. */}
+            <View style={styles.inviteWrap}>
+              <PrimaryButton
+                label="Davet et"
+                variant="outline"
+                icon="person-add-outline"
+                onPress={() => navigation.navigate('Invites')}
+              />
             </View>
-          ) : null
+          </>
         }
         ListEmptyComponent={
           <EmptyState
@@ -78,4 +91,10 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
   bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
+  inviteWrap: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.blockGap,
+  },
 });

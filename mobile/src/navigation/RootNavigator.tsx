@@ -62,6 +62,7 @@ import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
+import { InvitesScreen } from '../screens/invites/InvitesScreen';
 import { ChatScreen, ChatHeaderTitle } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
@@ -367,6 +368,8 @@ export function RootNavigator() {
               component={ConnectionRequestsScreen}
               options={{ headerShown: true, title: 'Bağlantı İstekleri' }}
             />
+            {/* Faz 2, Adım 4: tedarikçi/müşteri daveti. */}
+            <Stack.Screen name="Invites" component={InvitesScreen} options={{ headerShown: true, title: 'Davet Et' }} />
             <Stack.Screen
               name="Chat"
               component={ChatScreen}

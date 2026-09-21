@@ -11,6 +11,10 @@ export interface RegistrationDraft {
   taxId: string;
   companyCode: string;
   verificationToken: string;
+  // Davet kodu (Faz 2, Adım 4). İsteğe bağlı: davet bağlantısıyla gelindiyse
+  // cihazdan dolu gelir, kullanıcı elle de yazabilir. Geçersiz kod kaydı
+  // ENGELLEMEZ, sunucu yok sayar.
+  inviteCode: string;
 }
 
 const initialDraft: RegistrationDraft = {
@@ -23,6 +27,7 @@ const initialDraft: RegistrationDraft = {
   taxId: '',
   companyCode: '',
   verificationToken: '',
+  inviteCode: '',
 };
 
 interface RegistrationContextValue {

@@ -10,15 +10,18 @@ interface Props {
   subtitle?: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  // İlerleme çubuğunun altındaki kenardan kenara şerit (davet karşılaması).
+  banner?: React.ReactNode;
 }
 
-export function OnboardingLayout({ step, totalSteps, title, subtitle, children, footer }: Props) {
+export function OnboardingLayout({ step, totalSteps, title, subtitle, children, footer, banner }: Props) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.progressTrack}>
         <View style={[styles.progressFill, { flex: step }]} />
         <View style={{ flex: totalSteps - step }} />
       </View>
+      {banner}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.stepLabel}>
           Adım {step} / {totalSteps}
