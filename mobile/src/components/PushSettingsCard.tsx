@@ -5,6 +5,7 @@ import { PrimaryButton } from './PrimaryButton';
 import { ApiError, fetchPushPublicKey, sendTestPush } from '../api/client';
 import {
   currentPushState,
+  getLastPushError,
   disablePush,
   enablePush,
   type PushPermission,
@@ -87,7 +88,7 @@ export function PushSettingsCard() {
       text:
         result === 'unsupported'
           ? 'Bu tarayıcı anlık bildirimi desteklemiyor.'
-          : 'Bildirimler açılamadı, tekrar deneyin.',
+          : `Bildirimler açılamadı, tekrar deneyin.${getLastPushError() ? ` (Hata kodu: ${getLastPushError()})` : ''}`,
     });
   }, [refresh]);
 

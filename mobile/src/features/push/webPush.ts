@@ -142,13 +142,30 @@ function base64UrlToBuffer(value: string): ArrayBuffer {
   return bytes.buffer as ArrayBuffer;
 }
 
+// Son açma denemesinin hangi adımda ve hangi hatayla düştüğü (ekranda kısa kod olarak
+// gösterilir; kullanıcıdan tek fotoğrafla teşhis alınabilsin). Gizli değer içermez.
+let lastPushError = '';
+export const getLastPushError = () => lastPushError;
+function fail(step: string, err?: unknown) {
+  const e = err as { name?: string; message?: string } | undefined;
+  lastPushError = [step, e?.name, e?.message?.slice(0, 80)].filter(Boolean).join(' / ');
+}
+
 async function getRegistration(): Promise<ServiceWorkerRegistration | null> {
   try {
     if (!hasPushApis()) return null;
     const existing = await navigator.serviceWorker.getRegistration('/sw.js');
-    if (existing) return existing;
-    return await navigator.serviceWorker.register('/sw.js');
-  } catch {
+    if (!existing) await navigator.serviceWorker.register('/sw.js');
+    // Abonelik yalnızca ETKİN servis çalışanıyla kurulur; kayıt hemen döner ama çalışan
+    // henüz kuruluyor olabilir ("no active Service Worker"). Hazır olana kadar beklenir.
+    const ready = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ]);
+    if (!ready) fail('sw-hazir-degil');
+    return ready;
+  } catch (err) {
+    fail('sw-kayit', err);
     return null;
   }
 }
@@ -158,14 +175,19 @@ async function sendSubscriptionToServer(subscription: PushSubscription): Promise
     const json = subscription.toJSON();
     const p256dh = json.keys?.p256dh;
     const auth = json.keys?.auth;
-    if (!json.endpoint || !p256dh || !auth) return false;
+    if (!json.endpoint || !p256dh || !auth) {
+      fail('abonelik-eksik');
+      return false;
+    }
     await subscribePush({
       endpoint: json.endpoint,
       keys: { p256dh, auth },
       userAgent: typeof navigator !== 'undefined' ? navigator.userAgent?.slice(0, 200) : undefined,
     });
     return true;
-  } catch {
+  } catch (err) {
+    const status = (err as { status?: number })?.status;
+    fail(`sunucu-kayit${status ? '-' + status : ''}`, err);
     return false;
   }
 }
@@ -175,6 +197,7 @@ async function sendSubscriptionToServer(subscription: PushSubscription): Promise
  * açık anahtarı → abonelik → sunucuya kayıt.
  */
 export async function enablePush(): Promise<EnablePushResult> {
+  lastPushError = '';
   try {
     if (pushSupport() !== 'ready') return 'unsupported';
 
@@ -182,14 +205,18 @@ export async function enablePush(): Promise<EnablePushResult> {
     if (!registration) return 'error';
 
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return permission === 'denied' ? 'denied' : 'error';
+    if (permission !== 'granted') {
+      if (permission !== 'denied') fail(`izin-${permission}`);
+      return permission === 'denied' ? 'denied' : 'error';
+    }
 
     let publicKey = '';
     try {
       const key = await fetchPushPublicKey();
       if (!key.enabled || !key.publicKey) return 'not-configured';
       publicKey = key.publicKey;
-    } catch {
+    } catch (err) {
+      fail('acik-anahtar', err);
       return 'error';
     }
 
@@ -213,13 +240,15 @@ export async function enablePush(): Promise<EnablePushResult> {
         applicationServerKey: base64UrlToBuffer(publicKey),
       });
       return (await sendSubscriptionToServer(fresh)) ? 'enabled' : 'error';
-    } catch {
+    } catch (err) {
+      fail('abone-yenile', err);
       return 'error';
     }
   } catch (err) {
     // Tarayıcı `subscribe` çağrısını reddedebilir (ör. iOS'ta sekmede).
     const name = (err as { name?: string })?.name;
     if (name === 'NotAllowedError') return 'denied';
+    fail('abone', err);
     return 'error';
   }
 }
