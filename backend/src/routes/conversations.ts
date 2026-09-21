@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
+import { checkClaimable, messageVideos } from '../videoLinks';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
@@ -38,7 +39,8 @@ function toSummary(conversation: ConversationWithIncludes, meId: string, unreadC
   return {
     id: conversation.id,
     user: conversation.userAId === meId ? conversation.userB : conversation.userA,
-    lastMessage: conversation.messages[0] ?? null,
+    // Yazısız mesaj yalnızca video mesajıdır.
+    lastMessage: conversation.messages[0] ? { ...conversation.messages[0], body: conversation.messages[0].body || 'Video' } : null,
     unreadCount,
     lastMessageAt: conversation.lastMessageAt,
   };
@@ -176,12 +178,14 @@ conversationsRouter.get(
           })
         ).reverse();
 
+    const videos = await messageVideos(messages.map((m) => m.id));
     res.json({
       messages: messages.map((m) => ({
         id: m.id,
         body: m.body,
         senderId: m.senderId,
         quoteRequestId: m.quoteRequestId,
+        video: videos.get(m.id) ?? null,
         createdAt: m.createdAt,
         readAt: m.readAt,
       })),
@@ -189,7 +193,11 @@ conversationsRouter.get(
   })
 );
 
-const sendSchema = z.object({ body: z.string().trim().min(1).max(2000) }).strict();
+// Video mesajında yazı zorunlu değil.
+const sendSchema = z
+  .object({ body: z.string().trim().max(2000).optional(), videoId: z.string().min(1).optional() })
+  .strict()
+  .refine((d) => !!d.body || !!d.videoId, { message: 'empty_message' });
 
 conversationsRouter.post(
   '/:id/messages',
@@ -209,16 +217,28 @@ conversationsRouter.post(
       return res.status(403).json({ error: 'not_connected' });
     }
 
+    const { videoId } = parsed.data;
+    if (videoId) {
+      const claim = await checkClaimable(req.user!.id, videoId);
+      if (claim) return res.status(claim === 'video_not_found' ? 404 : 409).json({ error: claim });
+    }
+
     const now = new Date();
     const [message] = await prisma.$transaction([
       prisma.message.create({
-        data: { conversationId: conversation.id, senderId: req.user!.id, body: parsed.data.body, createdAt: now },
+        data: { conversationId: conversation.id, senderId: req.user!.id, body: parsed.data.body ?? '', createdAt: now },
       }),
       prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: now } }),
     ]);
 
+    if (videoId) {
+      await prisma.videoLink.create({ data: { videoId, messageId: message.id, conversationId: conversation.id } });
+    }
+    const video = videoId ? (await messageVideos([message.id])).get(message.id) ?? null : null;
+
     res.status(201).json({
       message: {
+        video,
         id: message.id,
         body: message.body,
         senderId: message.senderId,

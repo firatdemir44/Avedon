@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import { registerRouter } from './routes/register';
 import { productsRouter } from './routes/products';
+import { productVideosRouter } from './routes/productVideos';
 import { companiesRouter } from './routes/companies';
 import { advisorRouter } from './routes/advisor';
 import { sampleRequestsRouter } from './routes/sampleRequests';
@@ -74,6 +75,7 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 app.use('/api/register', registerRouter);
+app.use('/api/products', productVideosRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/advisor', advisorRouter);

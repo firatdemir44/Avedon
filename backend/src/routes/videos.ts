@@ -76,7 +76,7 @@ videosRouter.delete(
     if (!video || video.ownerId !== req.user!.id) {
       return res.status(404).json({ error: 'video_not_found' });
     }
-    if (video.post) {
+    if (video.post || (await prisma.videoLink.findUnique({ where: { videoId: req.params.id }, select: { id: true } }))) {
       return res.status(409).json({ error: 'video_in_use' });
     }
     await deleteVideoCompletely(req.params.id);

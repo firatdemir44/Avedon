@@ -951,3 +951,18 @@ model Invite {
   @@index([inviterId, createdAt])
   @@index([inviteePhone])
 }
+
+// Ürün sayfasına ve sohbet mesajına bağlanan videolar. Bir video tek bir yere bağlanır
+// (gönderi, ürün ya da mesaj). İlişki yok: mevcut tablolar yeniden kurulmasın.
+model VideoLink {
+  id             String   @id @default(cuid())
+  videoId        String   @unique
+  productId      String?
+  messageId      String?  @unique
+  conversationId String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([productId, sortOrder])
+  @@index([conversationId])
+}
