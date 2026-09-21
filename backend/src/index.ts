@@ -37,6 +37,8 @@ import { invitesRouter } from './routes/invites';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { smsStatus } from './sms';
+import { pushStatus } from './push';
+import { pushRouter } from './routes/push';
 import { backfillLooksInBackground } from './looks';
 import { getAnthropic, isLlmMock } from './llm';
 import { getStorageInfo } from './storageCheck';
@@ -72,6 +74,7 @@ app.get('/api/health', async (_req, res) => {
     whatsapp: getWhatsAppStatus(),
     // SMS ile doğrulama kodu (Adım 8): anahtarlar, başlık, hesap erişimi ve kalan kredi, son gönderim.
     sms: await smsStatus(),
+    push: await pushStatus(),
   });
 });
 app.use('/api/register', registerRouter);
@@ -89,6 +92,7 @@ app.use('/api/posts', postsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/push', pushRouter);
 app.use('/api/passport', passportRouter);
 app.use('/api/skills', skillsRouter);
 app.use('/api/assistant', assistantRouter);

@@ -966,3 +966,18 @@ model VideoLink {
   @@index([productId, sortOrder])
   @@index([conversationId])
 }
+
+// Anlık bildirim abonelikleri (Web Push). Bir kullanıcının birden çok cihazı olabilir.
+// İlişki yok: mevcut tablolar yeniden kurulmasın.
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String    @default("")
+  createdAt  DateTime  @default(now())
+  lastSentAt DateTime?
+
+  @@index([userId])
+}

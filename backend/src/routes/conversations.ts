@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { checkClaimable, messageVideos } from '../videoLinks';
+import { sendPush } from '../push';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
@@ -230,6 +231,15 @@ conversationsRouter.post(
       }),
       prisma.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: now } }),
     ]);
+
+    // Karşı tarafa anlık bildirim (uygulama içi bildirim satırı yazılmaz; sohbet sayacı zaten var).
+    void sendPush([otherId], {
+      title: `${req.user!.firstName} ${req.user!.lastName}`,
+      body: parsed.data.body ? parsed.data.body.slice(0, 140) : 'Video gönderdi',
+      kind: 'message',
+      data: { conversationId: conversation.id, userId: req.user!.id },
+      tag: `conv-${conversation.id}`,
+    });
 
     if (videoId) {
       await prisma.videoLink.create({ data: { videoId, messageId: message.id, conversationId: conversation.id } });

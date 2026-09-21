@@ -2,6 +2,7 @@
 // çağırır; kanal (uygulama, ileride push/WhatsApp şablonu) burada çoğalır.
 // Bildirim yazımı asıl işlemi ASLA bozmaz: hatalar yutulur ve kayda düşer.
 import { prisma } from './db';
+import { sendPush } from './push';
 
 export type NotificationKind =
   | 'sample_request_new'
@@ -70,6 +71,8 @@ export async function notifyMany(userIds: readonly string[], input: NotifyInput)
   } catch (err) {
     console.error('[notifications] yazılamadı:', err);
   }
+  // Anlık bildirim: beklenmez, hatası bildirimi bozmaz.
+  void sendPush(unique, { title: input.title, body: input.body, kind: input.kind, data: input.data as Record<string, unknown> | undefined });
 }
 
 export function toNotificationRow(row: { id: string; kind: string; title: string; body: string; dataJson: string; readAt: Date | null; createdAt: Date }) {
