@@ -17,7 +17,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 6. Faz 2 Adım 4: davet mekaniği ("tedarikçini davet et").
 7. İlk dış pilot firma öncesi son kontrol: `WHATSAPP_APP_SECRET` canlıda dolu, SMS health yeşil.
 
-**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
+**C. Faz 3:** 7 adımın hepsi kodlandı (2026-09-21). Sipariş geçmişi, güven özeti ve fiyat endeksi gerçek kullanıcı verisiyle dolacak; SMS girişi açılmadan canlıda boş görünürler (beklenen).
 
 **D. Bilinen küçük eksikler (kod)**
 8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor).
@@ -132,6 +132,8 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Mobile `Company` tipi ile Prisma şeması arasındaki `productCategories`/`employeeIds` tutarsızlığını gidermek
 
 ## Tamamlananlar (kısa özet)
+
+- 2026-09-21: **Faz 3 Adım 4, 5, 6 tamamlandı (Faz 3 bitti).** Sunucu (Fable 5.1): **Adım 4** (6ed45d9) `Deal` + `DealReview` (yalnızca yeni tablolar); kabul edilen teklif siparişe döner, anlaşılan tarih = kabul + satıcının kendi termini; teslim beyanı → alıcı onayı/itirazı, 7 gün kendiliğinden onay, iptal; değerlendirme karşılıklı açılır (ikisi de yazınca ya da 14 gün); alıcı→satıcı kalite/termin/iletişim, satıcı→alıcı iletişim/ciddiyet; ÖDEME ÖLÇÜTÜ YOK (test gövdede ödeme alanını reddettiriyor); test 32/32. **Adım 5** (3bf03d7) `/api/trust/company/:id`: tek puan yok, yalnızca bileşenler; eşik altı (3 iş, 3 değerlendirme, 5 istek) oran/ortalama gizli; yalnızca GÖRÜNÜR değerlendirmeler sayılır; teklife yanıt oranı + ortanca saat; test 11/11. **Adım 6** (a0fa07e) `/api/price-index/product/:id`: son 90 günde gönderilmiş teklifler, küme = çeşit+alt çeşit+ana lif+20 gr bandı (iplikte aile+numara ±%10), aynı para biriminde 5 satıcı + 8 teklif eşiği, yalnızca çeyrekler/ortanca, örnek sayısı kaba ("8+"), satıcıya kendi konumu; test 16/16. Mobil (Opus 5): `DealDetailScreen`, `DealsScreen` (Profil: Siparişlerim), teklif detayından/bildirimden geçiş, `TrustSummaryCard` (firma Hakkında sekmesi), `PriceIndexCard` (ürün sayfası, teklif detayı, karşılaştırma). Tarayıcıda sipariş akışı uçtan uca denendi. **Telefonda kontrol bekliyor.**
 
 - 2026-09-21: **Faz 3 Adım 7 tamamlandı: AB Dijital Ürün Pasaportu'na HAZIRLIK.** Önce doğrulandı: resmi ESPR sayfasına göre tekstile özel zorunlu alanlar yayımlanmadı ("ürüne göre, istişareyle belirlenecek"); sektör kaynaklarına göre düzenleme 2027, uygulama 2028+. Bu yüzden hiçbir yerde "uyumlu" denmiyor. Sunucu (Fable 5.1, 0e7b3fc): `Product.originCountry/careNotes/recycledPercent` (Prisma tabloyu yeniden kurmak istedi; migration elle 3 `ADD COLUMN` olarak yazıldı, şema farkı 0 doğrulandı, canlıda sorunsuz), `/api/dpp/:id` (herkese açık belge; fiyat/stok/MOQ/termin ASLA çıkmaz; eksik listesi yalnızca sahibine), `/api/dpp/:id/qr.png` (`qrcode` paketi), `PUBLIC_WEB_URL` ile adres; test 14/14. Açık sayfa: `mobile/public/pasaport.html` (Vercel; TR/EN, JSON indirme, QR). Mobil (Opus 5): kumaş formunda "AB pasaportuna hazırlık" bölümü, ürün sayfasında "Dijital pasaport" (sayfayı aç, paylaş; sahibine % hazır + eksikler + QR). Tarayıcıda denendi. **Telefonda kontrol bekliyor.** **Açık:** iplik formunda bakım/geri dönüşüm alanı yok; kurallar yayımlanınca alan eşlemesi gözden geçirilecek.
 
