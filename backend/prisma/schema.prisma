@@ -838,3 +838,58 @@ model LookSearch {
 
   @@index([userId, createdAt])
 }
+
+// Sipariş kaydı (Faz 3, Adım 4): kabul edilen tekliften doğar. Platform ödeme almaz, sevkiyat
+// izlemez; yalnızca iki tarafın BEYANI tutulur. Ödeme konusuna hiç girilmez (Fırat kararı 2026-09-18).
+// İlişkiler bilinçli olarak yok (mevcut tablolar yeniden kurulmasın); bütünlük uygulama katmanında.
+model Deal {
+  id                 String    @id @default(cuid())
+  quoteRequestId     String    @unique
+  quoteId            String
+  buyerId            String
+  buyerCompanyId     String?
+  sellerCompanyId    String
+  productId          String
+  productCode        String
+  quantity           Float
+  unit               String
+  // Satıcının kendi teklifindeki terminden hesaplanır (kabul tarihi + termin günü); yoksa alıcının istediği tarih.
+  agreedDeliveryDate DateTime?
+  // acik | teslim_bildirildi | teslim_edildi | itiraz | iptal
+  status             String    @default("acik")
+  sellerDeliveredAt  DateTime?
+  buyerConfirmedAt   DateTime?
+  disputeNote        String    @default("")
+  cancelledByRole    String    @default("")
+  cancelReason       String    @default("")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  reviews            DealReview[]
+
+  @@index([buyerId, createdAt])
+  @@index([sellerCompanyId, createdAt])
+  @@index([buyerCompanyId])
+}
+
+// Karşılıklı değerlendirme: yalnızca teslimi tamamlanan işte, taraf başına bir kez.
+// İki taraf da yazınca ya da teslimden 14 gün sonra görünür olur (misilleme puanını önlemek için).
+model DealReview {
+  id              String   @id @default(cuid())
+  dealId          String
+  deal            Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  // Yazan taraf: buyer | seller
+  authorRole      String
+  authorUserId    String
+  // Değerlendirilen firma (alıcının firması yoksa boş).
+  targetCompanyId String?
+  // Alıcı → satıcı: quality, timing, communication. Satıcı → alıcı: communication, seriousness. 1-5.
+  quality         Int?
+  timing          Int?
+  communication   Int
+  seriousness     Int?
+  comment         String   @default("")
+  createdAt       DateTime @default(now())
+
+  @@unique([dealId, authorRole])
+  @@index([targetCompanyId])
+}

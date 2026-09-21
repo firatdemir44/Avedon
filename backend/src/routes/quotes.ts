@@ -8,6 +8,7 @@ import { getConnectionState, isConnectedAccepted } from '../connections';
 import { findOrCreateConversation } from '../conversations';
 import { notify, notifyMany } from '../notifications';
 import { computeQuoteDraft } from '../skills/calc/quoteDraft';
+import { createDealFromAcceptedQuote } from './deals';
 import { makeHandle } from './handle';
 
 // Faz 2, Adım 2: teklif akışı. Alıcı istek açar (bağlantı şartı yok), satıcı
@@ -301,6 +302,22 @@ quotesRouter.post(
       prisma.quote.update({ where: { id: sent.id }, data: { status: accepted ? 'accepted' : 'declined' } }),
       prisma.quoteRequest.update({ where: { id: row.id }, data: { status: accepted ? 'accepted' : 'declined' } }),
     ]);
+    // Faz 3 Adım 4: kabul edilen teklif sipariş kaydına döner (iki tarafın beyanıyla izlenir).
+    const deal = accepted
+      ? await createDealFromAcceptedQuote({
+          quoteRequestId: row.id,
+          quoteId: sent.id,
+          buyerId: row.buyerId,
+          buyerCompanyId: row.buyerCompanyId,
+          sellerCompanyId: row.sellerCompanyId,
+          productId: row.productId,
+          productCode: row.product.code,
+          quantity: row.quantity,
+          unit: row.unit,
+          leadTimeDays: sent.leadTimeDays,
+          targetDate: row.targetDate,
+        })
+      : null;
     const sellers = await prisma.user.findMany({ where: { companyId: row.sellerCompanyId }, select: { id: true } });
     await notifyMany(
       sellers.map((u) => u.id),
@@ -308,10 +325,10 @@ quotesRouter.post(
         kind: accepted ? 'quote_accepted' : 'quote_declined',
         title: `${row.product.code}: teklif ${accepted ? 'kabul edildi' : 'reddedildi'}`,
         body: `${row.buyer.firstName} ${row.buyer.lastName}`,
-        data: { quoteRequestId: row.id, productId: row.productId },
+        data: { quoteRequestId: row.id, productId: row.productId, ...(deal ? { dealId: deal.id } : {}) },
       }
     );
-    res.json({ request: toRequestRow((await loadRequest(row.id))!, 'buyer') });
+    res.json({ request: toRequestRow((await loadRequest(row.id))!, 'buyer'), dealId: deal?.id ?? null });
   })
 );
 

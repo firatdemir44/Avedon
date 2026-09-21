@@ -27,6 +27,7 @@ import { yarnsRouter } from './routes/yarns';
 import { rfqsRouter } from './routes/rfqs';
 import { looksRouter } from './routes/looks';
 import { dppRouter } from './routes/dpp';
+import { dealsRouter } from './routes/deals';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { smsStatus } from './sms';
@@ -93,6 +94,7 @@ app.use('/api/yarns', yarnsRouter);
 app.use('/api/rfqs', rfqsRouter);
 app.use('/api/looks', looksRouter);
 app.use('/api/dpp', dppRouter);
+app.use('/api/deals', dealsRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;

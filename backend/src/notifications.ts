@@ -17,7 +17,13 @@ export type NotificationKind =
   | 'company_question_answered'
   | 'reference_request'
   | 'reference_confirmed'
-  | 'reference_rejected';
+  | 'reference_rejected'
+  | 'deal_created'
+  | 'deal_delivered'
+  | 'deal_confirmed'
+  | 'deal_disputed'
+  | 'deal_cancelled'
+  | 'deal_review';
 
 export interface NotificationData {
   productId?: string;
@@ -30,6 +36,7 @@ export interface NotificationData {
   threadId?: string;
   companyId?: string;
   referenceId?: string;
+  dealId?: string;
 }
 
 export interface NotifyInput {
