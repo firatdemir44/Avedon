@@ -17,6 +17,9 @@ export function TableInput({ style, ...props }: TextInputProps) {
 
 const styles = StyleSheet.create({
   input: {
+    // Web'de <input> öğesinin kendi asgari genişliği (~200 px) var; minWidth 0 olmazsa flex sütunu
+    // daralmaz ve yanındaki hücreleri ekran dışına iter (2026-09-21: "% kısmına rakam giremedim").
+    minWidth: 0,
     fontFamily: fonts.regular,
     minHeight: MIN_TOUCH - 4,
     borderWidth: 1,
