@@ -159,6 +159,16 @@ Sunucu `backend/src/routes/looks.ts`; istemci uçları `api/client.ts` "Benzer k
 - **Girişler:** Ürünler ekranında (kumaş tarafı) arama kutusunun yanında 44px kare kamera düğmesi (filtre düğmesinin ikizi, etiket "Fotoğrafla benzer kumaş ara"; oturum şart olduğu için giriş yapılmamışken **gizli**) ve Profil menüsünde "Fotoğrafla Kumaş Ara".
 - **Ürün sayfasında "Benzer kumaşlar":** yalnızca kumaşta, firma satırının altında. `fetchSimilarProducts` **ayrı ve sessiz** istektir: sayfanın ana yüklenmesini beklemez, hata olursa ya da `look === null` ise bölüm hiç çizilmez. Başlığın altında 11px gri "Görünüşe göre benzer", altında yatay kaydırılan 104px kartlar (kapak `ProductThumbnail` → `productImageCache`, mono kod, mavi firma adı, mono "%N benzer", ilk neden). Karta basınca `navigation.push('ProductDetail', ...)` — aynı ekranın üstüne yenisi açılır, zincir geri tuşuyla çözülür.
 
+## Dijital pasaport (Faz 3, Adım 7)
+
+Sunucu `backend/src/routes/dpp.ts`; istemci uçları `api/client.ts` "Dijital pasaport" bölümünde (`fetchDpp`, `dppQrUrl`). **Dil kuralı: hiçbir yerde "AB uyumlu" ya da "DPP uyumlu" YAZILMAZ** — AB tekstil için zorunlu alanları henüz yayımlamadı, bu bir **hazırlıktır**. Kullanılan ifade: "AB Dijital Ürün Pasaportu'na hazırlık". Ticari alanlar (fiyat, stok, MOQ, termin) pasaport sayfasına hiç çıkmaz.
+
+- **Kumaş formunda (`AddProductScreen`) son bölüm:** `CollapsibleSection` "AB pasaportuna hazırlık (isteğe bağlı)" (kapalı gelir, düzenlemede alanlardan biri doluysa açık). İçinde kısa açıklama + Menşe ülke (metin, ≤60, yer tutucu "Örn. Türkiye") · Geri dönüştürülmüş içerik oranı (%; virgüllü ondalık, `parseNumber`; **boş = belirtilmedi, 0 geçerli bir değer**, 0-100 dışında satır içi form hatası) · Bakım / yıkama bilgisi (çok satırlı, ≤500). **Gönderim:** alan yalnızca doluysa ya da önceden dolu olup şimdi temizlendiyse gövdeye girer (`dppInitial` ref ile karşılaştırılır); boş yeni üründe bu alanlar hiç gönderilmez, böylece alanları tanımayan bir sunucuya karşı kırılmaz. **İplik formuna (`YarnFormScreen`) dokunulmadı**: iplikte menşe zaten var ve pasaporta yansıyor.
+- **Ürün sayfasındaki "Dijital pasaport" bölümü (kumaş ve iplik):** veri **ayrı ve sessiz** istekle gelir (benzer kumaşlar deseni) — ana yüklemeyi bekletmez, hata olursa bölüm hiç çizilmez.
+  - Herkese: kısa anlatım + iki `sm` outline düğme yan yana, "Pasaport sayfasını aç" (`passport.identifier.url` → `Linking.openURL`) ve "Bağlantıyı paylaş" (telefonda `Share`, **web'de panoya kopyalama** — düğme "Kopyalandı" olur; pano yoksa sayfa açılır).
+  - Yalnızca sahibine: "%85 hazır" mono satırı + ince ilerleme çubuğu (kompozisyon çubuğunun ikizi), "Eksik bilgiler" listesi (`missing[].label`, her biri turuncu halka ikonlu satır) + `sm` outline "Düzenle" (kumaşta `AddProduct`, iplikte `YarnForm`), 180px beyaz zeminli QR görseli (`dppQrUrl`, oturumsuz uç → doğrudan `Image` kaynağı) + altında "QR'ı etiketinize ya da kartelanıza basabilirsiniz..." notu ve "QR'ı aç / indir".
+  - En altta 11px gri not: "AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır."
+
 ## Basma geri bildirimi (4. aşama)
 
 - Beyaz satır/blok basılıyken zemini `colors.pressed` olur; Android'de ayrıca `android_ripple`.

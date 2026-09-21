@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, Share, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
   confirmProductFields,
+  dppQrUrl,
   fetchCertificateImage,
+  fetchDpp,
   fetchProduct,
   fetchSimilarProducts,
   fetchTestReportImage,
   setProductFavorite,
+  type DppResult,
   type SimilarProductResult,
 } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
@@ -148,6 +151,27 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       })
       .catch(() => {
         // Sessiz: benzer kumaşlar bölümü gizli kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+
+  // Faz 3, Adım 7: "Dijital pasaport" (AB Dijital Ürün Pasaportu'na hazırlık).
+  // Benzer kumaşlar gibi AYRI ve SESSİZ istek: sayfanın ana yüklenmesini
+  // beklemez, hata olursa bölüm hiç çizilmez. `missing` yalnızca sahibine gelir.
+  const [dpp, setDpp] = useState<DppResult | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setDpp(null);
+    setLinkCopied(false);
+    fetchDpp(productId)
+      .then((result) => {
+        if (!cancelled) setDpp(result);
+      })
+      .catch(() => {
+        // Sessiz: dijital pasaport bölümü gizli kalır.
       });
     return () => {
       cancelled = true;
@@ -363,6 +387,41 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       setFavoriteBusy(false);
     }
   };
+
+  // --- Dijital pasaport (Faz 3, Adım 7) ---
+  const passportUrl = dpp?.passport.identifier.url ?? '';
+  const openPassportPage = () => {
+    if (passportUrl) Linking.openURL(passportUrl).catch(() => {});
+  };
+  const openQr = () => {
+    Linking.openURL(dppQrUrl(product.id)).catch(() => {});
+  };
+  const sharePassportLink = async () => {
+    if (!passportUrl) return;
+    const message = `${product.code} dijital pasaportu:\n${passportUrl}`;
+    if (Platform.OS === 'web') {
+      // Web'de paylaşım penceresi yok: bağlantı panoya kopyalanır.
+      const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
+        .navigator?.clipboard;
+      try {
+        if (!clipboard) throw new Error('clipboard_yok');
+        await clipboard.writeText(passportUrl);
+        setLinkCopied(true);
+      } catch {
+        // Kopyalanamazsa bağlantıyı yeni sekmede açalım, kullanıcı adres
+        // çubuğundan kopyalayabilsin.
+        openPassportPage();
+      }
+      return;
+    }
+    Share.share({ message }).catch(() => {});
+  };
+  // Eksik listesi yalnızca sahibine geliyor; başkasında `missing` hiç yok.
+  const dppMissing = isOwnProduct ? dpp?.missing ?? [] : [];
+  const openPassportEdit = () =>
+    isYarn
+      ? navigation.navigate('YarnForm', { yarnId: product.id })
+      : navigation.navigate('AddProduct', { productId: product.id });
 
   const favoriteButton = isOwnProduct ? null : (
     <Pressable
@@ -724,6 +783,98 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           </>
         ) : null}
 
+        {/* Faz 3, Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK. Kumaşta ve
+            iplikte aynı bölüm. Herkes pasaport sayfasını açıp paylaşabilir;
+            doluluk, eksik listesi ve QR yalnızca ürünün sahibine görünür. */}
+        {dpp ? (
+          <>
+            <SectionHeader title="Dijital pasaport" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.dppBlock]}>
+              <Text style={styles.dppLead}>
+                Bu ürünün herkese açık pasaport sayfası hazır. Sayfada fiyat ve stok görünmez.
+              </Text>
+              <View style={styles.dppActions}>
+                <PrimaryButton
+                  label="Pasaport sayfasını aç"
+                  icon="open-outline"
+                  size="sm"
+                  variant="outline"
+                  onPress={openPassportPage}
+                  style={styles.dppAction}
+                />
+                <PrimaryButton
+                  label={linkCopied ? 'Kopyalandı' : 'Bağlantıyı paylaş'}
+                  icon={linkCopied ? 'checkmark' : 'share-social-outline'}
+                  size="sm"
+                  variant="outline"
+                  onPress={sharePassportLink}
+                  style={styles.dppAction}
+                />
+              </View>
+
+              {isOwnProduct ? (
+                <>
+                  <View style={styles.dppReady}>
+                    <Text style={styles.dppReadyText}>%{dpp.completenessPercent} hazır</Text>
+                    <View style={styles.dppTrack}>
+                      <View
+                        style={[
+                          styles.dppFill,
+                          { width: `${Math.max(0, Math.min(100, dpp.completenessPercent))}%` },
+                        ]}
+                      />
+                    </View>
+                  </View>
+
+                  {dppMissing.length ? (
+                    <View style={styles.dppMissing}>
+                      <Text style={styles.dppMissingTitle}>Eksik bilgiler</Text>
+                      {dppMissing.map((item) => (
+                        <View key={item.key} style={styles.dppMissingRow}>
+                          <Ionicons name="ellipse-outline" size={12} color={colors.warning} />
+                          <Text style={styles.dppMissingText}>{item.label}</Text>
+                        </View>
+                      ))}
+                      <PrimaryButton
+                        label="Düzenle"
+                        icon="create-outline"
+                        size="sm"
+                        variant="outline"
+                        onPress={openPassportEdit}
+                        style={styles.dppEditButton}
+                      />
+                    </View>
+                  ) : null}
+
+                  <View style={styles.dppQrWrap}>
+                    <Image
+                      source={{ uri: dppQrUrl(product.id) }}
+                      style={styles.dppQr}
+                      resizeMode="contain"
+                      accessibilityLabel={`${product.code} pasaport sayfasının QR kodu`}
+                    />
+                    <Text style={styles.dppQrNote}>
+                      QR'ı etiketinize ya da kartelanıza basabilirsiniz; okutan kişi fiyatsız, stoksuz pasaport
+                      sayfasını görür.
+                    </Text>
+                    <PrimaryButton
+                      label="QR'ı aç / indir"
+                      icon="qr-code-outline"
+                      size="sm"
+                      variant="outline"
+                      onPress={openQr}
+                    />
+                  </View>
+                </>
+              ) : null}
+
+              <Text style={styles.dppDisclaimer}>
+                AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır.
+              </Text>
+            </View>
+          </>
+        ) : null}
+
         {error ? (
           <InlineError
             message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')}
@@ -915,6 +1066,24 @@ const styles = StyleSheet.create({
   similarCompany: { ...typography.caption, color: colors.accent },
   similarScore: { fontFamily: fonts.monoSemibold, fontSize: 12, lineHeight: 16, color: colors.text },
   similarReason: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+  // Dijital pasaport (Faz 3, Adım 7).
+  dppBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm, gap: spacing.sm },
+  dppLead: { ...typography.caption, color: colors.textMuted },
+  dppActions: { flexDirection: 'row', gap: spacing.sm },
+  dppAction: { flex: 1 },
+  dppReady: { gap: 4, paddingTop: spacing.xs },
+  dppReadyText: { ...typography.mono, fontFamily: fonts.monoSemibold, fontSize: 16, color: colors.text },
+  dppTrack: { height: 4, borderRadius: radius.sm, backgroundColor: colors.surfaceTonal, overflow: 'hidden' },
+  dppFill: { height: 4, borderRadius: radius.sm, backgroundColor: colors.accent },
+  dppMissing: { gap: 4 },
+  dppMissingTitle: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
+  dppMissingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dppMissingText: { ...typography.label, fontFamily: fonts.regular, color: colors.text, flex: 1 },
+  dppEditButton: { alignSelf: 'flex-start', marginTop: spacing.xs },
+  dppQrWrap: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs },
+  dppQr: { width: 180, height: 180, backgroundColor: '#FFFFFF', borderRadius: radius.md },
+  dppQrNote: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
+  dppDisclaimer: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
   companyTexts: { flex: 1 },
   companyName: { ...typography.bodyStrong, color: colors.text },
   companyMeta: { ...typography.caption },

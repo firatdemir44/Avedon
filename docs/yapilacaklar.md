@@ -17,7 +17,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 6. Faz 2 Adım 4: davet mekaniği ("tedarikçini davet et").
 7. İlk dış pilot firma öncesi son kontrol: `WHATSAPP_APP_SECRET` canlıda dolu, SMS health yeşil.
 
-**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 7 AB Dijital Ürün Pasaportu → 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
+**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
 
 **D. Bilinen küçük eksikler (kod)**
 8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor).
@@ -132,6 +132,8 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Mobile `Company` tipi ile Prisma şeması arasındaki `productCategories`/`employeeIds` tutarsızlığını gidermek
 
 ## Tamamlananlar (kısa özet)
+
+- 2026-09-21: **Faz 3 Adım 7 tamamlandı: AB Dijital Ürün Pasaportu'na HAZIRLIK.** Önce doğrulandı: resmi ESPR sayfasına göre tekstile özel zorunlu alanlar yayımlanmadı ("ürüne göre, istişareyle belirlenecek"); sektör kaynaklarına göre düzenleme 2027, uygulama 2028+. Bu yüzden hiçbir yerde "uyumlu" denmiyor. Sunucu (Fable 5.1, 0e7b3fc): `Product.originCountry/careNotes/recycledPercent` (Prisma tabloyu yeniden kurmak istedi; migration elle 3 `ADD COLUMN` olarak yazıldı, şema farkı 0 doğrulandı, canlıda sorunsuz), `/api/dpp/:id` (herkese açık belge; fiyat/stok/MOQ/termin ASLA çıkmaz; eksik listesi yalnızca sahibine), `/api/dpp/:id/qr.png` (`qrcode` paketi), `PUBLIC_WEB_URL` ile adres; test 14/14. Açık sayfa: `mobile/public/pasaport.html` (Vercel; TR/EN, JSON indirme, QR). Mobil (Opus 5): kumaş formunda "AB pasaportuna hazırlık" bölümü, ürün sayfasında "Dijital pasaport" (sayfayı aç, paylaş; sahibine % hazır + eksikler + QR). Tarayıcıda denendi. **Telefonda kontrol bekliyor.** **Açık:** iplik formunda bakım/geri dönüşüm alanı yok; kurallar yayımlanınca alan eşlemesi gözden geçirilecek.
 
 - 2026-09-21: **Faz 3 Adım 3 tamamlandı: benzer kumaş arama.** Sunucu (Fable 5.1, cce2f31 + 8f6a916): `ProductLook` + `LookSearch` (yalnızca yeni tablolar), `skills/fabricLook` (görünüm kartı: desen, ölçek, renk, yüzey, doku, şeffaflık; gramaj/lif OKUNMAZ), deterministik ve nedenli benzerlik puanı (eşik 60; 45 iken canlıda zayıf eşleşmeler çıkıyordu), `/api/looks` (fotoğrafla arama günde 20, ürün sayfası benzerleri, sahibin yenilemesi), kapak değişince kart yenilenir, açılışta eksik kartlar doldurulur (canlıda 4 Melide ürünü kendiliğinden doldu; kartlar isabetli). Test 22/22 (sahte kip), gerçek modelle uçtan uca arama ~3 sn. Mobil (Opus 5): `SimilarSearchScreen` (Ürünler'de kamera düğmesi + Profil menüsü), ürün sayfasında "Benzer kumaşlar" şeridi, fotoğraf uzun kenardan küçültülür. Ayrıca küçük eksikler: ortak bildirim zili (Akış, Ürünler, Mesajlar, Profil), yalnızca arama metniyle izleme, izleme adını değiştirme. **Telefonda kontrol bekliyor** (kamera akışı yalnızca telefonda denenebilir). **Açık:** asistanda `benzer_kumas_ara` aracı yok. **SMS:** başvuru Melide İnşaat üzerinden AVEDON başlığıyla yapıldı, onay bekleniyor; uygulama adı Avedon kalıyor.
 

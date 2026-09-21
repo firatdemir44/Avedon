@@ -290,6 +290,18 @@ export function AddProductScreen({ navigation, route }: Props) {
   const [priceValue, setPriceValue] = useState('');
   const [priceCurrency, setPriceCurrency] = useState<string>('TRY');
   const [priceUnit, setPriceUnit] = useState<StockUnit>('m');
+  // AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7). Yeni üründe hepsi
+  // boş; `dppInitial` düzenlemede sunucudan gelen değerleri tutar ki kaydederken
+  // yalnızca dolu ya da DEĞİŞEN (temizlenen) alanlar gövdeye girsin.
+  const [originCountry, setOriginCountry] = useState('');
+  const [recycledPercent, setRecycledPercent] = useState('');
+  const [careNotes, setCareNotes] = useState('');
+  const [dppOpen, setDppOpen] = useState(false);
+  const dppInitial = useRef<{ originCountry: string; careNotes: string; recycledPercent: number | null }>({
+    originCountry: '',
+    careNotes: '',
+    recycledPercent: null,
+  });
   const [yarnRows, setYarnRows] = useState<YarnRow[]>([]);
   const [certificateRows, setCertificateRows] = useState<CertificateRow[]>([]);
   const [testReportRows, setTestReportRows] = useState<TestReportRow[]>([]);
@@ -368,6 +380,20 @@ export function AddProductScreen({ navigation, route }: Props) {
           if (product.price.currency) setPriceCurrency(product.price.currency);
           if (product.price.unit === 'm' || product.price.unit === 'kg') setPriceUnit(product.price.unit);
         }
+
+        // AB pasaportuna hazırlık alanları (eski sunucuda hiç gelmez).
+        const loadedOrigin = product.originCountry ?? '';
+        const loadedCare = product.careNotes ?? '';
+        const loadedRecycled = product.recycledPercent ?? null;
+        dppInitial.current = {
+          originCountry: loadedOrigin,
+          careNotes: loadedCare,
+          recycledPercent: loadedRecycled,
+        };
+        setOriginCountry(loadedOrigin);
+        setCareNotes(loadedCare);
+        setRecycledPercent(loadedRecycled == null ? '' : toInputNumber(loadedRecycled));
+        setDppOpen(!!loadedOrigin || !!loadedCare || loadedRecycled != null);
 
         const yarns = product.yarns ?? [];
         setYarnRows(
@@ -896,6 +922,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   if (certificateDateInvalid) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
   if (testReportIncomplete) formErrors.push('Her test raporu satırında test türünü yazın.');
   if (testReportDateInvalid) formErrors.push('Test tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+  // AB pasaportuna hazırlık: oran 0-100 arası (0 geçerli, boş "belirtilmedi").
+  if (recycledPercent.trim() && !(parseNumber(recycledPercent) >= 0 && parseNumber(recycledPercent) <= 100))
+    formErrors.push('Geri dönüştürülmüş içerik oranı 0 ile 100 arasında olmalı.');
 
   // Mevcut fotoğraflardan biri henüz yüklenmediyse önizleme boş ama sırası
   // biliniyor; kaydetmeyi engellemez.
@@ -959,6 +988,20 @@ export function AddProductScreen({ navigation, route }: Props) {
     const moqNum = moq.trim() ? parseNumber(moq) : null;
     const leadTimeNum = leadTimeDays.trim() ? Math.round(parseNumber(leadTimeDays)) : null;
     const priceNum = priceValue.trim() ? parseNumber(priceValue) : null;
+    // AB pasaportuna hazırlık: alan yalnızca doluysa ya da önceden dolu olup
+    // şimdi temizlendiyse gönderilir. Böylece bu alanları tanımayan bir
+    // sunucuya boş yeni üründe hiç gitmez.
+    const originTrimmed = originCountry.trim();
+    const careTrimmed = careNotes.trim();
+    const recycledNum = recycledPercent.trim() ? parseNumber(recycledPercent) : null;
+    const dpp = {
+      ...(originTrimmed || dppInitial.current.originCountry ? { originCountry: originTrimmed } : {}),
+      ...(careTrimmed || dppInitial.current.careNotes ? { careNotes: careTrimmed } : {}),
+      // 0 geçerli bir değer: `!= null` ile bakılıyor.
+      ...(recycledNum != null || dppInitial.current.recycledPercent != null
+        ? { recycledPercent: recycledNum }
+        : {}),
+    };
     return {
       ...(hasComposition
         ? {
@@ -983,6 +1026,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       priceCurrency: priceNum == null ? '' : priceCurrency,
       priceUnit: priceNum == null ? '' : priceUnit,
       finishTags,
+      ...dpp,
       ...(fieldMeta.length ? { fieldMeta } : {}),
     };
   };
@@ -1744,6 +1788,45 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <Text style={styles.addRowText}>Test raporu ekle</Text>
               </Pressable>
             ) : null}
+          </View>
+        </CollapsibleSection>
+
+        {/* Faz 3, Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK. AB'nin tekstil
+            için zorunlu alanları henüz yayımlanmadı; burası bir uyum beyanı
+            değil, hazırlıktır. Üç alan da isteğe bağlı. */}
+        <CollapsibleSection
+          title="AB pasaportuna hazırlık (isteğe bağlı)"
+          open={dppOpen}
+          onToggle={() => setDppOpen((v) => !v)}
+        >
+          <View style={[styles.block, styles.formBlock]}>
+            <Text style={styles.labelHint}>
+              AB, tekstil ürünleri için dijital ürün pasaportunu zorunlu hale getirmeye hazırlanıyor. Bu bilgiler
+              herkese açık pasaport sayfanızda görünür; ihracat müşterileriniz için şimdiden hazır olursunuz.
+            </Text>
+            <TextField
+              label="Menşe ülke"
+              value={originCountry}
+              onChangeText={setOriginCountry}
+              placeholder="Örn. Türkiye"
+              maxLength={60}
+            />
+            <TextField
+              label="Geri dönüştürülmüş içerik oranı (%)"
+              value={recycledPercent}
+              onChangeText={setRecycledPercent}
+              placeholder="Örn. 30"
+              keyboardType="numeric"
+            />
+            <Text style={styles.labelHint}>Boş bırakırsanız "belirtilmedi" sayılır; geri dönüşüm yoksa 0 yazın.</Text>
+            <TextField
+              label="Bakım / yıkama bilgisi"
+              value={careNotes}
+              onChangeText={setCareNotes}
+              placeholder="Örn. 30 derecede yıkayın, ütülemeyin"
+              multiline
+              maxLength={500}
+            />
           </View>
         </CollapsibleSection>
 

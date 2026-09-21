@@ -142,6 +142,12 @@ export interface Product {
   // catalog.ts FINISH_TAGS anahtarları
   finishTags?: string[];
   passportUpdatedAt?: string | null;
+  // --- AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7) ---
+  // Üçü de isteğe bağlı; eski sunucu bu alanları hiç göndermez.
+  originCountry?: string;
+  careNotes?: string;
+  // null / tanımsız: belirtilmedi. 0 geçerli bir değerdir.
+  recycledPercent?: number | null;
   composition?: CompositionItem[];
   // glossaryLabels.ts CERTIFICATES anahtarları
   certificateNames?: string[];

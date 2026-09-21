@@ -551,6 +551,12 @@ export interface PassportInput {
   priceCurrency?: string;
   priceUnit?: string;
   finishTags?: string[];
+  // --- AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7) ---
+  // Menşe ülke (≤60), bakım / yıkama bilgisi (≤500), geri dönüştürülmüş
+  // içerik oranı (0-100; null "belirtilmedi", 0 geçerli bir değer).
+  originCountry?: string;
+  careNotes?: string;
+  recycledPercent?: number | null;
 }
 
 // Makullük uyarıları: kaydı ENGELLEMEZ, ekranda gösterilir. notes Türkçe.
@@ -1005,6 +1011,64 @@ export function fetchSimilarProducts(productId: string) {
   return request<{ look: FabricLookView | null; results: SimilarProductResult[] }>(
     `/looks/product/${productId}/similar`
   );
+}
+
+// --- Dijital pasaport (Faz 3, Adım 7) ----------------------------------------
+// Sunucu: backend/src/routes/dpp.ts. AB Dijital Ürün Pasaportu'na HAZIRLIK:
+// AB'nin tekstil için zorunlu alanları henüz yayımlanmadı, bu bir uyum beyanı
+// DEĞİLDİR. Ticari alanlar (fiyat, stok, MOQ, termin) pasaporta hiç çıkmaz.
+
+export interface DppPassport {
+  schema: string;
+  disclaimer: string;
+  /** `url`: herkese açık pasaport sayfası (QR'ın içindeki adres). */
+  identifier: { productId: string; code: string; url: string };
+  issuedAt: string;
+  updatedAt: string;
+  economicOperator: {
+    name: string;
+    city: string;
+    website: string;
+    verified: boolean;
+    verificationLevel: string;
+  };
+  product: {
+    category: string;
+    type: string;
+    subtype: string;
+    weightGsm: number | null;
+    widthCm: number | null;
+    description: string;
+    hasPhoto: boolean;
+  };
+  composition: { fiber: string; fiberLabel: string; percent: number }[];
+  recycledContentPercent: number | null;
+  originCountry: string;
+  yarns: { role: string; count: number; unit: string; ply: number; type: string }[];
+  finishes: string[];
+  certificates: { name: string; label: string; number: string; validUntil: string | null }[];
+  testReports: { kind: string; result: string; testedAt: string | null }[];
+  care: string;
+}
+
+export interface DppResult {
+  passport: DppPassport;
+  completenessPercent: number;
+  /** YALNIZCA ürünün sahibi firmaya gelir. */
+  missing?: { key: string; label: string }[];
+}
+
+/** Oturum şart değil; oturum varsa ve ürün sizinse `missing` de gelir. */
+export function fetchDpp(productId: string) {
+  return request<DppResult>(`/dpp/${productId}`);
+}
+
+/**
+ * Etikete / kartelaya basılacak QR'ın PNG adresi. Oturum gerekmediği için
+ * doğrudan `Image` kaynağı ({ uri }) olarak kullanılabilir.
+ */
+export function dppQrUrl(productId: string, size = 600) {
+  return `${API_BASE_URL}/dpp/${encodeURIComponent(productId)}/qr.png?size=${size}`;
 }
 
 export type FavoriteProduct = Product & { favoritedAt: string };
