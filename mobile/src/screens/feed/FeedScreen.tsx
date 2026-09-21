@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { HeaderButton } from '../../components/HeaderButton';
 import { View, Text, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -113,9 +114,15 @@ export function FeedScreen({ navigation }: Props) {
     }, [loadFirstPage, scopeReady])
   );
 
-  // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil).
-  // Sol üstteki "Firma asistanı" kısayolu kalktı (alt çubukta zaten var),
-  // "Gönderi paylaş" da başlıktan çıkıp sağ alttaki FAB'a taşındı.
+  // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil); sol üstteki
+  // "Firma asistanı" kısayolu kalktı. "Gönderi paylaş" önce sağ alta yüzen düğme olarak
+  // taşınmıştı; Fırat fark etmedi ("artıyı kaldırmışsın, tekrar yerine koyalım"), bu yüzden
+  // başlığın sağına, zilin yanına geri alındı.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />,
+    });
+  }, [navigation]);
 
   const loadMore = async () => {
     if (!cursor || loadingMoreRef.current) return;
@@ -218,19 +225,6 @@ export function FeedScreen({ navigation }: Props) {
     </View>
   );
 
-  // "Gönderi paylaş" başlıktan çıktı (başlıkta artık arama kutusu var):
-  // listenin üstünde yüzen yuvarlak düğme. Alt sekme çubuğu bu görünümün
-  // dışında kaldığı için güvenli alan boşluğu ayrıca eklenmiyor.
-  const shareFab = (
-    <Pressable
-      onPress={() => navigation.navigate('CreatePost')}
-      accessibilityRole="button"
-      accessibilityLabel="Gönderi paylaş"
-      style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-    >
-      <Ionicons name="add" size={28} color={colors.primaryText} />
-    </Pressable>
-  );
 
   if (loading) {
     return (
@@ -314,7 +308,6 @@ export function FeedScreen({ navigation }: Props) {
           />
         )}
       />
-      {shareFab}
     </View>
   );
 }
@@ -325,24 +318,9 @@ function BlockGap() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  // Alt boşluk FAB'ın son gönderinin eylemlerini kapatmaması için büyütüldü.
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: 96 },
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.blockGap * 2 },
   blockGap: { height: spacing.blockGap },
   banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  fab: {
-    position: 'absolute',
-    right: spacing.md,
-    bottom: spacing.md,
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  fabPressed: { opacity: 0.85 },
   toggleBar: {
     flexDirection: 'row',
     gap: spacing.sm,
