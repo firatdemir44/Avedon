@@ -34,6 +34,8 @@ import { ProductGallery } from '../../components/ProductGallery';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
+import { CareSymbolIcon } from '../../components/CareSymbolIcon';
+import { careSymbolsView } from '../../features/care/symbols';
 import {
   STOCK_UNIT_LABELS,
   finishTagLabel,
@@ -222,6 +224,8 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const composition = product.composition ?? [];
   const compositionTotal = composition.reduce((sum, item) => sum + item.percent, 0);
   const finishTags = isYarn ? [] : product.finishTags ?? [];
+  // Bilinmeyen anahtarlar atılır, grup sırasına dizilir.
+  const careSymbols = isYarn ? [] : careSymbolsView(product.careSymbols ?? []);
   const yarns = isYarn ? [] : product.yarns ?? [];
   const testReports = product.testReports ?? [];
   // Detay yanıtı sertifikaların tamamını taşır; liste yanıtında yalnızca adlar var.
@@ -558,6 +562,28 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             yalnızca oturum açmış kullanıcıya; veri yoksa kart hiç çizilmez
             (`hideWhenUnavailable`) ki ürün sayfası kalabalıklaşmasın. */}
         {user ? <PriceIndexCard productId={productId} hideWhenUnavailable /> : null}
+
+        {/* Bakım sembolleri (Fırat 2026-09-21): etiketteki işaretler yatay
+            sırada. Yalnızca kumaşta; iplikte bu alan yok. Eski kayıtlardaki
+            serbest metin (careNotes) varsa sembollerin altında küçük yazı. */}
+        {!isYarn && careSymbols.length ? (
+          <View>
+            <SectionHeader title="Bakım" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.passportBlock]}>
+              <View style={styles.careRow}>
+                {careSymbols.map((symbol) => (
+                  <View key={symbol.key} style={styles.careItem} accessibilityLabel={symbol.label}>
+                    <CareSymbolIcon shape={symbol.shape} size={36} color={colors.text} />
+                    <Text style={styles.careLabel} numberOfLines={2}>
+                      {symbol.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              {product.careNotes ? <Text style={styles.careNotes}>{product.careNotes}</Text> : null}
+            </View>
+          </View>
+        ) : null}
 
         {finishTags.length ? (
           <View>
@@ -982,6 +1008,11 @@ const styles = StyleSheet.create({
   // Pasaport bölümleri: blok aralığı zaten gri boşluk, başlık üstü kısaltıldı.
   sectionHeader: { paddingTop: spacing.sm },
   passportBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm },
+  // Bakım sembolleri: yatay sıra, ikon + altında kısa etiket.
+  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingVertical: 4 },
+  careItem: { width: 76, alignItems: 'center', gap: 2 },
+  careLabel: { ...typography.caption, fontSize: 11, lineHeight: 14, color: colors.textMuted, textAlign: 'center' },
+  careNotes: { ...typography.caption, color: colors.textMuted, paddingTop: spacing.sm },
   // Kompozisyon: lif adı + oran, altında oranı gösteren ince çubuk.
   fiberRow: { paddingVertical: 6, gap: 4 },
   fiberTexts: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },

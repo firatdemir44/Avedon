@@ -145,7 +145,10 @@ export interface Product {
   // --- AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7) ---
   // Üçü de isteğe bağlı; eski sunucu bu alanları hiç göndermez.
   originCountry?: string;
+  // Eski kayıtlarda serbest metin bakım bilgisi; yeni kayıtlarda sembol kullanılır.
   careNotes?: string;
+  // Bakım sembolü anahtarları (features/care/symbols.ts); grup başına en çok bir tane.
+  careSymbols?: string[];
   // null / tanımsız: belirtilmedi. 0 geçerli bir değerdir.
   recycledPercent?: number | null;
   composition?: CompositionItem[];

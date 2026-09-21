@@ -9,6 +9,7 @@ import { ChipSelect } from '../../components/ChipSelect';
 import { MultiChipSelect } from '../../components/MultiChipSelect';
 import { SectionHeader } from '../../components/SectionHeader';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
+import { CareSymbolPicker } from '../../components/CareSymbolPicker';
 import { ListRow } from '../../components/ListRow';
 import { useSession } from '../../context/SessionContext';
 import {
@@ -181,6 +182,18 @@ const PRICE_UNIT_OPTIONS: { value: StockUnit; label: string }[] = [
 const PHOTO_SIZE = 96;
 const DOC_PHOTO_SIZE = 64;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+// Sunucu bakım sembolü hatalarını 400 invalid_body + fieldErrors.careSymbols
+// olarak döndürür (backend/src/routes/products.ts, PassportError). Kullanıcıya
+// "kaydedilemedi" yerine sebebi yazılır.
+function careSymbolError(err: unknown): string | null {
+  if (!(err instanceof ApiError)) return null;
+  const fieldErrors = (err.details as { fieldErrors?: Record<string, string[]> } | undefined)?.fieldErrors;
+  const codes = fieldErrors?.careSymbols ?? [];
+  if (codes.includes('one_symbol_per_group')) return 'Bakım sembollerinde her gruptan yalnızca bir sembol seçilebilir.';
+  if (codes.includes('unknown_care_symbol')) return 'Tanınmayan bir bakım sembolü seçildi. Seçimi yenileyip tekrar deneyin.';
+  return null;
+}
 // Sunucudaki MAX_EXTRACT_IMAGES ile aynı.
 const MAX_EXTRACT_IMAGES = 4;
 // Sunucudaki MAX_TEXT_CHARS ile aynı.
@@ -295,11 +308,14 @@ export function AddProductScreen({ navigation, route }: Props) {
   // yalnızca dolu ya da DEĞİŞEN (temizlenen) alanlar gövdeye girsin.
   const [originCountry, setOriginCountry] = useState('');
   const [recycledPercent, setRecycledPercent] = useState('');
-  const [careNotes, setCareNotes] = useState('');
-  const [dppOpen, setDppOpen] = useState(false);
-  const dppInitial = useRef<{ originCountry: string; careNotes: string; recycledPercent: number | null }>({
+  // Bakım sembolleri (Fırat 2026-09-21): serbest metin yerine etiket sembolleri.
+  // `careNotes` sunucuda duruyor ama bu formdan artık GÖNDERİLMİYOR; eski
+  // kayıttaki metne dokunulmaz.
+  const [careSymbols, setCareSymbols] = useState<string[]>([]);
+  const [careOpen, setCareOpen] = useState(false);
+  const dppInitial = useRef<{ originCountry: string; careSymbols: string[]; recycledPercent: number | null }>({
     originCountry: '',
-    careNotes: '',
+    careSymbols: [],
     recycledPercent: null,
   });
   const [yarnRows, setYarnRows] = useState<YarnRow[]>([]);
@@ -381,19 +397,19 @@ export function AddProductScreen({ navigation, route }: Props) {
           if (product.price.unit === 'm' || product.price.unit === 'kg') setPriceUnit(product.price.unit);
         }
 
-        // AB pasaportuna hazırlık alanları (eski sunucuda hiç gelmez).
+        // Pasaport alanları (eski sunucuda hiç gelmez).
         const loadedOrigin = product.originCountry ?? '';
-        const loadedCare = product.careNotes ?? '';
+        const loadedCareSymbols = product.careSymbols ?? [];
         const loadedRecycled = product.recycledPercent ?? null;
         dppInitial.current = {
           originCountry: loadedOrigin,
-          careNotes: loadedCare,
+          careSymbols: loadedCareSymbols,
           recycledPercent: loadedRecycled,
         };
         setOriginCountry(loadedOrigin);
-        setCareNotes(loadedCare);
+        setCareSymbols(loadedCareSymbols);
         setRecycledPercent(loadedRecycled == null ? '' : toInputNumber(loadedRecycled));
-        setDppOpen(!!loadedOrigin || !!loadedCare || loadedRecycled != null);
+        setCareOpen(loadedCareSymbols.length > 0);
 
         const yarns = product.yarns ?? [];
         setYarnRows(
@@ -992,11 +1008,12 @@ export function AddProductScreen({ navigation, route }: Props) {
     // şimdi temizlendiyse gönderilir. Böylece bu alanları tanımayan bir
     // sunucuya boş yeni üründe hiç gitmez.
     const originTrimmed = originCountry.trim();
-    const careTrimmed = careNotes.trim();
     const recycledNum = recycledPercent.trim() ? parseNumber(recycledPercent) : null;
     const dpp = {
       ...(originTrimmed || dppInitial.current.originCountry ? { originCountry: originTrimmed } : {}),
-      ...(careTrimmed || dppInitial.current.careNotes ? { careNotes: careTrimmed } : {}),
+      // Bakım sembolleri: doluysa ya da önceden dolu olup şimdi hepsi
+      // kaldırıldıysa gönderilir (o durumda boş dizi sunucudakini siler).
+      ...(careSymbols.length || dppInitial.current.careSymbols.length ? { careSymbols } : {}),
       // 0 geçerli bir değer: `!= null` ile bakılıyor.
       ...(recycledNum != null || dppInitial.current.recycledPercent != null
         ? { recycledPercent: recycledNum }
@@ -1095,9 +1112,9 @@ export function AddProductScreen({ navigation, route }: Props) {
       } else {
         navigation.goBack();
       }
-    } catch {
+    } catch (err) {
       haptics.error();
-      setError('Ürün kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.');
+      setError(careSymbolError(err) ?? 'Ürün kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.');
     } finally {
       setSubmitting(false);
     }
@@ -1464,7 +1481,37 @@ export function AddProductScreen({ navigation, route }: Props) {
             onChangeText={setUseArea}
             placeholder="Örn. Şardonlu, yıkamalı"
           />
+          {/* Pasaport alanları diğer ürün bilgileriyle birlikte girilir; ayrı
+              bir "pasaport için yeniden gir" bölümü YOK (Fırat 2026-09-21). */}
+          <TextField
+            label="Menşe ülke (isteğe bağlı)"
+            value={originCountry}
+            onChangeText={setOriginCountry}
+            placeholder="Örn. Türkiye"
+            maxLength={60}
+          />
+          <TextField
+            label="Geri dönüştürülmüş içerik (%)"
+            value={recycledPercent}
+            onChangeText={setRecycledPercent}
+            placeholder="Örn. 30"
+            keyboardType="numeric"
+          />
+          <Text style={styles.labelHint}>Dijital pasaportta görünür.</Text>
         </View>
+
+        {/* Bakım sembolleri: etiketteki uluslararası işaretler; yazı yerine
+            sembol (Fırat 2026-09-21). Sembol listesi ve çizim tarifi tek
+            kaynaktan: backend/src/domain/care.ts → features/care/symbols.ts. */}
+        <CollapsibleSection
+          title={careSymbols.length ? `Bakım sembolleri · ${careSymbols.length} seçili` : 'Bakım sembolleri'}
+          open={careOpen}
+          onToggle={() => setCareOpen((v) => !v)}
+        >
+          <View style={[styles.block, styles.formBlock]}>
+            <CareSymbolPicker value={careSymbols} onChange={setCareSymbols} />
+          </View>
+        </CollapsibleSection>
 
         <SectionHeader title="Ticari" />
         <View style={[styles.block, styles.formBlock]}>
@@ -1788,45 +1835,6 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <Text style={styles.addRowText}>Test raporu ekle</Text>
               </Pressable>
             ) : null}
-          </View>
-        </CollapsibleSection>
-
-        {/* Faz 3, Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK. AB'nin tekstil
-            için zorunlu alanları henüz yayımlanmadı; burası bir uyum beyanı
-            değil, hazırlıktır. Üç alan da isteğe bağlı. */}
-        <CollapsibleSection
-          title="AB pasaportuna hazırlık (isteğe bağlı)"
-          open={dppOpen}
-          onToggle={() => setDppOpen((v) => !v)}
-        >
-          <View style={[styles.block, styles.formBlock]}>
-            <Text style={styles.labelHint}>
-              AB, tekstil ürünleri için dijital ürün pasaportunu zorunlu hale getirmeye hazırlanıyor. Bu bilgiler
-              herkese açık pasaport sayfanızda görünür; ihracat müşterileriniz için şimdiden hazır olursunuz.
-            </Text>
-            <TextField
-              label="Menşe ülke"
-              value={originCountry}
-              onChangeText={setOriginCountry}
-              placeholder="Örn. Türkiye"
-              maxLength={60}
-            />
-            <TextField
-              label="Geri dönüştürülmüş içerik oranı (%)"
-              value={recycledPercent}
-              onChangeText={setRecycledPercent}
-              placeholder="Örn. 30"
-              keyboardType="numeric"
-            />
-            <Text style={styles.labelHint}>Boş bırakırsanız "belirtilmedi" sayılır; geri dönüşüm yoksa 0 yazın.</Text>
-            <TextField
-              label="Bakım / yıkama bilgisi"
-              value={careNotes}
-              onChangeText={setCareNotes}
-              placeholder="Örn. 30 derecede yıkayın, ütülemeyin"
-              multiline
-              maxLength={500}
-            />
           </View>
         </CollapsibleSection>
 

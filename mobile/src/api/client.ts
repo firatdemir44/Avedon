@@ -556,6 +556,10 @@ export interface PassportInput {
   // içerik oranı (0-100; null "belirtilmedi", 0 geçerli bir değer).
   originCountry?: string;
   careNotes?: string;
+  // Bakım sembolü anahtarları (features/care/symbols.ts). Grup başına en çok
+  // bir tane; sunucu `unknown_care_symbol` / `one_symbol_per_group` döndürür.
+  // Boş dizi gönderilirse kayıtlı semboller silinir.
+  careSymbols?: string[];
   recycledPercent?: number | null;
 }
 
