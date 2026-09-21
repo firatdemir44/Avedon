@@ -9,7 +9,7 @@ import { FeedScreen } from '../screens/feed/FeedScreen';
 import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { AssistantScreen } from '../screens/assistant/AssistantScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
-import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
+import { MainHeader } from '../components/MainHeader';
 import { colors, fonts, typography } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -40,6 +40,14 @@ export function MainTabs() {
       backBehavior="firstRoute"
       screenOptions={{
         headerShown: true,
+        // Ortak üst başlık (2026-09-21): profil · "Arama Yap" · zil. Ekranlar
+        // `headerRight` ile kendi ek eylemlerini verir (Mesajlar'daki "Yeni",
+        // Asistan'daki hafıza/sohbetler); zil bileşenin kendi içinde.
+        header: ({ options, navigation: tabNavigation }) => (
+          <MainHeader
+            right={options.headerRight?.({ tintColor: colors.primaryText, canGoBack: tabNavigation.canGoBack() })}
+          />
+        ),
         freezeOnBlur: true,
         // Android'de klavye açılınca sekme çubuğu arama kutusunun üstüne binmesin.
         tabBarHideOnKeyboard: true,
@@ -98,16 +106,6 @@ export function MainTabs() {
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="MyProfile"
-        component={MyProfileScreen}
-        options={{
-          title: 'Profil',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'person' : 'person-outline'} color={color} size={size} />
           ),
         }}
       />

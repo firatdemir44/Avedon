@@ -11,12 +11,18 @@ export function SearchField({
   placeholder,
   accessibilityLabel,
   style,
+  autoFocus,
+  onSubmitEditing,
 }: {
   value: string;
   onChangeText: (text: string) => void;
   placeholder: string;
   accessibilityLabel: string;
   style?: StyleProp<ViewStyle>;
+  // Arama ekranı açılınca klavye hemen gelsin diye (GlobalSearch).
+  autoFocus?: boolean;
+  // Klavyedeki "ara" tuşu.
+  onSubmitEditing?: () => void;
 }) {
   return (
     <View style={[styles.field, style]}>
@@ -28,6 +34,8 @@ export function SearchField({
         value={value}
         onChangeText={onChangeText}
         returnKeyType="search"
+        autoFocus={autoFocus}
+        onSubmitEditing={onSubmitEditing}
         autoCorrect={false}
         accessibilityLabel={accessibilityLabel}
       />

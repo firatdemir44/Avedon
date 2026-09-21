@@ -58,6 +58,8 @@ import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualC
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
+import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
+import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
 import { ChatScreen } from '../screens/messages/ChatScreen';
@@ -114,6 +116,19 @@ export function RootNavigator() {
         {user ? (
           <Stack.Group>
             <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+            {/* 2026-09-21: profil alt sekmeden çıktı, ortak üst başlıktaki
+                yuvarlak profil düğmesinden açılıyor (geri okuyla). */}
+            <Stack.Screen
+              name="MyProfile"
+              component={MyProfileScreen}
+              options={{ headerShown: true, title: 'Profilim' }}
+            />
+            {/* Üst başlıktaki "Arama Yap" kutusu. */}
+            <Stack.Screen
+              name="GlobalSearch"
+              component={GlobalSearchScreen}
+              options={{ headerShown: true, title: 'Arama' }}
+            />
             <Stack.Screen
               name="CompanyProfile"
               component={CompanyProfileScreen}

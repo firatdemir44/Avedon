@@ -10,18 +10,22 @@ import type { RfqSelectionItem } from '../features/quotes/rfqSelection';
 // ÖNEMLİ: Hiçbir rota adı hem sekme hem yığın listesinde bulunamaz.
 // React Navigation, navigate çağrısını önce çağıran ekranın KENDİ navigatörüne
 // gönderiyor; aynı ad iki yerde olursa (örn. "Profile") akıştaki bir kişinin
-// adına dokununca sekme yakalayıp kendi profilini açardı. Bu yüzden sekmedeki
-// profil rotasının adı "MyProfile".
+// adına dokununca sekme yakalayıp kendi profilini açardı. Bu yüzden kendi
+// profil rotasının adı "MyProfile" (2026-09-21'de alt sekmeden çıkıp kök
+// yığına taşındı: üst başlıktaki yuvarlak profil düğmesinden açılıyor).
 export type MainTabParamList = {
   Feed: undefined;
   // Filtre ekranı "Uygula"da filtreleri buraya geri gönderir; appliedAt her
   // uygulamada değişir, aynı filtre ikinci kez uygulansa da ekran yenilenir.
-  ProductList: { filters?: ProductFilters; appliedAt?: number } | undefined;
+  // initialSearch: genel aramadaki "Tümünü gör" bu metinle açar; searchKey
+  // her açılışta değişir ki aynı metin ikinci kez de uygulansın.
+  ProductList:
+    | { filters?: ProductFilters; appliedAt?: number; initialSearch?: string; searchKey?: number }
+    | undefined;
   // Firma asistanı (Faz 1, Adım 5). Rota adı "AssistantTab": yığındaki
   // asistan ekranlarıyla (AssistantThreads, AssistantMemory) çakışmasın.
   AssistantTab: undefined;
   Conversations: undefined;
-  MyProfile: undefined;
 };
 
 export type RootStackParamList = {
@@ -36,6 +40,12 @@ export type RootStackParamList = {
   // Giriş yapılmış ana yapı
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   // Üste itilen ekranlar
+  // Kendi profilim ve menü merkezi. 2026-09-21'de alt sekmeden çıkıp buraya
+  // geldi: ortak üst başlıktaki yuvarlak profil düğmesi açar.
+  MyProfile: undefined;
+  // Üst başlıktaki "Arama Yap" kutusu: tek kutudan firma, kumaş ve iplik
+  // (GET /api/search). Oturumsuz da çalışır.
+  GlobalSearch: undefined;
   Admin: undefined;
   // initialTab: kapasite aramasından gelindiğinde "Makine parkı" sekmesi açık
   // gelsin diye (Faz 2, Adım 5).

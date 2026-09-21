@@ -1,10 +1,9 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import type { MainTabScreenProps } from '../../navigation/types';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchIncomingConnectionRequests } from '../../api/client';
 import { ListRow } from '../../components/ListRow';
-import { NotificationBell } from '../../components/NotificationBell';
 import { SkeletonDetail } from '../../components/Skeleton';
 import { InlineError } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
@@ -12,7 +11,7 @@ import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { colors, fonts, radius, spacing } from '../../theme';
 
-type Props = MainTabScreenProps<'MyProfile'>;
+type Props = RootStackScreenProps<'MyProfile'>;
 
 type MenuItem = { key: string; title: string; onPress: () => void; badge?: number };
 
@@ -23,10 +22,8 @@ export function MyProfileScreen({ navigation }: Props) {
   const { profile, loading, error, reload } = useUserProfile(user?.id ?? '');
   const [pendingRequests, setPendingRequests] = useState(0);
 
-  // Bildirim zili ana sekmelerin başlığında ortak (components/NotificationBell).
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerRight: () => <NotificationBell /> });
-  }, [navigation]);
+  // Zil artık ortak ana başlıkta (components/MainHeader); bu ekran yığına
+  // taşındığı için kendi başlığında ayrıca gösterilmiyor.
 
   // Taslakta "Bağlantı İstekleri" satırında bekleyen istek sayısı rozeti var.
   useFocusEffect(

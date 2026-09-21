@@ -488,6 +488,32 @@ export function searchCompanies(search: string) {
   return request<{ companies: Company[] }>(`/companies?search=${encodeURIComponent(search)}`);
 }
 
+// --- Genel arama (üst başlıktaki "Arama Yap" kutusu, 2026-09-21) ---
+// Sunucu: backend/src/routes/search.ts. Tek kutudan firma + kumaş + iplik;
+// her gruptan en çok `limit` sonuç, `hasMore` ile "Tümünü gör" gösterilir.
+// Oturumsuz da çalışır (optionalAuth).
+
+export interface GlobalSearchCompany {
+  id: string;
+  name: string;
+  city: string;
+  companyType: string;
+  verification: VerificationStatus;
+  logoUpdatedAt: string | null;
+  productCount: number;
+}
+
+export interface GlobalSearchResult {
+  query: string;
+  companies: { items: GlobalSearchCompany[]; hasMore: boolean };
+  fabrics: { items: Product[]; hasMore: boolean };
+  yarns: { items: Product[]; hasMore: boolean };
+}
+
+export function globalSearch(q: string, limit = 5) {
+  return request<GlobalSearchResult>(`/search?q=${encodeURIComponent(q.trim())}&limit=${limit}`);
+}
+
 // Arama + filtreler (features/products/filters.ts). Giriş yapılmışsa her ürün
 // isFavorite taşır.
 export function fetchProductList(search: string, filters: ProductFilters) {

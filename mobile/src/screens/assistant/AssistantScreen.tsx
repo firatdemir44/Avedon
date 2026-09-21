@@ -160,16 +160,10 @@ export function AssistantScreen({ navigation }: Props) {
   const subtitle = companyName ? `${companyName} · ${personaName}` : personaName;
 
   useLayoutEffect(() => {
+    // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil);
+    // "Firma asistanı" başlığı ve altındaki "firma · karakter" satırı oradan
+    // kalktı, karşılamada zaten yazıyor. Ekrana özel iki eylem kalıyor.
     navigation.setOptions({
-      headerTitleAlign: 'center',
-      headerTitle: () => (
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle} accessibilityRole="header">
-            Firma asistanı
-          </Text>
-          <Text style={styles.headerSubtitle}>{subtitle}</Text>
-        </View>
-      ),
       headerRight: () => (
         <View style={styles.headerActions}>
           <HeaderButton
@@ -840,9 +834,6 @@ function WatchSuggestionCard({
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  headerTitleWrap: { alignItems: 'center' },
-  headerTitle: { ...typography.subtitle, color: colors.primaryText },
-  headerSubtitle: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.onPrimaryMuted },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
 
   chooserContent: { padding: spacing.gutter, paddingTop: spacing.lg, gap: spacing.sm },

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,6 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SearchField } from '../../components/SearchField';
-import { NotificationBell } from '../../components/NotificationBell';
 import { haptics } from '../../features/haptics';
 import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, USAGES, typeLabel, type ProductType } from '../../features/products/catalog';
 import {
@@ -83,11 +82,21 @@ export function ProductListScreen({ navigation, route }: Props) {
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
 
-  // Bildirim zili ana sekmelerin başlığında ortak (Ürünler'de başka başlık
-  // eylemi yok, tek başına sağ üstte durur).
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerRight: () => <NotificationBell /> });
-  }, [navigation]);
+  // Başlık ortak bileşende (components/MainHeader): profil · "Arama Yap" · zil.
+  // Ekranın kendi arama kutusu ve süzgeçleri katalog içi aramadır, aynen kalır.
+
+  // Genel aramadaki "Tümünü gör" bu ekranı arama metniyle açar.
+  const initialSearchKey = route.params?.searchKey;
+  useEffect(() => {
+    const initial = route.params?.initialSearch;
+    if (initial === undefined) return;
+    setDomain('kumas');
+    setQuery(initial);
+    setOpenType(null);
+    setOpenSubtype(null);
+    // searchKey her açılışta değişir; metnin kendisine bakılmıyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSearchKey]);
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_MODE_KEY)

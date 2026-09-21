@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,8 +17,6 @@ import {
 import { PostCard } from './PostCard';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
-import { HeaderButton } from '../../components/HeaderButton';
-import { NotificationBell } from '../../components/NotificationBell';
 import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
@@ -115,26 +113,9 @@ export function FeedScreen({ navigation }: Props) {
     }, [loadFirstPage, scopeReady])
   );
 
-  useLayoutEffect(() => {
-    // Taslakta iki başlık eylemi de ikon düğmesi (denetim FINDING-016: biri
-    // ikon + yazı, diğeri düz metindi). Soldaki kısayol artık firma asistanı
-    // sekmesini açıyor (Faz 1 Adım 5; eski "AI Tekstil Danışmanı" ekranı kalktı).
-    navigation.setOptions({
-      headerLeft: () => (
-        <HeaderButton
-          icon="sparkles-outline"
-          label="Firma asistanı"
-          onPress={() => navigation.navigate('AssistantTab')}
-        />
-      ),
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <NotificationBell />
-          <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />
-        </View>
-      ),
-    });
-  }, [navigation]);
+  // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil).
+  // Sol üstteki "Firma asistanı" kısayolu kalktı (alt çubukta zaten var),
+  // "Gönderi paylaş" da başlıktan çıkıp sağ alttaki FAB'a taşındı.
 
   const loadMore = async () => {
     if (!cursor || loadingMoreRef.current) return;
@@ -237,6 +218,20 @@ export function FeedScreen({ navigation }: Props) {
     </View>
   );
 
+  // "Gönderi paylaş" başlıktan çıktı (başlıkta artık arama kutusu var):
+  // listenin üstünde yüzen yuvarlak düğme. Alt sekme çubuğu bu görünümün
+  // dışında kaldığı için güvenli alan boşluğu ayrıca eklenmiyor.
+  const shareFab = (
+    <Pressable
+      onPress={() => navigation.navigate('CreatePost')}
+      accessibilityRole="button"
+      accessibilityLabel="Gönderi paylaş"
+      style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+    >
+      <Ionicons name="add" size={28} color={colors.primaryText} />
+    </Pressable>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -319,6 +314,7 @@ export function FeedScreen({ navigation }: Props) {
           />
         )}
       />
+      {shareFab}
     </View>
   );
 }
@@ -329,10 +325,24 @@ function BlockGap() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
+  // Alt boşluk FAB'ın son gönderinin eylemlerini kapatmaması için büyütüldü.
+  listContent: { paddingTop: spacing.blockGap, paddingBottom: 96 },
   blockGap: { height: spacing.blockGap },
   banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  fab: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  fabPressed: { opacity: 0.85 },
   toggleBar: {
     flexDirection: 'row',
     gap: spacing.sm,

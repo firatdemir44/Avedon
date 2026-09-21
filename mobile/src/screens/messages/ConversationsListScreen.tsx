@@ -10,7 +10,6 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { HeaderButton } from '../../components/HeaderButton';
-import { NotificationBell } from '../../components/NotificationBell';
 import { SearchField } from '../../components/SearchField';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
@@ -40,11 +39,10 @@ export function ConversationsListScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      // Zil ortak ana başlıkta (components/MainHeader); burada yalnızca
+      // ekrana özel "Yeni" eylemi kalıyor.
       headerRight: () => (
-        <View style={styles.headerActions}>
-          <NotificationBell />
-          <HeaderButton icon="add" label="Yeni" showLabel onPress={() => navigation.navigate('NewConversation')} />
-        </View>
+        <HeaderButton icon="add" label="Yeni" showLabel onPress={() => navigation.navigate('NewConversation')} />
       ),
     });
   }, [navigation]);
