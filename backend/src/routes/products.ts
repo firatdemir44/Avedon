@@ -214,8 +214,12 @@ function stripPassportKeys<T extends Record<string, unknown>>(obj: T) {
     priceCurrency: _pc,
     priceUnit: _pu,
     finishTags: _ft,
+    originCountry: _oc,
+    careNotes: _cn,
+    recycledPercent: _rp,
     ...rest
   } = obj as Record<string, unknown>;
+  void _oc; void _cn; void _rp;
   void _w; void _m; void _mu; void _l; void _pv; void _pc; void _pu; void _ft;
   return rest as Omit<T, keyof typeof passportFieldsSchema.shape>;
 }

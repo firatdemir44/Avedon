@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Avedon Ürün Pasaportu</title>
+<style>
+  body { margin: 0; background: #EEF1F4; color: #111A22; font-family: 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.5; }
+  header { background: #133C5F; color: #fff; padding: 20px 16px; }
+  header div { max-width: 760px; margin: 0 auto; }
+  header small { opacity: .8; letter-spacing: .5px; font-size: 12px; }
+  header h1 { margin: 4px 0 0; font-size: 24px; font-family: Consolas, 'IBM Plex Mono', monospace; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px; }
+  section { background: #fff; border: 1px solid #D9DEE4; border-radius: 6px; padding: 14px 16px; margin-bottom: 12px; }
+  h2 { font-size: 13px; color: #5B6672; margin: 0 0 10px; letter-spacing: .5px; text-transform: uppercase; }
+  h2 span { font-weight: 400; text-transform: none; letter-spacing: 0; }
+  dl { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: 6px 12px; margin: 0; font-size: 15px; }
+  dt { color: #5B6672; } dd { margin: 0; word-break: break-word; }
+  .bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: #E5E9EE; margin: 4px 0 10px; }
+  .bar i { display: block; height: 100%; }
+  ul { margin: 0; padding-left: 18px; font-size: 15px; }
+  img.cover { width: 100%; max-height: 320px; object-fit: cover; border-radius: 6px; display: block; margin-bottom: 12px; }
+  .ok { color: #1F7A4D; font-weight: 600; }
+  .note { font-size: 12.5px; color: #5B6672; }
+  .actions a { display: inline-block; margin: 0 8px 8px 0; padding: 9px 14px; border-radius: 6px; border: 1px solid #133C5F; color: #133C5F; text-decoration: none; font-size: 14px; }
+  .empty { color: #8A94A0; }
+  #state { padding: 40px 16px; text-align: center; color: #5B6672; }
+</style>
+</head>
+<body>
+<header><div><small>AVEDON · ÜRÜN PASAPORTU / PRODUCT PASSPORT</small><h1 id="code">…</h1></div></header>
+<main>
+  <div id="state">Yükleniyor… / Loading…</div>
+  <div id="content" hidden>
+    <img id="cover" class="cover" alt="" hidden>
+    <section><h2>Ürün <span>/ Product</span></h2><dl id="product"></dl></section>
+    <section><h2>Lif içeriği <span>/ Fibre composition</span></h2><div id="bar" class="bar"></div><dl id="composition"></dl></section>
+    <section><h2>Üretici / Satıcı <span>/ Economic operator</span></h2><dl id="operator"></dl></section>
+    <section id="certSection"><h2>Sertifikalar <span>/ Certificates</span></h2><ul id="certs"></ul></section>
+    <section id="testSection"><h2>Test raporları <span>/ Test reports</span></h2><ul id="tests"></ul></section>
+    <section id="careSection"><h2>Bakım <span>/ Care</span></h2><p id="care" style="margin:0;font-size:15px"></p></section>
+    <section class="actions"><a id="json" href="#" download>Veriyi indir (JSON)</a><a id="qr" href="#" target="_blank" rel="noopener">QR kodu</a></section>
+    <p class="note" id="disclaimer"></p>
+    <p class="note" id="updated"></p>
+  </div>
+</main>
+<script>
+(function () {
+  // Canlıda Render; yerelde denemek için ?api=http://localhost:4000/api verilebilir (yalnızca localhost kabul edilir).
+  var params = new URLSearchParams(location.search);
+  var api = 'https://avedon-backend.onrender.com/api';
+  var override = params.get('api');
+  if (override && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api$/.test(override)) api = override;
+  var id = params.get('id') || '';
+  var state = document.getElementById('state');
+  var COLORS = ['#133C5F', '#2F7FB8', '#E0913A', '#4FA37A', '#8A6FB8', '#9AA3AD'];
+
+  function el(tag, text) { var e = document.createElement(tag); if (text != null) e.textContent = text; return e; }
+  function row(dl, label, value) { if (value === '' || value == null) return; dl.appendChild(el('dt', label)); dl.appendChild(el('dd', String(value))); }
+  function num(n) { return String(n).replace('.', ','); }
+  function date(iso) { var d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('tr-TR'); }
+
+  if (!/^[a-z0-9]{10,40}$/i.test(id)) { state.textContent = 'Geçersiz pasaport adresi. / Invalid passport link.'; return; }
+
+  fetch(api + '/dpp/' + encodeURIComponent(id)).then(function (r) {
+    if (r.status === 404) throw new Error('notfound');
+    if (!r.ok) throw new Error('fail');
+    return r.json();
+  }).then(function (data) {
+    var p = data.passport;
+    document.title = p.identifier.code + ' · Avedon Ürün Pasaportu';
+    document.getElementById('code').textContent = p.identifier.code;
+
+    if (p.product.hasPhoto) {
+      var img = document.getElementById('cover');
+      fetch(api + '/products/' + encodeURIComponent(id) + '/image').then(function (r) {
+        var type = r.headers.get('content-type') || '';
+        return type.indexOf('json') >= 0 ? r.json().then(function (j) { return j.imageUrl; }) : r.blob().then(function (b) { return URL.createObjectURL(b); });
+      }).then(function (src) { if (src && /^(data:image\/|blob:)/.test(src)) { img.src = src; img.hidden = false; } }).catch(function () {});
+    }
+
+    var product = document.getElementById('product');
+    row(product, 'Tür / Category', p.product.category);
+    row(product, 'Çeşit / Type', [p.product.type !== p.product.category ? p.product.type : '', p.product.subtype].filter(Boolean).join(' · '));
+    if (p.product.weightGsm) row(product, 'Gramaj / Weight', num(p.product.weightGsm) + ' g/m²');
+    if (p.product.widthCm) row(product, 'En / Width', num(p.product.widthCm) + ' cm');
+    row(product, 'Menşe / Origin', p.originCountry);
+    if (p.recycledContentPercent != null) row(product, 'Geri dönüştürülmüş içerik / Recycled content', '%' + num(p.recycledContentPercent));
+    if (p.finishes.length) row(product, 'Boya - apre / Finishes', p.finishes.join(', '));
+    if (p.yarns.length) row(product, 'İplik / Yarn', p.yarns.map(function (y) { return num(y.count) + '/' + y.ply + ' ' + y.unit + (y.type ? ' ' + y.type : ''); }).join(' · '));
+
+    var comp = document.getElementById('composition'), bar = document.getElementById('bar');
+    if (p.composition.length) {
+      p.composition.forEach(function (c, i) {
+        var seg = el('i'); seg.style.width = c.percent + '%'; seg.style.background = COLORS[i % COLORS.length]; bar.appendChild(seg);
+        row(comp, c.fiberLabel, '%' + num(c.percent));
+      });
+    } else { bar.hidden = true; var none = el('dd', p.product.description || 'Belirtilmemiş / Not declared'); none.className = p.product.description ? '' : 'empty'; comp.appendChild(el('dt', 'Beyan / Declared')); comp.appendChild(none); }
+
+    var op = document.getElementById('operator');
+    row(op, 'Firma / Company', p.economicOperator.name);
+    row(op, 'Şehir / City', p.economicOperator.city);
+    row(op, 'Web', p.economicOperator.website);
+    if (p.economicOperator.verified) {
+      op.appendChild(el('dt', 'Doğrulama / Verification'));
+      var v = el('dd', 'Avedon tarafından doğrulandı' + (p.economicOperator.verificationLevel === 'ziyaret' ? ' (yerinde ziyaret)' : p.economicOperator.verificationLevel === 'belge' ? ' (belge ile)' : ''));
+      v.className = 'ok'; op.appendChild(v);
+    }
+
+    var certs = document.getElementById('certs');
+    if (p.certificates.length) p.certificates.forEach(function (c) { certs.appendChild(el('li', c.label + (c.number ? ' · No: ' + c.number : '') + (c.validUntil ? ' · geçerlilik: ' + date(c.validUntil) : ''))); });
+    else document.getElementById('certSection').hidden = true;
+
+    var tests = document.getElementById('tests');
+    if (p.testReports.length) p.testReports.forEach(function (t) { tests.appendChild(el('li', t.kind + (t.result ? ': ' + t.result : '') + (t.testedAt ? ' (' + date(t.testedAt) + ')' : ''))); });
+    else document.getElementById('testSection').hidden = true;
+
+    if (p.care) document.getElementById('care').textContent = p.care; else document.getElementById('careSection').hidden = true;
+
+    var blob = new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' });
+    var json = document.getElementById('json'); json.href = URL.createObjectURL(blob); json.download = 'pasaport-' + p.identifier.code.replace(/[^\w-]+/g, '_') + '.json';
+    document.getElementById('qr').href = api + '/dpp/' + encodeURIComponent(id) + '/qr.png';
+    document.getElementById('disclaimer').textContent = p.disclaimer;
+    document.getElementById('updated').textContent = 'Son güncelleme / Last updated: ' + date(p.updatedAt) + ' · Fiyat ve stok bilgisi bu sayfada yer almaz.';
+
+    state.hidden = true; document.getElementById('content').hidden = false;
+  }).catch(function (e) {
+    state.textContent = e.message === 'notfound' ? 'Bu pasaport bulunamadı. Ürün kaldırılmış olabilir. / Passport not found.' : 'Pasaport şu an yüklenemedi, lütfen biraz sonra yeniden deneyin. / Could not load.';
+  });
+})();
+</script>
+</body>
+</html>

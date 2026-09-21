@@ -110,6 +110,10 @@ export const passportFieldsSchema = z.object({
   priceCurrency: z.union([z.literal(''), z.enum(PRICE_CURRENCIES)]).optional(),
   priceUnit: stockUnitOrEmpty.optional(),
   finishTags: z.array(inKeys(FINISH_TAG_KEYS, 'unknown_finish_tag')).max(FINISH_TAGS.length).optional(),
+  // AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7): menşe, bakım, geri dönüştürülmüş içerik.
+  originCountry: z.string().trim().max(60).optional(),
+  careNotes: z.string().trim().max(500).optional(),
+  recycledPercent: z.number().min(0).max(100).nullable().optional(),
   fieldMeta: z.array(fieldMetaSchema).max(40).optional(),
 });
 
@@ -132,6 +136,9 @@ export const PASSPORT_LIST_SELECT = {
   priceUnit: true,
   finishTags: true,
   passportUpdatedAt: true,
+  originCountry: true,
+  careNotes: true,
+  recycledPercent: true,
   compositions: { select: { fiber: true, percent: true }, orderBy: { position: 'asc' } },
   certificates: { select: { name: true }, orderBy: { position: 'asc' } },
 } satisfies Prisma.ProductSelect;
@@ -286,7 +293,7 @@ export async function writeFieldMeta(
 type PassportColumnData = Partial<
   Pick<
     Prisma.ProductUncheckedCreateInput,
-    'widthType' | 'widthMeaning' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags'
+    'widthType' | 'widthMeaning' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags' | 'originCountry' | 'careNotes' | 'recycledPercent'
   >
 >;
 
@@ -301,6 +308,9 @@ export function passportColumns(input: PassportFields): PassportColumnData {
   if (input.priceCurrency !== undefined) data.priceCurrency = input.priceCurrency;
   if (input.priceUnit !== undefined) data.priceUnit = input.priceUnit;
   if (input.finishTags !== undefined) data.finishTags = JSON.stringify([...new Set(input.finishTags)]);
+  if (input.originCountry !== undefined) data.originCountry = input.originCountry;
+  if (input.careNotes !== undefined) data.careNotes = input.careNotes;
+  if (input.recycledPercent !== undefined) data.recycledPercent = input.recycledPercent;
   return data;
 }
 

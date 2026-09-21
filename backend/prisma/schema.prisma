@@ -173,6 +173,10 @@ model Product {
   // Boya/apre etiketleri: JSON dizi metni (usages ile aynı desen).
   finishTags        String    @default("[]")
   passportUpdatedAt DateTime?
+  // Faz 3 Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK alanları (hepsi isteğe bağlı).
+  originCountry     String    @default("")
+  careNotes         String    @default("")
+  recycledPercent   Float?
   compositions      ProductComposition[]
   yarns             ProductYarn[]
   certificates      ProductCertificate[]
