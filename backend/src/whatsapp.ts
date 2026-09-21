@@ -105,6 +105,28 @@ export function signWhatsAppBody(rawBody: Buffer | string, secret: string) {
   return `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
 }
 
+// Gelen medya (fotoğraf) indirme: önce GET /{media-id} ile geçici adres alınır (yaklaşık 5 dakika
+// geçerli), sonra o adres aynı erişim anahtarıyla indirilir. Sahte kipte medya kimliğinin kendisi
+// base64 içerik sayılır (testler böyle besler).
+export const MAX_WHATSAPP_MEDIA_BYTES = 5 * 1024 * 1024;
+
+export async function downloadWhatsAppMedia(mediaId: string): Promise<{ data: string; mediaType: string }> {
+  const e = env();
+  if (e.mock) return { data: mediaId, mediaType: 'image/jpeg' };
+  if (!isWhatsAppConfigured()) throw new Error('whatsapp_not_configured');
+  const headers = { Authorization: `Bearer ${e.accessToken}` };
+  const meta = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(mediaId)}`, { headers, signal: AbortSignal.timeout(15_000) });
+  if (!meta.ok) throw new Error(`whatsapp_media_meta_${meta.status}`);
+  const info = (await meta.json()) as { url?: string; mime_type?: string; file_size?: number };
+  if (!info.url) throw new Error('whatsapp_media_no_url');
+  if (info.file_size && info.file_size > MAX_WHATSAPP_MEDIA_BYTES) throw new Error('whatsapp_media_too_large');
+  const file = await fetch(info.url, { headers, signal: AbortSignal.timeout(30_000) });
+  if (!file.ok) throw new Error(`whatsapp_media_download_${file.status}`);
+  const buf = Buffer.from(await file.arrayBuffer());
+  if (buf.length > MAX_WHATSAPP_MEDIA_BYTES) throw new Error('whatsapp_media_too_large');
+  return { data: buf.toString('base64'), mediaType: (info.mime_type ?? file.headers.get('content-type') ?? 'image/jpeg').split(';')[0] };
+}
+
 // Sahte kipte giden mesajlar (testler okur).
 export const mockOutbound: { to: string; type: 'text' | 'template'; body: string }[] = [];
 

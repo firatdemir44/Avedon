@@ -908,3 +908,23 @@ model UserAvatar {
   imageUrl  String
   updatedAt DateTime @updatedAt
 }
+
+// WhatsApp'tan gönderilen etiket fotoğrafından hazırlanan ürün TASLAĞI. Ürün oluşturmaz: kullanıcı
+// uygulamada taslağı açar, onay ekranında kontrol edip kaydeder. İlişki yok (mevcut tablolar yeniden kurulmasın).
+model ProductDraft {
+  id             String   @id @default(cuid())
+  userId         String
+  companyId      String
+  // whatsapp
+  source         String
+  // Etiket fotoğrafı (data URL); ürün fotoğrafı olarak da önerilir.
+  imageUrl       String
+  caption        String   @default("")
+  // skills/passportExtract sonucu (ExtractOutcome JSON)
+  extractionJson String
+  // new | used | dismissed
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
+
+  @@index([userId, status, createdAt])
+}

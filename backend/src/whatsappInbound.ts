@@ -6,7 +6,11 @@ import { prisma } from './db';
 import { runAssistantTurn } from './assistant/run';
 import { LlmNotConfiguredError, isLlmConfigured } from './llm';
 import { phoneCandidatesFromWhatsApp } from './phone';
-import { markInbound, sendWhatsAppText } from './whatsapp';
+import { downloadWhatsAppMedia, markInbound, sendWhatsAppText } from './whatsapp';
+import { notify } from './notifications';
+import { runPassportExtract, type ImageMediaType } from './skills/passportExtract';
+import { SUBTYPES, TYPE_LABELS, type ProductType } from './catalog';
+import { formatComposition } from './domain/glossary';
 
 export interface InboundText {
   messageId: string;
@@ -14,6 +18,9 @@ export interface InboundText {
   body: string;
   type: string; // text | image | ...
   timestamp: Date | null;
+  // Fotoğraf mesajında: Meta medya kimliği ve (varsa) fotoğrafın altına yazılan not.
+  mediaId?: string;
+  caption?: string;
 }
 
 // Meta yükü: entry[].changes[].value.messages[]; durum bildirimleri (statuses)
@@ -30,7 +37,7 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
       const messages = value?.messages;
       if (!Array.isArray(messages)) continue;
       for (const m of messages) {
-        const msg = m as { id?: string; from?: string; type?: string; timestamp?: string; text?: { body?: string } };
+        const msg = m as { id?: string; from?: string; type?: string; timestamp?: string; text?: { body?: string }; image?: { id?: string; caption?: string } };
         if (!msg?.id || !msg.from) continue;
         const ts = msg.timestamp ? new Date(Number(msg.timestamp) * 1000) : null;
         out.push({
@@ -38,6 +45,7 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
           from: String(msg.from).replace(/\D/g, ''),
           body: (msg.text?.body ?? '').trim(),
           type: msg.type ?? 'unknown',
+          ...(msg.type === 'image' && msg.image?.id ? { mediaId: msg.image.id, caption: (msg.image.caption ?? '').trim() } : {}),
           timestamp: ts && !Number.isNaN(ts.getTime()) ? ts : null,
         });
       }
@@ -49,7 +57,11 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
 export const REPLY_UNKNOWN_USER =
   'Merhaba, ben Avedon asistanı. Bu numara Avedon\'da kayıtlı değil. Uygulamaya aynı numarayla kayıt olursanız buradan hesap sorabilir, etiket metni gönderebilir ve kataloğunuzu sorabilirsiniz.';
 export const REPLY_NON_TEXT =
-  'Şimdilik WhatsApp\'tan yalnızca yazılı mesaj okuyabiliyorum. Etiket fotoğrafını uygulamada "Etiketten doldur" ile okutabilirsiniz; buradan etiket metnini yazarsanız onu da okurum.';
+  "WhatsApp'tan yazılı mesaj ve etiket FOTOĞRAFI okuyabiliyorum. Ses, video ve belge şimdilik okunmuyor; etiket metnini yazarsanız onu da okurum.";
+export const REPLY_PHOTO_NO_COMPANY = 'Fotoğraftan ürün taslağı hazırlayabilmem için uygulamada bir firmaya bağlı olmanız gerekiyor.';
+export const REPLY_PHOTO_UNREADABLE =
+  'Fotoğrafta okunabilir bir etiket bulamadım. Etiketi yakından, düz ve iyi ışıkta çekip yeniden gönderin; isterseniz etiketteki bilgileri yazı olarak da gönderebilirsiniz.';
+export const REPLY_PHOTO_FAILED = 'Fotoğrafı indiremedim ya da okuyamadım. Lütfen yeniden gönderin.';
 export const REPLY_ASSISTANT_DOWN = 'Asistan şu an yanıt veremiyor, biraz sonra tekrar deneyin. Uygulamadaki hesaplayıcılar çalışıyor.';
 export const REPLY_FAILED = 'Bir sorun oldu, mesajınızı işleyemedim. Lütfen tekrar deneyin.';
 
@@ -111,6 +123,31 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
   const user = await prisma.user.findFirst({ where: { phone: { in: phoneCandidatesFromWhatsApp(msg.from) } } });
   if (!user) return finish('unknown_user', REPLY_UNKNOWN_USER);
 
+  // Etiket fotoğrafı → ürün TASLAĞI (ürün oluşturmaz; kullanıcı uygulamada kontrol edip kaydeder).
+  if (msg.type === 'image' && msg.mediaId) {
+    if (!user.companyId) return finish('photo_no_company', REPLY_PHOTO_NO_COMPANY, { userId: user.id });
+    if (!isLlmConfigured()) return finish('assistant_unavailable', REPLY_ASSISTANT_DOWN, { userId: user.id });
+    try {
+      const media = await downloadWhatsAppMedia(msg.mediaId);
+      const mediaType = (['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(media.mediaType) ? media.mediaType : 'image/jpeg') as ImageMediaType;
+      const outcome = await runPassportExtract({ images: [{ data: media.data, mediaType }], document: null, text: msg.caption || null, hints: {} });
+      const summary = draftSummary(outcome.extraction);
+      if (!summary) return finish('photo_unreadable', REPLY_PHOTO_UNREADABLE, { userId: user.id });
+      const draft = await prisma.productDraft.create({
+        data: { userId: user.id, companyId: user.companyId, source: 'whatsapp', imageUrl: `data:${mediaType};base64,${media.data}`, caption: msg.caption ?? '', extractionJson: JSON.stringify(outcome) },
+      });
+      await notify(user.id, { kind: 'product_draft', title: "WhatsApp'tan ürün taslağı hazır", body: summary, data: { draftId: draft.id } });
+      return finish(
+        'draft_created',
+        `Etiketi okudum: ${summary}.\n\nTaslak uygulamada hazır: Bildirimler'den açın, bilgileri kontrol edip kaydedin. Fiyat ve stok etiketten alınmaz, onları siz girersiniz.`,
+        { userId: user.id }
+      );
+    } catch (err) {
+      console.error('[whatsapp] fotoğraf işlenemedi:', err);
+      return finish('photo_failed', err instanceof LlmNotConfiguredError ? REPLY_ASSISTANT_DOWN : REPLY_PHOTO_FAILED, { userId: user.id, error: (err as Error).message?.slice(0, 500) });
+    }
+  }
+
   if (msg.type !== 'text' || !msg.body) return finish('non_text', REPLY_NON_TEXT, { userId: user.id });
 
   if (!isLlmConfigured()) return finish('assistant_unavailable', REPLY_ASSISTANT_DOWN, { userId: user.id });
@@ -136,4 +173,19 @@ export async function handleWebhookPayload(payload: unknown) {
     }
   }
   return messages.length;
+}
+
+// WhatsApp cevabı ve bildirim için kısa özet: yalnızca OKUNAN alanlar. Hiçbir şey okunmadıysa boş döner.
+function draftSummary(x: Awaited<ReturnType<typeof runPassportExtract>>['extraction']): string {
+  const parts: string[] = [];
+  if (x.code.value) parts.push(x.code.value);
+  const type = x.type.value as ProductType | null;
+  const subtype = type && x.subtype.value ? (SUBTYPES[type] ?? []).find((o) => o.key === x.subtype.value)?.label : null;
+  if (subtype) parts.push(subtype);
+  else if (type) parts.push(TYPE_LABELS[type] ?? type);
+  if (x.composition.value?.length) parts.push(formatComposition(x.composition.value));
+  if (x.weightGsm.value) parts.push(`${String(x.weightGsm.value).replace('.', ',')} gr/m²`);
+  if (x.widthCm.value) parts.push(`${String(x.widthCm.value).replace('.', ',')} cm`);
+  if (x.certificates.value?.length) parts.push(x.certificates.value.map((c) => c.name).join(', '));
+  return parts.join(' · ');
 }

@@ -56,7 +56,7 @@ async function main() {
     data: { accountType: 'uretici', position: 'Test', firstName: 'WA', lastName: suffix, phone: localPhone, phoneVerified: true, companyId: co.id },
   });
   const unknownWa = `90599${suffix}9`;
-  const ids = { a: `wamid.${suffix}.a`, b: `wamid.${suffix}.b`, c: `wamid.${suffix}.c`, d: `wamid.${suffix}.d`, e: `wamid.${suffix}.e` };
+  const ids = { a: `wamid.${suffix}.a`, b: `wamid.${suffix}.b`, c: `wamid.${suffix}.c`, d: `wamid.${suffix}.d`, e: `wamid.${suffix}.e`, f: `wamid.${suffix}.f`, g: `wamid.${suffix}.g` };
 
   try {
     console.log('Doğrulama (GET)');
@@ -96,15 +96,39 @@ async function main() {
     check('tek kayıt, tek işlem', (await prisma.whatsAppInbound.count({ where: { messageId: ids.c } })) === 1 && (await prisma.assistantMessage.count({ where: { threadId: rowC!.threadId! } })) === 2);
 
     console.log('Metin dışı mesaj ve durum bildirimi');
-    check('görsel 200', (await post(payload([{ id: ids.d, from: waPhone, timestamp: '1758000000', type: 'image', image: { id: 'x' } }]))) === 200);
+    check('ses mesajı 200', (await post(payload([{ id: ids.d, from: waPhone, timestamp: '1758000000', type: 'audio', audio: { id: 'x' } }]))) === 200);
     const rowD = await waitRow(ids.d, (r) => r.status !== 'received');
-    check('non_text ve yönlendirme', rowD?.status === 'non_text' && rowD?.replyBody.includes('Etiketten doldur'), rowD);
+    check('non_text: fotoğraf okunabildiğini söyler', rowD?.status === 'non_text' && rowD?.replyBody.includes('FOTOĞRAFI'), rowD);
+
+    console.log('Etiket fotoğrafı → ürün taslağı');
+    const fakeImage = Buffer.from('sahte-etiket-fotografi').toString('base64');
+    check('fotoğraf 200', (await post(payload([{ id: ids.f, from: waPhone, timestamp: '1758000000', type: 'image', image: { id: fakeImage } }]))) === 200);
+    const rowF = await waitRow(ids.f, (r) => r.status !== 'received');
+    check('taslak oluştu ve özetle cevaplandı', rowF?.status === 'draft_created' && rowF.replyBody.startsWith('Etiketi okudum:') && rowF.replyBody.includes('Fiyat ve stok etiketten alınmaz'), rowF);
+    const drafts = await prisma.productDraft.findMany({ where: { userId: user.id } });
+    check('taslak kaydı: sahibi, firması, fotoğrafı ve çıkarımı var', drafts.length === 1 && drafts[0].companyId === co.id && drafts[0].imageUrl.startsWith('data:image/jpeg;base64,') && JSON.parse(drafts[0].extractionJson).extraction != null, drafts[0]?.id);
+    check('ÜRÜN oluşturulmadı (yalnızca taslak)', (await prisma.product.count({ where: { companyId: co.id } })) === 0);
+    const note = await prisma.notification.findFirst({ where: { userId: user.id, kind: 'product_draft' } });
+    check('uygulama bildirimi taslağı gösterir', !!note && JSON.parse(note.dataJson).draftId === drafts[0]?.id, note);
+    const token = (await import('../src/auth')).signSessionToken(user.id);
+    const base = BASE;
+    const api = async (method: string, path: string) => { const r = await fetch(base + path, { method, headers: { Authorization: `Bearer ${token}` } }); return { status: r.status, json: (await r.json().catch(() => null)) as any }; };
+    const list = await api('GET', '/product-drafts');
+    check('taslak listesi hafif (fotoğraf yok)', list.json?.drafts?.length === 1 && !JSON.stringify(list.json).includes('base64'), list.json);
+    const one = await api('GET', `/product-drafts/${drafts[0]?.id}`);
+    check('taslak detayı: fotoğraf + çıkarım', one.json?.draft?.imageUrl?.startsWith('data:image/') && one.json.draft.outcome?.extraction != null, one.status);
+    check('kullanıldı işaretlenince listeden düşer ve fotoğraf silinir', (await api('POST', `/product-drafts/${drafts[0]?.id}/used`)).status === 204 && (await api('GET', '/product-drafts')).json?.drafts?.length === 0 && (await prisma.productDraft.findUnique({ where: { id: drafts[0]!.id } }))?.imageUrl === '');
+    check('okunamayan etiket: taslak yok, yönlendirme var', (await post(payload([{ id: ids.g, from: waPhone, timestamp: '1758000000', type: 'image', image: { id: fakeImage, caption: 'merhaba nasılsınız' } }]))) === 200);
+    const rowG = await waitRow(ids.g, (r) => r.status !== 'received');
+    check('photo_unreadable', rowG?.status === 'photo_unreadable' && (await prisma.productDraft.count({ where: { userId: user.id, status: 'new' } })) === 0, rowG);
     check('yalnızca durum bildirimi 200, kayıt yok', (await post(payload([], { statuses: [{ id: ids.e, status: 'delivered' }] }))) === 200);
     await sleep(300);
     check('durum bildirimi kayıt bırakmadı', (await prisma.whatsAppInbound.findUnique({ where: { messageId: ids.e } })) === null);
     check('bozuk gövde 200 (Meta yeniden göndermesin)', (await post({ object: 'x' })) === 200);
   } finally {
     await prisma.whatsAppInbound.deleteMany({ where: { messageId: { in: Object.values(ids) } } });
+    await prisma.productDraft.deleteMany({ where: { userId: user.id } });
+    await prisma.notification.deleteMany({ where: { userId: user.id } });
     await prisma.assistantThread.deleteMany({ where: { userId: user.id } });
     await prisma.user.deleteMany({ where: { id: user.id } });
     await prisma.company.deleteMany({ where: { id: co.id } });
