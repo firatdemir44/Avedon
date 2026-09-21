@@ -237,7 +237,7 @@ conversationsRouter.post(
       title: `${req.user!.firstName} ${req.user!.lastName}`,
       body: parsed.data.body ? parsed.data.body.slice(0, 140) : 'Video gönderdi',
       kind: 'message',
-      data: { conversationId: conversation.id, userId: req.user!.id },
+      data: { conversationId: conversation.id, userId: req.user!.id, title: `${req.user!.firstName} ${req.user!.lastName}` },
       tag: `conv-${conversation.id}`,
     });
 

@@ -13,6 +13,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import { SessionProvider } from './src/context/SessionContext';
 import { captureInviteCodeFromUrl } from './src/features/invites/storedCode';
+import { ensureManifestLink } from './src/features/push/webPush';
 
 // Yazı tipleri yüklenene kadar açılış ekranı dursun; yoksa ilk karede sistem
 // yazı tipi görünüp Plex'e sıçrardı.
@@ -40,6 +41,12 @@ export default function App() {
   // oradan okuyup "Davet kodu" alanını dolduruyor (Faz 2, Adım 4).
   useEffect(() => {
     void captureInviteCodeFromUrl();
+  }, []);
+
+  // Web'de anlık bildirim için gereken manifest/ana ekran etiketleri (iOS'ta
+  // Push yalnızca ana ekrana eklenmiş uygulamada çalışıyor). Native'de sessiz.
+  useEffect(() => {
+    ensureManifestLink();
   }, []);
 
   if (!ready) return null;

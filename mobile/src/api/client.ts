@@ -2433,3 +2433,33 @@ export function updateCompanyVerification(
     body: JSON.stringify(level !== undefined ? { verification, level } : { verification }),
   });
 }
+
+// --- Anlık bildirim (Web Push) ---------------------------------------------
+// Yalnızca web'de kullanılır (mobile/src/features/push/webPush.ts). Sunucu
+// VAPID anahtarı tanımlı değilse `enabled: false` döner ve arayüz hiç çıkmaz.
+
+export function fetchPushPublicKey() {
+  return request<{ enabled: boolean; publicKey: string }>('/push/public-key');
+}
+
+export function subscribePush(input: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  userAgent?: string;
+}) {
+  return request<{ ok: true }>('/push/subscribe', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function unsubscribePush(endpoint: string) {
+  return request<void>('/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) });
+}
+
+export function fetchPushStatus() {
+  return request<{ enabled: boolean; devices: number }>('/push/status');
+}
+
+// 409 no_subscription: bu hesapta kayıtlı cihaz yok. 503 push_not_configured:
+// sunucuda VAPID anahtarı tanımlı değil.
+export function sendTestPush() {
+  return request<{ ok: true; devices: number }>('/push/test', { method: 'POST' });
+}

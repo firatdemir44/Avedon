@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { User } from '../types';
 import { ApiError, fetchMe, setAuthToken } from '../api/client';
 import { deleteStoredToken, getStoredToken, setStoredToken } from '../features/tokenStorage';
+import { forgetPushOnLogout } from '../features/push/webPush';
 
 const USER_STORAGE_KEY = 'avedon_session_user';
 const TOKEN_STORAGE_KEY = 'avedon_session_token';
@@ -83,10 +84,15 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    setAuthToken(null);
+    // Ekran hemen giriş akışına döner; ama anlık bildirim aboneliği sunucudan
+    // silinene kadar token bellekte kalır (istek yetkisiz kalmasın), sonra
+    // temizlenir. Push hatası çıkışı engellemez.
     setUser(null);
     AsyncStorage.removeItem(USER_STORAGE_KEY).catch(() => {});
-    deleteStoredToken(TOKEN_STORAGE_KEY).catch(() => {});
+    void forgetPushOnLogout().finally(() => {
+      setAuthToken(null);
+      deleteStoredToken(TOKEN_STORAGE_KEY).catch(() => {});
+    });
   };
 
   const value = useMemo<SessionContextValue>(

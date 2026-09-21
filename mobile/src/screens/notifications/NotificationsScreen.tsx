@@ -10,6 +10,7 @@ import {
   type AppNotification,
 } from '../../api/client';
 import { ListRow } from '../../components/ListRow';
+import { PushSettingsCard } from '../../components/PushSettingsCard';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
@@ -214,6 +215,9 @@ export function NotificationsScreen({ navigation }: Props) {
         contentContainerStyle={styles.content}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
+          <>
+          {/* Anlık bildirim ayarı (yalnızca web + sunucuda açıkken görünür). */}
+          <PushSettingsCard />
           <View style={styles.block}>
             {unreadCount > 0 ? (
               <ListRow
@@ -232,6 +236,7 @@ export function NotificationsScreen({ navigation }: Props) {
               onPress={() => navigation.navigate('WatchRules')}
             />
           </View>
+          </>
         }
         ListEmptyComponent={
           <EmptyState
@@ -262,7 +267,7 @@ export function NotificationsScreen({ navigation }: Props) {
         )}
         ListFooterComponent={
           notifications.length ? (
-            <Text style={styles.footerNote}>Bildirimler yalnızca uygulama içinde gösterilir.</Text>
+            <Text style={styles.footerNote}>Son 30 bildirim gösterilir.</Text>
           ) : null
         }
       />

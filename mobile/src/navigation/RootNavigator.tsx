@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer, useNavigationContainerRef, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import type { RootStackParamList } from './types';
@@ -68,6 +68,8 @@ import { NewConversationScreen } from '../screens/messages/NewConversationScreen
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
 import { SelectProductScreen } from '../screens/feed/SelectProductScreen';
 import { PostCommentsScreen } from '../screens/feed/PostCommentsScreen';
+import { readPushTargetFromUrl, subscribeToPushOpen, type PushTarget } from '../features/push/pushOpen';
+import { resyncPushSubscription } from '../features/push/webPush';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -87,6 +89,55 @@ const navigationTheme: Theme = {
 
 export function RootNavigator() {
   const { user, isRestoring } = useSession();
+  const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  // Uygulama kapalıyken bildirime dokunulduysa hedef adres çubuğundan gelir;
+  // gezinme ağacı hazır olana kadar burada bekler.
+  const pendingTarget = useRef<PushTarget | null>(null);
+  const isReady = useRef(false);
+
+  // Bildirime dokunma yönlendirmesi (web): mesaj bildirimi sohbete/Mesajlar
+  // sekmesine, diğer her tür Bildirimler ekranına. Oturum yoksa hiçbir şey
+  // yapılmaz.
+  const goToTarget = useCallback(
+    (target: PushTarget) => {
+      const nav = navigationRef;
+      if (!isReady.current || !nav.isReady()) {
+        pendingTarget.current = target;
+        return;
+      }
+      try {
+        if (target.kind === 'message') {
+          // Sunucu bildirim verisine gönderenin adını (title) da koyar; varsa doğrudan
+          // sohbet açılır, yoksa Mesajlar sekmesi.
+          const d = (target.data ?? {}) as { conversationId?: unknown; userId?: unknown; title?: unknown };
+          nav.navigate('MainTabs', { screen: 'Conversations' });
+          if (typeof d.conversationId === 'string' && typeof d.title === 'string' && d.title) {
+            nav.navigate('Chat', { conversationId: d.conversationId, title: d.title, userId: typeof d.userId === 'string' ? d.userId : undefined });
+          }
+          return;
+        }
+        nav.navigate('Notifications');
+      } catch {
+        // Sessiz: yönlendirme başarısız olsa da uygulama açık kalır.
+      }
+    },
+    [navigationRef]
+  );
+
+  // Oturum açıkken: servis çalışanından gelen dokunmaları dinle ve açılıştaki
+  // `?bildirim=` parametresini oku. Ayrıca tarayıcıdaki abonelik sunucuya
+  // sessizce yeniden bildirilsin (başka hesaba geçmiş ya da silinmiş olabilir).
+  useEffect(() => {
+    if (!user) {
+      pendingTarget.current = null;
+      return;
+    }
+    void resyncPushSubscription();
+    const unsubscribe = subscribeToPushOpen(goToTarget);
+    const initial = readPushTargetFromUrl();
+    if (initial) goToTarget(initial);
+    return unsubscribe;
+  }, [user, goToTarget]);
 
   if (isRestoring) {
     return (
@@ -97,7 +148,16 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      onReady={() => {
+        isReady.current = true;
+        const waiting = pendingTarget.current;
+        pendingTarget.current = null;
+        if (waiting) goToTarget(waiting);
+      }}
+    >
       {/* Girişten sonra her ekranın üstü lacivert bant: saat/pil beyaz. Kayıt
           ekranları açık zeminde, orada koyu. */}
       <StatusBar style={user ? 'light' : 'dark'} />

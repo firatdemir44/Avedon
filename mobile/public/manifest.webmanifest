@@ -1,0 +1,15 @@
+{
+  "name": "Avedon",
+  "short_name": "Avedon",
+  "description": "Tekstil firmaları için ürün, numune ve teklif platformu",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "tr",
+  "icons": [
+    { "src": "/bildirim-simge.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/uygulama-simge.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}
