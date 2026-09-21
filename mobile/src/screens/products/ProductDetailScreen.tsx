@@ -33,6 +33,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductGallery } from '../../components/ProductGallery';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
+import { PriceIndexCard } from '../../components/PriceIndexCard';
 import {
   STOCK_UNIT_LABELS,
   finishTagLabel,
@@ -552,6 +553,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             </View>
           </View>
         ) : null}
+
+        {/* Faz 3, Adım 6: anonim piyasa aralığı. Ticari bilgilerin yanında,
+            yalnızca oturum açmış kullanıcıya; veri yoksa kart hiç çizilmez
+            (`hideWhenUnavailable`) ki ürün sayfası kalabalıklaşmasın. */}
+        {user ? <PriceIndexCard productId={productId} hideWhenUnavailable /> : null}
 
         {finishTags.length ? (
           <View>

@@ -9,6 +9,7 @@ import { SkeletonDetail } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { quoteStatusLabel } from '../../components/QuoteStatusBadge';
+import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { formatMeasure } from '../../features/calculators/parse';
 import { formatQuantity, formatQuoteDate, unitShort } from '../../features/quotes/format';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
@@ -283,6 +284,17 @@ export function RfqCompareScreen({ route, navigation }: Props) {
             message={friendlyMessage(error, 'Karşılaştırma yenilenemedi')}
             onRetry={reload}
             style={styles.banner}
+          />
+        ) : null}
+
+        {/* Faz 3, Adım 6: tablonun üstünde tek piyasa aralığı kartı. Satırlar
+            farklı ürünler olabildiği için ölçüt ilk satırdaki ürün; bu not
+            başlığın altında açıkça yazılı. Veri yoksa kart hiç çizilmez. */}
+        {rfq.rows.length ? (
+          <PriceIndexCard
+            productId={rfq.rows[0].product.id}
+            subtitle="İlk üründeki kaliteye göre"
+            hideWhenUnavailable
           />
         ) : null}
 

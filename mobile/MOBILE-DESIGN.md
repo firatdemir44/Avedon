@@ -197,6 +197,20 @@ Sunucu `backend/src/routes/trust.ts` (`GET /api/trust/company/:companyId`, oturu
 - **Tekliflere yanıt:** "Tekliflerin %80'ine yanıt veriyor · tipik yanıt süresi 5 saat" (`medianHours ≥ 48` ise "2 gün", 1 saatin altında "1 saatten az"). `quoteResponse` yoksa satır **hiç** gösterilmez.
 - En altta küçük açılır "Nasıl hesaplanıyor?" (chevron) → sunucudan gelen `method` metni.
 
+## Anonim fiyat / termin endeksi (Faz 3, Adım 6)
+
+Sunucu `backend/src/routes/priceIndex.ts` (`GET /api/price-index/product/:productId`, **oturum şart**); istemci `fetchPriceIndex`. Bileşen `src/components/PriceIndexCard.tsx`.
+
+**Ürün kuralları (sunucuyla aynı, değiştirilmez):** tek tek teklif, firma adı, en düşük/en yüksek değer **hiç gösterilmez** — yalnızca çeyrek aralığı (p25-p75) ve ortanca. Fiyatlar **kg başınadır**, para birimi **çevrilmez** (her para birimi ayrı satır). Verisi az olan küme cezalandırılmaz: eşik altında nötr tek satır yazılır, uyarı rengi kullanılmaz.
+
+- **Veri çekimi kartın kendi içinde:** `productId` prop'u, **ayrı ve sessiz** istek (benzer kumaşlar / dijital pasaport deseni). Hata ya da oturumsuz kullanıcıda (401) kart hiç çizilmez — iskelet, hata kutusu, "tekrar dene" yok.
+- **Kart:** `SectionHeader` "Piyasa aralığı" (isteğe bağlı `subtitle` prop'u başlığın hemen altında küçük gri not), beyaz blok içinde küme etiketi (`cluster.label`) + altında "son 90 gün".
+- **Para birimi satırı:** mono "3,10 – 3,35 USD/kg · ortanca 3,20" (`formatNumber(value, 2)`, virgül ondalık), altında ince yatay bant (p25-p75 `accentSoft` dolu, ortanca lacivert 2px çizgi; saf `View`, kütüphane yok, erişilebilirlikten gizli çünkü sayılar zaten metinde), varsa "Tipik termin 10–14 gün", en altta 11px "(8+ teklif)".
+- **`myPosition`** (yalnızca satıcıya gelir): "Teklifleriniz bu aralığın altında / içinde / üstünde" — **nötr gri**, yargı bildiren renk ya da sözcük yok.
+- **`available === false`:** tek nötr satır "Bu kalite için henüz yeterli teklif birikmedi. En az {minSellers} farklı satıcıdan {minQuotes} teklif olunca aralık görünür."
+- **`hideWhenUnavailable` prop'u:** veri yokken kartı hiç çizmez (sayfa kalabalıklaşmasın). En altta açılır "Nasıl hesaplanıyor?" → sunucudan gelen `note` (Güven özetindeki desen).
+- **Yerleri:** `ProductDetailScreen` "Ticari" bölümünün altında, **yalnızca oturum açmışta** + `hideWhenUnavailable` · `QuoteRequestDetailScreen` satıcı teklif formunun **hemen üstünde**, `hideWhenUnavailable` **olmadan** (satıcı "henüz veri yok"u da görsün) ve alıcıda gelen teklif kartının altında `hideWhenUnavailable` ile · `RfqCompareScreen` tablonun üstünde, `rows[0]` ürünü için tek kart + `subtitle="İlk üründeki kaliteye göre"`.
+
 ## Basma geri bildirimi (4. aşama)
 
 - Beyaz satır/blok basılıyken zemini `colors.pressed` olur; Android'de ayrıca `android_ripple`.

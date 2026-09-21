@@ -2130,6 +2130,39 @@ export function deleteReference(id: string) {
   return request<void>(`/references/${id}`, { method: 'DELETE' });
 }
 
+// --- Anonim fiyat / termin endeksi (Faz 3, Adım 6) --------------------------
+// Kaynak GÖNDERİLMİŞ tekliflerdir. Anonimlik sıkı: yalnızca çeyrekler döner,
+// tek tek teklif / firma / en düşük-en yüksek değer ASLA gelmez. Eşik altında
+// `available: false` gelir ve hiçbir sayı taşınmaz. Fiyatlar kg başınadır ve
+// para birimi çevrilmez. OTURUM ŞART (oturumsuz 401).
+export interface PriceIndexTriple {
+  p25: number;
+  median: number;
+  p75: number;
+}
+
+export interface PriceIndexBand {
+  currency: string;
+  unit: 'kg';
+  price: PriceIndexTriple;
+  leadTimeDays: PriceIndexTriple | null;
+  sampleSize: string;
+  // Yalnızca kendi teklifi kümede olan SATICIYA gelir; başkasına null.
+  myPosition: 'below' | 'within' | 'above' | null;
+}
+
+export interface PriceIndex {
+  cluster: { label: string; windowDays: number };
+  available: boolean;
+  bands: PriceIndexBand[];
+  rules: { minSellers: number; minQuotes: number };
+  note: string;
+}
+
+export function fetchPriceIndex(productId: string) {
+  return request<PriceIndex>(`/price-index/product/${productId}`);
+}
+
 export type CompanyWithCounts = Company & { _count: { users: number; products: number } };
 
 export function fetchAdminCompanies() {

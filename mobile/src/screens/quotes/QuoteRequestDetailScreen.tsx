@@ -26,6 +26,7 @@ import { ChipSelect } from '../../components/ChipSelect';
 import { TextField } from '../../components/TextField';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { QuoteStatusBadge } from '../../components/QuoteStatusBadge';
+import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { PRICE_CURRENCIES, STOCK_UNITS, STOCK_UNIT_LABELS, type StockUnit } from '../../features/products/catalog';
 import { formatMeasure, parseNumber, toInputNumber } from '../../features/calculators/parse';
 import { formatRelativeTime } from '../../features/time';
@@ -483,15 +484,20 @@ function BuyerSection({
   }
 
   return (
-    <View style={styles.quoteWrap}>
-      <QuoteCard quote={activeQuote} request={request} />
-      {expired ? (
-        <View style={styles.warnBox} accessibilityRole="alert">
-          <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
-          <Text style={styles.warnText}>Bu teklifin geçerlilik süresi doldu; kabul edilemez.</Text>
-        </View>
-      ) : null}
-    </View>
+    <>
+      <View style={styles.quoteWrap}>
+        <QuoteCard quote={activeQuote} request={request} />
+        {expired ? (
+          <View style={styles.warnBox} accessibilityRole="alert">
+            <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
+            <Text style={styles.warnText}>Bu teklifin geçerlilik süresi doldu; kabul edilemez.</Text>
+          </View>
+        ) : null}
+      </View>
+      {/* Faz 3, Adım 6: gelen teklifin altında piyasa aralığı. Alıcıda veri
+          yoksa kart hiç çizilmez (sayfa kalabalıklaşmasın). */}
+      <PriceIndexCard productId={request.product.id} hideWhenUnavailable />
+    </>
   );
 }
 
@@ -594,6 +600,11 @@ function SellerSection({
           <QuoteCard quote={lastSent} request={request} compact />
         </View>
       ) : null}
+
+      {/* Faz 3, Adım 6: fiyatı yazmadan önce piyasa aralığı. Satıcıya
+          `hideWhenUnavailable` VERİLMEZ: yeterli teklif birikmediğini de
+          görsün (alıcı tarafında kart veri yoksa hiç çizilmiyor). */}
+      <PriceIndexCard productId={request.product.id} />
 
       <View style={styles.block}>
         <View style={styles.fillWrap}>
