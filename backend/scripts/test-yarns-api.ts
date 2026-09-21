@@ -59,6 +59,8 @@ async function main() {
     check('karışım toplamı 100 değil 400', (await api('POST', '/yarns', M, { code: 'X', family: 'karisim', count: 30, countUnit: 'ne', composition: [{ fiber: 'pamuk', percent: 60 }, { fiber: 'polyester', percent: 30 }] })).json?.details?.fieldErrors?.composition?.[0] === 'composition_total_not_100');
     check('bilinmeyen alan (uster) 400', (await api('POST', '/yarns', M, { code: 'X', family: 'pamuk', count: 30, countUnit: 'ne', uster: 9.5 })).status === 400);
 
+    check('etiketten okuma: oturumsuz 401, girdisiz 400', (await api('POST', '/yarns/extract', undefined, { text: 'x' })).status === 401 && (await api('POST', '/yarns/extract', M, {})).json?.error === 'extract_input_required');
+
     console.log('İplik girişi');
     const cotton = await api('POST', '/yarns', M, {
       code: `PM-30-${suffix}`, family: 'pamuk', count: 30, countUnit: 'ne', ply: 1, spinning: 'kompakt', combing: 'penye', twistDirection: 'Z', twistTpm: 820,

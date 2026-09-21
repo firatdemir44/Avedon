@@ -18,6 +18,9 @@ import {
 } from '../yarns';
 import { formatComposition } from '../domain/glossary';
 import { matchWatchRulesInBackground } from '../watch';
+import { z } from 'zod';
+import { LlmNotConfiguredError, LlmOutputError, isLlmConfigured } from '../llm';
+import { runYarnExtract, type YarnLabelMediaType } from '../skills/yarnExtract';
 import { makeHandle } from './handle';
 
 // Faz 2, Adım 6: iplik dizini. İplik bir Product satırıdır (type = "iplik") + YarnSpec;
@@ -28,6 +31,36 @@ const handle = makeHandle('yarns');
 yarnsRouter.get('/options', (_req, res) => {
   res.json(YARN_OPTIONS);
 });
+
+// Bobin etiketinden iplik bilgisi önerisi ("Etiketten doldur"). Kaydetmez; form öneriyi gösterir.
+const MAX_LABEL_IMAGE_CHARS = Math.floor(5 * 1024 * 1024 * 1.37);
+const extractSchema = z
+  .object({ images: z.array(z.string().startsWith('data:image/').max(MAX_LABEL_IMAGE_CHARS)).max(3).default([]), text: z.string().trim().max(4000).optional() })
+  .strict();
+
+yarnsRouter.post(
+  '/extract',
+  requireAuth,
+  handle(async (req, res) => {
+    if (!isLlmConfigured()) return res.status(503).json({ error: 'extract_not_configured' });
+    const parsed = extractSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    if (!parsed.data.images.length && !parsed.data.text) return res.status(400).json({ error: 'extract_input_required' });
+    const images: { data: string; mediaType: YarnLabelMediaType }[] = [];
+    for (const url of parsed.data.images) {
+      const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/s.exec(url);
+      if (!m) return res.status(400).json({ error: 'unsupported_image' });
+      images.push({ mediaType: m[1] as YarnLabelMediaType, data: m[2] });
+    }
+    try {
+      res.json(await runYarnExtract({ images, text: parsed.data.text ?? null }));
+    } catch (err) {
+      if (err instanceof LlmNotConfiguredError) return res.status(503).json({ error: 'extract_not_configured' });
+      if (err instanceof LlmOutputError) return res.status(502).json({ error: 'extract_failed' });
+      throw err;
+    }
+  })
+);
 
 // Arama mantığı asistan aracıyla ortak (assistant/tools.ts iplik_ara).
 export async function searchYarns(query: YarnQuery, viewerCompanyId: string | null) {
