@@ -5,7 +5,7 @@ import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaRunnableTool } from '@anthropic-ai/sdk/lib/tools/BetaRunnableTool';
 import * as z from 'zod/v4';
 import { PRODUCT_TYPES } from '../catalog';
-import { YARN_END_USES, YARN_FAMILIES, type YarnQuery } from '../yarns';
+import { YARN_END_USES, YARN_FAMILIES, buildYarnWhere, type YarnQuery } from '../yarns';
 import { searchYarns } from '../routes/yarns';
 import { MAX_RFQ_COMPANIES, compareView } from '../routes/rfqs';
 import { findSimilarProducts, usable } from '../looks';
@@ -278,9 +278,16 @@ export function buildTools(ctx: ToolContext): ToolSet {
   const teklifTopla = betaZodTool({
     name: 'teklif_topla',
     description:
-      'Kullanıcı bir kumaş ihtiyacı için birden çok firmadan teklif toplamak istediğinde PLATFORMDAKİ TÜM firmaların kataloğunda arar ve firma başına bir aday ürün ÖNERİR. İstek GÖNDERMEZ: adaylar ekranda kart olarak çıkar, kullanıcı işaretleyip onaylarsa istek gider. ' +
+      'Kullanıcı bir kumaş YA DA İPLİK ihtiyacı için birden çok firmadan teklif toplamak istediğinde PLATFORMDAKİ TÜM firmaların kataloğunda arar ve firma başına bir aday ürün ÖNERİR. İstek GÖNDERMEZ: adaylar ekranda kart olarak çıkar, kullanıcı işaretleyip onaylarsa istek gider. ' +
       'Kullan: "180-200 gr pamuk elastan süprem, 2 ton, 3 hafta; teklif topla", "bu kaliteyi kimler yapıyor, fiyat alalım". Kullanıcının söylemediği süzgeci ekleme; miktar ve termin söylendiyse aktar. Fiyat dönmez. Sonuç boşsa süzgeci gevşetmeyi öner.',
     inputSchema: z.object({
+      kind: z.enum(['kumas', 'iplik']).optional().describe('Aranan ürün: kumas (varsayılan) ya da iplik. İplikte yarn* alanlarını kullan.'),
+      yarnFamily: z.enum(YARN_FAMILIES.map((f) => f.key) as [string, ...string[]]).optional().describe('İplik ana alanı (pamuk, polyester, viskon...)'),
+      yarnCount: z.number().positive().optional().describe('İplik numarası (yarnCountUnit ile)'),
+      yarnCountUnit: z.enum(['ne', 'nm', 'denye', 'dtex', 'tex']).optional(),
+      yarnFilaments: z.number().int().positive().optional().describe('Filament sayısı'),
+      yarnFilamentType: z.enum(['dty', 'fdy', 'poy', 'aty', 'bcf', 'mono']).optional(),
+      yarnEndUse: z.enum(YARN_END_USES.map((u) => u.key) as [string, ...string[]]).optional().describe('İplik kullanım yeri'),
       search: z.string().max(100).optional().describe('Serbest arama: alt çeşit adı, içerik'),
       type: z.enum(PRODUCT_TYPES).optional().describe('Çeşit anahtarı'),
       subtype: z.string().max(40).optional().describe('Alt çeşit anahtarı (ör. suprem)'),
@@ -296,9 +303,12 @@ export function buildTools(ctx: ToolContext): ToolSet {
       note: z.string().max(300).optional().describe('Satıcılara gidecek kısa not'),
     }),
     run: async (args) => {
-      const { quantity, unit, targetDate, note, ...filters } = args;
-      if (!Object.values(filters).some((v) => v !== undefined && v !== '')) return 'En az bir ürün özelliği gerekli (çeşit, lif, gramaj...). Kullanıcıya ne aradığını sor.';
-      const where = buildProductWhere(filters);
+      const { quantity, unit, targetDate, note, kind, yarnFamily, yarnCount, yarnCountUnit, yarnFilaments, yarnFilamentType, yarnEndUse, ...filters } = args;
+      const isYarn = kind === 'iplik';
+      const yarnFilters = { family: yarnFamily, count: yarnCount, countUnit: yarnCountUnit, filaments: yarnFilaments, filamentType: yarnFilamentType, endUse: yarnEndUse, search: filters.search, fiber: filters.fiber, certificate: filters.certificate };
+      const given = isYarn ? yarnFilters : filters;
+      if (!Object.values(given).some((v) => v !== undefined && v !== '')) return 'En az bir ürün özelliği gerekli (çeşit, lif, gramaj; iplikte numara, aile...). Kullanıcıya ne aradığını sor.';
+      const where = isYarn ? buildYarnWhere(yarnFilters as YarnQuery) : buildProductWhere(filters);
       const rows = await prisma.product.findMany({
         where: { AND: [where, ...(ctx.companyId ? [{ companyId: { not: ctx.companyId } }] : [])] },
         select: PRODUCT_SELECT,

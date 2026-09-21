@@ -23,7 +23,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor).
 10. Video yalnızca akış gönderilerinde; kararlaştırılan kapsamın kalanı (ürün sayfası videosu, sohbette video) yapılmadı.
 11. WhatsApp'tan ürün taslağı (fotoğraf gönder → pasaport taslağı) yok; etiketten İPLİK çıkarma yok (yalnızca kumaş).
-12. Asistanın `teklif_topla` aracı yalnızca kumaş arıyor (iplikte: `iplik_ara` + iplik dizininde "Teklif için seç" kipi var). Aday kartındaki işaretler sohbetten çıkıp dönünce sıfırlanıyor. Asistanda `benzer_kumas_ara` (ürün koduyla) eklendi (2026-09-21); sonuç şimdilik genel özet kartıyla görünüyor, özel kart yok.
+12. (Kapandı 2026-09-21: asistanın `teklif_topla` aracı iplikte de çalışıyor.) Aday kartındaki işaretler sohbetten çıkıp dönünce sıfırlanıyor. Asistanda `benzer_kumas_ara` (ürün koduyla) eklendi (2026-09-21); sonuç şimdilik genel özet kartıyla görünüyor, özel kart yok.
 13. Teknik borç: kumaş ve iplik formlarında karışım/sertifika satır düzenleyicileri kopya (ortak bileşene çıkarılacak); `Product.imageUrl` eski sütunu silinecek; `mobile/MOBILE-DESIGN.md`'de Faz 2-3 ekran kalıpları yazılmadı.
 14. Evden telefonda GELİŞTİRME sürümü testi çözülmedi (canlı web adresi yettiği için ihtiyaç yok).
 

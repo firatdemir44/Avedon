@@ -390,8 +390,9 @@ export function rfqCandidatesView(call: AssistantToolCall): RfqCandidatesView {
       const summary = [
         categoryLabel(asText(c.type), asText(c.subtype)),
         asText(c.content),
-        gsm != null ? `${formatNumber(gsm, 0)} gr/m²` : null,
-        width != null ? `${formatNumber(width, 0)} cm` : null,
+        // İplikte gramaj ve en 0 gelir; yazılmaz.
+        gsm != null && gsm > 0 ? `${formatNumber(gsm, 0)} gr/m²` : null,
+        width != null && width > 0 ? `${formatNumber(width, 0)} cm` : null,
         stock != null ? `${formatNumber(stock, 0)} ${STOCK_UNIT_LABELS[stockUnit].short}` : null,
       ]
         .filter(Boolean)
