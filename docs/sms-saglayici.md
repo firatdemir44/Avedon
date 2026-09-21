@@ -33,3 +33,9 @@ Amaç: telefon doğrulama kodunun (OTP) gerçek SMS ile gitmesi. Kodda hazır ol
 4. Dört değer Render > avedon-backend > Environment'a girilir (sohbete yazılmaz); `/api/health` `sms.account.ok: true` olunca gerçek telefonla giriş denenir.
 
 **Başlık onayı beklenirken:** `ILETIMERKEZI_SENDER=APITEST` ile deneme yapılabilir; ama bu kipte telefona SABİT deneme metni gider (kod gitmez) ve kredi düşer → yalnızca bağlantıyı kanıtlar, girişe yaramaz.
+
+## Başlık başvurusu: doğrulanmış menü yolları (2026-09-21, iletimerkezi.com/yardim-merkezi)
+
+1. **Abonelik başvurusu:** panel > **Ayarlar > Hesap Bilgileri > Abonelik Başvurusu** (4 adım: başvuran, kurum türü + T.C. kimlik no, tesis adresi + 10 haneli adres kodu, özet). Sonra **e-Devlet > "e-Kayıt Başvurusu Onay İşlemleri"**, işletme: **EMARKA İLETİŞİM VE BİLGİ TEKNOLOJİLERİ A.Ş.**; onay NFC ile: çipli kimlik + NFC'li telefon + e-Devlet Kapısı mobil uygulaması (~10 dk).
+2. **Başlık talebi:** panel > **Ayarlar > SMS > Başlıklar > "Yeni SMS Başlığı Talebi"** (başlık adı + tipi). Evraklar ıslak imzalı taranmış PDF ya da e-imzalı PDF olarak KEP ile gönderilir (KEP adresi yardım makalesinde: /yardim-merkezi/baslik-talebi-originator-nasil-acilir). Sonuç SMS + e-posta ile bildirilir; durum aynı menüden izlenir.
+3. **Başlık adı riski:** başlık şirket unvanıyla tutarlı olmalı; unvandan farklı bir MARKA adı ("AVEDON") için "şirket-marka ilişkisini ispatlayan ek belge" (pratikte marka tescili) istenebilir. **Hızlı yol:** başlığı şirket unvanındaki addan seçmek (ör. "MELIDE"); SMS metni zaten "Avedon dogrulama kodunuz: ..." diye başlıyor. "AVEDON" başlığı marka tescili olunca ikinci başlık olarak eklenir; kodda yalnızca `ILETIMERKEZI_SENDER` değişir.
