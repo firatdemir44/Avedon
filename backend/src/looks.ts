@@ -9,7 +9,8 @@ import { YARN_PRODUCT_TYPE } from './yarns';
 // Benzer kumaş arama (Faz 3, Adım 3). Görünüm kartı ürünün KAPAK fotoğrafından çıkar;
 // benzerlik deterministik ve açıklanabilir (skills/fabricLook/score.ts).
 // Dürüstlük sınırı: fotoğraftan gramaj ve lif okunmaz; yalnızca görünüm eşleşir.
-export const MIN_LOOK_SCORE = 45;
+// 45 iken canlıda kırmızı petek ile ekru düz "benzer" çıkıyordu (2026-09-21); renk ya da desenden biri tutmadan geçilmesin.
+export const MIN_LOOK_SCORE = 60;
 export const MAX_LOOK_SEARCHES_PER_DAY = 20;
 
 export const usable = (look: FabricLook) => look.isFabric && look.confidence >= 0.3;
