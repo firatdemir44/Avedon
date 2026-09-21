@@ -18,6 +18,7 @@ import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
+import { ProductDraftsScreen } from '../screens/company/ProductDraftsScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
 import { SimilarSearchScreen } from '../screens/products/SimilarSearchScreen';
@@ -154,6 +155,12 @@ export function RootNavigator() {
               name="PassportReview"
               component={PassportReviewScreen}
               options={{ headerShown: true, title: 'Etiketten Okunanlar' }}
+            />
+            {/* WhatsApp'tan gelen ürün taslakları (bekleyenler). */}
+            <Stack.Screen
+              name="ProductDrafts"
+              component={ProductDraftsScreen}
+              options={{ headerShown: true, title: 'WhatsApp Taslakları' }}
             />
             <Stack.Screen
               name="ProductDetail"

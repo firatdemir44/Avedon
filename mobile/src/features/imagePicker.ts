@@ -150,6 +150,36 @@ export async function pickAvatarPhoto(
   throw new Error('image_too_large');
 }
 
+/**
+ * Elde hazır duran bir fotoğrafı (data URL) ürün fotoğrafı sınırına sığdırır:
+ * WhatsApp taslağından gelen etiket fotoğrafı sunucuda kendi sınırıyla
+ * saklanıyor, ürün fotoğrafı sınırı daha dar olabiliyor. Zaten sığıyorsa
+ * dokunulmaz. Küçültme başarısız olursa (bazı ortamlarda data URL okunamaz)
+ * null döner — çağıran fotoğrafı eklemez.
+ */
+export async function fitDataUrl(dataUrl: string, maxChars: number): Promise<CompressedImage | null> {
+  if (dataUrl.length <= maxChars) return { uri: dataUrl, dataUrl };
+  for (const [maxSide, compress] of [
+    [1000, 0.6],
+    [800, 0.5],
+    [640, 0.4],
+  ] as const) {
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(dataUrl, [{ resize: { width: maxSide } }], {
+        compress,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      });
+      if (!manipulated.base64) continue;
+      const next = `data:image/jpeg;base64,${manipulated.base64}`;
+      if (next.length <= maxChars) return { uri: manipulated.uri, dataUrl: next };
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 async function shrink(
   asset: ImagePicker.ImagePickerAsset,
   maxWidth: number,

@@ -16,7 +16,10 @@ import {
   ApiError,
   createProduct,
   deleteProduct,
+  dismissProductDraft,
   extractPassport,
+  fetchProductDraft,
+  markProductDraftUsed,
   fetchCertificateImage,
   fetchProduct,
   fetchTestReportImage,
@@ -30,7 +33,12 @@ import {
   type TestReportInput,
   type YarnInput,
 } from '../../api/client';
-import { captureCompressedImage, pickCompressedImage, pickCompressedImages } from '../../features/imagePicker';
+import {
+  captureCompressedImage,
+  fitDataUrl,
+  pickCompressedImage,
+  pickCompressedImages,
+} from '../../features/imagePicker';
 import { DocumentPickError, pickPdf } from '../../features/documentPicker';
 import type { PassportImport } from '../../features/products/passportImport';
 import {
@@ -42,6 +50,7 @@ import {
   MAX_CERTIFICATES,
   MAX_COMPOSITION_ROWS,
   MAX_PRODUCT_IMAGES,
+  MAX_PRODUCT_IMAGE_CHARS,
   MAX_TEST_REPORTS,
   MAX_YARNS,
 } from '../../features/products/limits';
@@ -258,6 +267,8 @@ export function AddProductScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const productId = route.params?.productId ?? null;
   const isEditing = !!productId;
+  // WhatsApp taslağından gelindiyse (yalnızca yeni üründe anlamlı).
+  const draftId = !productId ? (route.params?.draftId ?? null) : null;
   const scrollRef = useRef<ScrollView>(null);
 
   const [type, setType] = useState<ProductType>('orme');
@@ -342,6 +353,78 @@ export function AddProductScreen({ navigation, route }: Props) {
   // ürün yüklendiyse) gider: varsayılan "Örme" yüzünden etiketteki alt çeşit
   // ("poplin") boşuna elenmesin.
   const [typeChosen, setTypeChosen] = useState(false);
+
+  // --- WhatsApp taslağı ---
+  // Taslak yükleniyor / yüklenemedi durumu ve fotoğrafla ilgili kısa not
+  // (fotoğraf ürün fotoğrafı sınırına sığmadıysa eklenmez).
+  const [draftLoading, setDraftLoading] = useState(!!draftId);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftNote, setDraftNote] = useState<string | null>(null);
+  const [draftDismissing, setDraftDismissing] = useState(false);
+  // Taslak yalnızca BİR kez açılır: onay ekranından forma dönüldüğünde
+  // (popTo + merge, draftId parametrede kalır) yeniden açılmasın.
+  const draftOpened = useRef(false);
+
+  useEffect(() => {
+    if (!draftId || draftOpened.current) return;
+    draftOpened.current = true;
+    let cancelled = false;
+    setDraftLoading(true);
+    fetchProductDraft(draftId)
+      .then(async ({ draft }) => {
+        if (cancelled) return;
+        // Etiket fotoğrafı ürünün ilk (kapak) fotoğrafı olarak önerilir;
+        // kullanıcı kaldırabilir.
+        if (draft.imageUrl) {
+          const fitted = await fitDataUrl(draft.imageUrl, MAX_PRODUCT_IMAGE_CHARS);
+          if (cancelled) return;
+          if (fitted) {
+            setPhotos([{ key: newKey('taslak'), uri: fitted.uri, dataUrl: fitted.dataUrl }]);
+            setPhotosDirty(true);
+          } else {
+            setDraftNote('Etiket fotoğrafı ürün fotoğrafı olarak eklenemedi (çok büyük).');
+          }
+        }
+        setDraftLoading(false);
+        // Etiketten doldurmayla AYNI yol: çıkarım sonucu onay ekranına gider,
+        // onaylanan alanlar buraya popTo ile geri döner.
+        navigation.navigate('PassportReview', { outcome: draft.outcome });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setDraftLoading(false);
+        setDraftError(
+          err instanceof ApiError && err.status === 404
+            ? 'Bu taslak kullanılmış ya da silinmiş.'
+            : 'Taslak açılamadı, lütfen tekrar deneyin.'
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [draftId, navigation]);
+
+  // Taslağı sil: onaydan sonra sunucudan düşer ve forma dönülmez.
+  const handleDismissDraft = async () => {
+    if (!draftId || draftDismissing) return;
+    const confirmed = await confirmAction({
+      title: 'Taslağı sil',
+      message: "WhatsApp'tan gelen bu taslak silinsin mi? Girdiğiniz bilgiler kaydedilmez.",
+      confirmLabel: 'Sil',
+      destructive: true,
+    });
+    if (!confirmed) return;
+    setDraftDismissing(true);
+    try {
+      await dismissProductDraft(draftId);
+      haptics.success();
+      navigation.goBack();
+    } catch {
+      haptics.error();
+      setDraftError('Taslak silinemedi, lütfen tekrar deneyin.');
+      setDraftDismissing(false);
+    }
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Ürünü Düzenle' : 'Ürün Ekle' });
@@ -998,7 +1081,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     const fieldMeta: FieldMetaInput[] = (Object.keys(extractedFields) as ExtractionFieldName[]).map((field) => ({
       field,
       confidence: extractedFields[field]!,
-      source: 'extracted',
+      // Taslaktan gelen alanların kaynağı WhatsApp (sunucu bu kaynağı tanıyor).
+      source: draftId ? 'whatsapp' : 'extracted',
       confirmed: true,
     }));
     const moqNum = moq.trim() ? parseNumber(moq) : null;
@@ -1099,6 +1183,9 @@ export function AddProductScreen({ navigation, route }: Props) {
         notes = result.warnings?.notes ?? [];
         createdId = result.product.id;
         replaceCachedProductImages(result.product.id, photos.map((p) => p.dataUrl));
+        // Taslak kullanıldı: listeden düşsün. Hata olursa sessiz geçilir
+        // (ürün zaten kaydedildi).
+        if (draftId) markProductDraftUsed(draftId).catch(() => {});
       }
       haptics.success();
       if (notes.length) {
@@ -1145,7 +1232,7 @@ export function AddProductScreen({ navigation, route }: Props) {
     }
   };
 
-  if (loading) {
+  if (loading || draftLoading) {
     return (
       <View style={styles.screen}>
         <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
@@ -1162,6 +1249,28 @@ export function AddProductScreen({ navigation, route }: Props) {
   return (
     <View style={styles.screen}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {draftId ? (
+          <View style={styles.draftBar}>
+            <View style={styles.draftTextWrap}>
+              <Ionicons name="logo-whatsapp" size={16} color={colors.textMuted} style={styles.draftIcon} />
+              <Text style={styles.draftText}>
+                WhatsApp&apos;tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.
+              </Text>
+            </View>
+            {draftNote ? <Text style={styles.draftNote}>{draftNote}</Text> : null}
+            {draftError ? <Text style={styles.draftError}>{draftError}</Text> : null}
+            <Pressable
+              onPress={handleDismissDraft}
+              disabled={draftDismissing}
+              accessibilityRole="button"
+              accessibilityLabel="Taslağı sil"
+              style={({ pressed }) => [styles.draftLinkPress, pressed && styles.photoPressed]}
+            >
+              <Text style={styles.draftLink}>{draftDismissing ? 'Siliniyor…' : 'Taslağı sil'}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {savedWarnings ? (
           <View style={styles.warningBox} accessibilityRole="alert">
             <View style={styles.warningTitleRow}>
@@ -1888,6 +1997,20 @@ const styles = StyleSheet.create({
   content: { paddingBottom: spacing.xl },
   block: { backgroundColor: colors.surface },
   formBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter },
+  // WhatsApp taslağı bilgi şeridi: formun en üstünde ince, gri, dikkat çekmeyen.
+  draftBar: {
+    backgroundColor: colors.surfaceTonal,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+    gap: 4,
+  },
+  draftTextWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  draftIcon: { marginTop: 1 },
+  draftText: { ...typography.caption, color: colors.textMuted, flex: 1 },
+  draftNote: { ...typography.caption, color: colors.textMuted },
+  draftError: { ...typography.caption, color: colors.danger },
+  draftLinkPress: { alignSelf: 'flex-start' },
+  draftLink: { ...typography.caption, fontFamily: fonts.semibold, color: colors.danger },
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

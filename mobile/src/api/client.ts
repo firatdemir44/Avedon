@@ -1281,7 +1281,10 @@ export type NotificationKind =
   | 'deal_confirmed'
   | 'deal_disputed'
   | 'deal_cancelled'
-  | 'deal_review';
+  | 'deal_review'
+  // WhatsApp'tan gelen etiket fotoğrafından hazırlanan ürün taslağı;
+  // data.draftId dolu (bkz. fetchProductDraft).
+  | 'product_draft';
 
 export interface NotificationData {
   productId?: string;
@@ -1298,6 +1301,8 @@ export interface NotificationData {
   referenceId?: string;
   // Sipariş kaydı (Faz 3, Adım 4).
   dealId?: string;
+  // WhatsApp ürün taslağı.
+  draftId?: string;
 }
 
 export interface AppNotification {
@@ -1800,6 +1805,56 @@ export function extractPassport(input: PassportExtractInput) {
     // Model çağrısı: fotoğraf + PDF ile varsayılan 30 sn yetmiyor.
     LLM_REQUEST_TIMEOUT_MS
   );
+}
+
+// --- WhatsApp'tan ürün taslakları -------------------------------------------
+// Kullanıcı WhatsApp'taki Avedon asistanına etiket FOTOĞRAFI gönderince sunucu
+// etiketi okuyup bir taslak kaydeder (ürün OLUŞTURMAZ) ve 'product_draft'
+// bildirimi düşer. Uygulama taslağı açar, onay ekranında gösterir, kullanıcı
+// normal ürün kaydıyla kaydeder. Sunucu: backend/src/routes/productDrafts.ts.
+
+export interface ProductDraftSummary {
+  id: string;
+  source: string;
+  // WhatsApp mesajının yazılı notu (boş olabilir).
+  caption: string;
+  createdAt: string;
+  // Etiketten okunabildiyse; liste satırında gösterilir.
+  code: string | null;
+  type: string | null;
+  subtype: string | null;
+}
+
+export interface ProductDraft {
+  id: string;
+  source: string;
+  caption: string;
+  status: string;
+  createdAt: string;
+  // Etiket fotoğrafı, data URL. Kullanılmış/silinmiş taslakta boş.
+  imageUrl: string;
+  // POST /api/passport/extract yanıtıyla AYNI biçim: onay ekranına olduğu
+  // gibi verilir.
+  outcome: ExtractOutcome;
+}
+
+// Yalnızca bekleyen (status 'new') taslaklar; fotoğraf dönmez.
+export function fetchProductDrafts() {
+  return request<{ drafts: ProductDraftSummary[] }>('/product-drafts');
+}
+
+// 404 'draft_not_found': taslak kullanılmış ya da silinmiş.
+export function fetchProductDraft(draftId: string) {
+  return request<{ draft: ProductDraft }>(`/product-drafts/${draftId}`);
+}
+
+// Taslaktan ürün kaydedildi: taslak listeden düşer, fotoğrafı sunucudan silinir.
+export function markProductDraftUsed(draftId: string) {
+  return request<void>(`/product-drafts/${draftId}/used`, { method: 'POST' });
+}
+
+export function dismissProductDraft(draftId: string) {
+  return request<void>(`/product-drafts/${draftId}/dismiss`, { method: 'POST' });
 }
 
 // --- Makine parkı ve fason kapasite (Faz 2, Adım 5) --------------------------

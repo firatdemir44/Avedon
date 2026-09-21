@@ -3,7 +3,9 @@ import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
+  ApiError,
   fetchNotifications,
+  fetchProductDraft,
   markNotificationsRead,
   type AppNotification,
 } from '../../api/client';
@@ -37,6 +39,8 @@ function iconFor(kind: string): IconName {
   if (kind.startsWith('company_question')) return 'sparkles-outline';
   // Karşılıklı referanslar (Faz 2, Adım 7).
   if (kind.startsWith('reference')) return 'ribbon-outline';
+  // WhatsApp'tan gelen etiket fotoğrafından hazırlanan ürün taslağı.
+  if (kind === 'product_draft') return 'logo-whatsapp';
   return 'notifications-outline';
 }
 
@@ -90,7 +94,27 @@ export function NotificationsScreen({ navigation }: Props) {
   const open = useCallback(
     (item: AppNotification) => {
       if (!item.read) markRead([item.id]);
-      const { productId, sampleRequestId, quoteRequestId, userId, companyId, dealId } = item.data ?? {};
+      const { productId, sampleRequestId, quoteRequestId, userId, companyId, dealId, draftId } =
+        item.data ?? {};
+      // WhatsApp taslağı: taslağın hâlâ durduğunu doğrulayıp ürün formunu
+      // taslakla açar. Taslak kullanılmış/silinmişse (404) kısa bir not.
+      if (item.kind === 'product_draft') {
+        if (!draftId) {
+          navigation.navigate('ProductDrafts');
+          return;
+        }
+        setActionError(null);
+        fetchProductDraft(draftId)
+          .then(() => navigation.navigate('AddProduct', { draftId }))
+          .catch((err) =>
+            setActionError(
+              err instanceof ApiError && err.status === 404
+                ? 'Bu taslak kullanılmış ya da silinmiş.'
+                : 'Taslak açılamadı, lütfen tekrar deneyin.'
+            )
+          );
+        return;
+      }
       // Faz 3, Adım 4: sipariş bildirimleri ve dealId taşıyan "teklif kabul
       // edildi" bildirimi doğrudan sipariş kaydına gider.
       if (item.kind.startsWith('deal') || (item.kind === 'quote_accepted' && dealId)) {

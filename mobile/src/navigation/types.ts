@@ -68,9 +68,17 @@ export type RootStackParamList = {
   CompanySetup: { step?: string } | undefined;
   // passportImport: etiket okuma onay ekranından aktarılan alanlar. importKey
   // her aktarımda değişir; aynı öneri ikinci kez aktarılsa da formun haberi olur.
-  AddProduct: { productId?: string; passportImport?: PassportImport; importKey?: number } | undefined;
+  // draftId: WhatsApp'tan gelen ürün taslağı. Ekran açılışında taslağı çeker,
+  // fotoğrafını ilk ürün fotoğrafı olarak önerir ve çıkarım sonucunu
+  // PassportReview onay ekranına gönderir (etiketten doldurmayla aynı yol).
+  AddProduct:
+    | { productId?: string; passportImport?: PassportImport; importKey?: number; draftId?: string }
+    | undefined;
   // Etiketten okunanların onay ekranı (ürün formundan açılır, forma geri döner).
   PassportReview: { productId?: string; outcome: ExtractOutcome };
+  // WhatsApp'tan gelen, henüz kullanılmamış ürün taslakları (firma sayfasından
+  // ve bildirimden açılır).
+  ProductDrafts: undefined;
   ProductDetail: { productId: string };
   // mode 'watch': aynı ekran "izleme kipinde" açılır (Faz 2, Adım 1) — alttaki
   // düğme "Bu süzgeci izle" olur ve sonuç Ürünler'e değil izleme kuralına gider.

@@ -25,6 +25,7 @@ import {
   fetchCompanyFeed,
   fetchCompanyMachines,
   fetchCompanyQuestions,
+  fetchProductDrafts,
   fetchCompanyReferences,
   fetchCompanyTrust,
   fetchDeals,
@@ -111,10 +112,18 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const [openQuestions, setOpenQuestions] = useState(0);
   // Faz 3, Adım 4: firmanın değerlendirme bekleyen sipariş kayıtları.
   const [pendingDealReviews, setPendingDealReviews] = useState(0);
+  // WhatsApp'tan gelip henüz ürüne çevrilmemiş taslak sayısı; yalnızca varsa
+  // "Ürün Ekle"nin altında bir satır görünür.
+  const [pendingDrafts, setPendingDrafts] = useState(0);
   useFocusEffect(
     useCallback(() => {
       if (!isOwnCompany) return;
       let cancelled = false;
+      fetchProductDrafts()
+        .then(({ drafts }) => {
+          if (!cancelled) setPendingDrafts(drafts.length);
+        })
+        .catch(() => {});
       fetchDeals('seller')
         .then(({ deals }) => {
           if (!cancelled) setPendingDealReviews(deals.filter((d) => d.canReview).length);
@@ -516,6 +525,19 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               style={styles.actionButton}
             />
           </View>
+          {/* WhatsApp'tan gelen etiket fotoğraflarından hazırlanan ürün
+              taslakları. Satır yalnızca bekleyen taslak varsa görünür. */}
+          {pendingDrafts > 0 ? (
+            <View style={styles.draftBlock}>
+              <ListRow
+                title={`WhatsApp taslakları (${pendingDrafts})`}
+                subtitle="Etiket fotoğrafından hazırlandı, kontrol edip kaydedin"
+                left={<Ionicons name="logo-whatsapp" size={22} color={colors.primary} />}
+                divider={false}
+                onPress={() => navigation.navigate('ProductDrafts')}
+              />
+            </View>
+          ) : null}
           <View style={styles.actionRow}>
             <PrimaryButton
               label="Gelen Talepler"
@@ -1430,6 +1452,8 @@ const styles = StyleSheet.create({
   actions: { marginTop: 12, gap: spacing.sm },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   actionButton: { flex: 1, paddingHorizontal: spacing.sm },
+  // WhatsApp taslak satırı: düğmelerin arasında beyaz blok.
+  draftBlock: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
   // Sekmeler: seçili olanın altında lacivert çizgi (orijinal tasarım).
   tabBar: {
     flexDirection: 'row',
