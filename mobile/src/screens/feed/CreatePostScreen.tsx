@@ -8,15 +8,12 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { useSession } from '../../context/SessionContext';
 import {
-  ApiError,
   createPost,
-  deleteVideo,
   fetchMyProducts,
   fetchPost,
   fetchProduct,
   updatePost,
   type PostVisibility,
-  type VideoRef,
 } from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { markFeedStale } from '../../features/feed/feedRefresh';
@@ -24,16 +21,13 @@ import { pickCompressedImage } from '../../features/imagePicker';
 import { loadProductImage } from '../../features/products/productImageCache';
 import { categoryLabel } from '../../features/products/catalog';
 import { haptics } from '../../features/haptics';
-import { MAX_VIDEO_SECONDS, VideoPickError, pickVideo, uploadVideo } from '../../features/videoUpload';
+import { MAX_VIDEO_SECONDS } from '../../features/videoUpload';
+import { formatVideoDuration, useVideoUpload } from '../../features/useVideoUpload';
 import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePost'>;
 
 const MAX_BODY = 3000;
-
-type VideoState =
-  | { phase: 'uploading'; progress: number; durationSeconds: number | null }
-  | { phase: 'uploaded'; ref: VideoRef; durationSeconds: number | null };
 
 // Seçili ürünün ekranda gösterilen özeti.
 interface SelectedProduct {
@@ -42,25 +36,6 @@ interface SelectedProduct {
   type: string;
   subtype: string;
   hasImage: boolean;
-}
-
-function formatDuration(seconds: number | null) {
-  if (seconds == null) return '';
-  const total = Math.round(seconds);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-}
-
-function videoErrorMessage(err: unknown) {
-  if (err instanceof VideoPickError) {
-    if (err.code === 'permission_denied') return 'Galeriye erişim izni verilmedi.';
-    if (err.code === 'too_long') return `Video en fazla ${MAX_VIDEO_SECONDS} saniye olabilir.`;
-    return 'Video dosyası çok büyük (en fazla 190 MB). Telefonun kamera ayarlarından video çözünürlüğünü 1080p\'ye düşürüp yeniden çekin.';
-  }
-  if (err instanceof ApiError) {
-    if (err.code === 'video_not_configured') return 'Video paylaşımı henüz etkinleştirilmedi.';
-    if (err.code === 'too_many_pending_uploads') return 'Yarım kalan çok fazla yükleme var, biraz sonra tekrar deneyin.';
-  }
-  return 'Video yüklenemedi, bağlantınızı kontrol edip tekrar deneyin.';
 }
 
 // Aynı ekran hem yeni gönderi hem düzenleme için. Düzenlemede yalnızca yazı,
@@ -77,7 +52,6 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const [body, setBody] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [video, setVideo] = useState<VideoState | null>(null);
   const [visibility, setVisibility] = useState<PostVisibility>('public');
   const [productId, setProductId] = useState<string | null>(route.params?.productId ?? null);
   const [selectedProduct, setSelectedProduct] = useState<SelectedProduct | null>(null);
@@ -90,16 +64,10 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Yüklenmiş ama paylaşılmamış video ekrandan çıkınca silinsin; yoksa ücretli
-  // Cloudflare deposunda sahipsiz kalırdı.
-  const unpostedVideoIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    return () => {
-      if (unpostedVideoIdRef.current) {
-        deleteVideo(unpostedVideoIdRef.current).catch(() => {});
-      }
-    };
-  }, []);
+  // Seçme, yükleme, ilerleme ve paylaşılmadan çıkılınca temizleme ortak
+  // kancada (ürün sayfası ve sohbet de aynısını kullanıyor).
+  const videoUpload = useVideoUpload({ onError: setError });
+  const video = videoUpload.video;
 
   useEffect(() => {
     if (!editingPostId) return;
@@ -224,38 +192,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
 
   const pickAndUploadVideo = async () => {
     setError(null);
-    let reservedId: string | null = null;
-    try {
-      const picked = await pickVideo();
-      if (!picked) return;
-      setVideo({ phase: 'uploading', progress: 0, durationSeconds: picked.durationSeconds });
-      const ref = await uploadVideo(picked, {
-        onProgress: (progress) =>
-          setVideo((prev) => (prev?.phase === 'uploading' ? { ...prev, progress } : prev)),
-        // Kayıt açılır açılmaz işaretleniyor: yükleme sırasında ekrandan çıkılırsa
-        // ya da yükleme başarısız olursa Cloudflare'de sahipsiz kalmasın.
-        onReserved: (reserved) => {
-          reservedId = reserved.id;
-          unpostedVideoIdRef.current = reserved.id;
-        },
-      });
-      setVideo({ phase: 'uploaded', ref, durationSeconds: picked.durationSeconds });
-    } catch (err) {
-      if (reservedId) {
-        deleteVideo(reservedId).catch(() => {});
-        if (unpostedVideoIdRef.current === reservedId) unpostedVideoIdRef.current = null;
-      }
-      setVideo(null);
-      setError(videoErrorMessage(err));
-    }
-  };
-
-  const removeVideo = () => {
-    if (unpostedVideoIdRef.current) {
-      deleteVideo(unpostedVideoIdRef.current).catch(() => {});
-      unpostedVideoIdRef.current = null;
-    }
-    setVideo(null);
+    await videoUpload.pickAndUpload();
   };
 
   const openProductPicker = () =>
@@ -267,8 +204,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
     setProductId(null);
   };
 
-  const uploadingVideo = video?.phase === 'uploading';
-  const videoRef = video?.phase === 'uploaded' ? video.ref : null;
+  const uploadingVideo = videoUpload.uploading;
+  const videoRef = videoUpload.uploadedRef;
   const hasMedia = !!imageDataUrl || !!video;
   const canSubmit = isEditing
     ? (body.trim().length > 0 || !!existingMedia) && !submitting && !loadingPost
@@ -294,7 +231,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         visibility,
       });
       // Video artık gönderiye bağlı; ekrandan çıkarken silinmesin.
-      unpostedVideoIdRef.current = null;
+      videoUpload.markAttached();
       markFeedStale();
       // Az önce yüklediğimiz fotoğrafı önbelleğe koyuyoruz ki akışa dönünce
       // tekrar indirilmesin.
@@ -409,7 +346,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
                     ? video.progress >= 0.999
                       ? 'Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...'
                       : `Video yükleniyor %${Math.round(video.progress * 100)}`
-                    : `Video yüklendi${video.durationSeconds != null ? ` · ${formatDuration(video.durationSeconds)}` : ''}`}
+                    : `Video yüklendi${video.durationSeconds != null ? ` · ${formatVideoDuration(video.durationSeconds)}` : ''}`}
                 </Text>
                 <View style={styles.progressTrack}>
                   <View
@@ -444,7 +381,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
                   variant="secondary"
                   onPress={() => {
                     if (video) {
-                      removeVideo();
+                      videoUpload.remove();
                     } else {
                       setImageUri(null);
                       setImageDataUrl(null);

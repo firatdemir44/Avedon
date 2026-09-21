@@ -32,6 +32,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductGallery } from '../../components/ProductGallery';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
+import { ProductVideos } from '../../components/ProductVideos';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { CareSymbolIcon } from '../../components/CareSymbolIcon';
@@ -491,6 +492,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             <PassportCard product={passportCardProduct} />
           )}
         </View>
+
+        {/* Fotoğrafların hemen altında videolar (en çok 3). Video varsa herkes
+            izler; ekleme/kaldırma yalnızca ürünün sahibi firmada. Kumaş ve
+            iplik aynı ekranı kullandığı için ikisinde de çalışır. */}
+        <ProductVideos productId={product.id} isOwner={isOwnProduct} />
 
         {isYarn && yarnSpecs.length ? (
           <View>

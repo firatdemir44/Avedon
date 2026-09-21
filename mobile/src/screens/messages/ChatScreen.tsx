@@ -24,6 +24,8 @@ import {
   sendMessage,
   type ChatMessage,
 } from '../../api/client';
+import { useVideoUpload } from '../../features/useVideoUpload';
+import { PostVideo } from '../../components/PostVideo';
 import { formatClockTime, formatDayLabel, isSameCalendarDay } from '../../features/time';
 import { haptics } from '../../features/haptics';
 import { SkeletonList } from '../../components/Skeleton';
@@ -44,11 +46,14 @@ const NEAR_BOTTOM_THRESHOLD_PX = 80;
 function mergeMessages(prev: LocalMessage[], incoming: ChatMessage[]): LocalMessage[] {
   if (incoming.length === 0) return prev;
 
-  const arrived = new Set(incoming.map((m) => `${m.senderId}|${m.body}`));
+  // Videolu mesajda yazı boş olabildiği için anahtara video kimliği de giriyor;
+  // yoksa iki yazısız video mesajı birbirini yutardı.
+  const key = (m: ChatMessage) => `${m.senderId}|${m.body}|${m.video?.id ?? ''}`;
+  const arrived = new Set(incoming.map(key));
   const byId = new Map<string, LocalMessage>();
 
   for (const message of prev) {
-    const isSupersededOptimistic = message.id.startsWith('temp-') && arrived.has(`${message.senderId}|${message.body}`);
+    const isSupersededOptimistic = message.id.startsWith('temp-') && arrived.has(key(message));
     if (!isSupersededOptimistic) byId.set(message.id, message);
   }
   for (const message of incoming) {
@@ -91,7 +96,15 @@ export function ChatScreen({ navigation, route }: Props) {
   const sinceRef = useRef<string | null>(null);
   const inFlightRef = useRef(false);
   const isNearBottomRef = useRef(true);
-  const canSend = !sending && input.trim().length > 0;
+
+  // Video ekleme: gönderi ekranındaki akışın aynısı (ortak kanca). Yüklenen
+  // video mesaj olarak gönderilince "bağlandı" sayılır; gönderilmeden ekrandan
+  // çıkılırsa kanca Cloudflare'deki dosyayı siler.
+  const videoUpload = useVideoUpload({ onError: setError });
+  const pendingVideo = videoUpload.uploadedRef;
+  const uploadingVideo = videoUpload.uploading;
+  const uploadProgress = videoUpload.video?.phase === 'uploading' ? videoUpload.video.progress : 0;
+  const canSend = !sending && !uploadingVideo && (input.trim().length > 0 || !!pendingVideo);
 
   const scrollToEnd = () => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
@@ -164,9 +177,9 @@ export function ChatScreen({ navigation, route }: Props) {
     }, [loadInitial, poll])
   );
 
-  const deliver = async (body: string, tempId: string) => {
+  const deliver = async (body: string, tempId: string, videoId?: string) => {
     try {
-      const { message } = await sendMessage(conversationId, body);
+      const { message } = await sendMessage(conversationId, body, videoId);
       setMessages((prev) => prev.map((m) => (m.id === tempId ? message : m)));
       rememberSince([message]);
       setError(null);
@@ -182,17 +195,28 @@ export function ChatScreen({ navigation, route }: Props) {
 
   const handleSend = async () => {
     const body = input.trim();
-    if (!body || sending) return;
+    const video = pendingVideo;
+    if ((!body && !video) || sending || uploadingVideo) return;
 
     const tempId = `temp-${Date.now()}`;
     setMessages((prev) => [
       ...prev,
-      { id: tempId, body, senderId: meId, createdAt: new Date().toISOString(), readAt: null, pending: true },
+      {
+        id: tempId,
+        body,
+        senderId: meId,
+        createdAt: new Date().toISOString(),
+        readAt: null,
+        video: video ?? null,
+        pending: true,
+      },
     ]);
     setInput('');
+    // Video artık mesaja bağlandı: kanca ekrandan çıkınca silmesin.
+    if (video) videoUpload.markAttached();
     setSending(true);
     scrollToEnd();
-    await deliver(body, tempId);
+    await deliver(body, tempId, video?.id);
   };
 
   const handleRetry = async (message: LocalMessage) => {
@@ -203,7 +227,13 @@ export function ChatScreen({ navigation, route }: Props) {
       { ...message, id: tempId, pending: true, failed: false, createdAt: new Date().toISOString() },
     ]);
     setSending(true);
-    await deliver(message.body, tempId);
+    await deliver(message.body, tempId, message.video?.id);
+  };
+
+  const pickAndUploadVideo = async () => {
+    if (uploadingVideo || sending) return;
+    setError(null);
+    await videoUpload.pickAndUpload();
   };
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -286,6 +316,46 @@ export function ChatScreen({ navigation, route }: Props) {
               );
             }
 
+            // Videolu mesaj: balonun içinde akıştaki oynatıcı. Dış kap
+            // Pressable DEĞİL — oynatıcının kendisi dokunulabilir, web'de iç
+            // içe düğme olmasın (MOBILE-DESIGN web kuralları).
+            if (item.video) {
+              const video = item.video;
+              return (
+                <>
+                  {dayChip}
+                  <View
+                    style={[
+                      styles.bubble,
+                      styles.videoBubble,
+                      isMine ? styles.myBubble : styles.otherBubble,
+                      item.failed && styles.failedBubble,
+                    ]}
+                  >
+                    <PostVideo key={video.id} video={video} />
+                    {item.body ? <Text style={isMine ? styles.myText : styles.otherText}>{item.body}</Text> : null}
+                    {item.failed ? (
+                      <Pressable
+                        onPress={() => handleRetry(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Gönderilemedi. Tekrar denemek için dokunun."
+                        style={({ pressed }) => [styles.failedRow, pressed && styles.pressedFade]}
+                      >
+                        <Ionicons name="alert-circle" size={13} color={isMine ? colors.primaryText : colors.danger} />
+                        <Text style={[styles.failedText, isMine ? styles.myMeta : styles.dangerText]}>
+                          Gönderilemedi. Tekrar denemek için dokunun.
+                        </Text>
+                      </Pressable>
+                    ) : (
+                      <Text style={[styles.time, isMine ? styles.myMeta : styles.otherMeta]}>
+                        {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
+                      </Text>
+                    )}
+                  </View>
+                </>
+              );
+            }
+
             return (
               <>
                 {dayChip}
@@ -322,7 +392,48 @@ export function ChatScreen({ navigation, route }: Props) {
           }}
         />
         {error ? <InlineError message={error} style={styles.banner} /> : null}
+
+        {/* Yükleme / gönderilmeyi bekleyen video şeridi (yazı kutusunun üstünde,
+            composer satırı 375px'te taşmasın diye). */}
+        {uploadingVideo || pendingVideo ? (
+          <View style={styles.videoStrip}>
+            <Ionicons name="videocam" size={16} color={colors.primary} />
+            <Text style={styles.videoStripText} numberOfLines={1}>
+              {uploadingVideo
+                ? uploadProgress >= 0.999
+                  ? 'Yükleme tamamlanıyor...'
+                  : `Video yükleniyor %${Math.round(uploadProgress * 100)}`
+                : 'Video hazır. Göndere basın.'}
+            </Text>
+            {!uploadingVideo ? (
+              <Pressable
+                onPress={videoUpload.remove}
+                accessibilityRole="button"
+                accessibilityLabel="Videoyu kaldır"
+                hitSlop={10}
+                style={({ pressed }) => [pressed && styles.pressedFade]}
+              >
+                <Ionicons name="close" size={18} color={colors.textMuted} />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
+          <Pressable
+            onPress={pickAndUploadVideo}
+            disabled={uploadingVideo || !!pendingVideo || sending}
+            accessibilityRole="button"
+            accessibilityLabel="Video ekle"
+            accessibilityState={{ disabled: uploadingVideo || !!pendingVideo || sending }}
+            style={({ pressed }) => [
+              styles.videoButton,
+              (uploadingVideo || !!pendingVideo || sending) && styles.sendDisabled,
+              pressed && styles.pressedFade,
+            ]}
+          >
+            <Ionicons name="videocam-outline" size={20} color={colors.primary} />
+          </Pressable>
           <TextInput
             style={styles.input}
             placeholder="Mesaj yazın"
@@ -423,8 +534,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: 10,
   },
+  // Videolu balon: yüzde genişlik, çünkü içindeki oynatıcı 16:9 oranını
+  // kendi genişliğinden hesaplıyor (içeriğe göre daralan balonda 0 çıkardı).
+  videoBubble: { width: '78%' },
+  videoStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.gutter,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  videoStripText: { ...typography.label, color: colors.text, flex: 1, minWidth: 0 },
+  videoButton: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   input: {
     flex: 1,
+    // RN web: flex öğesi içeriğinden daralmazsa uzun yazıda satır taşar.
+    minWidth: 0,
     minHeight: MIN_TOUCH,
     maxHeight: 120,
     borderWidth: 1,

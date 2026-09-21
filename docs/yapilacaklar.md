@@ -21,7 +21,7 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 
 **D. Bilinen küçük eksikler (kod)**
 8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor).
-10. Video yalnızca akış gönderilerinde; kararlaştırılan kapsamın kalanı (ürün sayfası videosu, sohbette video) yapılmadı.
+10. ~~Ürün sayfası videosu ve sohbette video~~ KODLANDI 2026-09-21 (sunucu bff3fed: `VideoLink` tablosu, `/api/products/:id/videos` en çok 3, video mesajı, erişim kuralları; test 22/22. Mobil: `ProductVideos`, ortak `useVideoUpload`, sohbette "Video ekle" + videolu balon). Tarayıcıda denenen: bölüm ve düğmeler, bağlı videonun çizimi, kaldırma, gelen video mesajının sohbete düşmesi, 375 px taşma yok. **DENENMEDİ: gerçek dosya yükleme ve oynatma (dosya seçici + Cloudflare) — telefonda kontrol bekliyor.**
 11. (Kapandı 2026-09-22: WhatsApp'tan etiket fotoğrafı → ürün taslağı; uygulamada bildirimden ya da firma sayfasındaki "WhatsApp taslakları"ndan açılır, onay ekranından geçer, `fieldMeta.source = whatsapp`. CANLIDA gerçek WhatsApp fotoğrafıyla henüz denenmedi.) (Etiketten iplik okuma 2026-09-21'de eklendi: `/api/yarns/extract` + iplik formunda "Etiketten doldur"; yapılandırılmış çıktıda en çok 16 nullable alan sınırı yüzünden şemada boş değerler "" / 0 ile gösteriliyor.)
 12. (Kapandı 2026-09-21: asistanın `teklif_topla` aracı iplikte de çalışıyor.) Aday kartındaki işaretler sohbetten çıkıp dönünce sıfırlanıyor. Asistanda `benzer_kumas_ara` (ürün koduyla) eklendi (2026-09-21); sonuç şimdilik genel özet kartıyla görünüyor, özel kart yok.
 13. Teknik borç: kumaş ve iplik formlarında karışım/sertifika satır düzenleyicileri kopya (ortak bileşene çıkarılacak); `Product.imageUrl` eski sütunu silinecek; `mobile/MOBILE-DESIGN.md`'de Faz 2-3 ekran kalıpları yazılmadı.

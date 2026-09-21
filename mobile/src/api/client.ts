@@ -266,6 +266,9 @@ export type ChatMessage = {
   // Teklif akışından düşen mesaj (Faz 2, Adım 2): doluysa sohbette normal
   // balon yerine "Teklif" kartı çizilir. Eski sunucuda bu alan yok.
   quoteRequestId?: string | null;
+  // Sohbete eklenen video (Cloudflare Stream). Yazısız video mesajında
+  // `body` boş dizedir. Eski sunucuda bu alan hiç gelmez.
+  video?: VideoRef | null;
 };
 
 export type ConversationSummary = {
@@ -296,10 +299,11 @@ export function fetchMessages(conversationId: string, since?: string) {
   return request<{ messages: ChatMessage[] }>(`/conversations/${conversationId}/messages${query}`);
 }
 
-export function sendMessage(conversationId: string, body: string) {
+// `body` ve `videoId`den en az biri dolu olmalı (sunucu kuralı).
+export function sendMessage(conversationId: string, body: string, videoId?: string) {
   return request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body: body || undefined, videoId }),
   });
 }
 
@@ -350,6 +354,26 @@ export function fetchVideoPlayback(id: string) {
 
 export function deleteVideo(id: string) {
   return request<void>(`/videos/${id}`, { method: 'DELETE' });
+}
+
+// Ürün sayfasındaki videolar (en çok 3). Okuma oturumsuz da çalışır; ekleme ve
+// kaldırma yalnızca ürünün sahibi firmadan.
+export type ProductVideosResult = { videos: VideoRef[]; max: number };
+
+export function fetchProductVideos(productId: string) {
+  return request<ProductVideosResult>(`/products/${productId}/videos`);
+}
+
+export function addProductVideo(productId: string, videoId: string) {
+  return request<ProductVideosResult>(`/products/${productId}/videos`, {
+    method: 'POST',
+    body: JSON.stringify({ videoId }),
+  });
+}
+
+// Videoyu üründen kaldırır ve dosyayı tamamen siler.
+export function removeProductVideo(productId: string, videoId: string) {
+  return request<void>(`/products/${productId}/videos/${videoId}`, { method: 'DELETE' });
 }
 
 // Akış kartındaki pasaport verisi (Faz 1, Adım 6).
