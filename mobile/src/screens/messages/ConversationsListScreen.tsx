@@ -10,6 +10,7 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { HeaderButton } from '../../components/HeaderButton';
+import { NotificationBell } from '../../components/NotificationBell';
 import { SearchField } from '../../components/SearchField';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
@@ -40,7 +41,10 @@ export function ConversationsListScreen({ navigation }: Props) {
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <HeaderButton icon="add" label="Yeni" showLabel onPress={() => navigation.navigate('NewConversation')} />
+        <View style={styles.headerActions}>
+          <NotificationBell />
+          <HeaderButton icon="add" label="Yeni" showLabel onPress={() => navigation.navigate('NewConversation')} />
+        </View>
       ),
     });
   }, [navigation]);
@@ -180,6 +184,7 @@ export function ConversationsListScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   searchBar: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.gutter,

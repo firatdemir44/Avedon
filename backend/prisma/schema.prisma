@@ -186,6 +186,8 @@ model Product {
   posts          Post[]
   // Faz 2 Adım 6: type = "iplik" olan ürünün ipliğe özel alanları.
   yarnSpec       YarnSpec?
+  // Faz 3 Adım 3: kapak fotoğrafından çıkarılan görünüm kartı (benzer kumaş arama).
+  look           ProductLook?
   createdAt      DateTime        @default(now())
 }
 
@@ -811,4 +813,24 @@ model YarnSpec {
 
   @@index([family])
   @@index([countDtex])
+}
+
+// Görünüm kartı (Faz 3, Adım 3): ürünün kapak fotoğrafından çıkarılan desen/renk/yüzey/doku/
+// şeffaflık. imageHash kapak değişmedikçe modelin yeniden çağrılmasını önler.
+model ProductLook {
+  productId String   @id
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  lookJson  String
+  imageHash String
+  model     String
+  updatedAt DateTime @updatedAt
+}
+
+// Fotoğrafla arama sayacı (kullanıcı başına günlük sınır; her arama bir model çağrısıdır).
+model LookSearch {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

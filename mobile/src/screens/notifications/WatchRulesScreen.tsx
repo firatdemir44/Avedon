@@ -1,9 +1,10 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, Switch, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, Switch, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { deleteWatchRule, fetchWatchRules, updateWatchRule, type WatchRule } from '../../api/client';
 import { ListRow } from '../../components/ListRow';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
@@ -12,9 +13,12 @@ import { haptics } from '../../features/haptics';
 import { EMPTY_FILTERS, isYarnWatchQuery } from '../../features/products/filters';
 import { presetFromYarnWatchQuery } from '../../features/yarns/watch';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { MIN_TOUCH, colors, fonts, spacing, typography } from '../../theme';
+import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'WatchRules'>;
+
+// Sunucu kuralı: ad 1-80 karakter (PATCH /api/watch-rules/:id).
+const NAME_MAX = 80;
 
 // "N eşleşme · son: 3 gün önce" — formatRelativeTime kısaltmaları ("3 gün")
 // burada "önce" ile tamamlanmıyor, satır kendi cümlesini kuruyor.
@@ -41,6 +45,10 @@ export function WatchRulesScreen({ navigation }: Props) {
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(fetchWatchRules);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Adı değiştirilen kural ve taslak metin (satır içi düzenleme).
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
 
   const rules = data?.rules ?? [];
   const max = data?.max ?? 20;
@@ -67,6 +75,48 @@ export function WatchRulesScreen({ navigation }: Props) {
       }
     },
     [setData]
+  );
+
+  // Adı değiştirme: satır içinde metin girişi (ayrı ekran açılmıyor).
+  const startRename = (rule: WatchRule) => {
+    setActionError(null);
+    setEditingId(rule.id);
+    setDraft(rule.name);
+  };
+
+  const cancelRename = () => {
+    setEditingId(null);
+    setDraft('');
+  };
+
+  const saveRename = useCallback(
+    async (rule: WatchRule) => {
+      const name = draft.trim().slice(0, NAME_MAX);
+      if (!name) {
+        setActionError('İzleme adı boş olamaz.');
+        return;
+      }
+      if (name === rule.name) {
+        cancelRename();
+        return;
+      }
+      setSavingName(true);
+      try {
+        const { rule: updated } = await updateWatchRule(rule.id, { name });
+        haptics.success();
+        setActionError(null);
+        setData((prev) =>
+          prev ? { ...prev, rules: prev.rules.map((r) => (r.id === rule.id ? { ...r, name: updated.name } : r)) } : prev
+        );
+        cancelRename();
+      } catch {
+        haptics.error();
+        setActionError('İzleme adı değiştirilemedi, tekrar deneyin.');
+      } finally {
+        setSavingName(false);
+      }
+    },
+    [draft, setData]
   );
 
   const remove = useCallback(
@@ -159,9 +209,43 @@ export function WatchRulesScreen({ navigation }: Props) {
             onAction={newWatch}
           />
         }
-        renderItem={({ item, index }) => (
-          // Anahtar ve çöp satırın İÇİNDE değil YANINDA: web'de iç içe <button>
-          // oluşmasın (MOBILE-DESIGN web kuralları).
+        renderItem={({ item, index }) =>
+          // Adı değiştirme kipi: satırın yerini tek satırlık form alır.
+          editingId === item.id ? (
+            <View style={[styles.editRow, index < rules.length - 1 && styles.divider]}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                maxLength={NAME_MAX}
+                autoFocus
+                selectTextOnFocus
+                placeholder="İzleme adı"
+                placeholderTextColor={colors.textMuted}
+                accessibilityLabel="İzleme adı"
+                returnKeyType="done"
+                onSubmitEditing={() => void saveRename(item)}
+                style={styles.input}
+              />
+              <View style={styles.editActions}>
+                <PrimaryButton
+                  label="Vazgeç"
+                  variant="outline"
+                  size="sm"
+                  onPress={cancelRename}
+                  style={styles.editButton}
+                />
+                <PrimaryButton
+                  label={savingName ? 'Kaydediliyor...' : 'Kaydet'}
+                  size="sm"
+                  disabled={savingName}
+                  onPress={() => void saveRename(item)}
+                  style={styles.editButton}
+                />
+              </View>
+            </View>
+          ) : (
+          // Kalem, anahtar ve çöp satırın İÇİNDE değil YANINDA: web'de iç içe
+          // <button> oluşmasın (MOBILE-DESIGN web kuralları).
           <View style={[styles.ruleRow, index < rules.length - 1 && styles.divider]}>
             <ListRow
               style={styles.rowFlex}
@@ -180,6 +264,14 @@ export function WatchRulesScreen({ navigation }: Props) {
               chevron={isYarnWatchQuery(item.query)}
               onPress={isYarnWatchQuery(item.query) ? () => openYarnRule(item) : undefined}
             />
+            <Pressable
+              onPress={() => startRename(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`${item.name} izlemesinin adını değiştir`}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressedFade]}
+            >
+              <Ionicons name="pencil-outline" size={19} color={colors.primary} />
+            </Pressable>
             <Switch
               value={item.active}
               onValueChange={(next) => void toggleActive(item, next)}
@@ -197,7 +289,8 @@ export function WatchRulesScreen({ navigation }: Props) {
               <Ionicons name="trash-outline" size={20} color={colors.danger} />
             </Pressable>
           </View>
-        )}
+          )
+        }
         ListFooterComponent={
           rules.length ? (
             <Text style={styles.footerNote}>
@@ -237,6 +330,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconButton: {
+    width: MIN_TOUCH,
+    height: MIN_TOUCH,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Satır içi ad düzenleme: tonlu giriş kutusu + altında Vazgeç / Kaydet.
+  editRow: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+  },
+  input: {
+    ...typography.body,
+    fontFamily: fonts.regular,
+    color: colors.text,
+    minHeight: MIN_TOUCH,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceTonal,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  editActions: { flexDirection: 'row', gap: spacing.sm, justifyContent: 'flex-end' },
+  editButton: { paddingHorizontal: spacing.md },
   pressedFade: { opacity: 0.6 },
   footerNote: {
     ...typography.caption,

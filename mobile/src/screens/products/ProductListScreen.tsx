@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +17,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SearchField } from '../../components/SearchField';
+import { NotificationBell } from '../../components/NotificationBell';
 import { haptics } from '../../features/haptics';
 import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, USAGES, typeLabel, type ProductType } from '../../features/products/catalog';
 import {
@@ -81,6 +82,12 @@ export function ProductListScreen({ navigation, route }: Props) {
   queryRef.current = query;
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
+
+  // Bildirim zili ana sekmelerin başlığında ortak (Ürünler'de başka başlık
+  // eylemi yok, tek başına sağ üstte durur).
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerRight: () => <NotificationBell /> });
+  }, [navigation]);
 
   useEffect(() => {
     AsyncStorage.getItem(VIEW_MODE_KEY)
@@ -327,8 +334,13 @@ export function ProductListScreen({ navigation, route }: Props) {
     </View>
   );
 
+  // "Bu aramayı izle" yalnızca süzgeç seçiliyken değil, arama kutusuna en az
+  // iki karakter yazıldığında da çıkar: sunucu kuralın gövdesinde
+  // `query: { search: '...' }` kabul ediyor (watchQueryFromFilters aramayı
+  // tek başına da kurala çeviriyor).
+  const canWatchSearch = query.trim().length >= 2;
   const filterChipsBar =
-    chips.length > 0 ? (
+    chips.length > 0 || canWatchSearch ? (
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -351,17 +363,19 @@ export function ProductListScreen({ navigation, route }: Props) {
             <Ionicons name="close" size={15} color={colors.primary} />
           </Pressable>
         ))}
-        <Pressable
-          onPress={() => {
-            haptics.selection();
-            setFilters(EMPTY_FILTERS);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel="Tüm filtreleri temizle"
-          style={({ pressed }) => [styles.clearChip, pressed && styles.pressedFade]}
-        >
-          <Text style={styles.clearChipText}>Temizle</Text>
-        </Pressable>
+        {chips.length > 0 ? (
+          <Pressable
+            onPress={() => {
+              haptics.selection();
+              setFilters(EMPTY_FILTERS);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Tüm filtreleri temizle"
+            style={({ pressed }) => [styles.clearChip, pressed && styles.pressedFade]}
+          >
+            <Text style={styles.clearChipText}>Temizle</Text>
+          </Pressable>
+        ) : null}
         {/* Faz 2, Adım 1: etkin süzgeci izlemeye alma kısayolu. */}
         <Pressable
           onPress={() => void watchCurrentSearch()}

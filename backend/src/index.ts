@@ -25,9 +25,12 @@ import { machinesRouter } from './routes/machines';
 import { referencesRouter } from './routes/references';
 import { yarnsRouter } from './routes/yarns';
 import { rfqsRouter } from './routes/rfqs';
+import { looksRouter } from './routes/looks';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { smsStatus } from './sms';
+import { backfillLooksInBackground } from './looks';
+import { getAnthropic, isLlmMock } from './llm';
 import { getStorageInfo } from './storageCheck';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
@@ -87,10 +90,13 @@ app.use('/api/machines', machinesRouter);
 app.use('/api/references', referencesRouter);
 app.use('/api/yarns', yarnsRouter);
 app.use('/api/rfqs', rfqsRouter);
+app.use('/api/looks', looksRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
   console.log(`Avedon API listening on http://localhost:${port}`);
   void ensureWabaSubscription();
+  // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
+  if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
 });

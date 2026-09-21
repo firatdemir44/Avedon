@@ -12,6 +12,7 @@ import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
+import { setUnreadNotificationCount } from '../../features/notifications/unreadCount';
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { colors, radius, spacing, typography } from '../../theme';
@@ -60,6 +61,8 @@ export function NotificationsScreen({ navigation }: Props) {
         .then(({ unreadCount: fresh }) => {
           setActionError(null);
           setData((prev) => (prev ? { ...prev, unreadCount: fresh } : prev));
+          // Sekme başlıklarındaki zil yoklamayı beklemeden düzelsin.
+          setUnreadNotificationCount(fresh);
         })
         .catch(() => setActionError('Bildirim okundu işaretlenemedi.'));
     },
@@ -73,6 +76,7 @@ export function NotificationsScreen({ navigation }: Props) {
         haptics.success();
         setActionError(null);
         setData((prev) => (prev ? { ...prev, unreadCount: fresh } : prev));
+        setUnreadNotificationCount(fresh);
       })
       .catch(() => {
         haptics.error();

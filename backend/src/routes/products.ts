@@ -6,6 +6,7 @@ import { optionalAuth, requireAuth } from '../middleware/auth';
 import { isValidSubtype, matchCatalogKeys } from '../catalog';
 import { knitSearchKeys } from '../domain/glossary';
 import { matchWatchRulesInBackground } from '../watch';
+import { refreshProductLookInBackground } from '../looks';
 import {
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
@@ -189,6 +190,8 @@ productsRouter.post(
       const warnings = collectWarnings(product, resolved.warnings);
       // Faz 2 Adım 1: izleme kuralları yanıtı bekletmeden taranır.
       matchWatchRulesInBackground(product.id);
+      // Faz 3 Adım 3: kapak fotoğrafından görünüm kartı (benzer kumaş arama) arka planda çıkarılır.
+      refreshProductLookInBackground(product.id);
       res.status(201).json({ product: { ...toProductRow(product, req.user!.companyId), isFavorite: false }, warnings });
     } catch (err) {
       if (err instanceof PassportError) {
@@ -501,6 +504,7 @@ productsRouter.patch(
       });
       const isFavorite = (await favoriteIdsFor(req.user!.id, [product.id])).has(product.id);
       const warnings = collectWarnings(product, resolved?.warnings ?? []);
+      if (imageList) refreshProductLookInBackground(req.params.id);
       res.json({ product: { ...toProductRow(product, req.user!.companyId), isFavorite }, warnings });
     } catch (err) {
       if (err instanceof ProductImageError) {
