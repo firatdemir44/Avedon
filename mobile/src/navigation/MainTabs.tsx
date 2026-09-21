@@ -9,6 +9,7 @@ import { FeedScreen } from '../screens/feed/FeedScreen';
 import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { AssistantScreen } from '../screens/assistant/AssistantScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
+import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { MainHeader } from '../components/MainHeader';
 import { colors, fonts, typography } from '../theme';
 
@@ -106,6 +107,21 @@ export function MainTabs() {
           tabBarBadge: unread > 0 ? unread : undefined,
           tabBarIcon: ({ color, size, focused }) => (
             <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} color={color} size={size} />
+          ),
+        }}
+      />
+      {/* Beşinci sekme (Fırat 2026-09-21): Profil alt çubuktan çıkınca
+          hesaplamalar buraya geri geldi. */}
+      <Tab.Screen
+        name="Calculators"
+        component={CalculatorsListScreen}
+        options={{
+          title: 'Hesaplamalar',
+          // Beş sekmede 375 px'te "Hesaplamalar" sığmıyor; sekme etiketi kısa.
+          tabBarLabel: 'Hesap',
+          tabBarAccessibilityLabel: 'Hesaplamalar',
+          tabBarIcon: ({ color, size, focused }) => (
+            <Ionicons name={focused ? 'calculator' : 'calculator-outline'} color={color} size={size} />
           ),
         }}
       />

@@ -26,6 +26,10 @@ export type MainTabParamList = {
   // asistan ekranlarıyla (AssistantThreads, AssistantMemory) çakışmasın.
   AssistantTab: undefined;
   Conversations: undefined;
+  // Hesaplayıcı ızgarası (Fırat 2026-09-21): Profil alt çubuktan çıkınca
+  // hesaplamalar beşinci sekme olarak geri geldi. Rota adı "Calculators";
+  // kök yığındaki eski "CalculatorsList" kaydı kalktı.
+  Calculators: undefined;
 };
 
 export type RootStackParamList = {
@@ -103,9 +107,8 @@ export type RootStackParamList = {
   YarnDirectory: { preset?: YarnDirectoryPreset; presetKey?: number } | undefined;
   // yarnId verilirse düzenleme kipinde açılır (iplik detayındaki "Düzenle").
   YarnForm: { yarnId?: string } | undefined;
-  // Hesaplayıcı listesi artık sekmede değil, yığında: alt menüdeki yeri
-  // "Asistan"a geçti, listeye asistandaki "Tüm hesaplayıcılar" çipinden gelinir.
-  CalculatorsList: undefined;
+  // Hesaplayıcı listesi alt çubuktaki "Hesaplamalar" sekmesinde
+  // (MainTabParamList.Calculators); tek tek hesaplar yığında kalır.
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;
   YarnCountCalculator: undefined;
