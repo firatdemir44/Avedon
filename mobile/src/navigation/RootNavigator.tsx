@@ -20,6 +20,7 @@ import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
+import { SimilarSearchScreen } from '../screens/products/SimilarSearchScreen';
 import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
 import { RecentlyViewedProductsScreen } from '../screens/products/RecentlyViewedProductsScreen';
 import { NotificationsScreen } from '../screens/notifications/NotificationsScreen';
@@ -148,6 +149,12 @@ export function RootNavigator() {
               name="ProductFilters"
               component={ProductFiltersScreen}
               options={{ headerShown: true, title: 'Filtrele' }}
+            />
+            {/* Faz 3, Adım 3: fotoğrafla benzer kumaş arama. */}
+            <Stack.Screen
+              name="SimilarSearch"
+              component={SimilarSearchScreen}
+              options={{ headerShown: true, title: 'Fotoğrafla Kumaş Ara' }}
             />
             <Stack.Screen
               name="FavoriteProducts"

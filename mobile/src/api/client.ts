@@ -942,6 +942,71 @@ export function fetchRfq(id: string) {
   return request<{ rfq: RfqCompare }>(`/rfqs/${id}`);
 }
 
+// --- Benzer kumaş arama (Faz 3, Adım 3) --------------------------------------
+// Sunucu: backend/src/routes/looks.ts + backend/src/looks.ts. YALNIZCA görünüm
+// karşılaştırılır: gramaj, lif ve içerik fotoğraftan okunmaz. Ürünün "görünüm
+// kartı" fotoğraf kaydedilince sunucuda arka planda çıkar, istemci bir şey yapmaz.
+
+/** Gövdedeki data URL sunucuda bu karakter sayısıyla sınırlı (400 invalid_body). */
+export const MAX_LOOK_IMAGE_CHARS = 900_000;
+
+/** Ekranda yalnızca hazır `summary` kullanılıyor; anahtarlar sunucudaki sözlükten. */
+export interface FabricLookView {
+  isFabric: boolean;
+  pattern: string;
+  scale: string;
+  colors: string[];
+  surface: string;
+  texture: string;
+  transparency: string;
+  confidence: number;
+  /** Hazır Türkçe özet: "Çiçekli · Orta desen · Lacivert + Pembe · Mat". */
+  summary: string;
+}
+
+export interface SimilarProductResult {
+  /** Normal ürün satırı verisi (fiyat içermez). */
+  product: Product;
+  /** 0-100. */
+  similarity: number;
+  /** Türkçe nedenler: "aynı desen türü", "aynı ana renk", "yakın doku"... */
+  reasons: string[];
+  look: FabricLookView;
+}
+
+export interface LookSearchResult {
+  look: FabricLookView;
+  /** false: fotoğrafta kumaş seçilemedi (results boş gelir). */
+  recognized: boolean;
+  results: SimilarProductResult[];
+  /** Bugün kalan arama hakkı. */
+  remaining: number;
+}
+
+/**
+ * Fotoğrafla benzer kumaş arama (oturum şart, günde 20). Model çağrısı içerdiği
+ * için etiket okuma gibi uzun zaman aşımıyla gidiyor.
+ * Hatalar: 429 daily_limit (gövdede `max`) · 503 llm_not_configured ·
+ * 502 look_failed · 400 unsupported_image / invalid_body.
+ */
+export function searchSimilarByPhoto(imageDataUrl: string, limit?: number) {
+  return request<LookSearchResult>(
+    '/looks/search',
+    { method: 'POST', body: JSON.stringify(limit ? { image: imageDataUrl, limit } : { image: imageDataUrl }) },
+    LLM_REQUEST_TIMEOUT_MS
+  );
+}
+
+/**
+ * Ürün sayfasındaki "Benzer kumaşlar" (oturumsuz da çalışır, model çağrısı yok).
+ * `look === null`: ürünün görünüm kartı yok, bölüm gösterilmez.
+ */
+export function fetchSimilarProducts(productId: string) {
+  return request<{ look: FabricLookView | null; results: SimilarProductResult[] }>(
+    `/looks/product/${productId}/similar`
+  );
+}
+
 export type FavoriteProduct = Product & { favoritedAt: string };
 
 export function fetchFavoriteProducts() {

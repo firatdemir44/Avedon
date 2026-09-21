@@ -51,6 +51,8 @@ export function MyProfileScreen({ navigation }: Props) {
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
     // Faz 2, Adım 6: iplik dizini (Ürünler sekmesindeki "İplik" ile aynı ekran).
     { key: 'yarnDirectory', title: 'İplik Dizini', onPress: () => navigation.navigate('YarnDirectory') },
+    // Faz 3, Adım 3: elindeki kumaşın fotoğrafıyla görünüşçe benzerini bulma.
+    { key: 'similarSearch', title: 'Fotoğrafla Kumaş Ara', onPress: () => navigation.navigate('SimilarSearch') },
     // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
     { key: 'capacitySearch', title: 'Fason Kapasite Ara', onPress: () => navigation.navigate('CapacitySearch') },
     user?.companyId

@@ -1,6 +1,6 @@
 # Faz 3 (Güven ve veri) - sıralı uygulama planı
 
-**Kaynak:** `docs/yol-haritasi.md` §6 Faz 3, §5 beceri 16-17 · **Tarih:** 2026-09-18 · **Durum:** onaylandı (kararlar 2026-09-18, en altta); Adım 1 ve Adım 2 tamamlandı (2026-09-18, telefonda kontrol bekliyor) · Hazırlayan: Claude (Fable 5.1), Faz 1-2 kodu üzerinden.
+**Kaynak:** `docs/yol-haritasi.md` §6 Faz 3, §5 beceri 16-17 · **Tarih:** 2026-09-18 · **Durum:** onaylandı (kararlar 2026-09-18, en altta); Adım 1-2 (2026-09-18) ve Adım 3 (2026-09-21) tamamlandı, telefonda kontrol bekliyor; sıradaki Adım 7 (DPP) · Hazırlayan: Claude (Fable 5.1), Faz 1-2 kodu üzerinden.
 
 Faz 2'nin bıraktığı zemin: bildirimler ve izleme, teklif akışı (istek → taslak → gönderim → kabul/ret), satıcı asistanı (fiyat vermez), makine parkı ve fason kapasite araması, iplik dizini, karşılıklı referans ve doğrulama düzeyi. Faz 3'ün amacı: platformda biriken **işlem verisini güvene ve karara** çevirmek. Alıcı "kime güveneyim, hangi teklif iyi, bu kumaşın benzeri kimde" sorularına platformun içinden cevap alır.
 

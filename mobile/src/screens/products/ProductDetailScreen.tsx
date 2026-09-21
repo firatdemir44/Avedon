@@ -8,8 +8,10 @@ import {
   confirmProductFields,
   fetchCertificateImage,
   fetchProduct,
+  fetchSimilarProducts,
   fetchTestReportImage,
   setProductFavorite,
+  type SimilarProductResult,
 } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
@@ -26,6 +28,7 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { SectionHeader } from '../../components/SectionHeader';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ProductGallery } from '../../components/ProductGallery';
+import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import {
   STOCK_UNIT_LABELS,
@@ -130,6 +133,25 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     setFieldsConfirmed(false);
+  }, [productId]);
+
+  // Faz 3, Adım 3: "Benzer kumaşlar". Sayfanın ana yüklenmesini beklemeyen
+  // ayrı ve SESSİZ istek: hata olursa (ya da ürünün görünüm kartı yoksa)
+  // bölüm hiç görünmez.
+  const [similar, setSimilar] = useState<SimilarProductResult[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setSimilar([]);
+    fetchSimilarProducts(productId)
+      .then(({ look, results }) => {
+        if (!cancelled && look) setSimilar(results);
+      })
+      .catch(() => {
+        // Sessiz: benzer kumaşlar bölümü gizli kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [productId]);
 
   useEffect(() => {
@@ -658,6 +680,50 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           </Pressable>
         ) : null}
 
+        {/* Faz 3, Adım 3: görünüşçe benzeyen kumaşlar. Yalnızca kumaşta
+            (iplikte görünüm kartı çıkmaz) ve yalnızca sonuç varsa. */}
+        {!isYarn && similar.length ? (
+          <>
+            <SectionHeader title="Benzer kumaşlar" style={styles.sectionHeader} />
+            <View style={[styles.block, styles.similarBlock]}>
+              <Text style={styles.similarNote}>Görünüşe göre benzer</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.similarStrip}
+              >
+                {similar.map((item) => (
+                  <Pressable
+                    key={item.product.id}
+                    onPress={() => navigation.push('ProductDetail', { productId: item.product.id })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.product.code}, ${
+                      item.product.company?.name ?? ''
+                    }, yüzde ${item.similarity} benzer`}
+                    style={({ pressed }) => [styles.similarCard, pressed && styles.pressed]}
+                  >
+                    <ProductThumbnail productId={item.product.id} hasImage={item.product.hasImage} size={104} />
+                    <Text style={styles.similarCode} numberOfLines={1}>
+                      {item.product.code}
+                    </Text>
+                    {item.product.company ? (
+                      <Text style={styles.similarCompany} numberOfLines={1}>
+                        {item.product.company.name}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.similarScore}>%{item.similarity} benzer</Text>
+                    {item.reasons[0] ? (
+                      <Text style={styles.similarReason} numberOfLines={1}>
+                        {item.reasons[0]}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+          </>
+        ) : null}
+
         {error ? (
           <InlineError
             message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')}
@@ -840,6 +906,15 @@ const styles = StyleSheet.create({
   },
   assistantLinkPressed: { opacity: 0.6 },
   assistantLinkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.assistant },
+  // Benzer kumaşlar (Faz 3, Adım 3): yatay kaydırılan küçük kartlar.
+  similarBlock: { paddingTop: spacing.sm, paddingBottom: spacing.md },
+  similarNote: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter },
+  similarStrip: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, gap: spacing.sm },
+  similarCard: { width: 104, gap: 2, borderRadius: radius.md, paddingBottom: 4 },
+  similarCode: { ...typography.mono, fontFamily: fonts.monoSemibold, color: colors.primary },
+  similarCompany: { ...typography.caption, color: colors.accent },
+  similarScore: { fontFamily: fonts.monoSemibold, fontSize: 12, lineHeight: 16, color: colors.text },
+  similarReason: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
   companyTexts: { flex: 1 },
   companyName: { ...typography.bodyStrong, color: colors.text },
   companyMeta: { ...typography.caption },

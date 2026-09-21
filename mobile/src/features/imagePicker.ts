@@ -70,13 +70,55 @@ export async function captureCompressedImage(maxWidth = 1600, compress = 0.7): P
   return shrink(result.assets[0], maxWidth, compress);
 }
 
+/**
+ * Benzer kumaş araması (Faz 3, Adım 3) için tek fotoğraf: ürün fotoğraflarıyla
+ * aynı sıkıştırma yardımcısı, ama küçültme UZUN KENARA göre yapılır (dikey
+ * çekilen kumaş fotoğrafında yalnızca genişliği kısmak dosyayı küçültmüyor).
+ * Sonuç sunucunun karakter sınırını aşarsa kademeli olarak daha da küçültülür;
+ * en küçüğü de sığmazsa `image_too_large` fırlatır.
+ */
+export async function pickLookPhoto(
+  source: 'camera' | 'gallery',
+  maxChars: number
+): Promise<CompressedImage | null> {
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) throw new Error('camera_permission_denied');
+  } else {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) throw new Error('permission_denied');
+  }
+
+  const result =
+    source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'] })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] });
+  if (result.canceled || !result.assets[0]) return null;
+  const asset = result.assets[0];
+
+  // İlk deneme ürün fotoğrafıyla aynı: uzun kenar ~1000 px, JPEG ~%60.
+  for (const [maxSide, compress] of [
+    [1000, 0.6],
+    [800, 0.5],
+    [640, 0.4],
+  ] as const) {
+    const image = await shrink(asset, maxSide, compress, true);
+    if (image && image.dataUrl.length <= maxChars) return image;
+  }
+  throw new Error('image_too_large');
+}
+
 async function shrink(
   asset: ImagePicker.ImagePickerAsset,
   maxWidth: number,
-  compress: number
+  compress: number,
+  // true: sınır uzun kenara uygulanır (dikey fotoğrafta yüksekliğe).
+  longEdge = false
 ): Promise<CompressedImage | null> {
   const actions: ImageManipulator.Action[] = [];
-  if (asset.width && asset.width > maxWidth) {
+  if (longEdge && asset.height && asset.height > asset.width && asset.height > maxWidth) {
+    actions.push({ resize: { height: maxWidth } });
+  } else if (asset.width && asset.width > maxWidth) {
     actions.push({ resize: { width: maxWidth } });
   }
 

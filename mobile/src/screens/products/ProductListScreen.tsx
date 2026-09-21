@@ -586,6 +586,18 @@ export function ProductListScreen({ navigation, route }: Props) {
             </View>
           ) : null}
         </Pressable>
+        {/* Faz 3, Adım 3: elindeki kumaşın fotoğrafıyla benzerini bulma.
+            Oturum şart olduğu için giriş yapılmamışken gizli. */}
+        {user ? (
+          <Pressable
+            onPress={() => navigation.navigate('SimilarSearch')}
+            accessibilityRole="button"
+            accessibilityLabel="Fotoğrafla benzer kumaş ara"
+            style={({ pressed }) => [styles.filterButton, pressed && styles.togglePressed]}
+          >
+            <Ionicons name="camera-outline" size={22} color={colors.primary} />
+          </Pressable>
+        ) : null}
         {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
             doğrudan ilgili kısayol kalıyor. */}
         {user?.companyId ? (

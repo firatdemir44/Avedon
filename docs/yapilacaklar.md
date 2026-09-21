@@ -17,11 +17,10 @@ Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu li
 6. Faz 2 Adım 4: davet mekaniği ("tedarikçini davet et").
 7. İlk dış pilot firma öncesi son kontrol: `WHATSAPP_APP_SECRET` canlıda dolu, SMS health yeşil.
 
-**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 3 benzer kumaş arama → 7 AB Dijital Ürün Pasaportu → 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
+**C. Faz 3 kalan adımlar** (`docs/faz3-plani.md`, sıra onaylı): 7 AB Dijital Ürün Pasaportu → 4 sipariş kaydı + değerlendirme → 5 güven özeti → 6 fiyat/termin endeksi.
 
 **D. Bilinen küçük eksikler (kod)**
-8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor); zil yalnızca Akış ekranında.
-9. Kumaş tarafında yalnızca arama metni varken "Bu aramayı izle" çıkmıyor; izleme kuralının adı ekrandan değiştirilemiyor.
+8. Push bildirimi yok (uygulama 60 sn'de bir yokluyor).
 10. Video yalnızca akış gönderilerinde; kararlaştırılan kapsamın kalanı (ürün sayfası videosu, sohbette video) yapılmadı.
 11. WhatsApp'tan ürün taslağı (fotoğraf gönder → pasaport taslağı) yok; etiketten İPLİK çıkarma yok (yalnızca kumaş).
 12. Asistanın `teklif_topla` aracı yalnızca kumaş arıyor (iplikte: `iplik_ara` + iplik dizininde "Teklif için seç" kipi var). Aday kartındaki işaretler sohbetten çıkıp dönünce sıfırlanıyor.
@@ -133,6 +132,8 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - Mobile `Company` tipi ile Prisma şeması arasındaki `productCategories`/`employeeIds` tutarsızlığını gidermek
 
 ## Tamamlananlar (kısa özet)
+
+- 2026-09-21: **Faz 3 Adım 3 tamamlandı: benzer kumaş arama.** Sunucu (Fable 5.1, cce2f31 + 8f6a916): `ProductLook` + `LookSearch` (yalnızca yeni tablolar), `skills/fabricLook` (görünüm kartı: desen, ölçek, renk, yüzey, doku, şeffaflık; gramaj/lif OKUNMAZ), deterministik ve nedenli benzerlik puanı (eşik 60; 45 iken canlıda zayıf eşleşmeler çıkıyordu), `/api/looks` (fotoğrafla arama günde 20, ürün sayfası benzerleri, sahibin yenilemesi), kapak değişince kart yenilenir, açılışta eksik kartlar doldurulur (canlıda 4 Melide ürünü kendiliğinden doldu; kartlar isabetli). Test 22/22 (sahte kip), gerçek modelle uçtan uca arama ~3 sn. Mobil (Opus 5): `SimilarSearchScreen` (Ürünler'de kamera düğmesi + Profil menüsü), ürün sayfasında "Benzer kumaşlar" şeridi, fotoğraf uzun kenardan küçültülür. Ayrıca küçük eksikler: ortak bildirim zili (Akış, Ürünler, Mesajlar, Profil), yalnızca arama metniyle izleme, izleme adını değiştirme. **Telefonda kontrol bekliyor** (kamera akışı yalnızca telefonda denenebilir). **Açık:** asistanda `benzer_kumas_ara` aracı yok. **SMS:** başvuru Melide İnşaat üzerinden AVEDON başlığıyla yapıldı, onay bekleniyor; uygulama adı Avedon kalıyor.
 
 - 2026-09-18: **Faz 3 Adım 2 tamamlandı: asistanla teklif toplama.** Sunucu (Fable 5.1, 206e9da): `teklif_topla` (tüm firmalarda arar, firma başına tek aday, en çok 10; İSTEK GÖNDERMEZ, kart önerir; fiyat dönmez) ve `teklifleri_ozetle` (alıcının çoklu isteğine gelen teklifler, karşılaştırmalı). Gerçek modelle denendi: adayları buldu, "istek henüz gitmedi, karttan onaylayın" dedi, elastan farkını kendisi belirtti. Mobil (Opus 5): asistanda aday kartı (işaretle → "Seçilenlerden teklif iste" → form miktar/not ön dolu), karşılaştırma kartı, "Teklif topla" çipi, iplik dizininde seçme kipi, karşılaştırma tablosunda uzun metin için alt panel. Tarayıcıda uçtan uca denendi. **Telefonda kontrol bekliyor.**
 

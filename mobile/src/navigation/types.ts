@@ -61,6 +61,9 @@ export type RootStackParamList = {
   // mode 'watch': aynı ekran "izleme kipinde" açılır (Faz 2, Adım 1) — alttaki
   // düğme "Bu süzgeci izle" olur ve sonuç Ürünler'e değil izleme kuralına gider.
   ProductFilters: { filters: ProductFilters; mode?: 'watch' };
+  // Fotoğrafla benzer kumaş arama (Faz 3, Adım 3). Parametre almaz: fotoğraf
+  // ekranın içinde seçilir, sonuç da ekranda kalır.
+  SimilarSearch: undefined;
   // Bildirimler ve izleme kuralları (Faz 2, Adım 1). Push bildirimi yok,
   // yalnızca uygulama içi.
   Notifications: undefined;
