@@ -4,16 +4,20 @@ import { MIN_TOUCH, colors, fonts, radius } from '../theme';
 
 // Hesap tablolarında etiketsiz, dar sayı hücresi. Etiket tablo başlığında
 // durduğu için ekran okuyucu adı `accessibilityLabel` ile verilmeli.
-export function TableInput({ style, ...props }: TextInputProps) {
+export const TableInput = React.forwardRef<TextInput, TextInputProps>(function TableInput(
+  { style, ...props },
+  ref
+) {
   return (
     <TextInput
+      ref={ref}
       keyboardType="decimal-pad"
       placeholderTextColor={colors.textMuted}
       {...props}
       style={[styles.input, style]}
     />
   );
-}
+});
 
 const styles = StyleSheet.create({
   input: {

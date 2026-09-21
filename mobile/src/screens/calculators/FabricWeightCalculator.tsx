@@ -1,11 +1,16 @@
 import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
-import { ResultCard } from '../../components/ResultCard';
 import { ChipSelect } from '../../components/ChipSelect';
+import {
+  CalcTable,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import { FEED_SYSTEM_OPTIONS } from '../../components/YarnFeedRowsEditor';
-import { UnitToggle } from '../../components/UnitToggle';
 import {
   gsmFromKnitStructure,
   gsmFromSample,
@@ -87,29 +92,44 @@ export function FabricWeightCalculator() {
             <Text style={styles.hint}>
               Kumaştan bir parça kesin; enini, boyunu milimetre olarak ölçüp tartın. Kesin sonuç bu yöntemle alınır.
             </Text>
-            <TextField label="Kumaş eni (mm)" keyboardType="decimal-pad" value={f.widthMm} onChangeText={(v) => update({ widthMm: v })} placeholder="Örn. 40" />
-            <TextField label="Kumaş boyu (mm)" keyboardType="decimal-pad" value={f.lengthMm} onChangeText={(v) => update({ lengthMm: v })} placeholder="Örn. 50" />
-            <TextField label="Kumaş ağırlığı (gr)" keyboardType="decimal-pad" value={f.weightGrams} onChangeText={(v) => update({ weightGrams: v })} placeholder="Örn. 0,55" />
-            {sampleGsm !== null ? (
-              <ResultCard rows={[{ label: 'Kumaş gramajı', value: `${formatNumber(sampleGsm, 1)} gr/m²` }]} />
-            ) : null}
+            <CalcTable title="Numuneden gramaj">
+              <CalcInputRow
+                label="Kumaş eni"
+                value={f.widthMm}
+                onChangeText={(v) => update({ widthMm: v })}
+                placeholder="40"
+                unit="mm"
+              />
+              <CalcInputRow
+                label="Kumaş boyu"
+                value={f.lengthMm}
+                onChangeText={(v) => update({ lengthMm: v })}
+                placeholder="50"
+                unit="mm"
+              />
+              <CalcInputRow
+                label="Kumaş ağırlığı"
+                value={f.weightGrams}
+                onChangeText={(v) => update({ weightGrams: v })}
+                placeholder="0,55"
+                unit="gr"
+              />
+              <CalcResultRow
+                label="Kumaş gramajı"
+                value={sampleGsm !== null ? formatNumber(sampleGsm, 1) : '—'}
+                unit="gr/m²"
+                emphasis="primary"
+              />
+              {sampleGsm === null ? <CalcNoteRow text="Hesap için en, boy ve ağırlığı girin." /> : null}
+              <CalcFormulaRow text="Gramaj = ağırlık (gr) ÷ (en × boy ÷ 1.000.000) (m²)" />
+            </CalcTable>
           </>
         ) : (
           <>
             <Text style={styles.hint}>
-              Kumaşta 1 cm'deki sıra ve çubuk sayısını sayın, 50 iğnedeki iplik uzunluğunu makineden alın. Sonuç tahminidir; kesin değer için numuneden ölçün.
+              Kumaşta 1 cm'deki sıra ve çubuk sayısını sayın, 50 iğnedeki iplik uzunluğunu makineden alın. Sonuç
+              tahminidir; kesin değer için numuneden ölçün.
             </Text>
-            <TextField label="Sıra sayısı (sıra/cm)" keyboardType="decimal-pad" value={f.coursesPerCm} onChangeText={(v) => update({ coursesPerCm: v })} placeholder="Örn. 20" />
-            <TextField label="Çubuk sayısı (çubuk/cm)" keyboardType="decimal-pad" value={f.walesPerCm} onChangeText={(v) => update({ walesPerCm: v })} placeholder="Örn. 15" />
-            <TextField label="50 iğne iplik uzunluğu (cm)" keyboardType="decimal-pad" value={f.length50} onChangeText={(v) => update({ length50: v })} placeholder="Örn. 14" />
-            <View style={styles.countRow}>
-              <View style={styles.countField}>
-                <TextField label="İplik numarası" keyboardType="decimal-pad" value={f.count} onChangeText={(v) => update({ count: v })} placeholder="Örn. 30" />
-              </View>
-              <View style={styles.countUnit}>
-                <UnitToggle options={FEED_SYSTEM_OPTIONS} value={f.system} onChange={(system) => update({ system })} label="İplik numara sistemi" />
-              </View>
-            </View>
             <Text style={styles.label}>Örgü</Text>
             <ChipSelect
               options={[
@@ -119,17 +139,55 @@ export function FabricWeightCalculator() {
               value={f.plate}
               onChange={(plate) => update({ plate })}
             />
-            {structure ? (
-              <ResultCard
-                rows={[
-                  { label: 'Tahmini gramaj', value: `${formatNumber(structure.gsm, 1)} gr/m²` },
-                  { label: 'İlmek boyu', value: `${formatNumber(structure.loopLengthMm, 2)} mm` },
-                  { label: 'İplik', value: `${formatNumber(structure.yarnTex, 1)} Tex` },
-                ]}
+            <CalcTable title="Örgüden tahmini gramaj">
+              <CalcInputRow
+                label="Sıra sayısı"
+                value={f.coursesPerCm}
+                onChangeText={(v) => update({ coursesPerCm: v })}
+                placeholder="20"
+                unit="sıra/cm"
               />
-            ) : null}
+              <CalcInputRow
+                label="Çubuk sayısı"
+                value={f.walesPerCm}
+                onChangeText={(v) => update({ walesPerCm: v })}
+                placeholder="15"
+                unit="çubuk/cm"
+              />
+              <CalcInputRow
+                label="50 iğne iplik uzunluğu"
+                value={f.length50}
+                onChangeText={(v) => update({ length50: v })}
+                placeholder="14"
+                unit="cm"
+              />
+              <CalcInputRow
+                label="İplik numarası"
+                value={f.count}
+                onChangeText={(v) => update({ count: v })}
+                placeholder="30"
+                unitToggle={{
+                  options: FEED_SYSTEM_OPTIONS,
+                  value: f.system,
+                  onChange: (system) => update({ system: system as YarnCountSystem }),
+                }}
+              />
+              <CalcResultRow
+                label="Tahmini gramaj"
+                value={structure ? formatNumber(structure.gsm, 1) : '—'}
+                unit="gr/m²"
+                emphasis="primary"
+              />
+              <CalcResultRow label="İlmek boyu" value={structure ? formatNumber(structure.loopLengthMm, 2) : '—'} unit="mm" />
+              <CalcResultRow label="İplik" value={structure ? formatNumber(structure.yarnTex, 1) : '—'} unit="Tex" />
+              {structure === null ? (
+                <CalcNoteRow text="Hesap için sıra, çubuk, 50 iğne uzunluğu ve iplik numarasını girin." />
+              ) : null}
+              <CalcFormulaRow text="İlmek boyu = 50 iğne uzunluğu (cm) ÷ 5. Gramaj = sıra × çubuk × (çift plakada ×2) × ilmek boyu (mm) × Tex ÷ 100." />
+            </CalcTable>
           </>
         )}
+        <CalcClearButton onClear={() => update({ ...INITIAL, mode: f.mode })} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -137,11 +195,7 @@ export function FabricWeightCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
+  content: { padding: spacing.md },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  countRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
-  countField: { flex: 1 },
-  // TextField kendi altında boşluk bırakıyor; düğme giriş kutusuyla aynı hizada dursun.
-  countUnit: { marginBottom: spacing.md },
 });

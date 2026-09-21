@@ -1,8 +1,15 @@
 import React, { useMemo } from 'react';
 import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
-import { ResultCard } from '../../components/ResultCard';
+import {
+  CalcTable,
+  CalcSectionRow,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import {
   EMPTY_FEED_ROW,
   YarnFeedRowsEditor,
@@ -51,45 +58,90 @@ export function ProductionCalculator() {
     return r.kgPerHour > 0 ? r : null;
   }, [f.rows, f.needles, f.rpm, f.efficiency, f.hoursPerDay, f.fee]);
 
+  const multiYarn = (result?.percents.filter((p) => p > 0).length ?? 0) > 1;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.hint}>
-          Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine bilgilerini doldurun.
+          Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine
+          bilgilerini doldurun.
         </Text>
 
-        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
+        <CalcTable title="Örme üretim hesabı">
+          <CalcSectionRow label="İplikler" />
+          <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
 
-        <Text style={styles.section}>Makine</Text>
-        <TextField label="İğne sayısı" keyboardType="number-pad" value={f.needles} onChangeText={(v) => update({ needles: v })} placeholder="Örn. 2568" />
-        <Text style={styles.hint}>Bilmiyorsanız: çap (inç) × incelik (E) × 3,14. Örneğin 30 inç, 28 E makinede yaklaşık 2640 iğne.</Text>
-        <TextField label="Makine devri (devir/dk)" keyboardType="decimal-pad" value={f.rpm} onChangeText={(v) => update({ rpm: v })} placeholder="Örn. 25" />
-        <TextField label="Randıman (%)" keyboardType="decimal-pad" value={f.efficiency} onChangeText={(v) => update({ efficiency: v })} placeholder="Örn. 90" />
-        <TextField label="Günlük çalışma (saat)" keyboardType="decimal-pad" value={f.hoursPerDay} onChangeText={(v) => update({ hoursPerDay: v })} placeholder="Örn. 24" />
-        <TextField label="Fason ücreti (₺/kg, isteğe bağlı)" keyboardType="decimal-pad" value={f.fee} onChangeText={(v) => update({ fee: v })} placeholder="Örn. 65" />
-
-        {result ? (
-          <ResultCard
-            rows={[
-              { label: 'Saatlik üretim', value: `${formatNumber(result.kgPerHour, 1)} kg` },
-              { label: 'Günlük üretim', value: `${formatNumber(result.kgPerDay, 0)} kg` },
-              ...(result.dailyFeeIncome !== null
-                ? [{ label: 'Günlük fason geliri', value: `${formatNumber(result.dailyFeeIncome, 0)} ₺` }]
-                : []),
-              // Birden fazla iplik varsa her birinin kumaştaki payı (önceden
-              // tablo satırında gösteriliyordu, tablo küçülünce buraya taşındı).
-              ...(result.percents.filter((p) => p > 0).length > 1
-                ? result.percents
-                    .map((percent, index) => ({ percent, index }))
-                    .filter(({ percent }) => percent > 0)
-                    .map(({ percent, index }) => ({
-                      label: `${index + 1}. iplik payı`,
-                      value: `%${formatNumber(percent, 1)}`,
-                    }))
-                : []),
-            ]}
+          <CalcSectionRow label="Makine" />
+          <CalcInputRow
+            label="İğne sayısı"
+            hint="Bilmiyorsanız: çap (inç) × incelik (E) × 3,14"
+            value={f.needles}
+            onChangeText={(v) => update({ needles: v })}
+            placeholder="2568"
+            keyboardType="number-pad"
+            unit="iğne"
           />
-        ) : null}
+          <CalcInputRow
+            label="Makine devri"
+            value={f.rpm}
+            onChangeText={(v) => update({ rpm: v })}
+            placeholder="25"
+            unit="devir/dk"
+          />
+          <CalcInputRow
+            label="Randıman"
+            value={f.efficiency}
+            onChangeText={(v) => update({ efficiency: v })}
+            placeholder="90"
+            unit="%"
+          />
+          <CalcInputRow
+            label="Günlük çalışma"
+            value={f.hoursPerDay}
+            onChangeText={(v) => update({ hoursPerDay: v })}
+            placeholder="24"
+            unit="saat"
+          />
+          <CalcInputRow
+            label="Fason ücreti"
+            hint="İsteğe bağlı"
+            value={f.fee}
+            onChangeText={(v) => update({ fee: v })}
+            placeholder="65"
+            unit="₺/kg"
+          />
+
+          <CalcSectionRow label="Sonuç" />
+          <CalcResultRow
+            label="Saatlik üretim"
+            value={result ? formatNumber(result.kgPerHour, 1) : '—'}
+            unit="kg"
+          />
+          <CalcResultRow
+            label="Günlük üretim"
+            value={result ? formatNumber(result.kgPerDay, 0) : '—'}
+            unit="kg"
+            emphasis="primary"
+          />
+          {result && result.dailyFeeIncome !== null ? (
+            <CalcResultRow label="Günlük fason geliri" value={formatNumber(result.dailyFeeIncome, 0)} unit="₺" />
+          ) : null}
+          {/* Birden fazla iplik varsa her birinin kumaştaki payı. */}
+          {result && multiYarn
+            ? result.percents
+                .map((percent, index) => ({ percent, index }))
+                .filter(({ percent }) => percent > 0)
+                .map(({ percent, index }) => (
+                  <CalcResultRow key={index} label={`${index + 1}. iplik payı`} value={`%${formatNumber(percent, 1)}`} />
+                ))
+            : null}
+          {result === null ? (
+            <CalcNoteRow text="Hesap için iplik satırlarını, iğne sayısını ve makine devrini girin." />
+          ) : null}
+          <CalcFormulaRow text="Bir devirde örülen gram = Σ (sistem sayısı × iğne × ilmek boyu ÷ 1000 × Tex ÷ 1000). Saatlik = bu gram × devir × 60 × randıman ÷ 1000. Günlük = saatlik × çalışma saati." />
+        </CalcTable>
+        <CalcClearButton onClear={() => update(INITIAL)} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -97,7 +149,6 @@ export function ProductionCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
-  section: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
+  content: { padding: spacing.md },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
 });

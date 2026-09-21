@@ -1,8 +1,14 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
-import { ResultCard } from '../../components/ResultCard';
+import {
+  CalcTable,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import { calculateYarnUsageKg } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
@@ -33,15 +39,48 @@ export function YarnUsageCalculator() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <TextField label="Üretilecek Kumaş Uzunluğu (metre)" keyboardType="numeric" value={length} onChangeText={(v) => update({ length: v })} placeholder="Örn. 500" />
-        <TextField label="Kumaş Gramajı (gr/m²)" keyboardType="numeric" value={weightGsm} onChangeText={(v) => update({ weightGsm: v })} placeholder="Örn. 200" />
-        <TextField label="En (cm)" keyboardType="numeric" value={widthCm} onChangeText={(v) => update({ widthCm: v })} placeholder="Örn. 160" />
-        <TextField label="Fire Oranı (%)" keyboardType="numeric" value={wastage} onChangeText={(v) => update({ wastage: v })} placeholder="Örn. 5" />
-
-        {result !== null ? (
-          <ResultCard rows={[{ label: 'Gerekli İplik Miktarı', value: `${formatNumber(result)} kg` }]} />
-        ) : null}
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <CalcTable title="İplik ihtiyacı">
+          <CalcInputRow
+            label="Üretilecek kumaş uzunluğu"
+            value={length}
+            onChangeText={(v) => update({ length: v })}
+            placeholder="500"
+            unit="metre"
+          />
+          <CalcInputRow
+            label="Kumaş gramajı"
+            value={weightGsm}
+            onChangeText={(v) => update({ weightGsm: v })}
+            placeholder="200"
+            unit="gr/m²"
+          />
+          <CalcInputRow
+            label="En"
+            value={widthCm}
+            onChangeText={(v) => update({ widthCm: v })}
+            placeholder="160"
+            unit="cm"
+          />
+          <CalcInputRow
+            label="Fire oranı"
+            value={wastage}
+            onChangeText={(v) => update({ wastage: v })}
+            placeholder="5"
+            unit="%"
+          />
+          <CalcResultRow
+            label="Gerekli iplik miktarı"
+            value={result !== null ? formatNumber(result) : '—'}
+            unit="kg"
+            emphasis="primary"
+          />
+          {result === null ? (
+            <CalcNoteRow text="Hesap için uzunluk, gramaj ve en girin." />
+          ) : null}
+          <CalcFormulaRow text="İplik (kg) = uzunluk × en (m) × gramaj ÷ 1000 × (1 + fire ÷ 100)" />
+        </CalcTable>
+        <CalcClearButton onClear={() => update(INITIAL)} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -49,5 +88,5 @@ export function YarnUsageCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
+  content: { padding: spacing.md },
 });

@@ -1,7 +1,14 @@
 import React, { useMemo } from 'react';
 import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ResultCard } from '../../components/ResultCard';
+import {
+  CalcTable,
+  CalcSectionRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import {
   EMPTY_FEED_ROW,
   YarnFeedRowsEditor,
@@ -29,22 +36,27 @@ export function YarnRatioCalculator() {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={styles.hint}>
-          Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin. Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.
+          Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin.
+          Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.
         </Text>
 
-        <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
-
-        {usable > 0 ? (
-          <ResultCard
-            rows={percents
-              .map((percent, index) => ({ percent, index }))
-              .filter(({ percent }) => percent > 0)
-              .map(({ percent, index }) => ({
-                label: `${index + 1}. iplik payı`,
-                value: `%${formatNumber(percent, 1)}`,
-              }))}
-          />
-        ) : null}
+        <CalcTable title="İplik oranı">
+          <CalcSectionRow label="İplikler" />
+          <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
+          <CalcSectionRow label="Kumaştaki pay" />
+          {f.rows.map((_, index) => (
+            <CalcResultRow
+              key={index}
+              label={`${index + 1}. iplik payı`}
+              value={percents[index] > 0 ? `%${formatNumber(percents[index], 1)}` : '—'}
+            />
+          ))}
+          {usable === 0 ? (
+            <CalcNoteRow text="Hesap için her iplikte uzunluk, numara ve sistem sayısı dolu olmalı." />
+          ) : null}
+          <CalcFormulaRow text="Her iplik için bir devirde örülen gram = sistem sayısı × ilmek boyu (50 iğne cm ÷ 5) × Tex. Paylar bu gramların toplamına bölünür." />
+        </CalcTable>
+        <CalcClearButton onClear={() => update(INITIAL)} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -52,6 +64,6 @@ export function YarnRatioCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
+  content: { padding: spacing.md },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
 });

@@ -1,9 +1,16 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
 import { ChipSelect } from '../../components/ChipSelect';
-import { ResultCard } from '../../components/ResultCard';
+import {
+  CalcTable,
+  CalcSectionRow,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import { calculateGarmentCost, type Currency } from '../../features/calculators/formulas';
 import {
   GARMENT_ITEMS,
@@ -82,107 +89,99 @@ export function GarmentCostCalculator() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.section}>Para birimi</Text>
+        <Text style={styles.label}>Para birimi</Text>
+        <ChipSelect options={CURRENCIES} value={f.currency} onChange={(currency) => update({ currency })} />
         <Text style={styles.hint}>
           Tüm tutarlar aynı para biriminde girilmelidir. Uygulama kur çevirmez, seçim yalnızca etiketi değiştirir.
+          Bilmediğiniz kalemi boş bırakın, 0 sayılır.
         </Text>
-        <ChipSelect options={CURRENCIES} value={f.currency} onChange={(currency) => update({ currency })} />
 
-        <Text style={styles.section}>Kumaş</Text>
-        <TextField
-          label="Kumaş tüketimi (metre/adet)"
-          keyboardType="decimal-pad"
-          value={f.consumption}
-          onChangeText={(v) => update({ consumption: v })}
-          placeholder="Örn. 1,4"
-        />
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <TextField
-              label={`Metre fiyatı (${symbol}/metre)`}
-              keyboardType="decimal-pad"
-              value={f.fabricPrice}
-              onChangeText={(v) => update({ fabricPrice: v })}
-              placeholder="Örn. 45"
-            />
-          </View>
-          <View style={styles.col}>
-            <TextField
-              label="Kesim firesi (%)"
-              keyboardType="decimal-pad"
-              value={f.wastage}
-              onChangeText={(v) => update({ wastage: v })}
-              placeholder="Örn. 8"
-            />
-          </View>
-        </View>
+        <CalcTable title="Konfeksiyon maliyeti (adet)">
+          <CalcSectionRow label="Kumaş" />
+          <CalcInputRow
+            label="Kumaş tüketimi"
+            value={f.consumption}
+            onChangeText={(v) => update({ consumption: v })}
+            placeholder="1,4"
+            unit="m/adet"
+          />
+          <CalcInputRow
+            label="Metre fiyatı"
+            value={f.fabricPrice}
+            onChangeText={(v) => update({ fabricPrice: v })}
+            placeholder="45"
+            unit={`${symbol}/m`}
+          />
+          <CalcInputRow
+            label="Kesim firesi"
+            value={f.wastage}
+            onChangeText={(v) => update({ wastage: v })}
+            placeholder="8"
+            unit="%"
+          />
 
-        <Text style={styles.section}>Adet başı kalemler</Text>
-        <Text style={styles.hint}>
-          Her aşamayı ayrı girin; böylece maliyeti hangi aşamanın yükselttiğini görürsünüz. Bilmediğiniz kalemi boş
-          bırakın, 0 sayılır.
-        </Text>
-        {GARMENT_ITEMS.map((item) => (
-          <View key={item.key}>
-            <TextField
-              label={`${item.label} (${symbol}/adet)`}
-              keyboardType="decimal-pad"
+          <CalcSectionRow label="Adet başı kalemler" />
+          {GARMENT_ITEMS.map((item) => (
+            <CalcInputRow
+              key={item.key}
+              label={item.label}
+              hint={item.hint}
               value={f[item.key]}
               onChangeText={(v) => update({ [item.key]: v } as Partial<Fields>)}
-              placeholder={item.placeholder}
+              placeholder={item.placeholder.replace('Örn. ', '')}
+              unit={`${symbol}/adet`}
             />
-            {item.hint ? <Text style={styles.fieldHint}>{item.hint}</Text> : null}
-          </View>
-        ))}
+          ))}
 
-        <Text style={styles.section}>Sipariş (isteğe bağlı)</Text>
-        <TextField
-          label="Sipariş adedi"
-          keyboardType="number-pad"
-          value={f.quantity}
-          onChangeText={(v) => update({ quantity: v })}
-          placeholder="Örn. 500"
-        />
+          <CalcSectionRow label="Sipariş (isteğe bağlı)" />
+          <CalcInputRow
+            label="Sipariş adedi"
+            value={f.quantity}
+            onChangeText={(v) => update({ quantity: v })}
+            placeholder="500"
+            keyboardType="number-pad"
+            unit="adet"
+          />
 
-        {result ? (
-          <>
-            <ResultCard
-              rows={[
-                ...result.rows.map((row) => ({
-                  label: row.label,
-                  value: `${formatNumber(row.amount)} ${symbol}`,
-                  note: row.largest
-                    ? `Toplam içinde %${formatNumber(row.sharePercent, 1)}, en büyük kalem`
-                    : `Toplam içinde %${formatNumber(row.sharePercent, 1)}`,
-                  highlight: row.largest,
-                })),
-                {
-                  label: 'Adet maliyeti',
-                  value: `${formatNumber(result.totalCost)} ${symbol}`,
-                  strong: true,
-                },
-                ...(result.orderTotal !== null
-                  ? [
-                      {
-                        label: 'Sipariş toplamı',
-                        value: `${formatNumber(result.orderTotal)} ${symbol}`,
-                        note: `${formatNumber(parseNumber(f.quantity), 0)} adet`,
-                      },
-                    ]
-                  : []),
-              ]}
+          <CalcSectionRow label="Sonuç" />
+          {result
+            ? result.rows.map((row) => (
+                <CalcResultRow
+                  key={row.key}
+                  label={row.label}
+                  note={
+                    row.largest
+                      ? `Toplam içinde %${formatNumber(row.sharePercent, 1)}, en büyük kalem`
+                      : `Toplam içinde %${formatNumber(row.sharePercent, 1)}`
+                  }
+                  value={formatNumber(row.amount)}
+                  unit={symbol}
+                />
+              ))
+            : null}
+          <CalcResultRow
+            label="Adet maliyeti"
+            value={result ? formatNumber(result.totalCost) : '—'}
+            unit={symbol}
+            emphasis="primary"
+          />
+          {result && result.orderTotal !== null ? (
+            <CalcResultRow
+              label="Sipariş toplamı"
+              note={`${formatNumber(parseNumber(f.quantity), 0)} adet`}
+              value={formatNumber(result.orderTotal)}
+              unit={symbol}
             />
-            {result.emptyLabels.length ? (
-              <Text style={styles.footnote}>Boş kalemler: {result.emptyLabels.join(', ')}.</Text>
-            ) : null}
-            <Text style={styles.footnote}>
-              Kumaş = tüketim × metre fiyatı × (1 + kesim firesi). Adet maliyeti bu kalemlerin toplamıdır; kâr ve vergi
-              eklenmez.
-            </Text>
-          </>
-        ) : (
-          <Text style={styles.footnote}>Hesap için en az kumaş tüketimi ve metre fiyatı girin.</Text>
-        )}
+          ) : null}
+          {result === null ? (
+            <CalcNoteRow text="Hesap için en az kumaş tüketimi ve metre fiyatı girin." />
+          ) : null}
+          {result && result.emptyLabels.length ? (
+            <CalcNoteRow text={`Boş kalemler: ${result.emptyLabels.join(', ')}.`} />
+          ) : null}
+          <CalcFormulaRow text="Kumaş = tüketim × metre fiyatı × (1 + kesim firesi ÷ 100). Adet maliyeti bu kalemlerin toplamıdır; kâr ve vergi eklenmez. Sipariş toplamı = adet maliyeti × sipariş adedi." />
+        </CalcTable>
+        <CalcClearButton onClear={() => update({ ...INITIAL, currency: f.currency })} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -190,17 +189,7 @@ export function GarmentCostCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  section: { ...typography.heading, color: colors.primary, marginBottom: spacing.xs },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
-  fieldHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: -spacing.sm,
-    marginBottom: spacing.md,
-    marginLeft: spacing.sm,
-  },
-  twoCol: { flexDirection: 'row', gap: spacing.sm },
-  col: { flex: 1 },
-  footnote: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm },
+  content: { padding: spacing.md },
+  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
 });

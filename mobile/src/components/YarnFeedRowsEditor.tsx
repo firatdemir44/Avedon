@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet } from 'react-native';
 import { TableInput } from './TableInput';
 import { UnitToggle } from './UnitToggle';
+import { CalcSubRow, CalcSubHeadCell, CalcAddRow, CalcRemoveCell, calcCells } from './CalcTable';
 import type { YarnCountSystem, YarnFeedRow } from '../features/calculators/formulas';
 import { parseNumber } from '../features/calculators/parse';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import { colors, typography } from '../theme';
 
 // Alanlar metin olarak tutuluyor (kullanıcı "15," yazarken silinmesin diye);
 // hesap anında sayıya çevriliyor.
@@ -42,34 +42,38 @@ interface Props {
 }
 
 // Kullanıcı isteği (2026-09-14): her iplik ayrı büyük kutuda alt alta üç alan
-// olunca ekran çok uzuyordu. Artık tek satır = tek iplik, küçük tablo.
+// olunca ekran çok uzuyordu — tek satır = tek iplik. 2026-09-21'de hesap
+// tablosu kalıbına uyduruldu: KENDİ çerçevesi yok, bir `CalcTable` içinde
+// alt tablo olarak durur (aynı satır çizgileri, gri sütun başlıkları).
 export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
   const updateRow = (index: number, patch: Partial<YarnFeedRowFields>) =>
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   return (
-    <View style={styles.table}>
-      <View style={styles.row}>
-        <Text style={[styles.head, styles.colIndex]}>#</Text>
-        <Text style={[styles.head, styles.colLength]}>50 iğne (cm)</Text>
-        <Text style={[styles.head, styles.colCount]}>Numara</Text>
-        <Text style={[styles.head, styles.colFeeders]}>Sistem sayısı</Text>
-        <View style={styles.colRemove} />
-      </View>
+    <>
+      <CalcSubRow header>
+        <CalcSubHeadCell label="#" style={styles.colIndexHead} />
+        <CalcSubHeadCell label="50 iğne cm" style={calcCells.flex11} />
+        <CalcSubHeadCell label="Numara" style={calcCells.flex2} />
+        <CalcSubHeadCell label="Sistem" style={calcCells.flex11} />
+        <View style={styles.colRemoveHead} />
+      </CalcSubRow>
 
       {rows.map((row, index) => (
-        <View key={index} style={styles.row}>
-          <Text style={[styles.index, styles.colIndex]}>{index + 1}</Text>
+        <CalcSubRow key={index}>
+          <View style={styles.index}>
+            <CalcSubHeadCell label={String(index + 1)} style={styles.indexText} />
+          </View>
           <TableInput
-            style={styles.colLength}
+            style={calcCells.flex11}
             value={row.length}
             onChangeText={(v) => updateRow(index, { length: v })}
             placeholder="15,5"
             accessibilityLabel={`${index + 1}. iplik, 50 iğne iplik uzunluğu, santimetre`}
           />
-          <View style={[styles.colCount, styles.countCell]}>
+          <View style={[calcCells.flex2, styles.countCell]}>
             <TableInput
-              style={styles.countInput}
+              style={calcCells.flex1}
               value={row.count}
               onChangeText={(v) => updateRow(index, { count: v })}
               placeholder={row.system === 'denye' ? '20' : '30'}
@@ -83,75 +87,31 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
             />
           </View>
           <TableInput
-            style={styles.colFeeders}
+            style={calcCells.flex11}
             keyboardType="number-pad"
             value={row.feeders}
             onChangeText={(v) => updateRow(index, { feeders: v })}
             placeholder="102"
             accessibilityLabel={`${index + 1}. iplik sistem sayısı`}
           />
-          {rows.length > 1 ? (
-            <Pressable
-              style={styles.colRemove}
-              onPress={() => onChange(rows.filter((_, i) => i !== index))}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={`${index + 1}. ipliği kaldır`}
-            >
-              <Ionicons name="close" size={18} color={colors.textMuted} />
-            </Pressable>
-          ) : (
-            <View style={styles.colRemove} />
-          )}
-        </View>
+          <CalcRemoveCell
+            label={`${index + 1}. ipliği kaldır`}
+            onPress={rows.length > 1 ? () => onChange(rows.filter((_, i) => i !== index)) : undefined}
+          />
+        </CalcSubRow>
       ))}
 
       {rows.length < maxRows ? (
-        <Pressable
-          onPress={() => onChange([...rows, { ...EMPTY_FEED_ROW }])}
-          style={styles.addRow}
-          accessibilityRole="button"
-        >
-          <Ionicons name="add" size={18} color={colors.accent} />
-          <Text style={styles.addText}>İplik ekle</Text>
-        </Pressable>
+        <CalcAddRow label="İplik ekle" onPress={() => onChange([...rows, { ...EMPTY_FEED_ROW }])} />
       ) : null}
-    </View>
+    </>
   );
 }
 
-export const tableStyles = StyleSheet.create({
-  table: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.sm,
-    paddingTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
-  head: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted, textAlign: 'center' },
-  index: { ...typography.label, color: colors.primary, textAlign: 'center' },
-  colIndex: { width: 16 },
-  colRemove: { width: 24, alignItems: 'center', justifyContent: 'center', minHeight: MIN_TOUCH - 4 },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minHeight: MIN_TOUCH,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  addText: { ...typography.label, color: colors.accent },
-});
-
 const styles = StyleSheet.create({
-  ...tableStyles,
-  colLength: { flex: 1.1 },
-  colCount: { flex: 2 },
+  colIndexHead: { width: 16 },
+  colRemoveHead: { width: 24 },
+  index: { width: 16 },
   countCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  countInput: { flex: 1 },
-  colFeeders: { flex: 1.1 },
+  indexText: { ...typography.caption, fontSize: 13, color: colors.primary, textAlign: 'center' },
 });

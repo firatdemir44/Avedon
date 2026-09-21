@@ -1,9 +1,16 @@
 import React, { useMemo } from 'react';
 import { Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
-import { ResultCard } from '../../components/ResultCard';
 import { ChipSelect } from '../../components/ChipSelect';
+import {
+  CalcTable,
+  CalcSectionRow,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcClearButton,
+} from '../../components/CalcTable';
 import {
   convertYarnCount,
   yarnCountFromSample,
@@ -35,13 +42,15 @@ const SYSTEMS: { value: YarnCountSystem; label: string }[] = [
   { value: 'denye', label: 'Denye' },
 ];
 
-function resultRows(r: YarnCountResult) {
+// Sonuç satırları: sistem adı solda, değer sağda (hesaplanamıyorsa "—").
+function resultRows(r: YarnCountResult | null) {
+  const v = (get: (x: YarnCountResult) => number, digits: number) => (r ? formatNumber(get(r), digits) : '—');
   return [
-    { label: 'Ne (İngiliz pamuk)', value: formatNumber(r.ne, 1) },
-    { label: 'Nm (Metrik)', value: formatNumber(r.nm, 1) },
-    { label: 'Tex', value: formatNumber(r.tex, 1) },
-    { label: 'dtex', value: formatNumber(r.dtex, 0) },
-    { label: 'Denye', value: formatNumber(r.denye, 0) },
+    { label: 'Ne (İngiliz pamuk)', value: v((x) => x.ne, 1) },
+    { label: 'Nm (Metrik)', value: v((x) => x.nm, 1) },
+    { label: 'Tex', value: v((x) => x.tex, 1) },
+    { label: 'dtex', value: v((x) => x.dtex, 0) },
+    { label: 'Denye', value: v((x) => x.denye, 0) },
   ];
 }
 
@@ -77,21 +86,62 @@ export function YarnCountCalculator() {
           <>
             <Text style={styles.label}>Numaralandırma sistemi</Text>
             <ChipSelect options={SYSTEMS} value={f.system} onChange={(system) => update({ system })} />
-            <TextField label="İplik numarası" keyboardType="decimal-pad" value={f.value} onChangeText={(v) => update({ value: v })} placeholder="Örn. 30" />
-            <TextField label="Kat sayısı" keyboardType="number-pad" value={f.ply} onChangeText={(v) => update({ ply: v })} placeholder="1" />
-            <Text style={styles.hint}>Tek kat iplik için 1 bırakın. 60/2 Ne gibi katlı iplikte numaraya 60, kat sayısına 2 yazın.</Text>
-            {converted ? <ResultCard rows={resultRows(converted)} /> : null}
+            <CalcTable title="İplik numarası çevirisi">
+              <CalcInputRow
+                label="İplik numarası"
+                value={f.value}
+                onChangeText={(v) => update({ value: v })}
+                placeholder="30"
+                unit={SYSTEMS.find((s) => s.value === f.system)?.label}
+              />
+              <CalcInputRow
+                label="Kat sayısı"
+                hint="Tek kat için 1; 60/2 Ne'de 60 ve 2 yazın."
+                value={f.ply}
+                onChangeText={(v) => update({ ply: v })}
+                placeholder="1"
+                keyboardType="number-pad"
+                unit="kat"
+              />
+              <CalcSectionRow label="Karşılıkları" />
+              {resultRows(converted).map((row) => (
+                <CalcResultRow key={row.label} label={row.label} value={row.value} />
+              ))}
+              {converted === null ? <CalcNoteRow text="Hesap için iplik numarasını girin." /> : null}
+              <CalcFormulaRow text="Önce Tex'e çevrilir (Ne → 1000 ÷ (Ne × 1,693)), kat sayısıyla çarpılır, sonra diğer sistemlere dönüştürülür: Nm = 1000 ÷ Tex, dtex = Tex × 10, Denye = Tex × 9." />
+            </CalcTable>
           </>
         ) : (
           <>
             <Text style={styles.hint}>
-              İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha güvenilir yapar.
+              İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha
+              güvenilir yapar.
             </Text>
-            <TextField label="İplik uzunluğu (cm)" keyboardType="decimal-pad" value={f.lengthCm} onChangeText={(v) => update({ lengthCm: v })} placeholder="Örn. 100" />
-            <TextField label="İplik ağırlığı (gr)" keyboardType="decimal-pad" value={f.weightGrams} onChangeText={(v) => update({ weightGrams: v })} placeholder="Örn. 0,02" />
-            {fromSample ? <ResultCard rows={resultRows(fromSample)} /> : null}
+            <CalcTable title="Numuneden iplik numarası">
+              <CalcInputRow
+                label="İplik uzunluğu"
+                value={f.lengthCm}
+                onChangeText={(v) => update({ lengthCm: v })}
+                placeholder="100"
+                unit="cm"
+              />
+              <CalcInputRow
+                label="İplik ağırlığı"
+                value={f.weightGrams}
+                onChangeText={(v) => update({ weightGrams: v })}
+                placeholder="0,02"
+                unit="gr"
+              />
+              <CalcSectionRow label="Karşılıkları" />
+              {resultRows(fromSample).map((row) => (
+                <CalcResultRow key={row.label} label={row.label} value={row.value} />
+              ))}
+              {fromSample === null ? <CalcNoteRow text="Hesap için uzunluk ve ağırlığı girin." /> : null}
+              <CalcFormulaRow text="Tex = ağırlık (gr) × 100.000 ÷ uzunluk (cm); 1.000 metrenin gram ağırlığıdır." />
+            </CalcTable>
           </>
         )}
+        <CalcClearButton onClear={() => update({ ...INITIAL, mode: f.mode })} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -99,7 +149,7 @@ export function YarnCountCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
+  content: { padding: spacing.md },
   label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
 });

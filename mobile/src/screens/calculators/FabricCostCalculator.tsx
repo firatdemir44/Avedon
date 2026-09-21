@@ -1,16 +1,26 @@
 import React, { useMemo } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TextField } from '../../components/TextField';
-import { ResultCard } from '../../components/ResultCard';
-import { Ionicons } from '@expo/vector-icons';
 import { TableInput } from '../../components/TableInput';
 import { UnitToggle } from '../../components/UnitToggle';
-import { tableStyles } from '../../components/YarnFeedRowsEditor';
+import {
+  CalcTable,
+  CalcSectionRow,
+  CalcInputRow,
+  CalcResultRow,
+  CalcNoteRow,
+  CalcFormulaRow,
+  CalcSubRow,
+  CalcSubHeadCell,
+  CalcAddRow,
+  CalcRemoveCell,
+  CalcClearButton,
+  calcCells,
+} from '../../components/CalcTable';
 import { calculateFabricPricing, type Currency, type MoneyTriple } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { colors, fonts, spacing, typography } from '../../theme';
 
 interface YarnFields {
   price: string;
@@ -55,11 +65,13 @@ const CURRENCIES: { value: Currency; label: string }[] = [
   { value: 'EUR', label: '€' },
 ];
 
-function money(m: MoneyTriple) {
-  const parts = [`${formatNumber(m.TRY)} ₺`];
+// Sonuç satırında değer ₺ olarak gösterilir; döviz karşılıkları etiketin
+// altındaki küçük nota iner (375 px'te tek satıra üç para birimi sığmıyor).
+function fxNote(m: MoneyTriple): string | undefined {
+  const parts: string[] = [];
   if (m.USD !== null) parts.push(`${formatNumber(m.USD)} $`);
   if (m.EUR !== null) parts.push(`${formatNumber(m.EUR)} €`);
-  return parts.join(' · ');
+  return parts.length ? parts.join(' · ') : undefined;
 }
 
 // Eski tek iplikli "₺/metre" sürümünün kayıtlarıyla karışmasın diye yeni anahtar.
@@ -95,28 +107,31 @@ export function FabricCostCalculator() {
     });
   }, [f, missingRate]);
 
+  const value = (m: MoneyTriple | undefined) => (m ? formatNumber(m.TRY) : '—');
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.section}>İplikler</Text>
-        <Text style={styles.hint}>Kumaşa giren her ipliğin kilo fiyatını, kumaştaki oranını ve firesini girin. Oranların toplamı 100 olmalı.</Text>
+        <Text style={styles.hint}>
+          Kumaşa giren her ipliğin kilo fiyatını, kumaştaki oranını ve firesini girin. Oranların toplamı 100 olmalı.
+          Uygulama internetten kur çekmez; güncel kuru siz girin.
+        </Text>
 
-        {/* Kullanıcı isteği (2026-09-14): her iplik ayrı kutuda alt alta alanlar
-            olunca ekran çok uzuyordu; tek satır = tek iplik tablosu. */}
-        <View style={styles.table}>
-          <View style={styles.row}>
-            <Text style={[styles.head, styles.colIndex]}>#</Text>
-            <Text style={[styles.head, styles.colPrice]}>Kilo fiyatı</Text>
-            <Text style={[styles.head, styles.colPercent]}>Oran %</Text>
-            <Text style={[styles.head, styles.colPercent]}>Fire %</Text>
-            <View style={styles.colRemove} />
-          </View>
+        <CalcTable title="Kumaş maliyeti ve satış fiyatı">
+          <CalcSectionRow label="İplikler" />
+          <CalcSubRow header>
+            <CalcSubHeadCell label="#" style={styles.colIndexHead} />
+            <CalcSubHeadCell label="Fiyat/kg" style={calcCells.flex2} />
+            <CalcSubHeadCell label="Oran %" style={calcCells.flex1} />
+            <CalcSubHeadCell label="Fire %" style={calcCells.flex1} />
+            <View style={styles.colRemoveHead} />
+          </CalcSubRow>
           {f.yarns.map((yarn, index) => (
-            <View key={index} style={styles.row}>
-              <Text style={[styles.index, styles.colIndex]}>{index + 1}</Text>
-              <View style={[styles.colPrice, styles.priceCell]}>
+            <CalcSubRow key={index}>
+              <Text style={styles.index}>{index + 1}</Text>
+              <View style={[calcCells.flex2, styles.priceCell]}>
                 <TableInput
-                  style={styles.priceInput}
+                  style={calcCells.flex1}
                   value={yarn.price}
                   onChangeText={(v) => updateYarn(index, { price: v })}
                   placeholder="3,20"
@@ -130,115 +145,164 @@ export function FabricCostCalculator() {
                 />
               </View>
               <TableInput
-                style={styles.colPercent}
+                style={calcCells.flex1}
                 value={yarn.ratio}
                 onChangeText={(v) => updateYarn(index, { ratio: v })}
                 placeholder="95"
                 accessibilityLabel={`${index + 1}. iplik oranı, yüzde`}
               />
               <TableInput
-                style={styles.colPercent}
+                style={calcCells.flex1}
                 value={yarn.wastage}
                 onChangeText={(v) => updateYarn(index, { wastage: v })}
                 placeholder="5"
                 accessibilityLabel={`${index + 1}. iplik firesi, yüzde`}
               />
-              {f.yarns.length > 1 ? (
-                <Pressable
-                  style={styles.colRemove}
-                  onPress={() => update({ yarns: f.yarns.filter((_, i) => i !== index) })}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${index + 1}. ipliği kaldır`}
-                >
-                  <Ionicons name="close" size={18} color={colors.textMuted} />
-                </Pressable>
-              ) : (
-                <View style={styles.colRemove} />
-              )}
-            </View>
+              <CalcRemoveCell
+                label={`${index + 1}. ipliği kaldır`}
+                onPress={f.yarns.length > 1 ? () => update({ yarns: f.yarns.filter((_, i) => i !== index) }) : undefined}
+              />
+            </CalcSubRow>
           ))}
           {f.yarns.length < MAX_YARNS ? (
-            <Pressable
-              onPress={() => update({ yarns: [...f.yarns, { ...EMPTY_YARN }] })}
-              style={styles.addRow}
-              accessibilityRole="button"
-            >
-              <Ionicons name="add" size={18} color={colors.accent} />
-              <Text style={styles.addText}>İplik ekle</Text>
-            </Pressable>
+            <CalcAddRow label="İplik ekle" onPress={() => update({ yarns: [...f.yarns, { ...EMPTY_YARN }] })} />
           ) : null}
-        </View>
 
-        <Text style={styles.section}>Kur</Text>
-        <Text style={styles.hint}>Uygulama internetten kur çekmez; güncel kuru siz girin. Boş bırakırsanız sonuç yalnızca ₺ olarak gösterilir.</Text>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <TextField label="1 $ (₺)" keyboardType="decimal-pad" value={f.usdTry} onChangeText={(v) => update({ usdTry: v })} placeholder="Örn. 43,17" />
-          </View>
-          <View style={styles.col}>
-            <TextField label="1 € (₺)" keyboardType="decimal-pad" value={f.eurTry} onChangeText={(v) => update({ eurTry: v })} placeholder="Örn. 48,35" />
-          </View>
-        </View>
+          <CalcSectionRow label="Kur" />
+          <CalcInputRow
+            label="1 $"
+            hint="Dolarla iplik girdiyseniz zorunlu"
+            value={f.usdTry}
+            onChangeText={(v) => update({ usdTry: v })}
+            placeholder="43,17"
+            unit="₺"
+            error={needsUsd && parseNumber(f.usdTry) <= 0 ? 'Dolar kuru gerekli' : undefined}
+          />
+          <CalcInputRow
+            label="1 €"
+            hint="Euro ile iplik girdiyseniz zorunlu"
+            value={f.eurTry}
+            onChangeText={(v) => update({ eurTry: v })}
+            placeholder="48,35"
+            unit="₺"
+            error={needsEur && parseNumber(f.eurTry) <= 0 ? 'Euro kuru gerekli' : undefined}
+          />
 
-        <Text style={styles.section}>Fason, gider ve kâr</Text>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <TextField label="Örme fason (₺/kg)" keyboardType="decimal-pad" value={f.knittingFee} onChangeText={(v) => update({ knittingFee: v })} placeholder="Örn. 65" />
-          </View>
-          <View style={styles.col}>
-            <TextField label="Genel gider (%)" keyboardType="decimal-pad" value={f.overhead} onChangeText={(v) => update({ overhead: v })} placeholder="Örn. 5" />
-          </View>
-        </View>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <TextField label="Boya fason (₺/ham kg)" keyboardType="decimal-pad" value={f.dyeingFee} onChangeText={(v) => update({ dyeingFee: v })} placeholder="Örn. 70" />
-          </View>
-          <View style={styles.col}>
-            <TextField label="Boya firesi (%)" keyboardType="decimal-pad" value={f.dyeingLoss} onChangeText={(v) => update({ dyeingLoss: v })} placeholder="Örn. 8" />
-          </View>
-        </View>
-        <TextField label="Kâr oranı (%)" keyboardType="decimal-pad" value={f.profit} onChangeText={(v) => update({ profit: v })} placeholder="Örn. 20" />
+          <CalcSectionRow label="Fason, gider ve kâr" />
+          <CalcInputRow
+            label="Örme fason"
+            value={f.knittingFee}
+            onChangeText={(v) => update({ knittingFee: v })}
+            placeholder="65"
+            unit="₺/kg"
+          />
+          <CalcInputRow
+            label="Genel gider"
+            value={f.overhead}
+            onChangeText={(v) => update({ overhead: v })}
+            placeholder="5"
+            unit="%"
+          />
+          <CalcInputRow
+            label="Boya fason"
+            hint="Ham kilo üzerinden"
+            value={f.dyeingFee}
+            onChangeText={(v) => update({ dyeingFee: v })}
+            placeholder="70"
+            unit="₺/kg"
+          />
+          <CalcInputRow
+            label="Boya firesi"
+            value={f.dyeingLoss}
+            onChangeText={(v) => update({ dyeingLoss: v })}
+            placeholder="8"
+            unit="%"
+          />
+          <CalcInputRow
+            label="Kâr oranı"
+            value={f.profit}
+            onChangeText={(v) => update({ profit: v })}
+            placeholder="20"
+            unit="%"
+          />
 
-        <Text style={styles.section}>Metre fiyatı için (isteğe bağlı)</Text>
-        <View style={styles.twoCol}>
-          <View style={styles.col}>
-            <TextField label="Gramaj (gr/m²)" keyboardType="decimal-pad" value={f.weightGsm} onChangeText={(v) => update({ weightGsm: v })} placeholder="Örn. 200" />
-          </View>
-          <View style={styles.col}>
-            <TextField label="En (cm)" keyboardType="decimal-pad" value={f.widthCm} onChangeText={(v) => update({ widthCm: v })} placeholder="Örn. 180" />
-          </View>
-        </View>
+          <CalcSectionRow label="Metre fiyatı için (isteğe bağlı)" />
+          <CalcInputRow
+            label="Gramaj"
+            value={f.weightGsm}
+            onChangeText={(v) => update({ weightGsm: v })}
+            placeholder="200"
+            unit="gr/m²"
+          />
+          <CalcInputRow
+            label="En"
+            value={f.widthCm}
+            onChangeText={(v) => update({ widthCm: v })}
+            placeholder="180"
+            unit="cm"
+          />
 
-        {missingRate ? (
-          <Text style={styles.warning}>Dolar ya da euro ile girilen iplik fiyatı var; hesap için ilgili kuru girin.</Text>
-        ) : null}
-        {result && Math.abs(result.ratioTotal - 100) > 0.01 ? (
-          <Text style={styles.warning}>İplik oranlarının toplamı %{formatNumber(result.ratioTotal, 1)}; 100 olmalı.</Text>
-        ) : null}
-
-        {result ? (
-          <>
-            <ResultCard
-              rows={[
-                { label: 'İplik maliyeti (kg)', value: money(result.yarnCostPerKg) },
-                { label: 'Ham maliyet (kg)', value: money(result.greigeCostPerKg) },
-                { label: 'Ham satış (kg)', value: money(result.greigeSalePerKg) },
-                { label: 'Boyalı maliyet (kg)', value: money(result.dyedCostPerKg) },
-                { label: 'Boyalı satış (kg)', value: money(result.dyedSalePerKg) },
-                ...(result.metersPerKg
-                  ? [
-                      { label: '1 kg kumaş', value: `${formatNumber(result.metersPerKg, 2)} metre` },
-                      { label: 'Boyalı satış (metre)', value: `${formatNumber(result.dyedSalePerKg.TRY / result.metersPerKg)} ₺` },
-                    ]
-                  : []),
-              ]}
+          {missingRate ? (
+            <CalcNoteRow
+              tone="warning"
+              text="Dolar ya da euro ile girilen iplik fiyatı var; hesap için ilgili kuru girin."
             />
-            <Text style={styles.footnote}>
-              Ham maliyet: iplik (fire dahil) + örme fason, üzerine genel gider. Boyalı maliyet: boya ücreti ham kilo üzerinden ödenir, toplam maliyet firesi düşülmüş boyalı kiloya bölünür (100 kg ham kumaş %8 fireyle 92 kg boyalı çıkar). Satış fiyatları maliyete kâr oranı eklenerek bulunur.
-            </Text>
-          </>
-        ) : null}
+          ) : null}
+          {result && Math.abs(result.ratioTotal - 100) > 0.01 ? (
+            <CalcNoteRow
+              tone="warning"
+              text={`İplik oranlarının toplamı %${formatNumber(result.ratioTotal, 1)}; 100 olmalı.`}
+            />
+          ) : null}
+
+          <CalcSectionRow label="Sonuç (kilo)" />
+          <CalcResultRow
+            label="İplik maliyeti"
+            note={result ? fxNote(result.yarnCostPerKg) : undefined}
+            value={value(result?.yarnCostPerKg)}
+            unit="₺/kg"
+          />
+          <CalcResultRow
+            label="Ham maliyet"
+            note={result ? fxNote(result.greigeCostPerKg) : undefined}
+            value={value(result?.greigeCostPerKg)}
+            unit="₺/kg"
+          />
+          <CalcResultRow
+            label="Ham satış"
+            note={result ? fxNote(result.greigeSalePerKg) : undefined}
+            value={value(result?.greigeSalePerKg)}
+            unit="₺/kg"
+          />
+          <CalcResultRow
+            label="Boyalı maliyet"
+            note={result ? fxNote(result.dyedCostPerKg) : undefined}
+            value={value(result?.dyedCostPerKg)}
+            unit="₺/kg"
+          />
+          <CalcResultRow
+            label="Boyalı satış"
+            note={result ? fxNote(result.dyedSalePerKg) : undefined}
+            value={value(result?.dyedSalePerKg)}
+            unit="₺/kg"
+            emphasis="primary"
+          />
+          {result && result.metersPerKg ? (
+            <CalcResultRow label="1 kg kumaş" value={formatNumber(result.metersPerKg, 2)} unit="metre" />
+          ) : null}
+          {result && result.metersPerKg ? (
+            <CalcResultRow
+              label="Boyalı satış (metre)"
+              value={formatNumber(result.dyedSalePerKg.TRY / result.metersPerKg)}
+              unit="₺/m"
+            />
+          ) : null}
+          {result === null && !missingRate ? (
+            <CalcNoteRow text="Hesap için en az bir ipliğin fiyatını ve oranını girin." />
+          ) : null}
+          <CalcFormulaRow text="Ham maliyet: iplik (fire dahil) + örme fason, üzerine genel gider. Boyalı maliyet: boya ücreti ham kilo üzerinden ödenir, toplam maliyet firesi düşülmüş boyalı kiloya bölünür (100 kg ham kumaş %8 fireyle 92 kg boyalı çıkar). Satış fiyatları maliyete kâr oranı eklenerek bulunur. 1 kg kumaş = 100.000 ÷ (gramaj × en)." />
+        </CalcTable>
+        <CalcClearButton onClear={() => update(INITIAL)} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -246,16 +310,10 @@ export function FabricCostCalculator() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  section: { ...typography.heading, color: colors.primary, marginBottom: spacing.xs },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
-  ...tableStyles,
-  colPrice: { flex: 2 },
+  content: { padding: spacing.md },
+  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
+  colIndexHead: { width: 16 },
+  colRemoveHead: { width: 24 },
+  index: { width: 16, ...typography.caption, fontSize: 13, color: colors.primary, textAlign: 'center' },
   priceCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  priceInput: { flex: 1 },
-  colPercent: { flex: 1 },
-  twoCol: { flexDirection: 'row', gap: spacing.sm },
-  col: { flex: 1 },
-  warning: { ...typography.label, color: colors.danger, marginBottom: spacing.sm },
-  footnote: { ...typography.caption, color: colors.textMuted, marginTop: spacing.sm },
 });
