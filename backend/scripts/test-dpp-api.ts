@@ -53,6 +53,18 @@ async function main() {
     check('geri dönüştürülmüş oran 0-100 dışı 400', (await api('PATCH', `/products/${id}`, O, { recycledPercent: 140 })).status === 400);
     const bare = await api('POST', '/products', O, { code: `DPB-${suffix}`, type: 'dokuma', stock: 10, stockUnit: 'm', weightGsm: 100, widthCm: 140, content: 'pamuklu' });
 
+    console.log('Bakım sembolleri');
+    const cat = await api('GET', '/dpp/care-symbols');
+    check('katalog: 5 grup, çizim tarifleriyle', cat.json?.groups?.length === 5 && cat.json.symbols.every((x: any) => x.shape?.base && x.label && x.labelEn), cat.json?.groups);
+    check('bilinmeyen sembol 400', (await api('PATCH', `/products/${id}`, O, { careSymbols: ['wash_999'] })).status === 400);
+    check('aynı gruptan iki sembol 400', (await api('PATCH', `/products/${id}`, O, { careSymbols: ['wash_30', 'wash_40'] })).status === 400);
+    const sym = await api('PATCH', `/products/${id}`, O, { careSymbols: ['iron_110', 'wash_30_gentle', 'bleach_no'], careNotes: '' });
+    check('semboller grup sırasına dizilip kaydedilir', JSON.stringify(sym.json?.product?.careSymbols) === JSON.stringify(['wash_30_gentle', 'bleach_no', 'iron_110']), sym.json?.product?.careSymbols);
+    const symPub = await api('GET', `/dpp/${id}`);
+    check('pasaportta semboller etiket ve çizimle', symPub.json?.passport?.careSymbols?.length === 3 && symPub.json.passport.careSymbols[0].labelEn === 'Wash at 30°C, gentle' && symPub.json.passport.careSymbols[0].shape.bar === true, symPub.json?.passport?.careSymbols);
+    check('yazı olmadan, yalnızca sembolle "bakım" tamam sayılır', !(await api('GET', `/dpp/${id}`, O)).json?.missing?.some((m: any) => m.key === 'care'));
+    await api('PATCH', `/products/${id}`, O, { careNotes: '30°C yıkama, ağartıcı kullanmayın' });
+
     console.log('Herkese açık pasaport');
     const pub = await api('GET', `/dpp/${id}`);
     const p = pub.json?.passport;

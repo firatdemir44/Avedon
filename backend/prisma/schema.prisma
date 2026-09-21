@@ -176,6 +176,8 @@ model Product {
   // Faz 3 Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK alanları (hepsi isteğe bağlı).
   originCountry     String    @default("")
   careNotes         String    @default("")
+  // Bakım sembolleri: JSON dizi metni (domain/care.ts anahtarları; grup başına en çok bir sembol).
+  careSymbols       String    @default("[]")
   recycledPercent   Float?
   compositions      ProductComposition[]
   yarns             ProductYarn[]

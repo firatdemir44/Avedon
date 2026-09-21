@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { normalizeCareSymbols, parseCareSymbols } from './domain/care';
 import {
   FINISH_TAG_KEYS,
   FINISH_TAGS,
@@ -113,6 +114,8 @@ export const passportFieldsSchema = z.object({
   // AB Dijital Ürün Pasaportu'na hazırlık (Faz 3, Adım 7): menşe, bakım, geri dönüştürülmüş içerik.
   originCountry: z.string().trim().max(60).optional(),
   careNotes: z.string().trim().max(500).optional(),
+  // Bakım sembolleri (Fırat 2026-09-21): yazı yerine etiket sembolleri; grup başına en çok bir tane.
+  careSymbols: z.array(z.string().max(30)).max(5).optional(),
   recycledPercent: z.number().min(0).max(100).nullable().optional(),
   fieldMeta: z.array(fieldMetaSchema).max(40).optional(),
 });
@@ -138,6 +141,7 @@ export const PASSPORT_LIST_SELECT = {
   passportUpdatedAt: true,
   originCountry: true,
   careNotes: true,
+  careSymbols: true,
   recycledPercent: true,
   compositions: { select: { fiber: true, percent: true }, orderBy: { position: 'asc' } },
   certificates: { select: { name: true }, orderBy: { position: 'asc' } },
@@ -177,11 +181,12 @@ export function toPassportRow(
   row: PassportListRow,
   options: { viewerCompanyId?: string | null; ownerCompanyId: string; pendingFieldCount?: number }
 ) {
-  const { priceValue, priceCurrency, priceUnit, finishTags, compositions, certificates, ...rest } = row;
+  const { priceValue, priceCurrency, priceUnit, finishTags, careSymbols, compositions, certificates, ...rest } = row;
   const isOwner = !!options.viewerCompanyId && options.viewerCompanyId === options.ownerCompanyId;
   return {
     ...rest,
     finishTags: parseFinishTags(finishTags),
+    careSymbols: parseCareSymbols(careSymbols),
     composition: compositions.map((c) => ({ fiber: c.fiber, percent: c.percent })),
     certificateNames: certificates.map((c) => c.name),
     ...(isOwner ? { price: priceValue == null ? null : { value: priceValue, currency: priceCurrency, unit: priceUnit } } : {}),
@@ -293,7 +298,7 @@ export async function writeFieldMeta(
 type PassportColumnData = Partial<
   Pick<
     Prisma.ProductUncheckedCreateInput,
-    'widthType' | 'widthMeaning' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags' | 'originCountry' | 'careNotes' | 'recycledPercent'
+    'widthType' | 'widthMeaning' | 'moq' | 'moqUnit' | 'leadTimeDays' | 'priceValue' | 'priceCurrency' | 'priceUnit' | 'finishTags' | 'originCountry' | 'careNotes' | 'careSymbols' | 'recycledPercent'
   >
 >;
 
@@ -310,6 +315,11 @@ export function passportColumns(input: PassportFields): PassportColumnData {
   if (input.finishTags !== undefined) data.finishTags = JSON.stringify([...new Set(input.finishTags)]);
   if (input.originCountry !== undefined) data.originCountry = input.originCountry;
   if (input.careNotes !== undefined) data.careNotes = input.careNotes;
+  if (input.careSymbols !== undefined) {
+    const normalized = normalizeCareSymbols(input.careSymbols);
+    if (!normalized.ok) throw new PassportError('careSymbols', normalized.error);
+    data.careSymbols = JSON.stringify(normalized.keys);
+  }
   if (input.recycledPercent !== undefined) data.recycledPercent = input.recycledPercent;
   return data;
 }

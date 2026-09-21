@@ -2,6 +2,7 @@ import { Router } from 'express';
 import QRCode from 'qrcode';
 import { FINISH_TAGS, SUBTYPES, TYPE_LABELS, type ProductType } from '../catalog';
 import { prisma } from '../db';
+import { CARE_GROUPS, CARE_SYMBOLS, careSymbolsView, parseCareSymbols } from '../domain/care';
 import { certificateLabel, fiberLabel } from '../domain/glossary';
 import { optionalAuth } from '../middleware/auth';
 import { parseFinishTags } from '../passport';
@@ -33,6 +34,7 @@ const SELECT = {
   finishTags: true,
   originCountry: true,
   careNotes: true,
+  careSymbols: true,
   recycledPercent: true,
   passportUpdatedAt: true,
   createdAt: true,
@@ -59,7 +61,7 @@ export function readiness(p: Row) {
     { key: 'composition', label: 'Lif içeriği (yüzdeleriyle)', done: p.compositions.length > 0, weight: 25 },
     { key: 'origin', label: 'Menşe ülke', done: !!origin, weight: 20 },
     { key: 'certificates', label: 'Sertifika (numarasıyla)', done: p.certificates.some((c) => !!c.number), weight: 15 },
-    { key: 'care', label: 'Bakım / yıkama bilgisi', done: !!p.careNotes, weight: 10 },
+    { key: 'care', label: 'Bakım sembolleri', done: parseCareSymbols(p.careSymbols).length > 0 || !!p.careNotes, weight: 10 },
     { key: 'recycled', label: 'Geri dönüştürülmüş içerik oranı (yoksa 0)', done: p.recycledPercent != null, weight: 10 },
     { key: 'photo', label: 'Ürün fotoğrafı', done: p._count.images > 0, weight: 5 },
     { key: 'company', label: 'Firma doğrulaması', done: p.company.verification === 'dogrulanmis', weight: 5 },
@@ -108,8 +110,15 @@ function toDocument(p: Row) {
     certificates: p.certificates.map((c) => ({ name: c.name, label: certificateLabel(c.name), number: c.number, validUntil: c.validUntil })),
     testReports: p.testReports.map((t) => ({ kind: t.kind, result: t.result, testedAt: t.testedAt })),
     care: p.careNotes,
+    careSymbols: careSymbolsView(parseCareSymbols(p.careSymbols)),
   };
 }
+
+// Bakım sembolleri kataloğu (çizim tarifleriyle); form ve pasaport sayfası bunu kullanır.
+// '/:productId' rotasından ÖNCE tanımlı olmalı.
+dppRouter.get('/care-symbols', (_req, res) => {
+  res.json({ groups: CARE_GROUPS, symbols: CARE_SYMBOLS });
+});
 
 // Herkese açık pasaport verisi (QR sayfası ve JSON indirme bunu okur). Sahibi ayrıca eksik listesini alır.
 dppRouter.get(
