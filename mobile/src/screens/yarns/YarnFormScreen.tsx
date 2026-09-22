@@ -31,9 +31,26 @@ import {
   loadGalleryImage,
   replaceCachedProductImages,
 } from '../../features/products/productImageCache';
-import { MAX_CERTIFICATES, MAX_COMPOSITION_ROWS, MAX_PRODUCT_IMAGES } from '../../features/products/limits';
+import { MAX_CERTIFICATES, MAX_PRODUCT_IMAGES } from '../../features/products/limits';
 import { PRICE_CURRENCIES } from '../../features/products/catalog';
 import { CERTIFICATES, FIBERS } from '../../features/products/glossaryLabels';
+import { CompositionEditor } from '../../components/passport/CompositionEditor';
+import { CertificatesEditor } from '../../components/passport/CertificatesEditor';
+import {
+  certificateDateInvalid,
+  certificateIncomplete,
+  certificateInputs,
+  certificateRowsFrom,
+  compositionItems,
+  compositionRowsFrom,
+  compositionState,
+  emptyCertificateRow,
+  emptyCompositionRow,
+  newKey,
+  withCertificateImage,
+  type CertificateRow,
+  type CompositionRow,
+} from '../../components/passport/rows';
 import {
   optionValues,
   suggestedFiber,
@@ -60,44 +77,8 @@ interface PhotoItem {
   existing?: number;
 }
 
-interface CompositionRow {
-  key: string;
-  fiber: string;
-  percent: string;
-}
-
-type DocImage =
-  | { kind: 'none' }
-  | { kind: 'existing'; position: number; uri: string | null }
-  | { kind: 'new'; uri: string; dataUrl: string };
-
-interface CertificateRow {
-  key: string;
-  name: string;
-  number: string;
-  validUntil: string;
-  image: DocImage;
-}
-
-let rowSeq = 0;
-const newKey = (prefix: string) => `${prefix}-${++rowSeq}`;
-const emptyCompositionRow = (fiber = ''): CompositionRow => ({ key: newKey('lif'), fiber, percent: fiber ? '100' : '' });
-const emptyCertificateRow = (): CertificateRow => ({
-  key: newKey('sertifika'),
-  name: '',
-  number: '',
-  validUntil: '',
-  image: { kind: 'none' },
-});
-
-const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
-
 const PHOTO_SIZE = 96;
-const DOC_PHOTO_SIZE = 64;
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const FIBER_OPTIONS = FIBERS.map((f) => ({ value: f.key, label: f.label }));
-const CERTIFICATE_OPTIONS = CERTIFICATES.map((c) => ({ value: c.key, label: c.label }));
 const CURRENCY_OPTIONS = PRICE_CURRENCIES.map((value) => ({ value: value as string, label: value }));
 const TWIST_OPTIONS = [
   { value: '', label: 'Belirtilmemiş' },
@@ -194,7 +175,6 @@ export function YarnFormScreen({ navigation, route }: Props) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [photosDirty, setPhotosDirty] = useState(false);
   const [pickingImage, setPickingImage] = useState(false);
-  const [pickingDoc, setPickingDoc] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEditing);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -261,37 +241,17 @@ export function YarnFormScreen({ navigation, route }: Props) {
           setSellerRole(spec.sellerRole ?? '');
         }
 
-        setCompositionRows(
-          (product.composition ?? []).map((item) => ({
-            key: newKey('lif'),
-            fiber: item.fiber,
-            percent: toInputNumber(item.percent),
-          }))
-        );
+        setCompositionRows(compositionRowsFrom(product.composition ?? []));
 
         const certificates = product.certificates ?? [];
-        setCertificateRows(
-          certificates.map((c) => ({
-            key: newKey('sertifika'),
-            name: c.name,
-            number: c.number ?? '',
-            validUntil: toDateInput(c.validUntil),
-            image: c.hasImage ? { kind: 'existing', position: c.position, uri: null } : { kind: 'none' },
-          }))
-        );
+        setCertificateRows(certificateRowsFrom(certificates));
         setCertificateOpen(certificates.length > 0);
         for (const certificate of certificates) {
           if (!certificate.hasImage) continue;
           fetchCertificateImage(yarnId, certificate.position)
             .then(({ imageUrl }) => {
               if (cancelled) return;
-              setCertificateRows((prev) =>
-                prev.map((row) =>
-                  row.image.kind === 'existing' && row.image.position === certificate.position
-                    ? { ...row, image: { ...row.image, uri: imageUrl } }
-                    : row
-                )
-              );
+              setCertificateRows((prev) => withCertificateImage(prev, certificate.position, imageUrl));
             })
             .catch(() => {});
         }
@@ -384,53 +344,8 @@ export function YarnFormScreen({ navigation, route }: Props) {
     setPhotosDirty(true);
   };
 
-  // --- Karışım satırları ---
-  const updateCompositionRow = (key: string, patch: Partial<CompositionRow>) =>
-    setCompositionRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
-
-  const addCompositionRow = () => {
-    if (compositionRows.length >= MAX_COMPOSITION_ROWS) return;
-    haptics.selection();
-    setCompositionRows((prev) => [...prev, emptyCompositionRow()]);
-  };
-
-  const removeCompositionRow = (key: string) => {
-    haptics.selection();
-    setCompositionRows((prev) => prev.filter((row) => row.key !== key));
-  };
-
-  // --- Sertifika satırları ---
-  const updateCertificateRow = (key: string, patch: Partial<CertificateRow>) =>
-    setCertificateRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
-
-  const addCertificateRow = () => {
-    if (certificateRows.length >= MAX_CERTIFICATES) return;
-    haptics.selection();
-    setCertificateRows((prev) => [...prev, emptyCertificateRow()]);
-  };
-
-  const removeCertificateRow = (key: string) => {
-    haptics.selection();
-    setCertificateRows((prev) => prev.filter((row) => row.key !== key));
-  };
-
-  const addCertificatePhoto = async (key: string) => {
-    setPickingDoc(key);
-    setError(null);
-    try {
-      const picked = await pickCompressedImage();
-      if (!picked) return;
-      updateCertificateRow(key, { image: { kind: 'new', uri: picked.uri, dataUrl: picked.dataUrl } });
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
-      );
-    } finally {
-      setPickingDoc(null);
-    }
-  };
+  // Karışım ve sertifika satırları ortak bileşenlerde
+  // (components/passport/CompositionEditor, CertificatesEditor).
 
   // --- Etiketten doldur ---
   // Kural: yalnızca formda BOŞ olan alanlar doldurulur; kullanıcının elle
@@ -519,13 +434,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
     const hasComposition = compositionRows.some((row) => row.fiber || row.percent.trim());
     const newComposition = s.composition.filter((item) => FIBERS.some((f) => f.key === item.fiber));
     if (!hasComposition && newComposition.length) {
-      setCompositionRows(
-        newComposition.map((item) => ({
-          key: newKey('lif'),
-          fiber: item.fiber,
-          percent: toInputNumber(item.percent),
-        }))
-      );
+      setCompositionRows(compositionRowsFrom(newComposition));
       filled.push('karışım');
     } else if (s.compositionText && (hasComposition || !newComposition.length)) {
       leftovers.push(`Karışım metni forma aktarılmadı: ${s.compositionText}`);
@@ -608,24 +517,19 @@ export function YarnFormScreen({ navigation, route }: Props) {
   // --- Doğrulama ---
   const countNum = parseNumber(count);
   const stockNum = stock.trim() ? parseNumber(stock) : 0;
-  const filledCompositionRows = compositionRows.filter((row) => row.fiber || row.percent.trim());
-  const validCompositionRows = filledCompositionRows.filter(
-    (row) => row.fiber && parseNumber(row.percent) > 0 && parseNumber(row.percent) <= 100
-  );
-  const compositionTotal = validCompositionRows.reduce((sum, row) => sum + parseNumber(row.percent), 0);
-  const compositionIncomplete = filledCompositionRows.length !== validCompositionRows.length;
+  const {
+    valid: validCompositionRows,
+    total: compositionTotal,
+    incomplete: compositionIncomplete,
+  } = compositionState(compositionRows);
   // Sunucu karışım verilmişse toplamı 100 istiyor (400 composition_total_not_100).
   const compositionTotalWrong = validCompositionRows.length > 0 && Math.abs(compositionTotal - 100) > 0.5;
-  const certificateIncomplete = certificateRows.some((row) => !row.name);
-  const certificateDateInvalid = certificateRows.some(
-    (row) => row.validUntil.trim() && !DATE_PATTERN.test(row.validUntil.trim())
-  );
 
   const formErrors: string[] = [];
   if (compositionIncomplete) formErrors.push('Karışım satırlarında lif ve oranı birlikte doldurun (oran 0 ile 100 arası).');
   if (compositionTotalWrong) formErrors.push(`Karışım toplamı %${compositionTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}; 100 olmalı.`);
-  if (certificateIncomplete) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
-  if (certificateDateInvalid) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+  if (certificateIncomplete(certificateRows)) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
+  if (certificateDateInvalid(certificateRows)) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
 
   const canSubmit =
     !!user?.companyId &&
@@ -644,19 +548,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
     const moqNum = moq.trim() ? parseNumber(moq) : null;
     const leadNum = leadTimeDays.trim() ? Math.round(parseNumber(leadTimeDays)) : null;
     const priceNum = priceValue.trim() ? parseNumber(priceValue) : null;
-    const certificates: CertificateInput[] = certificateRows
-      .filter((row) => row.name)
-      .map((row) => ({
-        name: row.name,
-        number: row.number.trim(),
-        validUntil: row.validUntil.trim() ? row.validUntil.trim() : null,
-        image:
-          row.image.kind === 'new'
-            ? row.image.dataUrl
-            : row.image.kind === 'existing'
-              ? { existing: row.image.position }
-              : null,
-      }));
+    const certificates: CertificateInput[] = certificateInputs(certificateRows);
     return {
       code: code.trim(),
       stock: stockNum,
@@ -680,7 +572,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
       brand: brand.trim(),
       coneWeightKg: coneNum && coneNum > 0 ? coneNum : null,
       sellerRole,
-      composition: validCompositionRows.map((row) => ({ fiber: row.fiber, percent: parseNumber(row.percent) })),
+      composition: compositionItems(validCompositionRows),
       certificates,
       note: note.trim(),
       moq: moqNum,
@@ -1046,56 +938,16 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
         <SectionHeader title="Karışım" />
         <View style={[styles.block, styles.formBlock]}>
-          {compositionRows.length === 0 ? (
-            <Text style={styles.labelHint}>
-              Karışım girerseniz alıcılar life göre arayabilir. Girerseniz toplam 100 olmalı.
-            </Text>
-          ) : null}
-          {compositionRows.map((row, index) => (
-            <View key={row.key} style={styles.rowCard}>
-              <View style={styles.rowCardHead}>
-                <Text style={styles.rowCardTitle}>{index + 1}. lif</Text>
-                <Pressable
-                  onPress={() => removeCompositionRow(row.key)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${index + 1}. lif satırını kaldır`}
-                  style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                >
-                  <Ionicons name="close" size={18} color={colors.textMuted} />
-                </Pressable>
-              </View>
-              <ChipSelect
-                options={FIBER_OPTIONS}
-                value={row.fiber}
-                onChange={(fiber) => updateCompositionRow(row.key, { fiber })}
-                compact
-              />
-              <TextField
-                label="Oran (%)"
-                value={row.percent}
-                onChangeText={(percent) => updateCompositionRow(row.key, { percent })}
-                placeholder="Örn. 100"
-                keyboardType="numeric"
-              />
-            </View>
-          ))}
-          {compositionRows.length < MAX_COMPOSITION_ROWS ? (
-            <Pressable
-              onPress={addCompositionRow}
-              accessibilityRole="button"
-              accessibilityLabel="Lif satırı ekle"
-              style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-            >
-              <Ionicons name="add" size={18} color={colors.accent} />
-              <Text style={styles.addRowText}>Lif ekle</Text>
-            </Pressable>
-          ) : null}
-          {validCompositionRows.length ? (
-            <Text style={[styles.totalText, compositionTotalWrong && styles.totalWarning]}>
-              Toplam %{compositionTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
-            </Text>
-          ) : null}
+          <CompositionEditor
+            rows={compositionRows}
+            onChange={setCompositionRows}
+            hint={
+              compositionRows.length === 0
+                ? 'Karışım girerseniz alıcılar life göre arayabilir. Girerseniz toplam 100 olmalı.'
+                : undefined
+            }
+            totalWarning={compositionTotalWrong}
+          />
         </View>
 
         <SectionHeader title="Kullanım ve görünüm" />
@@ -1166,91 +1018,12 @@ export function YarnFormScreen({ navigation, route }: Props) {
           onToggle={() => setCertificateOpen((v) => !v)}
         >
           <View style={[styles.block, styles.formBlock]}>
-            {certificateRows.length === 0 ? (
-              <Text style={styles.labelHint}>Sertifika eklenen iplikler aramalarda öne çıkar.</Text>
-            ) : null}
-            {certificateRows.map((row, index) => (
-              <View key={row.key} style={styles.rowCard}>
-                <View style={styles.rowCardHead}>
-                  <Text style={styles.rowCardTitle}>{index + 1}. sertifika</Text>
-                  <Pressable
-                    onPress={() => removeCertificateRow(row.key)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${index + 1}. sertifika satırını kaldır`}
-                    style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                  >
-                    <Ionicons name="close" size={18} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-                <ChipSelect
-                  options={CERTIFICATE_OPTIONS}
-                  value={row.name}
-                  onChange={(name) => updateCertificateRow(row.key, { name })}
-                  compact
-                />
-                <TextField
-                  label="Belge no (isteğe bağlı)"
-                  value={row.number}
-                  onChangeText={(number) => updateCertificateRow(row.key, { number })}
-                  placeholder="Örn. 21.0.12345"
-                />
-                <TextField
-                  label="Geçerlilik tarihi (YYYY-AA-GG, isteğe bağlı)"
-                  value={row.validUntil}
-                  onChangeText={(validUntil) => updateCertificateRow(row.key, { validUntil })}
-                  placeholder="Örn. 2027-03-01"
-                  autoCapitalize="none"
-                />
-                <Text style={styles.label}>Belge fotoğrafı</Text>
-                <View style={styles.docRow}>
-                  {row.image.kind !== 'none' ? (
-                    row.image.uri ? (
-                      <Image source={{ uri: row.image.uri }} style={styles.docPhoto} />
-                    ) : (
-                      <View style={[styles.docPhoto, styles.photoLoading]}>
-                        <ActivityIndicator color={colors.chevron} />
-                      </View>
-                    )
-                  ) : (
-                    <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
-                      <Ionicons name="document-outline" size={20} color={colors.chevron} />
-                    </View>
-                  )}
-                  <View style={styles.docActions}>
-                    <PrimaryButton
-                      label={pickingDoc === row.key ? 'Seçiliyor...' : row.image.kind === 'none' ? 'Fotoğraf Ekle' : 'Değiştir'}
-                      variant="outline"
-                      onPress={() => addCertificatePhoto(row.key)}
-                      disabled={pickingDoc !== null}
-                      accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafı seç`}
-                    />
-                    {row.image.kind !== 'none' ? (
-                      <PrimaryButton
-                        label="Kaldır"
-                        variant="outline"
-                        onPress={() => {
-                          haptics.selection();
-                          updateCertificateRow(row.key, { image: { kind: 'none' } });
-                        }}
-                        accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafını kaldır`}
-                      />
-                    ) : null}
-                  </View>
-                </View>
-              </View>
-            ))}
-            {certificateRows.length < MAX_CERTIFICATES ? (
-              <Pressable
-                onPress={addCertificateRow}
-                accessibilityRole="button"
-                accessibilityLabel="Sertifika satırı ekle"
-                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-              >
-                <Ionicons name="add" size={18} color={colors.accent} />
-                <Text style={styles.addRowText}>Sertifika ekle</Text>
-              </Pressable>
-            ) : null}
+            <CertificatesEditor
+              rows={certificateRows}
+              onChange={setCertificateRows}
+              hint="Sertifika eklenen iplikler aramalarda öne çıkar."
+              onError={setError}
+            />
           </View>
         </CollapsibleSection>
 
@@ -1374,34 +1147,6 @@ const styles = StyleSheet.create({
   labelError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
   fieldRow: { flexDirection: 'row', gap: spacing.sm },
   fieldHalf: { flex: 1 },
-  rowCard: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  rowCardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  rowCardTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  rowRemove: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  rowRemovePressed: { backgroundColor: colors.pressed },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minHeight: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    marginBottom: spacing.md,
-  },
-  addRowPressed: { backgroundColor: colors.pressed },
-  addRowText: { ...typography.label, color: colors.accent },
-  totalText: { ...typography.label, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
-  totalWarning: { color: colors.warning },
   noteBox: {
     ...typography.caption,
     color: colors.textMuted,
@@ -1411,16 +1156,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom: spacing.md,
   },
-  docRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  docPhoto: { width: DOC_PHOTO_SIZE, height: DOC_PHOTO_SIZE, borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  docPhotoEmpty: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-  },
-  docActions: { flex: 1, flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   error: {
     ...typography.label,
     fontFamily: fonts.regular,

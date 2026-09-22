@@ -11,6 +11,27 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { CareSymbolPicker } from '../../components/CareSymbolPicker';
 import { ListRow } from '../../components/ListRow';
+import { CompositionEditor } from '../../components/passport/CompositionEditor';
+import { CertificatesEditor } from '../../components/passport/CertificatesEditor';
+import {
+  certificateDateInvalid,
+  certificateIncomplete,
+  certificateInputs,
+  certificateRowsFrom,
+  compositionItems,
+  compositionRowsFrom,
+  compositionState,
+  docImageInput,
+  emptyCompositionRow,
+  newKey,
+  pickDocImage,
+  splitCompositionText,
+  toDateInput,
+  withCertificateImage,
+  type CertificateRow,
+  type CompositionRow,
+  type DocImage,
+} from '../../components/passport/rows';
 import { useSession } from '../../context/SessionContext';
 import {
   ApiError,
@@ -71,8 +92,6 @@ import {
   type StockUnit,
 } from '../../features/products/catalog';
 import {
-  CERTIFICATES,
-  FIBERS,
   WIDTH_MEANINGS,
   WIDTH_MEANING_LABELS,
   WIDTH_TYPES,
@@ -96,12 +115,8 @@ interface PhotoItem {
 }
 
 // Pasaport satırları metin olarak tutuluyor (kullanıcı "15," yazarken
-// silinmesin diye); kaydederken sayıya çevriliyor.
-interface CompositionRow {
-  key: string;
-  fiber: string;
-  percent: string;
-}
+// silinmesin diye); kaydederken sayıya çevriliyor. Kompozisyon ve sertifika
+// satırlarının tipleri iplik formuyla ortak (components/passport/rows.ts).
 
 interface YarnRow {
   key: string;
@@ -110,21 +125,6 @@ interface YarnRow {
   unit: string;
   ply: string;
   yarnType: string;
-}
-
-// Belge fotoğrafı üç durumdan biri: yok · sunucudaki eski sıradaki · yeni seçilen.
-type DocImage =
-  | { kind: 'none' }
-  | { kind: 'existing'; position: number; uri: string | null }
-  | { kind: 'new'; uri: string; dataUrl: string };
-
-interface CertificateRow {
-  key: string;
-  name: string;
-  number: string;
-  // Kullanıcının yazdığı biçim: YYYY-AA-GG (boş bırakılabilir).
-  validUntil: string;
-  image: DocImage;
 }
 
 interface TestReportRow {
@@ -166,11 +166,6 @@ const WIDTH_TYPE_OPTIONS: { value: string; label: string }[] = [
 const WIDTH_MEANING_OPTIONS: { value: string; label: string }[] = WIDTH_MEANINGS.map((value) => ({
   value,
   label: WIDTH_MEANING_LABELS[value],
-}));
-const FIBER_OPTIONS: { value: string; label: string }[] = FIBERS.map((f) => ({ value: f.key, label: f.label }));
-const CERTIFICATE_OPTIONS: { value: string; label: string }[] = CERTIFICATES.map((c) => ({
-  value: c.key,
-  label: c.label,
 }));
 const YARN_ROLE_OPTIONS: { value: string; label: string }[] = YARN_ROLES.map((r) => ({ value: r.key, label: r.label }));
 const YARN_UNIT_OPTIONS: { value: string; label: string }[] = YARN_UNITS.map((u) => ({ value: u.key, label: u.label }));
@@ -219,18 +214,7 @@ function extractErrorMessage(err: unknown) {
   return 'Etiket okunamadı, tekrar deneyin ya da elle girin.';
 }
 
-let rowSeq = 0;
-const newKey = (prefix: string) => `${prefix}-${++rowSeq}`;
-
-const emptyCompositionRow = (): CompositionRow => ({ key: newKey('lif'), fiber: '', percent: '' });
 const emptyYarnRow = (): YarnRow => ({ key: newKey('iplik'), role: '', count: '', unit: 'ne', ply: '1', yarnType: '' });
-const emptyCertificateRow = (): CertificateRow => ({
-  key: newKey('sertifika'),
-  name: '',
-  number: '',
-  validUntil: '',
-  image: { kind: 'none' },
-});
 const emptyTestReportRow = (): TestReportRow => ({
   key: newKey('rapor'),
   kind: '',
@@ -238,25 +222,6 @@ const emptyTestReportRow = (): TestReportRow => ({
   testedAt: '',
   image: { kind: 'none' },
 });
-
-// Sunucudan gelen ISO tarihi form alanına: "2027-03-01T00:00:00.000Z" → "2027-03-01".
-const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
-
-// Eski serbest içerik metnini ("%95 Pamuk %5 Elastan") satırlara böler.
-// Yalnızca TÜM parçalar tanınan life oturursa kabul edilir; tanınmayan bir şey
-// varsa kullanıcı satırları kendisi doldursun (sunucu da kaydederken deniyor).
-function splitCompositionText(text: string): CompositionRow[] {
-  const matches = [...text.matchAll(/%\s*(\d+(?:[.,]\d+)?)\s*([^%\d]+)/g)];
-  if (!matches.length) return [];
-  const rows: CompositionRow[] = [];
-  for (const match of matches) {
-    const name = match[2].trim().toLocaleLowerCase('tr-TR');
-    const fiber = FIBERS.find((f) => f.label.toLocaleLowerCase('tr-TR') === name || f.key === name);
-    if (!fiber) return [];
-    rows.push({ key: newKey('lif'), fiber: fiber.key, percent: match[1].replace('.', ',') });
-  }
-  return rows.slice(0, MAX_COMPOSITION_ROWS);
-}
 
 // Ürün kartı formu: çoklu fotoğraf, çeşit → alt çeşit, kullanım amaçları,
 // metre/kg stok ve kumaş pasaportu (kompozisyon, ticari bilgiler, iplik,
@@ -454,13 +419,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         const composition = product.composition ?? [];
         if (composition.length) {
           setCompositionRowMode(true);
-          setCompositionRows(
-            composition.map((item) => ({
-              key: newKey('lif'),
-              fiber: item.fiber,
-              percent: toInputNumber(item.percent),
-            }))
-          );
+          setCompositionRows(compositionRowsFrom(composition));
         } else {
           setCompositionRowMode(false);
           setCompositionRows([]);
@@ -508,15 +467,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         setYarnOpen(yarns.length > 0);
 
         const certificates = product.certificates ?? [];
-        setCertificateRows(
-          certificates.map((c) => ({
-            key: newKey('sertifika'),
-            name: c.name,
-            number: c.number ?? '',
-            validUntil: toDateInput(c.validUntil),
-            image: c.hasImage ? { kind: 'existing', position: c.position, uri: null } : { kind: 'none' },
-          }))
-        );
+        setCertificateRows(certificateRowsFrom(certificates));
         setCertificateOpen(certificates.length > 0);
         // Mevcut belge fotoğrafları yalnızca önizleme için çekiliyor;
         // kaydederken sıraları gönderiliyor, kendileri yeniden yüklenmiyor.
@@ -525,13 +476,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           fetchCertificateImage(productId, certificate.position)
             .then(({ imageUrl }) => {
               if (cancelled) return;
-              setCertificateRows((prev) =>
-                prev.map((row) =>
-                  row.image.kind === 'existing' && row.image.position === certificate.position
-                    ? { ...row, image: { ...row.image, uri: imageUrl } }
-                    : row
-                )
-              );
+              setCertificateRows((prev) => withCertificateImage(prev, certificate.position, imageUrl));
             })
             .catch(() => {});
         }
@@ -763,13 +708,7 @@ export function AddProductScreen({ navigation, route }: Props) {
     if (values.composition?.length) {
       // Kompozisyon geldiyse form satır kipine geçer.
       setCompositionRowMode(true);
-      setCompositionRows(
-        values.composition.slice(0, MAX_COMPOSITION_ROWS).map((item) => ({
-          key: newKey('lif'),
-          fiber: item.fiber,
-          percent: toInputNumber(item.percent),
-        }))
-      );
+      setCompositionRows(compositionRowsFrom(values.composition.slice(0, MAX_COMPOSITION_ROWS)));
     }
 
     if (values.weightGsm != null) setWeightGsm(toInputNumber(values.weightGsm));
@@ -801,7 +740,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           name: certificate.name,
           number: certificate.number,
           validUntil: toDateInput(certificate.validUntil),
-          image: { kind: 'none' },
+          image: { kind: 'none' } as DocImage,
         }))
       );
       setCertificateOpen(true);
@@ -855,22 +794,9 @@ export function AddProductScreen({ navigation, route }: Props) {
     setPhotosDirty(true);
   };
 
-  // --- Kompozisyon satırları ---
-  const updateCompositionRow = (key: string, patch: Partial<CompositionRow>) => {
-    setCompositionRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
-    forgetExtracted('composition');
-  };
-
-  const addCompositionRow = () => {
-    if (compositionRows.length >= MAX_COMPOSITION_ROWS) return;
-    haptics.selection();
-    setCompositionRows((prev) => [...prev, emptyCompositionRow()]);
-    forgetExtracted('composition');
-  };
-
-  const removeCompositionRow = (key: string) => {
-    haptics.selection();
-    setCompositionRows((prev) => prev.filter((row) => row.key !== key));
+  // --- Kompozisyon satırları (editör ortak: components/passport) ---
+  const changeCompositionRows = (rows: CompositionRow[]) => {
+    setCompositionRows(rows);
     forgetExtracted('composition');
   };
 
@@ -901,42 +827,11 @@ export function AddProductScreen({ navigation, route }: Props) {
     forgetExtracted('yarns');
   };
 
-  // --- Sertifika satırları ---
-  const updateCertificateRow = (key: string, patch: Partial<CertificateRow>) => {
-    setCertificateRows((prev) => prev.map((row) => (row.key === key ? { ...row, ...patch } : row)));
+  // --- Sertifika satırları (editör ortak: components/passport) ---
+  const changeCertificateRows = (rows: CertificateRow[], change?: 'image') => {
+    setCertificateRows(rows);
     // Belge fotoğrafı eklemek çıkarım değerini değiştirmez.
-    if (!('image' in patch)) forgetExtracted('certificates');
-  };
-
-  const addCertificateRow = () => {
-    if (certificateRows.length >= MAX_CERTIFICATES) return;
-    haptics.selection();
-    setCertificateRows((prev) => [...prev, emptyCertificateRow()]);
-    forgetExtracted('certificates');
-  };
-
-  const removeCertificateRow = (key: string) => {
-    haptics.selection();
-    setCertificateRows((prev) => prev.filter((row) => row.key !== key));
-    forgetExtracted('certificates');
-  };
-
-  const addCertificatePhoto = async (key: string) => {
-    setPickingDoc(key);
-    setError(null);
-    try {
-      const picked = await pickCompressedImage();
-      if (!picked) return;
-      updateCertificateRow(key, { image: { kind: 'new', uri: picked.uri, dataUrl: picked.dataUrl } });
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
-      );
-    } finally {
-      setPickingDoc(null);
-    }
+    if (change !== 'image') forgetExtracted('certificates');
   };
 
   // --- Test raporu satırları ---
@@ -958,19 +853,14 @@ export function AddProductScreen({ navigation, route }: Props) {
   const addTestReportPhoto = async (key: string) => {
     setPickingDoc(key);
     setError(null);
-    try {
-      const picked = await pickCompressedImage();
-      if (!picked) return;
-      updateTestReportRow(key, { image: { kind: 'new', uri: picked.uri, dataUrl: picked.dataUrl } });
-    } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
-      );
-    } finally {
-      setPickingDoc(null);
+    const result = await pickDocImage();
+    setPickingDoc(null);
+    if (!result) return;
+    if ('error' in result) {
+      setError(result.error);
+      return;
     }
+    updateTestReportRow(key, { image: result.image });
   };
 
   // --- Doğrulama ---
@@ -989,20 +879,16 @@ export function AddProductScreen({ navigation, route }: Props) {
         : `Hesap eni: ${formatMeasure(widthCmNum)} cm`
       : '';
 
-  const filledCompositionRows = compositionRows.filter((row) => row.fiber || row.percent.trim());
-  const validCompositionRows = filledCompositionRows.filter(
-    (row) => row.fiber && parseNumber(row.percent) > 0 && parseNumber(row.percent) <= 100
-  );
-  const compositionTotal = validCompositionRows.reduce((sum, row) => sum + parseNumber(row.percent), 0);
-  const compositionIncomplete = compositionRowMode && filledCompositionRows.length !== validCompositionRows.length;
+  const {
+    valid: validCompositionRows,
+    total: compositionTotal,
+    incomplete: compositionRowsIncomplete,
+  } = compositionState(compositionRows);
+  const compositionIncomplete = compositionRowMode && compositionRowsIncomplete;
   const hasComposition = compositionRowMode && validCompositionRows.length > 0;
 
   const filledYarnRows = yarnRows.filter((row) => row.count.trim());
   const yarnIncomplete = filledYarnRows.some((row) => parseNumber(row.count) <= 0 || !row.unit);
-  const certificateIncomplete = certificateRows.some((row) => !row.name);
-  const certificateDateInvalid = certificateRows.some(
-    (row) => row.validUntil.trim() && !DATE_PATTERN.test(row.validUntil.trim())
-  );
 
   // Türü boş ama başka bir alanı doldurulmuş satır kaydedilemez (sunucu kind
   // zorunlu tutuyor); tamamen boş satır sessizce atılır.
@@ -1017,8 +903,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   const formErrors: string[] = [];
   if (compositionIncomplete) formErrors.push('Kompozisyon satırlarında lif ve yüzdeyi birlikte doldurun (yüzde 0 ile 100 arası).');
   if (yarnIncomplete) formErrors.push('İplik satırlarında numara sıfırdan büyük olmalı ve birim seçilmeli.');
-  if (certificateIncomplete) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
-  if (certificateDateInvalid) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+  if (certificateIncomplete(certificateRows)) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
+  if (certificateDateInvalid(certificateRows))
+    formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
   if (testReportIncomplete) formErrors.push('Her test raporu satırında test türünü yazın.');
   if (testReportDateInvalid) formErrors.push('Test tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
   // AB pasaportuna hazırlık: oran 0-100 arası (0 geçerli, boş "belirtilmedi").
@@ -1050,31 +937,14 @@ export function AddProductScreen({ navigation, route }: Props) {
       ply: Math.max(1, Math.round(parseNumber(row.ply) || 1)),
       yarnType: row.yarnType,
     }));
-    const certificates: CertificateInput[] = certificateRows
-      .filter((row) => row.name)
-      .map((row) => ({
-        name: row.name,
-        number: row.number.trim(),
-        validUntil: row.validUntil.trim() ? row.validUntil.trim() : null,
-        image:
-          row.image.kind === 'new'
-            ? row.image.dataUrl
-            : row.image.kind === 'existing'
-              ? { existing: row.image.position }
-              : null,
-      }));
+    const certificates: CertificateInput[] = certificateInputs(certificateRows);
     const testReports: TestReportInput[] = filledTestReportRows
       .filter((row) => row.kind.trim())
       .map((row) => ({
         kind: row.kind.trim(),
         result: row.result.trim(),
         testedAt: row.testedAt.trim() ? row.testedAt.trim() : null,
-        image:
-          row.image.kind === 'new'
-            ? row.image.dataUrl
-            : row.image.kind === 'existing'
-              ? { existing: row.image.position }
-              : null,
+        image: docImageInput(row.image),
       }));
     // Çıkarımdan gelip forma aktarılan ve elle değiştirilmemiş alanlar; sunucu
     // ProductFieldMeta satırını onaylanmış olarak yazar. Boşsa gönderilmez.
@@ -1104,14 +974,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         : {}),
     };
     return {
-      ...(hasComposition
-        ? {
-            composition: validCompositionRows.map((row) => ({
-              fiber: row.fiber,
-              percent: parseNumber(row.percent),
-            })),
-          }
-        : {}),
+      ...(hasComposition ? { composition: compositionItems(validCompositionRows) } : {}),
       yarns,
       certificates,
       testReports,
@@ -1244,7 +1107,6 @@ export function AddProductScreen({ navigation, route }: Props) {
     { value: '', label: 'Belirtilmemiş' },
     ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label })),
   ];
-  const totalText = compositionTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
 
   return (
     <View style={styles.screen}>
@@ -1477,53 +1339,14 @@ export function AddProductScreen({ navigation, route }: Props) {
           <Text style={styles.label}>Kompozisyon</Text>
           {compositionRowMode ? (
             <>
-              <Text style={styles.labelHint}>Her satırda bir lif ve oranı. Toplam genelde 100 olur.</Text>
-              {compositionRows.map((row, index) => (
-                <View key={row.key} style={styles.rowCard}>
-                  <View style={styles.rowCardHead}>
-                    <Text style={styles.rowCardTitle}>{index + 1}. lif</Text>
-                    <Pressable
-                      onPress={() => removeCompositionRow(row.key)}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${index + 1}. lif satırını kaldır`}
-                      style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                    >
-                      <Ionicons name="close" size={18} color={colors.textMuted} />
-                    </Pressable>
-                  </View>
-                  <ChipSelect
-                    options={FIBER_OPTIONS}
-                    value={row.fiber}
-                    onChange={(fiber) => updateCompositionRow(row.key, { fiber })}
-                    compact
-                  />
-                  <TextField
-                    label="Oran (%)"
-                    value={row.percent}
-                    onChangeText={(percent) => updateCompositionRow(row.key, { percent })}
-                    placeholder="Örn. 95"
-                    keyboardType="numeric"
-                  />
-                </View>
-              ))}
-              {compositionRows.length < MAX_COMPOSITION_ROWS ? (
-                <Pressable
-                  onPress={addCompositionRow}
-                  accessibilityRole="button"
-                  accessibilityLabel="Lif satırı ekle"
-                  style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-                >
-                  <Ionicons name="add" size={18} color={colors.accent} />
-                  <Text style={styles.addRowText}>Lif ekle</Text>
-                </Pressable>
-              ) : null}
-              {validCompositionRows.length ? (
-                <Text style={[styles.totalText, compositionTotal !== 100 && styles.totalWarning]}>
-                  Toplam %{totalText}
-                  {compositionTotal !== 100 ? ' (genelde 100 olur, yine de kaydedebilirsiniz)' : ''}
-                </Text>
-              ) : null}
+              <CompositionEditor
+                rows={compositionRows}
+                onChange={changeCompositionRows}
+                hint="Her satırda bir lif ve oranı. Toplam genelde 100 olur."
+                percentPlaceholder="Örn. 95"
+                totalWarning={compositionTotal !== 100}
+                totalSuffix={compositionTotal !== 100 ? ' (genelde 100 olur, yine de kaydedebilirsiniz)' : ''}
+              />
               {/* Listede olmayan bir lif ya da serbest bir açıklama gerekiyorsa metne dönüş. */}
               <Pressable
                 onPress={() => {
@@ -1743,91 +1566,14 @@ export function AddProductScreen({ navigation, route }: Props) {
           onToggle={() => setCertificateOpen((v) => !v)}
         >
           <View style={[styles.block, styles.formBlock]}>
-            {certificateRows.length === 0 ? (
-              <Text style={styles.labelHint}>Sertifika eklenen ürünler aramalarda öne çıkar.</Text>
-            ) : null}
-            {certificateRows.map((row, index) => (
-              <View key={row.key} style={styles.rowCard}>
-                <View style={styles.rowCardHead}>
-                  <Text style={styles.rowCardTitle}>{index + 1}. sertifika</Text>
-                  <Pressable
-                    onPress={() => removeCertificateRow(row.key)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${index + 1}. sertifika satırını kaldır`}
-                    style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                  >
-                    <Ionicons name="close" size={18} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-                <ChipSelect
-                  options={CERTIFICATE_OPTIONS}
-                  value={row.name}
-                  onChange={(name) => updateCertificateRow(row.key, { name })}
-                  compact
-                />
-                <TextField
-                  label="Belge no (isteğe bağlı)"
-                  value={row.number}
-                  onChangeText={(number) => updateCertificateRow(row.key, { number })}
-                  placeholder="Örn. 21.0.12345"
-                />
-                <TextField
-                  label="Geçerlilik tarihi (YYYY-AA-GG, isteğe bağlı)"
-                  value={row.validUntil}
-                  onChangeText={(validUntil) => updateCertificateRow(row.key, { validUntil })}
-                  placeholder="Örn. 2027-03-01"
-                  autoCapitalize="none"
-                />
-                <Text style={styles.label}>Belge fotoğrafı</Text>
-                <View style={styles.docRow}>
-                  {row.image.kind !== 'none' ? (
-                    row.image.uri ? (
-                      <Image source={{ uri: row.image.uri }} style={styles.docPhoto} />
-                    ) : (
-                      <View style={[styles.docPhoto, styles.photoLoading]}>
-                        <ActivityIndicator color={colors.chevron} />
-                      </View>
-                    )
-                  ) : (
-                    <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
-                      <Ionicons name="document-outline" size={20} color={colors.chevron} />
-                    </View>
-                  )}
-                  <View style={styles.docActions}>
-                    <PrimaryButton
-                      label={pickingDoc === row.key ? 'Seçiliyor...' : row.image.kind === 'none' ? 'Fotoğraf Ekle' : 'Değiştir'}
-                      variant="outline"
-                      onPress={() => addCertificatePhoto(row.key)}
-                      disabled={pickingDoc !== null}
-                      accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafı seç`}
-                    />
-                    {row.image.kind !== 'none' ? (
-                      <PrimaryButton
-                        label="Kaldır"
-                        variant="outline"
-                        onPress={() => {
-                          haptics.selection();
-                          updateCertificateRow(row.key, { image: { kind: 'none' } });
-                        }}
-                        accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafını kaldır`}
-                      />
-                    ) : null}
-                  </View>
-                </View>
-              </View>
-            ))}
-            {certificateRows.length < MAX_CERTIFICATES ? (
-              <Pressable
-                onPress={addCertificateRow}
-                accessibilityRole="button"
-                accessibilityLabel="Sertifika satırı ekle"
-                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-              >
-                <Ionicons name="add" size={18} color={colors.accent} />
-                <Text style={styles.addRowText}>Sertifika ekle</Text>
-              </Pressable>
-            ) : null}
+            <CertificatesEditor
+              rows={certificateRows}
+              onChange={changeCertificateRows}
+              hint="Sertifika eklenen ürünler aramalarda öne çıkar."
+              onError={setError}
+              picking={pickingDoc}
+              onPickingChange={setPickingDoc}
+            />
           </View>
         </CollapsibleSection>
 
@@ -2113,8 +1859,6 @@ const styles = StyleSheet.create({
   textLink: { minHeight: 44, justifyContent: 'center', marginBottom: spacing.sm },
   textLinkPressed: { opacity: 0.6 },
   textLinkLabel: { ...typography.label, color: colors.accent },
-  totalText: { ...typography.label, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
-  totalWarning: { color: colors.warning },
   noteBox: {
     ...typography.caption,
     color: colors.textMuted,

@@ -4,6 +4,8 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
 
+- 2026-09-22: **İki teknik temizlik tamamlandı.** (1) Eski `Product.imageUrl` sütunu kaldırıldı (1074003; kopyası olmayan kayıt varsa önce ProductImage'a alınır; canlıda 4 Melide ürünü ve fotoğrafları doğrulandı). (2) Kumaş ve iplik formlarındaki tekrar eden bileşim/sertifika editörleri `components/passport/` altında tek nüshaya indi (−640 satır; gönderilen gövde değişmedi; tarayıcıda iki formda satır ekle/kaldır denendi). **Telefonda kontrol bekliyor:** sertifika belge fotoğrafı seçme.
+
 Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu listedir. Bir iş kapanınca buradan silinir.
 
 **A. Fırat'ta bekleyenler**
