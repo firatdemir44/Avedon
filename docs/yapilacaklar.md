@@ -13,7 +13,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu listedir. Bir iş kapanınca buradan silinir.
 
 **A. Fırat'ta bekleyenler**
-1. **SMS başvurusu (İleti Merkezi):** kod + `/api/health` `sms` teşhisi hazır. Başlık onayı şirket evrakı + KEP + e-Devlet BTK e-Kayıt ister (1-2 iş günü). Adımlar ve destek sorusu: `docs/sms-saglayici.md`. Hangi şirket adına başvurulacağı Fırat kararı.
+1. ~~SMS başvurusu (İleti Merkezi)~~ **TAMAMLANDI 2026-09-22:** başlık MELIDE onaylandı, Render'da `ILETIMERKEZI_SENDER=MELIDE`; Fırat gerçek numarayla giriş yaptı, kod geldi (`/api/health` sms: 200, hata yok). SMS girişi canlıda açık → dış firmalar davet edilebilir.
 2. **Gerçek WhatsApp numarası / SIM:** şu an Meta test numarası (en çok 5 alıcı).
 3. **Telefonda kontrol:** Faz 2 (bildirim/izleme, teklif, Asistana sor, makine parkı, referanslar, iplik dizini) ve Faz 3 Adım 1-2 (çoklu teklif, karşılaştırma, asistanla teklif toplama). Adres: https://avedon-blond.vercel.app
 4. **Melide'nin ilk 3 ürünü:** kompozisyon satırları için bir kez açılıp kaydedilmeli.
