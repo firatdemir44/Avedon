@@ -1,24 +1,30 @@
+// Katalog / arama ekranı — yeni tasarım sistemi (DESIGN.md, artboard 2).
+// Düzen: AppBar "Katalog" (sağda fotoğrafla ara + süzgeç) · 48px arama kutusu ·
+// kapsam ve çeşit çipleri · "N sonuç" + sıralama · ProductCard listesi.
+// Veri/işlev katmanı (api çağrıları, süzgeç, izleme, teklif seçimi, iplik
+// dizini, sayfa parametreleri) eski sürümden aynen korunur; yalnızca görünüm
+// yeniden çizildi. Ham hex / ham px yok: her değer useTheme() token'ından.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, FlatList, Pressable, RefreshControl, TextInput } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { ApiError, createWatchRule, fetchProductList, searchCompanies } from '../../api/client';
 import { mockProducts } from '../../data/mockProducts';
 import { useSession } from '../../context/SessionContext';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState } from '../../components/StateView';
-import { refreshControl } from '../../components/refresh';
-import { ProductRow } from '../../components/ProductRow';
-import { ProductThumbnail } from '../../components/ProductThumbnail';
-import { ListRow } from '../../components/ListRow';
-import { SectionHeader } from '../../components/SectionHeader';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SearchField } from '../../components/SearchField';
 import { haptics } from '../../features/haptics';
-import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, USAGES, typeLabel, type ProductType } from '../../features/products/catalog';
+import { formatMeasure } from '../../features/calculators/parse';
+import { formatComposition } from '../../features/products/glossaryLabels';
+import {
+  PRODUCT_TYPES,
+  SUBTYPES,
+  categoryLabel,
+  TYPE_LABELS,
+  USAGES,
+  isYarnType,
+  typeLabel,
+  type ProductType,
+} from '../../features/products/catalog';
 import {
   EMPTY_FILTERS,
   activeFilterChips,
@@ -26,25 +32,48 @@ import {
   watchQueryFromFilters,
   type ProductFilters,
 } from '../../features/products/filters';
-import { RfqSelectionBar } from '../../components/RfqSelectionBar';
 import { useRfqSelection, type RfqSelectionItem } from '../../features/quotes/rfqSelection';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { YarnDirectory } from '../yarns/YarnDirectoryScreen';
 import type { Company, Product } from '../../types';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  BottomSheet,
+  Button,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  ListRow,
+  ProductCard,
+  Screen,
+  SectionTitle,
+  Skeleton,
+} from '../../ui';
 
 type Props = MainTabScreenProps<'ProductList'>;
 
 // Kullanıcı isteği (2026-09-15): ürünler ya tek akışta ("Tümü") ya da kumaş
-// çeşidine göre klasörlerde ("Çeşitler") görülebilsin; seçim hatırlanır.
-// Aşama A: klasör içinde alt çeşit çipleri, kullanım amacı kısayolları, filtreler.
+// çeşidine göre ("Çeşitler") görülebilsin; seçim hatırlanır. Yeni tasarımda
+// klasör listesi yerine çeşit ÇİPLERİ var, mantık aynı.
 type ViewMode = 'all' | 'groups';
 const VIEW_MODE_KEY = 'avedon.productListViewMode';
 
-// Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. "Kumaş" mevcut katalog
-// (GET /api/products artık iplik döndürmüyor), "İplik" iplik dizini
-// (GET /api/yarns). Seçim cihazda hatırlanır, görünüm seçimi gibi.
+// Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. "Kumaş" mevcut katalog,
+// "İplik" iplik dizini. Seçim cihazda hatırlanır.
 type Domain = 'kumas' | 'iplik';
 const DOMAIN_KEY = 'avedon.productListDomain';
+
+// Sıralama yalnızca GÖRÜNÜM işidir: sunucuya gitmez, eldeki liste sıralanır.
+type SortKey = 'onerilen' | 'gramaj' | 'en' | 'stok';
+const SORT_LABELS: Record<SortKey, string> = {
+  onerilen: 'Önerilen',
+  gramaj: 'Gramaja göre',
+  en: 'Ene göre',
+  stok: 'Stoğa göre',
+};
 
 // Sunucuya ulaşılamazsa örnek veri; filtrelerin en temel ikisi uygulanır.
 function filterMock(search: string, filters: ProductFilters) {
@@ -56,9 +85,44 @@ function filterMock(search: string, filters: ProductFilters) {
   );
 }
 
-// Taslak: docs/tasarim-yonleri/CUrunler.dc.html. Üstte beyaz arama çubuğu
-// (yanında filtre ve "Firmam"), altta gri aralıktan sonra çizgili ürün satırları.
+// Kart özellik satırı: "165 gr/m² · 160 cm · %94 PES %6 EA" (DESIGN.md §3).
+// İplikte gramaj/en 0'dır, onun yerine ipliğin kendi özeti yazılır.
+function specsOf(product: Product): string {
+  if (isYarnType(product.type)) return product.yarn?.summary || product.content;
+  const composition = product.composition ?? [];
+  const content = composition.length ? formatComposition(composition) : product.content;
+  return [`${formatMeasure(product.weightGsm)} gr/m²`, `${formatMeasure(product.widthCm)} cm`, content]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+// Kapak fotoğrafı liste yanıtında gelmiyor; önbellekten / tek tek çekilir.
+function useProductImage(productId: string, hasImage: boolean) {
+  const [uri, setUri] = useState<string | null>(() => getCachedProductImage(productId) ?? null);
+  useEffect(() => {
+    if (!hasImage) return;
+    const cached = getCachedProductImage(productId);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(productId)
+      .then((url) => {
+        if (!cancelled) setUri(url);
+      })
+      .catch(() => {
+        // Fotoğraf gelmezse kart yer tutucuyla çalışır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, hasImage]);
+  return uri;
+}
+
 export function ProductListScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<ProductFilters>(EMPTY_FILTERS);
@@ -70,20 +134,19 @@ export function ProductListScreen({ navigation, route }: Props) {
   const [viewMode, setViewMode] = useState<ViewMode>('all');
   const [domain, setDomain] = useState<Domain>('kumas');
   const [openType, setOpenType] = useState<ProductType | null>(null);
-  // null: klasördeki tüm ürünler · '': alt çeşidi belirtilmemiş olanlar
+  // null: çeşidin tüm ürünleri · '': alt çeşidi belirtilmemiş olanlar
   const [openSubtype, setOpenSubtype] = useState<string | null>(null);
   // "Bu aramayı izle" sonucu: kısa onay ya da açıklama (Faz 2, Adım 1).
   const [watchNote, setWatchNote] = useState<{ text: string; tone: 'ok' | 'error' } | null>(null);
   const [watchSaving, setWatchSaving] = useState(false);
+  const [sort, setSort] = useState<SortKey>('onerilen');
+  const [sortOpen, setSortOpen] = useState(false);
   // Çoklu teklif isteme (Faz 3, Adım 1): "Teklif için seç" kipi.
   const selection = useRfqSelection();
   const queryRef = useRef(query);
   queryRef.current = query;
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
-
-  // Başlık ortak bileşende (components/MainHeader): profil · "Arama Yap" · zil.
-  // Ekranın kendi arama kutusu ve süzgeçleri katalog içi aramadır, aynen kalır.
 
   // Genel aramadaki "Tümünü gör" bu ekranı arama metniyle açar.
   const initialSearchKey = route.params?.searchKey;
@@ -132,11 +195,16 @@ export function ProductListScreen({ navigation, route }: Props) {
 
   const changeViewMode = (mode: ViewMode) => {
     if (mode === viewMode) return;
-    haptics.selection();
     setViewMode(mode);
-    setOpenType(null);
-    setOpenSubtype(null);
     AsyncStorage.setItem(VIEW_MODE_KEY, mode).catch(() => {});
+  };
+
+  // Çeşit çipi: "Tümü" tek akış, bir çeşit seçilince o çeşidin klasörü açılır.
+  const chooseType = (next: ProductType | null) => {
+    haptics.selection();
+    setOpenType(next);
+    setOpenSubtype(null);
+    changeViewMode(next === null ? 'all' : 'groups');
   };
 
   // pull: aşağı çekip yenileme — liste yerinde kalır, üstte gösterge döner.
@@ -201,15 +269,9 @@ export function ProductListScreen({ navigation, route }: Props) {
 
   const typeGroups = useMemo(
     () =>
-      PRODUCT_TYPES.map((type) => {
-        const items = products.filter((p) => p.type === type);
-        return {
-          type,
-          count: items.length,
-          cover: items.find((p) => p.hasImage) ?? null,
-          subtypeCount: new Set(items.map((p) => p.subtype).filter(Boolean)).size,
-        };
-      }).filter((g) => g.count > 0),
+      PRODUCT_TYPES.map((type) => ({ type, count: products.filter((p) => p.type === type).length })).filter(
+        (g) => g.count > 0
+      ),
     [products]
   );
 
@@ -225,15 +287,16 @@ export function ProductListScreen({ navigation, route }: Props) {
     if (!openType) return [];
     const inType = products.filter((p) => p.type === openType);
     const known = SUBTYPES[openType]
-      .map((s) => ({ key: s.key, label: s.label, count: inType.filter((p) => p.subtype === s.key).length }))
+      .map((s) => ({ key: s.key as string | null, label: s.label, count: inType.filter((p) => p.subtype === s.key).length }))
       .filter((g) => g.count > 0);
     const unspecified = inType.filter((p) => !p.subtype || !SUBTYPES[openType].some((s) => s.key === p.subtype)).length;
-    return unspecified > 0 && known.length > 0 ? [...known, { key: '', label: 'Belirtilmemiş', count: unspecified }] : known;
+    return unspecified > 0 && known.length > 0
+      ? [...known, { key: '' as string | null, label: 'Belirtilmemiş', count: unspecified }]
+      : known;
   }, [products, openType]);
 
-  const showFolders = viewMode === 'groups' && openType === null && !query.trim();
   const inOpenFolder = viewMode === 'groups' && openType !== null;
-  const visibleProducts = inOpenFolder
+  const filtered = inOpenFolder
     ? products.filter(
         (p) =>
           p.type === openType &&
@@ -244,14 +307,30 @@ export function ProductListScreen({ navigation, route }: Props) {
       )
     : products;
 
-  const refresh = refreshControl(refreshing, () =>
-    loadProducts(queryRef.current, filtersRef.current, { cancelled: false }, true)
+  // Sıralama yalnızca görünüm: "Önerilen" sunucunun verdiği sırayı korur.
+  const visibleProducts = useMemo(() => {
+    if (sort === 'onerilen') return filtered;
+    const copy = [...filtered];
+    if (sort === 'gramaj') copy.sort((a, b) => (a.weightGsm ?? 0) - (b.weightGsm ?? 0));
+    else if (sort === 'en') copy.sort((a, b) => (a.widthCm ?? 0) - (b.widthCm ?? 0));
+    else copy.sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0));
+    return copy;
+    // filtered her hesaplamada yeni dizi; içeriği products/süzgeçten türüyor.
+  }, [filtered, sort]);
+
+  const refresh = (
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => loadProducts(queryRef.current, filtersRef.current, { cancelled: false }, true)}
+      colors={[t.colors.brand]}
+      tintColor={t.colors.brand}
+      progressBackgroundColor={t.colors.surface1}
+    />
   );
 
   const openFilters = () => navigation.navigate('ProductFilters', { filters });
 
-  // Etkin süzgeci (ve arama metnini) izleme kuralına çevirir. Ad verilmiyor:
-  // sunucu süzgeçten okunur bir ad üretiyor.
+  // Etkin süzgeci (ve arama metnini) izleme kuralına çevirir.
   const watchCurrentSearch = async () => {
     if (watchSaving) return;
     const watchQuery = watchQueryFromFilters(query, filters);
@@ -287,138 +366,239 @@ export function ProductListScreen({ navigation, route }: Props) {
     setFilters((prev) => ({ ...prev, usages: [key] }));
   };
 
-  const viewToggle = (
-    <View style={styles.toggleBar} accessibilityRole="tablist">
-      {(
-        [
-          { mode: 'all', label: 'Tümü', icon: 'list-outline' },
-          { mode: 'groups', label: 'Çeşitler', icon: 'folder-outline' },
-        ] as const
-      ).map((option) => {
-        const selected = viewMode === option.mode;
-        return (
+  // "Bu aramayı izle" arama kutusunda en az iki karakter varken de çıkar.
+  const canWatchSearch = query.trim().length >= 2;
+
+  // --- Görünüm parçaları -----------------------------------------------------
+
+  const gutter = { paddingHorizontal: t.space[4] } as const;
+
+  const searchBox = (
+    <View
+      style={[
+        gutter,
+        { flexDirection: 'row', alignItems: 'center', gap: t.space[2] },
+      ]}
+    >
+      <View
+        style={{
+          flex: 1,
+          minWidth: 0,
+          height: t.size.control,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          paddingHorizontal: t.space[3],
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.colors.lineStrong,
+          backgroundColor: t.colors.surface1,
+        }}
+      >
+        <Icon name="search" size={t.size.iconSm} color="ink3" />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Kod, içerik, çeşit, kullanım ara"
+          placeholderTextColor={t.colors.ink3}
+          accessibilityLabel="Ürün ve firma ara"
+          returnKeyType="search"
+          style={[t.type.body16, { flex: 1, minWidth: 0, color: t.colors.ink, paddingVertical: 0 }]}
+        />
+        {query.length > 0 ? (
           <Pressable
-            key={option.mode}
-            onPress={() => changeViewMode(option.mode)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={option.mode === 'all' ? 'Tüm ürünler tek listede' : 'Ürünler çeşide göre klasörlerde'}
-            style={({ pressed }) => [
-              styles.toggleOption,
-              selected && styles.toggleSelected,
-              pressed && !selected && styles.togglePressed,
-            ]}
+            onPress={() => setQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel="Aramayı temizle"
+            hitSlop={t.space[2]}
+            style={{ width: t.space[6], height: t.space[6], alignItems: 'center', justifyContent: 'center' }}
           >
-            <Ionicons name={option.icon} size={18} color={selected ? colors.primaryText : colors.textMuted} />
-            <Text style={[styles.toggleText, selected && styles.toggleTextSelected]}>{option.label}</Text>
+            <Icon name="x" size={t.size.iconSm} color="ink2" />
           </Pressable>
-        );
-      })}
-      {/* Faz 3, Adım 1: birkaç firmaya birden sormak için seçim kipi. */}
+        ) : null}
+      </View>
+    </View>
+  );
+
+  // Kapsam çipleri: Kumaş | İplik (+ teklif seçim kipi ve giriş gerektiren kısayollar).
+  const scopeChips = (
+    <ChipRow style={gutter}>
+      <Chip label="Kumaş" icon="fabric" selected={domain === 'kumas'} onPress={() => changeDomain('kumas')} />
+      <Chip label="İplik" icon="yarn" selected={domain === 'iplik'} onPress={() => changeDomain('iplik')} />
       {user ? (
-        <Pressable
+        <Chip
+          label={selection.active ? 'Seçmeyi bırak' : 'Teklif için seç'}
+          icon={selection.active ? 'x' : 'check'}
+          selected={selection.active}
           onPress={() => {
             haptics.selection();
             if (selection.active) selection.cancel();
             else selection.start();
           }}
-          accessibilityRole="button"
-          accessibilityState={{ selected: selection.active }}
-          accessibilityLabel={
-            selection.active ? 'Teklif için seçmeyi bırak' : 'Teklif için ürün seç, birkaç firmaya birden sor'
-          }
-          style={({ pressed }) => [
-            styles.selectButton,
-            selection.active && styles.toggleSelected,
-            pressed && !selection.active && styles.togglePressed,
-          ]}
-        >
-          <Ionicons
-            name={selection.active ? 'close' : 'checkbox-outline'}
-            size={20}
-            color={selection.active ? colors.primaryText : colors.primary}
-          />
-        </Pressable>
+        />
       ) : null}
-    </View>
+      {user ? (
+        <Chip label="Fason kapasite" icon="machine" onPress={() => navigation.navigate('CapacitySearch')} />
+      ) : null}
+      {user?.companyId ? (
+        <Chip label="Firmam" icon="user" onPress={() => navigation.navigate('CompanyProfile')} />
+      ) : null}
+    </ChipRow>
   );
 
-  // "Bu aramayı izle" yalnızca süzgeç seçiliyken değil, arama kutusuna en az
-  // iki karakter yazıldığında da çıkar: sunucu kuralın gövdesinde
-  // `query: { search: '...' }` kabul ediyor (watchQueryFromFilters aramayı
-  // tek başına da kurala çeviriyor).
-  const canWatchSearch = query.trim().length >= 2;
-  const filterChipsBar =
+  // Çeşit çipleri (eski "Tümü | Çeşitler" seçimi + klasörler).
+  const typeChips =
+    typeGroups.length > 0 ? (
+      <ChipRow style={gutter}>
+        <Chip label="Tümü" selected={!inOpenFolder} onPress={() => chooseType(null)} />
+        {typeGroups.map((g) => (
+          <Chip
+            key={g.type}
+            label={`${TYPE_LABELS[g.type]} (${g.count})`}
+            selected={inOpenFolder && openType === g.type}
+            onPress={() => chooseType(g.type)}
+          />
+        ))}
+      </ChipRow>
+    ) : null;
+
+  const subtypeChips =
+    inOpenFolder && subtypeGroups.length > 0 ? (
+      <ChipRow style={gutter}>
+        {[{ key: null as string | null, label: 'Hepsi' }, ...subtypeGroups].map((g) => (
+          <Chip
+            key={g.key ?? 'hepsi'}
+            label={g.label}
+            selected={openSubtype === g.key}
+            onPress={() => {
+              haptics.selection();
+              setOpenSubtype(g.key);
+            }}
+          />
+        ))}
+      </ChipRow>
+    ) : null;
+
+  const usageChips =
+    !inOpenFolder && usageGroups.length > 0 && filters.usages.length === 0 ? (
+      <ChipRow style={gutter}>
+        {usageGroups.map((g) => (
+          <Chip key={g.key} label={`${g.label} (${g.count})`} onPress={() => applyUsageShortcut(g.key)} />
+        ))}
+      </ChipRow>
+    ) : null;
+
+  // Etkin süzgeçler + temizle + "bu aramayı izle".
+  const filterChips =
     chips.length > 0 || canWatchSearch ? (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipsBar}
-        contentContainerStyle={styles.chipsContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <ChipRow style={gutter}>
         {chips.map((chip) => (
-          <Pressable
+          <Chip
             key={chip.key}
+            label={chip.label}
+            icon="x"
+            selected
             onPress={() => {
               haptics.selection();
               setFilters((prev) => chip.remove(prev));
             }}
-            accessibilityRole="button"
-            accessibilityLabel={`${chip.label} filtresini kaldır`}
-            style={({ pressed }) => [styles.activeChip, pressed && styles.activeChipPressed]}
-          >
-            <Text style={styles.activeChipText}>{chip.label}</Text>
-            <Ionicons name="close" size={15} color={colors.primary} />
-          </Pressable>
+          />
         ))}
         {chips.length > 0 ? (
-          <Pressable
+          <Chip
+            label="Temizle"
             onPress={() => {
               haptics.selection();
               setFilters(EMPTY_FILTERS);
             }}
-            accessibilityRole="button"
-            accessibilityLabel="Tüm filtreleri temizle"
-            style={({ pressed }) => [styles.clearChip, pressed && styles.pressedFade]}
-          >
-            <Text style={styles.clearChipText}>Temizle</Text>
-          </Pressable>
+          />
         ) : null}
-        {/* Faz 2, Adım 1: etkin süzgeci izlemeye alma kısayolu. */}
-        <Pressable
-          onPress={() => void watchCurrentSearch()}
+        <Chip
+          label={watchSaving ? 'Kuruluyor…' : 'Bu aramayı izle'}
+          icon="bookmark-outline"
           disabled={watchSaving}
-          accessibilityRole="button"
-          accessibilityLabel="Bu aramayı izle, uyan yeni ürün çıkınca haber ver"
-          accessibilityState={{ disabled: watchSaving }}
-          style={({ pressed }) => [styles.watchChip, pressed && styles.pressedFade]}
-        >
-          <Ionicons name="bookmark-outline" size={15} color={colors.primary} />
-          <Text style={styles.watchChipText}>{watchSaving ? 'Kuruluyor...' : 'Bu aramayı izle'}</Text>
-        </Pressable>
-      </ScrollView>
+          onPress={() => void watchCurrentSearch()}
+        />
+      </ChipRow>
     ) : null;
+
+  // Ekran içi ince uyarı satırı (çevrimdışı, izleme notu, seçim ipucu).
+  const notice = (text: string, tone: 'ok' | 'error' | 'info') => (
+    <View
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
+      style={[
+        gutter,
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          paddingVertical: t.space[2],
+        },
+      ]}
+    >
+      <Icon
+        name={tone === 'error' ? 'warning' : tone === 'ok' ? 'check' : 'info'}
+        size={t.size.iconSm}
+        color={tone === 'error' ? 'danger' : tone === 'ok' ? 'success' : 'ink2'}
+      />
+      <Text
+        style={[
+          t.type.body14,
+          { flex: 1, color: tone === 'error' ? t.colors.danger : tone === 'ok' ? t.colors.success : t.colors.ink2 },
+        ]}
+      >
+        {text}
+      </Text>
+    </View>
+  );
+
+  const resultBar = (
+    <View
+      style={[
+        gutter,
+        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[2] },
+      ]}
+    >
+      <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]} numberOfLines={1}>
+        {`${visibleProducts.length} sonuç`}
+        {filters.stockMin !== undefined || filters.stockUnit ? ' · stokta olanlar' : ''}
+      </Text>
+      <Pressable
+        onPress={() => setSortOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Sıralama: ${SORT_LABELS[sort]}, değiştir`}
+        style={({ pressed }) => ({
+          minHeight: t.size.touchMin,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[1],
+          paddingHorizontal: t.space[2],
+          marginRight: -t.space[2],
+          borderRadius: t.radius.md,
+          backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+        })}
+      >
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{SORT_LABELS[sort]}</Text>
+        <Icon name="chevron-down-outline" size={t.size.iconSm} color="brand" />
+      </Pressable>
+    </View>
+  );
 
   const companiesHeader =
     companies.length > 0 ? (
-      <View>
-        <SectionHeader title="Firmalar" first />
-        <View style={styles.block}>
+      <View style={{ gap: t.space[2], paddingBottom: t.space[4] }}>
+        <SectionTitle title="Firmalar" style={gutter} />
+        <View style={gutter}>
           {companies.map((c, index) => (
             <ListRow
               key={c.id}
               title={c.name}
-              left={
-                <CompanyAvatar
-                  name={c.name}
-                  verification={c.verification}
-                  size={36}
-                  companyId={c.id}
-                  logoUpdatedAt={c.logoUpdatedAt}
-                />
-              }
+              subtitle={c.verification === 'dogrulanmis' ? 'Doğrulanmış firma' : undefined}
+              avatarName={c.name}
+              avatarKind="company"
               divider={index < companies.length - 1}
+              right={c.verification === 'dogrulanmis' ? <Badge kind="verified" /> : undefined}
               onPress={() => navigation.navigate('CompanyProfile', { companyId: c.id })}
             />
           ))}
@@ -426,87 +606,11 @@ export function ProductListScreen({ navigation, route }: Props) {
       </View>
     ) : null;
 
-  const openFolderHeader = inOpenFolder ? (
-    <View style={styles.block}>
-      <Pressable
-        onPress={() => {
-          haptics.selection();
-          setOpenType(null);
-          setOpenSubtype(null);
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={`${TYPE_LABELS[openType!]} klasöründen çık, tüm çeşitlere dön`}
-        style={({ pressed }) => [styles.folderBack, pressed && styles.rowPressed]}
-      >
-        <Ionicons name="chevron-back" size={20} color={colors.primary} />
-        <Ionicons name="folder-open-outline" size={20} color={colors.primary} />
-        <Text style={styles.folderBackTitle}>{TYPE_LABELS[openType!]}</Text>
-        <Text style={styles.folderBackCount}>{visibleProducts.length} ürün</Text>
-      </Pressable>
-      {subtypeGroups.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.subtypeStrip}
-          style={styles.subtypeStripWrap}
-        >
-          {[{ key: null as string | null, label: 'Tümü', count: products.filter((p) => p.type === openType).length }, ...subtypeGroups].map(
-            (group) => {
-              const selected = openSubtype === group.key;
-              return (
-                <Pressable
-                  key={group.key ?? 'tumu'}
-                  onPress={() => {
-                    haptics.selection();
-                    setOpenSubtype(group.key);
-                  }}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${group.label}, ${group.count} ürün`}
-                  style={({ pressed }) => [styles.subtypeChip, selected && styles.subtypeChipSelected, pressed && !selected && styles.togglePressed]}
-                >
-                  <Text style={[styles.subtypeChipText, selected && styles.toggleTextSelected]}>{group.label}</Text>
-                  <Text style={[styles.subtypeChipCount, selected && styles.toggleTextSelected]}>{group.count}</Text>
-                </Pressable>
-              );
-            }
-          )}
-        </ScrollView>
-      ) : null}
-    </View>
-  ) : null;
-
-  const usageShortcuts =
-    usageGroups.length > 0 && filters.usages.length === 0 ? (
-      <View>
-        <SectionHeader title="Kullanım amacına göre" first />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.block}
-          contentContainerStyle={styles.usageStrip}
-        >
-          {usageGroups.map((group) => (
-            <Pressable
-              key={group.key}
-              onPress={() => applyUsageShortcut(group.key)}
-              accessibilityRole="button"
-              accessibilityLabel={`${group.label} kumaşlar, ${group.count} ürün`}
-              style={({ pressed }) => [styles.usageChip, pressed && styles.togglePressed]}
-            >
-              <Text style={styles.usageChipText}>{group.label}</Text>
-              <Text style={styles.usageChipCount}>{group.count}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-    ) : null;
-
   const emptyState = query.trim() ? (
     <EmptyState
-      icon="search-outline"
+      icon="search"
       title="Sonuç bulunamadı"
-      message={
+      description={
         companies.length > 0
           ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
           : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, çeşit veya kullanım amacıyla deneyin.`
@@ -516,228 +620,237 @@ export function ProductListScreen({ navigation, route }: Props) {
     />
   ) : chips.length > 0 ? (
     <EmptyState
-      icon="options-outline"
+      icon="filter"
       title="Filtreye uyan ürün yok"
-      message="Filtrelerden birkaçını kaldırarak tekrar deneyin."
+      description="Filtrelerden birkaçını kaldırarak tekrar deneyin."
       actionLabel="Filtreleri temizle"
       onAction={() => setFilters(EMPTY_FILTERS)}
     />
   ) : (
-    <EmptyState icon="cube-outline" title="Henüz ürün yok" message="Üreticiler ürün ekledikçe katalog burada dolacak." />
+    <EmptyState icon="sample" title="Henüz ürün yok" description="Üreticiler ürün ekledikçe katalog burada dolacak." />
   );
 
-  // Faz 2, Adım 6: "Kumaş | İplik" ayrımı en üstte, arama çubuğunun üstünde —
-  // hangi katalogda olduğunuz her şeyden önce görünsün.
-  const domainBar = (
-    <View style={styles.domainBar} accessibilityRole="tablist">
-      {(
-        [
-          { key: 'kumas', label: 'Kumaş', icon: 'layers-outline' },
-          { key: 'iplik', label: 'İplik', icon: 'git-commit-outline' },
-        ] as const
-      ).map((option) => {
-        const selected = domain === option.key;
-        return (
-          <Pressable
-            key={option.key}
-            onPress={() => changeDomain(option.key)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={option.key === 'kumas' ? 'Kumaş kataloğu' : 'İplik dizini'}
-            style={({ pressed }) => [
-              styles.domainOption,
-              selected && styles.domainSelected,
-              pressed && !selected && styles.togglePressed,
-            ]}
-          >
-            <Ionicons name={option.icon} size={18} color={selected ? colors.primary : colors.textMuted} />
-            <Text style={[styles.domainText, selected && styles.domainTextSelected]}>{option.label}</Text>
-          </Pressable>
-        );
-      })}
+  const skeleton = (
+    <View style={[gutter, { gap: t.space[3] }]}>
+      {[0, 1, 2, 3].map((i) => (
+        <View
+          key={i}
+          style={{
+            flexDirection: 'row',
+            gap: t.space[3],
+            padding: t.space[4],
+            borderRadius: t.radius.lg,
+            borderWidth: 1,
+            borderColor: t.colors.line,
+            backgroundColor: t.colors.surface1,
+          }}
+        >
+          <Skeleton width={t.size.thumb} height={t.size.thumb} />
+          <View style={{ flex: 1, gap: t.space[2] }}>
+            <Skeleton width="70%" height={t.space[4]} />
+            <Skeleton width="45%" height={t.space[3]} />
+            <Skeleton width="85%" height={t.space[3]} />
+          </View>
+        </View>
+      ))}
     </View>
   );
 
+  const appBar = (
+    <AppBar
+      title="Katalog"
+      leading="none"
+      actions={[
+        ...(user
+          ? [
+              {
+                icon: 'camera' as const,
+                label: 'Fotoğrafla benzer kumaş ara',
+                onPress: () => navigation.navigate('SimilarSearch'),
+              },
+            ]
+          : []),
+        {
+          icon: 'filter' as const,
+          label: chips.length ? `Süzgeçler, ${chips.length} süzgeç etkin` : 'Süzgeçler',
+          onPress: openFilters,
+          dot: chips.length > 0,
+        },
+      ]}
+    />
+  );
+
+  // Teklif seçim şeridi (RfqSelectionBar'ın token'lara uydurulmuş yerel sürümü).
+  const canSubmitRfq = selection.companyCount >= 2;
+  const rfqBar = selection.active ? (
+    <View style={{ gap: t.space[2] }}>
+      <Text style={[t.type.label14, { color: t.colors.ink }]}>
+        {selection.items.length} ürün · {selection.companyCount} firma seçildi
+      </Text>
+      {!canSubmitRfq ? (
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>En az 2 farklı firmadan ürün seçin.</Text>
+      ) : null}
+      {selection.hasDuplicateCompany ? (
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+          Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.
+        </Text>
+      ) : null}
+      {selection.manyCompanies ? (
+        <Text style={[t.type.body14, { color: t.colors.warning }]}>
+          5'ten fazla firmaya sorunca cevap oranı düşebilir.
+        </Text>
+      ) : null}
+      {selection.limitNote ? (
+        <Text style={[t.type.body14, { color: t.colors.danger }]} accessibilityLiveRegion="polite">
+          {selection.limitNote}
+        </Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+        <Button kind="secondary" label="Vazgeç" onPress={selection.cancel} />
+        <Button
+          label="Teklif iste"
+          disabled={!canSubmitRfq}
+          accessibilityLabel={`Teklif iste, ${selection.companyCount} firma`}
+          onPress={() => navigation.navigate('RfqForm', { items: selection.items })}
+          style={{ flex: 1 }}
+        />
+      </View>
+    </View>
+  ) : null;
+
+  // İplik dizini kısayolu: kapsam çipi "İplik" iken aynı ekranın içinde açılır.
   if (domain === 'iplik') {
     return (
-      <View style={styles.container}>
-        {domainBar}
-        <YarnDirectory
-          onOpenProduct={(id) => navigation.navigate('ProductDetail', { productId: id })}
-          onAddYarn={user?.companyId ? () => navigation.navigate('YarnForm') : undefined}
-          onRfqSubmit={(items) => navigation.navigate('RfqForm', { items })}
-        />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {appBar}
+        <View style={{ paddingTop: t.space[3] }}>{scopeChips}</View>
+        <View style={{ flex: 1 }}>
+          <YarnDirectory
+            onOpenProduct={(id) => navigation.navigate('ProductDetail', { productId: id })}
+            onAddYarn={user?.companyId ? () => navigation.navigate('YarnForm') : undefined}
+            onRfqSubmit={(items) => navigation.navigate('RfqForm', { items })}
+          />
+        </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {domainBar}
-      <View style={styles.searchBar}>
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Kod, içerik, çeşit, kullanım ara"
-          accessibilityLabel="Ürün ve firma ara"
-          style={styles.searchField}
-        />
-        <Pressable
-          onPress={openFilters}
-          accessibilityRole="button"
-          accessibilityLabel={chips.length ? `Filtrele, ${chips.length} filtre etkin` : 'Filtrele'}
-          style={({ pressed }) => [styles.filterButton, chips.length > 0 && styles.filterButtonActive, pressed && styles.togglePressed]}
-        >
-          <Ionicons name="options-outline" size={22} color={chips.length ? colors.primaryText : colors.primary} />
-          {chips.length > 0 ? (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{chips.length}</Text>
-            </View>
-          ) : null}
-        </Pressable>
-        {/* Faz 3, Adım 3: elindeki kumaşın fotoğrafıyla benzerini bulma.
-            Oturum şart olduğu için giriş yapılmamışken gizli. */}
-        {user ? (
-          <Pressable
-            onPress={() => navigation.navigate('SimilarSearch')}
-            accessibilityRole="button"
-            accessibilityLabel="Fotoğrafla benzer kumaş ara"
-            style={({ pressed }) => [styles.filterButton, pressed && styles.togglePressed]}
-          >
-            <Ionicons name="camera-outline" size={22} color={colors.primary} />
-          </Pressable>
-        ) : null}
-        {/* Faz 2, Adım 5: fason kapasite araması. 2026-09-22'de profil
-            menüsünden kaldırıldı, tek girişi burası. */}
-        {user ? (
-          <Pressable
-            onPress={() => navigation.navigate('CapacitySearch')}
-            accessibilityRole="button"
-            accessibilityLabel="Fason kapasite ara"
-            style={({ pressed }) => [styles.filterButton, pressed && styles.togglePressed]}
-          >
-            <Ionicons name="hardware-chip-outline" size={22} color={colors.primary} />
-          </Pressable>
-        ) : null}
-        {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
-            doğrudan ilgili kısayol kalıyor. */}
-        {user?.companyId ? (
-          <PrimaryButton
-            label="Firmam"
-            variant="outline"
-            onPress={() => navigation.navigate('CompanyProfile')}
-            style={styles.myCompany}
-          />
-        ) : null}
-      </View>
-      {viewToggle}
-      {selection.active ? (
-        <Text style={styles.selectHint} accessibilityLiveRegion="polite">
-          Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.
-        </Text>
-      ) : null}
-      {filterChipsBar}
-      {watchNote ? (
-        <Text
-          style={[styles.watchNote, watchNote.tone === 'error' && styles.watchNoteError]}
-          accessibilityLiveRegion="polite"
-        >
-          {watchNote.text}
-        </Text>
-      ) : null}
-      {offline ? <Text style={styles.offlineNotice}>Sunucuya ulaşılamadı, örnek veriler gösteriliyor.</Text> : null}
-      {loading && products.length === 0 ? (
-        <SkeletonList variant="product" />
-      ) : showFolders ? (
-        <FlatList
-          data={typeGroups}
-          keyExtractor={(item) => item.type}
-          contentContainerStyle={styles.listContent}
-          refreshControl={refresh}
-          ListHeaderComponent={
-            <View>
-              {usageShortcuts}
-              <SectionHeader title="Kumaş çeşitleri" count={typeGroups.length} first={!usageShortcuts} />
-            </View>
-          }
-          ListEmptyComponent={emptyState}
-          renderItem={({ item, index }) => (
-            <ListRow
-              title={TYPE_LABELS[item.type]}
-              subtitle={item.subtypeCount > 0 ? `${item.count} ürün · ${item.subtypeCount} alt çeşit` : `${item.count} ürün`}
-              left={
-                item.cover ? (
-                  <ProductThumbnail productId={item.cover.id} hasImage size={44} />
-                ) : (
-                  <View style={styles.folderIcon}>
-                    <Ionicons name="folder" size={22} color={colors.primary} />
-                  </View>
-                )
-              }
-              divider={index < typeGroups.length - 1}
-              accessibilityLabel={`${TYPE_LABELS[item.type]} klasörü, ${item.count} ürün`}
-              onPress={() => {
-                haptics.selection();
-                setOpenType(item.type);
-                setOpenSubtype(null);
-              }}
-            />
-          )}
-        />
-      ) : (
-        <FlatList
-          data={visibleProducts}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={refresh}
-          ListHeaderComponent={
-            <View>
-              {companiesHeader}
-              {openFolderHeader ? <View style={styles.blockGap} /> : null}
-              {openFolderHeader}
-              {companiesHeader ? (
-                <SectionHeader title="Ürünler" count={visibleProducts.length} />
-              ) : (
-                <View style={styles.blockGap} />
-              )}
-            </View>
-          }
-          ListEmptyComponent={emptyState}
-          renderItem={({ item, index }) => {
-            // Kendi firmanızın ürününe teklif istenmez: seçim kipinde de
-            // işaretlenemez, dokununca ürün sayfası açılır.
-            const selectable = selection.active && !!user && user.companyId !== item.companyId;
-            return (
-              <ProductRow
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {appBar}
+      <Screen scroll={false} noPadding contentStyle={{ gap: t.space[3] }} sticky={rfqBar}>
+        {searchBox}
+        {scopeChips}
+        {typeChips}
+        {subtypeChips}
+        {usageChips}
+        {filterChips}
+        {selection.active
+          ? notice('Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.', 'info')
+          : null}
+        {watchNote ? notice(watchNote.text, watchNote.tone) : null}
+        {offline ? notice('Sunucuya ulaşılamadı, örnek veriler gösteriliyor.', 'error') : null}
+        {resultBar}
+        {loading && products.length === 0 ? (
+          skeleton
+        ) : (
+          <FlatList
+            style={{ flex: 1 }}
+            data={visibleProducts}
+            keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={refresh}
+            contentContainerStyle={{ gap: t.space[3], paddingBottom: t.space[10] }}
+            ListHeaderComponent={companiesHeader}
+            ListEmptyComponent={emptyState}
+            renderItem={({ item }) => (
+              <CatalogCard
                 product={item}
-                divider={index < visibleProducts.length - 1}
-                selectable={selectable}
-                selected={selection.selectedIds.has(item.id)}
-                onPress={() => {
-                  if (!selectable) {
-                    navigation.navigate('ProductDetail', { productId: item.id });
-                    return;
-                  }
-                  haptics.selection();
-                  selection.toggle(toSelectionItem(item));
-                }}
-                onRequestSample={
-                  user && user.companyId !== item.companyId
-                    ? () => navigation.navigate('SampleRequestForm', { productId: item.id, productCode: item.code })
-                    : undefined
-                }
+                selection={selection}
+                canSelect={!!user && user.companyId !== item.companyId}
+                onOpen={() => navigation.navigate('ProductDetail', { productId: item.id })}
               />
-            );
-          }}
-        />
-      )}
-      {selection.active ? (
-        <RfqSelectionBar
-          selection={selection}
-          onSubmit={() => navigation.navigate('RfqForm', { items: selection.items })}
-        />
-      ) : null}
+            )}
+          />
+        )}
+      </Screen>
+
+      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title="Sıralama">
+        {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+          <Pressable
+            key={key}
+            onPress={() => {
+              haptics.selection();
+              setSort(key);
+              setSortOpen(false);
+            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sort === key }}
+            style={({ pressed }) => ({
+              minHeight: t.size.touchMin,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+            })}
+          >
+            <Text style={[t.type.body16, { color: t.colors.ink }]}>{SORT_LABELS[key]}</Text>
+            {sort === key ? <Icon name="check" size={t.size.iconSm} color="brand" /> : null}
+          </Pressable>
+        ))}
+      </BottomSheet>
+    </View>
+  );
+}
+
+// Liste öğesi: ProductCard + seçim kipi. Fotoğraf hook'u kart başına çalıştığı
+// için ayrı bileşen (hook koşullu çağrılamaz).
+function CatalogCard({
+  product,
+  selection,
+  canSelect,
+  onOpen,
+}: {
+  product: Product;
+  selection: ReturnType<typeof useRfqSelection>;
+  // Kendi firmanızın ürününe teklif istenmez.
+  canSelect: boolean;
+  onOpen: () => void;
+}) {
+  const t = useTheme();
+  const imageUri = useProductImage(product.id, product.hasImage);
+  const selectable = selection.active && canSelect;
+  const selected = selection.selectedIds.has(product.id);
+
+  const card = (
+    <ProductCard
+      name={categoryLabel(product.type, product.subtype ?? '')}
+      code={product.code}
+      specs={specsOf(product)}
+      companyName={product.company?.name}
+      companyVerified={product.company?.verification === 'dogrulanmis'}
+      imageUri={imageUri}
+      onPress={() => {
+        if (!selectable) {
+          onOpen();
+          return;
+        }
+        haptics.selection();
+        selection.toggle(toSelectionItem(product));
+      }}
+      style={[
+        { marginHorizontal: t.space[4] },
+        selectable && selected ? { borderColor: t.colors.brand, backgroundColor: t.colors.brandSoft } : null,
+      ]}
+    />
+  );
+
+  if (!selectable) return card;
+  return (
+    <View accessibilityState={{ checked: selected }} style={{ minWidth: 0 }}>
+      {card}
     </View>
   );
 }
@@ -753,190 +866,3 @@ export function toSelectionItem(product: Product): RfqSelectionItem {
     type: product.type,
   };
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  // Kumaş | İplik ayrımı: beyaz şerit içinde iki eşit sekme, seçili olanın
-  // altında lacivert çizgi (görünüm seçimindeki dolu düğmelerden ayrılsın).
-  domainBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  domainOption: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  domainSelected: { borderBottomColor: colors.primary },
-  domainText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  domainTextSelected: { color: colors.primary },
-  searchBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-    paddingBottom: spacing.sm,
-  },
-  searchField: { flex: 1 },
-  myCompany: { paddingHorizontal: spacing.gutter },
-  filterButton: {
-    width: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-  filterButtonActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    minWidth: 20,
-    height: 20,
-    borderRadius: radius.pill,
-    backgroundColor: colors.notification,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  filterBadgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
-  toggleBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  toggleOption: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  toggleSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  selectButton: {
-    width: MIN_TOUCH,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  selectHint: {
-    ...typography.caption,
-    color: colors.primary,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 6,
-  },
-  togglePressed: { backgroundColor: colors.pressed },
-  toggleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  toggleTextSelected: { color: colors.primaryText },
-  chipsBar: { flexGrow: 0, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  chipsContent: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm, alignItems: 'center' },
-  activeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minHeight: 36,
-    paddingHorizontal: 10,
-    borderRadius: radius.md,
-    backgroundColor: colors.accentSoft,
-  },
-  activeChipPressed: { backgroundColor: colors.pressed },
-  activeChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  clearChip: { minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.xs },
-  clearChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
-  pressedFade: { opacity: 0.6 },
-  watchChip: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: spacing.xs },
-  watchChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  watchNote: {
-    ...typography.caption,
-    color: colors.success,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 6,
-  },
-  watchNoteError: { color: colors.danger, backgroundColor: colors.dangerSoft },
-  offlineNotice: {
-    ...typography.caption,
-    color: colors.danger,
-    backgroundColor: colors.dangerSoft,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 6,
-  },
-  listContent: { paddingBottom: spacing.xl },
-  blockGap: { height: spacing.blockGap },
-  block: { backgroundColor: colors.surface },
-  folderIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  folderBack: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: 52,
-    paddingHorizontal: spacing.gutter,
-    backgroundColor: colors.surface,
-  },
-  rowPressed: { backgroundColor: colors.pressed },
-  folderBackTitle: { ...typography.subtitle, color: colors.primary, flex: 1 },
-  folderBackCount: { ...typography.mono, color: colors.textMuted },
-  subtypeStripWrap: { borderTopWidth: 1, borderTopColor: colors.divider },
-  subtypeStrip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: 10 },
-  subtypeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  subtypeChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  subtypeChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  subtypeChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
-  usageStrip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: 10 },
-  usageChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  usageChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  usageChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
-});

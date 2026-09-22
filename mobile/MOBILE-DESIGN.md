@@ -372,3 +372,42 @@ Taslaklarda karşılığı olmayanlar; aynı kalıplarla uyarlanmalı:
 - Formlar (`AddProduct` 2026-09-15'te geçti): `CreatePost`, `EditCompany`, `SampleRequestForm`, `TextField`, `ChipSelect`
 - 7 hesaplama formu, `GarmentVisualCost`, `Admin` (`Advisor` kaldırıldı, yerine Asistan geldi)
 - `ImageViewerModal` (✕ karakteri), kalan uzun tireler: `FabricWeightCalculator`, `CompanyCodeScreen`, `GarmentVisualCostScreen`
+
+## Yeni tasarım, 3. adım — ana ekranlar (2026-09-22)
+
+`src/ui` bileşenleriyle yeniden çizilen 7 ekran (DESIGN.md §8, `design/artboards/1..8`).
+Bu ekranlarda **eski `src/theme`'den `colors/spacing/typography` içe aktarılmaz**;
+her renk/boşluk/köşe/yazı `useTheme()` token'ı ya da `src/ui` bileşenidir.
+
+| Artboard | Dosya | Not |
+| --- | --- | --- |
+| 1 Ana sayfa | `screens/feed/FeedScreen.tsx` + `screens/feed/PostCard.tsx` | Rota adı `Feed` aynı kaldı; etiket "Ana sayfa" |
+| 2 Katalog | `screens/products/ProductListScreen.tsx` | Rota `ProductList`; çeşit klasörleri çipe döndü |
+| 3 Ürün detayı | `screens/products/ProductDetailScreen.tsx` | Yapışkan alt çubuk: tek primary "Numune talep et" |
+| 4 Firma sayfası | `screens/company/CompanyProfileScreen.tsx` | Sekmeler: Ürünler · Hakkında · Kişiler · Belgeler · Makine parkı · Firma akışı |
+| 5 Mesajlar | `screens/messages/ConversationsListScreen.tsx` | `ListRow` + okunmamış sayacı |
+| 6 Hesap | `screens/calculators/CalculatorsListScreen.tsx` | Rota `Calculators`; etiket "Hesap"; üstte asistan kartı, altta tema anahtarı |
+| 7 Talepler | `screens/requests/RequestsScreen.tsx` (YENİ) | Numune/Teklif × Gönderdiğim/Gelen; veri eski uçlardan |
+
+### Alt sekme çubuğu
+
+`navigation/MainTabs.tsx` artık `TabBarFromNavigation` (src/ui) çiziyor; navigatörün
+kendi başlığı kapalı (`headerShown: false`), her ekran kendi `AppBar`ını çiziyor.
+Sıra: **Ana sayfa · Katalog · Talepler · Mesajlar · Hesap**.
+
+- **AssistantTab sekmeden çıktı ama rota olarak DURUYOR.** Pek çok ekran
+  `navigation.navigate('AssistantTab')` çağırıyor; rotayı kök yığına taşımak
+  bu çağrıları kırardı. Bu yüzden rota sekme navigatöründe kalıyor ve çubukta
+  `hiddenRoutes={['AssistantTab']}` ile gizleniyor (ekranın kendi `AppBar`ı
+  olmadığı için tek başına `headerShown: true` + `MainHeader` sürüyor).
+- Bildirim noktaları `tabBarBadge` ile: Talepler (bekleyen numune + yeni teklif),
+  Mesajlar (okunmamış). İkisini de tek istek besliyor: `GET /api/me/today`
+  (`api/client.ts` → `fetchToday`).
+
+### `src/ui`'ye eklenenler
+
+- `SearchBox` — DESIGN.md §2'deki 48px arama kutusu. `onPress` verilirse yazı
+  alanı değil, dokunulabilir kutu olur (ana sayfadaki "GlobalSearch'ü aç").
+- `TabBarFromNavigation`'a `hiddenRoutes` prop'u.
+- Düzeltmeler: `ChipRow` artık dikeyde uzamıyor (`flexGrow: 0`), `EmptyState`
+  düğmesi ortalanıyor (`Button`un kendi `alignSelf: flex-start`i eziyordu).

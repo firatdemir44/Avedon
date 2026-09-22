@@ -1,18 +1,11 @@
+// Firma sayfası — yeni tasarım (DESIGN.md, artboard 4 "Firma sayfası").
+// Düzen: AppBar · kimlik bloğu (64px logo, ad, rozet, iki bilgi satırı) ·
+// tek satır eylem dizisi · 4 sütunlu istatistik kartı · alt çizgili sekme şeridi.
+// Veri/işlev katmanı eski sürümden aynen taşındı: api/client çağrıları, sekme
+// mantığı, referanslar, makine parkı, firma akışı, galeriler, kendi firmasındaki
+// yönetim eylemleri. Bu dosyada ham hex/px yok; her değer useTheme() token'ı.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  Platform,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  Linking,
-  Share,
-  StyleSheet,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, FlatList, Image, Linking, Pressable, Share } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
@@ -45,58 +38,68 @@ import {
 import { groupMachines, machineSummary, monthlyCapacityText } from '../../features/machines/catalog';
 import { formatMonthYear, formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { SkeletonDetail } from '../../components/Skeleton';
-import {
-  EmptyState,
-  ErrorState,
-  InlineError,
-  friendlyMessage,
-  isNotFound,
-} from '../../components/StateView';
+import { friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useSession } from '../../context/SessionContext';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { ListRow } from '../../components/ListRow';
-import { UserAvatar } from '../../components/UserAvatar';
-import { ProductRow } from '../../components/ProductRow';
-import { SectionHeader } from '../../components/SectionHeader';
-import { TrustSummaryCard } from '../../components/TrustSummaryCard';
-import { ChipSelect } from '../../components/ChipSelect';
-import { TextField } from '../../components/TextField';
 import { CompanyPhotoGallery } from '../../components/CompanyPhotoGallery';
+import { UserAvatar } from '../../components/UserAvatar';
+import { TrustSummaryCard } from '../../components/TrustSummaryCard';
 import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { markFeedStale } from '../../features/feed/feedRefresh';
 import { companyCompleteness } from '../../features/companies/completeness';
+import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../features/companies/companyLogoCache';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
-import type { Product, VerificationStatus } from '../../types';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Icon,
+  Input,
+  ListRow,
+  Screen,
+  SectionTitle,
+  Skeleton,
+  SkeletonRow,
+  StatBox,
+} from '../../ui';
+import type { Product } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 
-// Orijinal tasarımdaki firma sayfası dört sekmeli: Hakkında · Ürünler · Firma
-// Akışı · Kişiler (docs/orijinal-tasarim/2021-ekranlar, "Firma Sayfası ...").
-// Aşama B, 1. parça: sekmeler, ürün süzme çipleri, firma akışı, kişiler.
-// Faz 2, Adım 5: beşinci sekme "Makine parkı" (parkur + aylık kapasite).
-type CompanyTab = 'about' | 'products' | 'feed' | 'people' | 'machines';
+// Sekmeler artboard sırasında: Ürünler · Hakkında · Kişiler · Belgeler.
+// "Makine parkı" ve "Firma akışı" korunuyor (şerit yatay kaydırılır), böylece
+// initialTab: 'machines' | 'feed' parametresi kırılmıyor.
+type CompanyTab = 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
 
 const TABS: { key: CompanyTab; label: string }[] = [
-  { key: 'about', label: 'Hakkında' },
   { key: 'products', label: 'Ürünler' },
-  { key: 'feed', label: 'Akış' },
+  { key: 'about', label: 'Hakkında' },
   { key: 'people', label: 'Kişiler' },
+  { key: 'docs', label: 'Belgeler' },
   { key: 'machines', label: 'Makine parkı' },
+  { key: 'feed', label: 'Firma akışı' },
 ];
 
 export function CompanyProfileScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
   const [tab, setTab] = useState<CompanyTab>(route.params?.initialTab ?? 'about');
   const [typeFilter, setTypeFilter] = useState<ProductType | null>(null);
   const [usageFilter, setUsageFilter] = useState<string | null>(null);
+
+  // Kendi üst bandımızı çiziyoruz (AppBar); yığının başlığı kapanıyor.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   // Ürün ekleyip / firmayı düzenleyip geri dönünce sayfa iskelete dönmüyor,
   // güncel bilgi sessizce geliyor.
@@ -105,15 +108,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     { enabled: !!viewedCompanyId }
   );
 
-  // Kendi firmasında: açık (henüz teklif verilmemiş) istek sayısı, düğmede
-  // gösterilir. Hata sessiz: sayı görünmez, düğme yine çalışır.
+  // Kendi firmasında: açık (henüz teklif verilmemiş) istek sayısı, satırda
+  // gösterilir. Hata sessiz: sayı görünmez, satır yine çalışır.
   const [openQuoteRequests, setOpenQuoteRequests] = useState(0);
   // Faz 2, Adım 3: asistana gelip henüz cevaplanmamış soru sayısı (aynı desen).
   const [openQuestions, setOpenQuestions] = useState(0);
   // Faz 3, Adım 4: firmanın değerlendirme bekleyen sipariş kayıtları.
   const [pendingDealReviews, setPendingDealReviews] = useState(0);
-  // WhatsApp'tan gelip henüz ürüne çevrilmemiş taslak sayısı; yalnızca varsa
-  // "Ürün Ekle"nin altında bir satır görünür.
+  // WhatsApp'tan gelip henüz ürüne çevrilmemiş taslak sayısı.
   const [pendingDrafts, setPendingDrafts] = useState(0);
   useFocusEffect(
     useCallback(() => {
@@ -190,8 +192,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [tab, loadPark])
   );
 
-  // Karşılıklı referanslar (Faz 2, Adım 7): Hakkında sekmesinde gösteriliyor,
-  // yalnızca o sekme açıkken çekiliyor ve odakta tazeleniyor.
+  // Karşılıklı referanslar (Faz 2, Adım 7): Hakkında sekmesinde gösteriliyor.
   const [refs, setRefs] = useState<CompanyReferences | null>(null);
   const [refsLoading, setRefsLoading] = useState(false);
   const [refsFailed, setRefsFailed] = useState(false);
@@ -221,9 +222,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [tab, loadReferences])
   );
 
-  // Güven özeti (Faz 3, Adım 5): referanslar/makine parkı deseni — ayrı ve
-  // SESSİZ istek, yalnızca Hakkında sekmesi açıkken. Hata olursa kart gizlenir
-  // (sayfanın geri kalanı yarım kalmasın).
+  // Güven özeti (Faz 3, Adım 5): SESSİZ istek. Üstteki istatistik kartı da
+  // bundan beslendiği için sekmeden bağımsız çekiliyor; hata olursa kart
+  // gizlenir, sayılar "—" olur.
   const [trust, setTrust] = useState<CompanyTrust | null>(null);
 
   const loadTrust = useCallback(() => {
@@ -235,15 +236,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      if (tab === 'about') loadTrust();
-    }, [tab, loadTrust])
+      loadTrust();
+    }, [loadTrust])
   );
-
-  // Başlık sabit "Firmam" iken başka bir firmanın sayfasında da "Firmam"
-  // yazıyordu (denetim FINDING-018).
-  useEffect(() => {
-    navigation.setOptions({ title: isOwnCompany ? 'Firmam' : company?.name ?? 'Firma' });
-  }, [navigation, isOwnCompany, company?.name]);
 
   const products = company?.products ?? [];
 
@@ -391,42 +386,102 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }
   };
 
+  // "Bağlantı kur": referans formunu Hakkında sekmesinde açar (firmalar
+  // arasında ilişki kurmanın mevcut yolu).
+  const openReferenceForm = () => {
+    haptics.selection();
+    setRefError(null);
+    setRefNote(null);
+    setRefFormOpen(true);
+    setTab('about');
+  };
+
+  const bar = (title: string, actions?: React.ComponentProps<typeof AppBar>['actions']) => (
+    <AppBar title={title} leading="back" onBack={() => navigation.goBack()} actions={actions} />
+  );
+
   if (!viewedCompanyId) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <EmptyState
-          icon="business-outline"
-          title="Firmaya bağlı değilsiniz"
-          message="Bireysel hesabınız bir firmaya bağlı değil."
-        />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar('Firma')}
+        <Screen>
+          <EmptyState
+            icon="business-outline"
+            title="Firmaya bağlı değilsiniz"
+            description="Bireysel hesabınız bir firmaya bağlı değil."
+          />
+        </Screen>
+      </View>
     );
   }
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonDetail variant="company" />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar('Firma')}
+        <Screen>
+          <View style={{ flexDirection: 'row', gap: t.space[3], alignItems: 'center' }}>
+            <Skeleton width={t.size.tabbar} height={t.size.tabbar} />
+            <View style={{ flex: 1, gap: t.space[2] }}>
+              <Skeleton width="70%" height={t.space[6]} />
+              <Skeleton width="45%" height={t.space[4]} />
+            </View>
+          </View>
+          <Skeleton height={t.size.control} />
+          <Skeleton height={t.size.quickAction} />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Screen>
+      </View>
     );
   }
 
   if (!company) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Firma bilgisi alınamadı" onRetry={reload} />
-        ) : (
-          <EmptyState icon="business-outline" title="Firma bulunamadı" message="Firma kaldırılmış olabilir." />
-        )}
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar('Firma')}
+        <Screen>
+          {error && !isNotFound(error) ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="Firma bilgisi alınamadı"
+              description={friendlyMessage(error, 'Bağlantınızı kontrol edip tekrar deneyin.')}
+              actionLabel="Tekrar dene"
+              onAction={reload}
+            />
+          ) : (
+            <EmptyState
+              icon="business-outline"
+              title="Firma bulunamadı"
+              description="Firma kaldırılmış olabilir."
+            />
+          )}
+        </Screen>
+      </View>
     );
   }
 
   const people = company.users;
 
-  // Kendi firmasında: sayfanın ne kadarının dolduğu ve eksikse "Tamamla" şeridi.
-  // Adım adım kurulum (CompanySetup) bu hesabın kendisini kullanıyor.
+  const shareCompany = () => {
+    Share.share({ message: `${company.name} (Avedon)` }).catch(() => {});
+  };
+
+  const appBar = bar(
+    'Firma',
+    isOwnCompany
+      ? [
+          {
+            icon: 'create-outline' as const,
+            label: 'Firmayı düzenle',
+            onPress: () => navigation.navigate('EditCompany', { companyId: company.id }),
+          },
+          { icon: 'share' as const, label: 'Firmayı paylaş', onPress: shareCompany },
+        ]
+      : [{ icon: 'share' as const, label: 'Firmayı paylaş', onPress: shareCompany }]
+  );
+
+  // Kendi firmasında: sayfanın ne kadarının dolduğu ve eksikse "Tamamla" kartı.
   const setup = isOwnCompany
     ? companyCompleteness({
         about: company.about,
@@ -442,181 +497,168 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const setupBanner =
     setup && setup.percent < 100 ? (
-      <View style={styles.setupBanner}>
-        <View style={styles.setupTexts}>
-          <Text style={styles.setupTitle}>Firma sayfanız %{setup.percent} tamamlandı</Text>
-          <View style={styles.setupTrack}>
-            <View style={[styles.setupFill, { width: `${setup.percent}%` }]} />
+      <Card>
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
+            Firma sayfanız %{setup.percent} tamamlandı
+          </Text>
+          <View
+            style={{
+              height: t.space[1] + 2,
+              borderRadius: t.radius.sm,
+              backgroundColor: t.colors.surface2,
+              overflow: 'hidden',
+            }}
+          >
+            <View
+              style={{
+                height: '100%',
+                width: `${setup.percent}%`,
+                borderRadius: t.radius.sm,
+                backgroundColor: t.colors.brand,
+              }}
+            />
           </View>
-          <Text style={styles.setupHint}>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
             {setup.total - setup.doneCount} adım kaldı. Eksik bilgiler alıcıların size güvenmesini zorlaştırır.
           </Text>
+          <Button
+            kind="secondary"
+            label="Tamamla"
+            onPress={() => navigation.navigate('CompanySetup')}
+            accessibilityLabel={`Firma sayfanız yüzde ${setup.percent} tamamlandı, tamamla`}
+          />
         </View>
-        <PrimaryButton
-          label="Tamamla"
-          size="sm"
-          onPress={() => navigation.navigate('CompanySetup')}
-          accessibilityLabel={`Firma sayfanız yüzde ${setup.percent} tamamlandı, tamamla`}
-        />
-      </View>
+      </Card>
     ) : null;
 
+  // Kimlik: 64px logo karesi, ad, doğrulama rozeti, iki bilgi satırı.
+  const infoLine1 = [
+    company.companyType ? companyTypeLabel(company.companyType) : '',
+    productGroups,
+    [company.district, company.city].filter(Boolean).join(', '),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const infoLine2 = [
+    company.foundedYear ? `Kuruluş ${company.foundedYear}` : '',
+    company.mainMarkets,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   const identity = (
-    <View style={styles.identityBlock}>
-      <View style={styles.identityRow}>
-        <CompanyAvatar name={company.name} size={56} companyId={company.id} logoUpdatedAt={company.logoUpdatedAt} />
-        <View style={styles.identityTexts}>
-          <Text style={styles.name}>{company.name}</Text>
-          <View style={styles.tagRow}>
-            {company.verification === 'dogrulanmis' ? (
-              // Rozete dokununca düzeylerin ne anlama geldiği açılır (Faz 2, Adım 7).
-              <Pressable
-                onPress={() => setVerifyInfoOpen((open) => !open)}
-                accessibilityRole="button"
-                accessibilityState={{ expanded: verifyInfoOpen }}
-                accessibilityLabel={`${verificationLevelText(company)}. Doğrulama düzeyleri ne demek?`}
-                style={({ pressed }) => [pressed && styles.linkPressed]}
-              >
-                <VerificationTag status={company.verification} />
-              </Pressable>
-            ) : (
-              <VerificationTag status={company.verification} />
-            )}
-            <Text style={styles.taxId}>VKN {company.taxId}</Text>
-          </View>
+    <View style={{ gap: t.space[3] }}>
+      <View style={{ flexDirection: 'row', gap: t.space[3], alignItems: 'flex-start', minWidth: 0 }}>
+        <CompanyLogo name={company.name} companyId={company.id} logoUpdatedAt={company.logoUpdatedAt} />
+        <View style={{ flex: 1, minWidth: 0, gap: t.space[2] }}>
+          <Text style={[t.type.title22, { color: t.colors.ink }]}>{company.name}</Text>
           {company.verification === 'dogrulanmis' ? (
             <Pressable
               onPress={() => setVerifyInfoOpen((open) => !open)}
               accessibilityRole="button"
               accessibilityState={{ expanded: verifyInfoOpen }}
-              style={({ pressed }) => [pressed && styles.linkPressed]}
+              accessibilityLabel={`${verificationLevelText(company)}. Doğrulama düzeyleri ne demek?`}
+              style={({ pressed }) => [{ alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 }]}
             >
-              <Text style={styles.verifyLine}>
-                {verificationLevelText(company)}
-                <Text style={styles.verifyHint}>{verifyInfoOpen ? '  gizle' : '  bu ne demek?'}</Text>
-              </Text>
-              {verifyInfoOpen ? (
-                <Text style={styles.verifyInfo}>
-                  Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı incelendi. Yerinde ziyaretle
-                  doğrulama: Avedon ekibi tesisi yerinde gördü.
-                </Text>
-              ) : null}
+              <Badge kind="verified" />
             </Pressable>
+          ) : company.verification === 'inceleniyor' ? (
+            <Badge kind="pending" label="İnceleniyor" />
+          ) : (
+            <Badge kind="info" label="Doğrulanmamış" />
+          )}
+          {infoLine1 ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{infoLine1}</Text> : null}
+          {infoLine2 ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{infoLine2}</Text> : null}
+          {verifyInfoOpen && company.verification === 'dogrulanmis' ? (
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              {verificationLevelText(company)}. Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı
+              incelendi. Yerinde ziyaretle doğrulama: Avedon ekibi tesisi yerinde gördü.
+            </Text>
           ) : null}
         </View>
       </View>
-
-      {isOwnCompany ? (
-        <View style={styles.actions}>
-          <View style={styles.actionRow}>
-            <PrimaryButton
-              label="Ürün Ekle"
-              icon="add"
-              onPress={() => navigation.navigate('AddProduct')}
-              style={styles.actionButton}
-            />
-            {/* Faz 2, Adım 6: iplik kumaş formuyla eklenmiyor (ayrı uç ve ayrı
-                alanlar), o yüzden "Ürün Ekle"nin yanında kendi düğmesi. */}
-            <PrimaryButton
-              label="İplik Ekle"
-              icon="add"
-              variant="outline"
-              onPress={() => navigation.navigate('YarnForm')}
-              style={styles.actionButton}
-            />
-          </View>
-          {/* WhatsApp'tan gelen etiket fotoğraflarından hazırlanan ürün
-              taslakları. Satır yalnızca bekleyen taslak varsa görünür. */}
-          {pendingDrafts > 0 ? (
-            <View style={styles.draftBlock}>
-              <ListRow
-                title={`WhatsApp taslakları (${pendingDrafts})`}
-                subtitle="Etiket fotoğrafından hazırlandı, kontrol edip kaydedin"
-                left={<Ionicons name="logo-whatsapp" size={22} color={colors.primary} />}
-                divider={false}
-                onPress={() => navigation.navigate('ProductDrafts')}
-              />
-            </View>
-          ) : null}
-          <View style={styles.actionRow}>
-            <PrimaryButton
-              label="Gelen Talepler"
-              variant="outline"
-              onPress={() => navigation.navigate('IncomingSampleRequests')}
-              style={styles.actionButton}
-            />
-          </View>
-          {/* Faz 2, Adım 2: firmaya gelen teklif istekleri. Açık istek varsa
-              sayısı düğmenin üstünde yazıyor (rozet yerine sayı: PrimaryButton
-              içine ikinci bir dokunulabilir öğe koymuyoruz). */}
-          <PrimaryButton
-            label={openQuoteRequests ? `Gelen teklif istekleri (${openQuoteRequests})` : 'Gelen teklif istekleri'}
-            variant="outline"
-            icon="pricetag-outline"
-            onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
-          />
-          {/* Faz 3, Adım 4: firmanın satış kayıtları. Değerlendirme bekleyen
-              varsa sayısı düğmede yazıyor (teklif isteği düğmesindeki desen). */}
-          <PrimaryButton
-            label={pendingDealReviews ? `Siparişler (${pendingDealReviews} değerlendirme bekliyor)` : 'Siparişler'}
-            variant="outline"
-            icon="cube-outline"
-            onPress={() => navigation.navigate('Deals', { role: 'seller' })}
-          />
-          {/* Faz 2, Adım 3: asistana gelen alıcı soruları. */}
-          <PrimaryButton
-            label={openQuestions ? `Asistana gelen sorular (${openQuestions})` : 'Asistana gelen sorular'}
-            variant="outline"
-            icon="sparkles-outline"
-            onPress={() => navigation.navigate('CompanyQuestions')}
-          />
-          <PrimaryButton
-            label="Firmayı Düzenle"
-            variant="outline"
-            icon="create-outline"
-            onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
-          />
-          {/* Faz 2, Adım 4: davet. Bu blokta zaten beş düğme var, altıncısını
-              koymuyoruz; küçük metin bağlantısı yeterli. */}
-          <Pressable
-            onPress={() => navigation.navigate('Invites')}
-            accessibilityRole="button"
-            accessibilityLabel="Tedarikçi ya da müşteri davet et"
-            style={({ pressed }) => [styles.inviteLink, pressed && styles.inviteLinkPressed]}
-          >
-            <Ionicons name="person-add-outline" size={16} color={colors.accent} />
-            <Text style={styles.inviteLinkText}>Tedarikçi ya da müşteri davet et</Text>
-          </Pressable>
-        </View>
-      ) : (
-        // Faz 2, Adım 3: başka bir firmanın sayfasında asistanına soru sorma.
-        // Asistan rengi yalnızca asistanın olduğu yerde (renk kuralı).
-        <View style={styles.actions}>
-          <PrimaryButton
-            label="Asistana sor"
-            variant="outline"
-            icon="sparkles"
-            onPress={() =>
-              navigation.navigate('SellerAssistant', { companyId: company.id, companyName: company.name })
-            }
-            accessibilityLabel={`${company.name} asistanına sor`}
-            tone="assistant"
-          />
-        </View>
-      )}
     </View>
   );
 
-  // Sekme şeridi yatay kaydırılabilir: beş sekme dar ekrana sığmıyor.
-  const tabBar = (
-    <ScrollView
+  const whatsappPhone = company.contactPhone?.replace(/[^0-9]/g, '') ?? '';
+
+  // Eylem sırası: tek dolu düğme + kenarlıklı düğme + 48px kare ikon düğmesi.
+  const actionRow = isOwnCompany ? (
+    <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
+      <Button label="Ürün ekle" icon="plus" onPress={() => navigation.navigate('AddProduct')} style={{ flex: 1 }} />
+      <Button
+        kind="secondary"
+        label="Talepler"
+        icon="requests"
+        onPress={() => navigation.navigate('IncomingSampleRequests')}
+        style={{ flex: 1 }}
+      />
+      <SquareButton
+        icon="create-outline"
+        label="Firmayı düzenle"
+        onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
+      />
+    </View>
+  ) : (
+    <View style={{ gap: t.space[2] }}>
+      <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
+        <Button
+          label="Mesaj gönder"
+          icon="message"
+          onPress={() => navigation.navigate('NewConversation')}
+          style={{ flex: 1 }}
+        />
+        {whatsappPhone ? (
+          <Button
+            kind="secondary"
+            label="WhatsApp"
+            icon="whatsapp"
+            onPress={() => Linking.openURL(`https://wa.me/${whatsappPhone}`).catch(() => {})}
+            style={{ flex: 1 }}
+          />
+        ) : null}
+        {user?.companyId ? (
+          <SquareButton icon="person-add-outline" label="Bağlantı kur" onPress={openReferenceForm} />
+        ) : null}
+      </View>
+      {/* Faz 2, Adım 3: firmanın asistanına soru sorma. */}
+      <Button
+        kind="secondary"
+        label="Asistana sor"
+        icon="sparkles-outline"
+        onPress={() => navigation.navigate('SellerAssistant', { companyId: company.id, companyName: company.name })}
+        accessibilityLabel={`${company.name} asistanına sor`}
+        fullWidth
+      />
+    </View>
+  );
+
+  const responseRate = trust?.quoteResponse ? `%${trust.quoteResponse.responseRate}` : '—';
+  const responseTime = responseTimeText(trust?.quoteResponse?.medianHours ?? null) ?? '—';
+
+  const statsCard = (
+    <Card>
+      <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
+        <StatBox value={products.length} label="Ürün" />
+        <StatBox value={responseRate} label="Numune yanıtı" />
+        <StatBox value={responseTime} label="Ort. yanıt" />
+        <StatBox value={trust?.confirmedReferenceCount ?? '—'} label="Ortak bağlantı" />
+      </View>
+    </Card>
+  );
+
+  // Sekme şeridi: aktif label-14 brand + 2px brand alt çizgi, pasif ink-3.
+  const tabStrip = (
+    <FlatList
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={styles.tabBar}
-      contentContainerStyle={styles.tabBarContent}
-      accessibilityRole="tablist"
-    >
-      {TABS.map((item) => {
+      data={TABS}
+      keyExtractor={(item) => item.key}
+      style={{ borderBottomWidth: 1, borderBottomColor: t.colors.line, flexGrow: 0 }}
+      contentContainerStyle={{ gap: t.space[4] }}
+      renderItem={({ item }) => {
         const selected = tab === item.key;
         const count =
           item.key === 'products'
@@ -628,7 +670,6 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 : undefined;
         return (
           <Pressable
-            key={item.key}
             onPress={() => {
               haptics.selection();
               setTab(item.key);
@@ -636,129 +677,123 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={count === undefined ? item.label : `${item.label}, ${count}`}
-            style={({ pressed }) => [styles.tabItem, selected && styles.tabItemSelected, pressed && !selected && styles.tabPressed]}
+            style={({ pressed }) => [
+              {
+                minHeight: t.size.touchMin,
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingHorizontal: t.space[1],
+                borderBottomWidth: 2,
+                borderBottomColor: selected ? t.colors.brand : 'transparent',
+                opacity: pressed && !selected ? 0.6 : 1,
+              },
+            ]}
           >
-            <Text style={[styles.tabLabel, selected && styles.tabLabelSelected]} numberOfLines={1}>
+            <Text
+              numberOfLines={1}
+              style={[t.type.label14, { color: selected ? t.colors.brand : t.colors.ink3 }]}
+            >
               {item.label}
-              {count !== undefined ? ` (${count})` : ''}
             </Text>
           </Pressable>
         );
-      })}
-    </ScrollView>
+      }}
+    />
   );
 
-  // Referanslar (Faz 2, Adım 7): Hakkında sekmesinin bir bölümü. Onaylılar
-  // herkese, bekleyenler yalnızca kendi firmanıza görünür.
+  // --- Referanslar bölümü (Hakkında) ------------------------------------
   const confirmedCustomers = (refs?.references ?? []).filter((r) => r.relation === 'musteri');
   const confirmedSuppliers = (refs?.references ?? []).filter((r) => r.relation === 'tedarikci');
 
-  // Onaylı referansı iki taraf da kaldırabilir; kendi sayfanızda düğme çıkar.
-  const removeButton = (row: CompanyReference) =>
-    isOwnCompany ? (
-      <Pressable
-        onPress={() => void removeReference(row, 'remove')}
-        accessibilityRole="button"
-        accessibilityLabel={`Referansı kaldır: ${row.company.name}`}
-        disabled={refBusyId === row.id}
-        hitSlop={8}
-        style={({ pressed }) => [styles.refRemove, pressed && styles.linkPressed]}
-      >
-        <Text style={styles.refRemoveText}>Kaldır</Text>
-      </Pressable>
-    ) : undefined;
-
   const referenceRow = (row: CompanyReference, divider: boolean, action?: React.ReactNode, detail?: string) => (
-    <View key={row.id} style={[styles.refRow, divider && styles.refDivider]}>
-      <Pressable
+    <View key={row.id} style={{ gap: t.space[2] }}>
+      <ListRow
+        title={row.company.name}
+        subtitle={[row.company.city, detail, row.note].filter(Boolean).join(' · ') || undefined}
+        avatarName={row.company.name}
+        avatarKind="company"
+        right={row.company.verification === 'dogrulanmis' ? <Icon name="check" size={t.size.iconSm} color="success" /> : undefined}
+        divider={divider}
         onPress={() => navigation.push('CompanyProfile', { companyId: row.company.id })}
-        accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-        accessibilityLabel={`${row.company.name}${row.company.city ? `, ${row.company.city}` : ''}. Firma sayfasını aç`}
-        android_ripple={{ color: colors.pressed }}
-        style={({ pressed }) => [styles.refTexts, pressed && styles.tabPressed]}
-      >
-        <View style={styles.refNameRow}>
-          <Text style={styles.refName} numberOfLines={1}>
-            {row.company.name}
-          </Text>
-          {row.company.verification === 'dogrulanmis' ? (
-            <Ionicons name="checkmark-circle" size={15} color={colors.primary} />
-          ) : null}
-        </View>
-        {row.company.city ? <Text style={styles.refCity}>{row.company.city}</Text> : null}
-        {detail ? <Text style={styles.refDetail}>{detail}</Text> : null}
-        {row.note ? <Text style={styles.refNote}>{row.note}</Text> : null}
-      </Pressable>
-      {/* Eylemler satırın YANINDA: web'de iç içe düğme olmasın. */}
+      />
       {action}
     </View>
   );
 
-  // Güven özeti kartı Referanslar bölümünün HEMEN ÜSTÜNDE duruyor; ikisi
-  // birlikte taşınsın diye aynı parçanın içindeler.
+  // Onaylı referansı iki taraf da kaldırabilir; kendi sayfanızda düğme çıkar.
+  const removeButton = (row: CompanyReference) =>
+    isOwnCompany ? (
+      <Button
+        kind="danger"
+        label="Kaldır"
+        onPress={() => void removeReference(row, 'remove')}
+        disabled={refBusyId === row.id}
+        accessibilityLabel={`Referansı kaldır: ${row.company.name}`}
+      />
+    ) : undefined;
+
   const referencesContent = (
-    <View>
+    <View style={{ gap: t.space[4] }}>
       {trust ? <TrustSummaryCard trust={trust} /> : null}
 
-      <SectionHeader title="Referanslar" count={refs?.confirmedCount} />
+      <SectionTitle title="Referanslar" />
 
       {refsLoading && !refs ? (
-        <View style={styles.block}>
-          <ActivityIndicator style={styles.loading} color={colors.primary} />
-        </View>
+        <Card>
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
       ) : null}
 
       {refsFailed && !refs ? (
-        <View style={styles.block}>
+        <Card>
           <EmptyState
-            compact
             icon="cloud-offline-outline"
             title="Referanslar alınamadı"
-            message="Bağlantınızı kontrol edip tekrar deneyin."
+            description="Bağlantınızı kontrol edip tekrar deneyin."
             actionLabel="Tekrar dene"
             onAction={loadReferences}
           />
-        </View>
+        </Card>
       ) : null}
 
-      {refError ? <InlineError message={refError} style={styles.banner} /> : null}
-      {refNote ? <Text style={styles.refSuccess}>{refNote}</Text> : null}
+      {refError ? <Text style={[t.type.body14, { color: t.colors.danger }]}>{refError}</Text> : null}
+      {refNote ? <Text style={[t.type.body14, { color: t.colors.success }]}>{refNote}</Text> : null}
 
       {refs ? (
         <>
-          {/* Kendi firmanız: önce onayınızı bekleyenler, sonra gönderdikleriniz. */}
           {isOwnCompany && refs.pendingIncoming.length ? (
             <>
-              <SectionHeader title="Onayınızı bekleyenler" count={refs.pendingIncoming.length} />
-              <View style={styles.block}>
+              <SectionTitle title={`Onayınızı bekleyenler (${refs.pendingIncoming.length})`} />
+              <Card>
                 {refs.pendingIncoming.map((row, index) =>
                   referenceRow(
                     row,
                     index < refs.pendingIncoming.length - 1,
-                    <View style={styles.refActions}>
-                      <PrimaryButton
+                    <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                      <Button
+                        kind="secondary"
                         label="Onayla"
-                        size="sm"
                         onPress={() => void respondReference(row, 'confirm')}
                         disabled={refBusyId === row.id}
                         accessibilityLabel={`${row.company.name} referansını onayla`}
+                        style={{ flex: 1 }}
                       />
-                      <PrimaryButton
+                      <Button
+                        kind="danger"
                         label="Reddet"
-                        size="sm"
-                        variant="outline"
                         onPress={() => void respondReference(row, 'reject')}
                         disabled={refBusyId === row.id}
                         accessibilityLabel={`${row.company.name} referansını reddet`}
+                        style={{ flex: 1 }}
                       />
                     </View>,
-                    // relation sayfası görüntülenen firmaya (size) göre: karşı
-                    // taraf tedarikçinizse, o firma sizi müşterisi olarak gösterdi.
+                    // relation sayfası görüntülenen firmaya (size) göre.
                     `${row.company.name} sizi ${row.relation === 'tedarikci' ? 'müşterisi' : 'tedarikçisi'} olarak gösterdi.`
                   )
                 )}
-              </View>
-              <Text style={styles.refHint}>
+              </Card>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
                 Onayladığınız referans iki firmanın sayfasında da görünür; reddettiğiniz hiçbir yerde görünmez.
               </Text>
             </>
@@ -766,191 +801,282 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
           {isOwnCompany && refs.pendingOutgoing.length ? (
             <>
-              <SectionHeader title="Gönderdikleriniz — onay bekliyor" count={refs.pendingOutgoing.length} />
-              <View style={styles.block}>
+              <SectionTitle title={`Gönderdikleriniz — onay bekliyor (${refs.pendingOutgoing.length})`} />
+              <Card>
                 {refs.pendingOutgoing.map((row, index) =>
                   referenceRow(
                     row,
                     index < refs.pendingOutgoing.length - 1,
-                    <View style={styles.refActions}>
-                      <PrimaryButton
-                        label="İsteği geri çek"
-                        size="sm"
-                        variant="outline"
-                        onPress={() => void removeReference(row, 'withdraw')}
-                        disabled={refBusyId === row.id}
-                        accessibilityLabel={`${row.company.name} firmasına gönderdiğiniz isteği geri çek`}
-                      />
-                    </View>,
+                    <Button
+                      kind="secondary"
+                      label="İsteği geri çek"
+                      onPress={() => void removeReference(row, 'withdraw')}
+                      disabled={refBusyId === row.id}
+                      accessibilityLabel={`${row.company.name} firmasına gönderdiğiniz isteği geri çek`}
+                    />,
                     `Bu firmayı ${row.relation === 'musteri' ? 'müşteriniz' : 'tedarikçiniz'} olarak gösterdiniz.`
                   )
                 )}
-              </View>
+              </Card>
             </>
           ) : null}
 
           {confirmedCustomers.length ? (
             <>
-              <SectionHeader title={isOwnCompany ? 'Müşterileriniz' : 'Müşterileri'} count={confirmedCustomers.length} />
-              <View style={styles.block}>
+              <SectionTitle
+                title={`${isOwnCompany ? 'Müşterileriniz' : 'Müşterileri'} (${confirmedCustomers.length})`}
+              />
+              <Card>
                 {confirmedCustomers.map((row, index) =>
                   referenceRow(row, index < confirmedCustomers.length - 1, removeButton(row))
                 )}
-              </View>
+              </Card>
             </>
           ) : null}
 
           {confirmedSuppliers.length ? (
             <>
-              <SectionHeader
-                title={isOwnCompany ? 'Tedarikçileriniz' : 'Tedarikçileri'}
-                count={confirmedSuppliers.length}
+              <SectionTitle
+                title={`${isOwnCompany ? 'Tedarikçileriniz' : 'Tedarikçileri'} (${confirmedSuppliers.length})`}
               />
-              <View style={styles.block}>
+              <Card>
                 {confirmedSuppliers.map((row, index) =>
                   referenceRow(row, index < confirmedSuppliers.length - 1, removeButton(row))
                 )}
-              </View>
+              </Card>
             </>
           ) : null}
 
           {refs.references.length === 0 ? (
-            <View style={styles.block}>
-              {isOwnCompany ? (
-                <EmptyState
-                  compact
-                  icon="ribbon-outline"
-                  title="Henüz onaylı referans yok"
-                  message="Çalıştığınız firmaların sayfasından 'Referans olarak ekle' diyerek onay isteyebilirsiniz. Onaylanan referans iki firmanın sayfasında görünür."
-                />
-              ) : (
-                <Text style={styles.refEmpty}>Henüz onaylı referans yok.</Text>
-              )}
-            </View>
+            <Card>
+              <EmptyState
+                icon="ribbon-outline"
+                title="Henüz onaylı referans yok"
+                description={
+                  isOwnCompany
+                    ? "Çalıştığınız firmaların sayfasından 'Bağlantı kur' diyerek onay isteyebilirsiniz."
+                    : 'Bu firmanın onaylı referansı yok.'
+                }
+              />
+            </Card>
           ) : null}
 
           {/* Başkasının sayfası ve firmanız varsa: referans olarak ekleme formu. */}
           {!isOwnCompany && user?.companyId ? (
-            <View style={[styles.block, styles.refFormBlock]}>
+            <Card>
               {refFormOpen ? (
-                <>
-                  <Text style={styles.refFormTitle}>Bu firmayla çalışıyor musunuz?</Text>
-                  <ChipSelect
-                    options={[
-                      { value: 'musteri', label: 'Bu firma müşterimiz' },
-                      { value: 'tedarikci', label: 'Bu firma tedarikçimiz' },
-                    ]}
-                    value={refRelation}
-                    onChange={(next) => {
-                      haptics.selection();
-                      setRefRelation(next as ReferenceRelation);
-                    }}
-                    compact
-                  />
-                  <TextField
+                <View style={{ gap: t.space[3] }}>
+                  <Text style={[t.type.title18, { color: t.colors.ink }]}>Bu firmayla çalışıyor musunuz?</Text>
+                  <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap' }}>
+                    <Chip
+                      label="Bu firma müşterimiz"
+                      selected={refRelation === 'musteri'}
+                      onPress={() => {
+                        haptics.selection();
+                        setRefRelation('musteri');
+                      }}
+                    />
+                    <Chip
+                      label="Bu firma tedarikçimiz"
+                      selected={refRelation === 'tedarikci'}
+                      onPress={() => {
+                        haptics.selection();
+                        setRefRelation('tedarikci');
+                      }}
+                    />
+                  </View>
+                  <Input
                     label="Not (isteğe bağlı)"
                     value={refFormNote}
                     onChangeText={setRefFormNote}
                     placeholder="Örn. 2023'ten beri süprem alıyoruz"
                     maxLength={200}
                     multiline
+                    helper="İstek karşı firmaya gider; onaylanmadan hiçbir sayfada görünmez."
                   />
-                  <Text style={styles.refHintTight}>
-                    İstek karşı firmaya gider; onaylanmadan hiçbir sayfada görünmez.
-                  </Text>
-                  <View style={styles.refFormActions}>
-                    <PrimaryButton
-                      label={refSaving ? 'Gönderiliyor...' : 'Gönder'}
+                  <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                    <Button
+                      kind="secondary"
+                      label="Gönder"
+                      loading={refSaving}
                       onPress={() => void submitReference()}
-                      disabled={refSaving}
-                      style={styles.refFormButton}
+                      style={{ flex: 1 }}
                     />
-                    <PrimaryButton
+                    <Button
+                      kind="quiet"
                       label="Vazgeç"
-                      variant="outline"
+                      disabled={refSaving}
                       onPress={() => {
                         setRefFormOpen(false);
                         setRefError(null);
                       }}
-                      disabled={refSaving}
-                      style={styles.refFormButton}
+                      style={{ flex: 1 }}
                     />
                   </View>
-                </>
+                </View>
               ) : (
-                <PrimaryButton
+                <Button
+                  kind="secondary"
                   label="Referans olarak ekle"
-                  variant="outline"
-                  icon="ribbon-outline"
-                  onPress={() => {
-                    setRefError(null);
-                    setRefNote(null);
-                    setRefFormOpen(true);
-                  }}
+                  icon="person-add-outline"
+                  onPress={openReferenceForm}
                   accessibilityLabel={`${company.name} firmasını referans olarak ekle`}
                 />
               )}
-            </View>
+            </Card>
           ) : null}
         </>
       ) : null}
     </View>
   );
 
-  const aboutContent = (
-    <View>
-      {route.params?.focus === 'references' ? referencesContent : null}
-      <View style={styles.block}>
-        <View style={styles.aboutBlock}>
-          <Text style={styles.aboutTitle}>Hakkında</Text>
-          {company.about ? (
-            <Text style={styles.about}>{company.about}</Text>
-          ) : isOwnCompany ? (
-            // Boş durum metni doğrudan ilgili kurulum adımına götürüyor.
-            <Pressable
-              onPress={() => navigation.navigate('CompanySetup', { step: 'tanitim' })}
-              accessibilityRole="button"
-              accessibilityLabel="Firmanızı tanıtan bir yazı ekleyin"
-              style={({ pressed }) => [pressed && styles.linkPressed]}
-            >
-              <Text style={styles.aboutEmpty}>
-                Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.
-              </Text>
-              <Text style={styles.aboutEmptyAction}>Tanıtım yazısı ekle</Text>
-            </Pressable>
-          ) : (
-            <Text style={styles.aboutEmpty}>Bu firma henüz tanıtım yazısı eklememiş.</Text>
-          )}
-        </View>
-      </View>
-
-      <SectionHeader title="İletişim" />
-      <View style={styles.block}>
-        <Fact label="E-posta" value={company.contactEmail || '—'} />
-        <Fact label="Telefon" value={company.contactPhone || '—'} mono />
-        {company.website ? <WebsiteFact website={company.website} /> : null}
-        {company.address || company.city || company.district ? (
-          <Fact
-            label="Adres"
-            value={[company.address, [company.district, company.city].filter(Boolean).join('/')].filter(Boolean).join(', ')}
+  // --- Hakkında sekmesi --------------------------------------------------
+  const ownTools = isOwnCompany ? (
+    <>
+      <SectionTitle title="Firma yönetimi" />
+      <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
+        {pendingDrafts > 0 ? (
+          <ListRow
+            title={`WhatsApp taslakları (${pendingDrafts})`}
+            subtitle="Etiket fotoğrafından hazırlandı, kontrol edip kaydedin"
+            left={<Icon name="whatsapp" color="brand" />}
+            onPress={() => navigation.navigate('ProductDrafts')}
           />
         ) : null}
-        <Fact label="Vergi numarası" value={company.taxId} mono />
-        {isOwnCompany ? <Fact label="Şirket kodu" value={company.companyCode} mono last /> : null}
-      </View>
+        <ListRow
+          title="İplik ekle"
+          subtitle="İplikler kumaş formuyla değil kendi formuyla eklenir"
+          left={<Icon name="yarn" color="brand" />}
+          onPress={() => navigation.navigate('YarnForm')}
+        />
+        <ListRow
+          title={openQuoteRequests ? `Gelen teklif istekleri (${openQuoteRequests})` : 'Gelen teklif istekleri'}
+          left={<Icon name="quote" color="brand" />}
+          onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
+        />
+        <ListRow
+          title={pendingDealReviews ? `Siparişler (${pendingDealReviews} değerlendirme bekliyor)` : 'Siparişler'}
+          left={<Icon name="sample" color="brand" />}
+          onPress={() => navigation.navigate('Deals', { role: 'seller' })}
+        />
+        <ListRow
+          title={openQuestions ? `Asistana gelen sorular (${openQuestions})` : 'Asistana gelen sorular'}
+          left={<Icon name="sparkles-outline" color="brand" />}
+          onPress={() => navigation.navigate('CompanyQuestions')}
+        />
+        <ListRow
+          title="Tedarikçi ya da müşteri davet et"
+          left={<Icon name="person-add-outline" color="brand" />}
+          onPress={() => navigation.navigate('Invites')}
+        />
+        <ListRow
+          title="Firmayı düzenle"
+          left={<Icon name="create-outline" color="brand" />}
+          divider={false}
+          onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
+        />
+      </Card>
+    </>
+  ) : null;
 
-      <SectionHeader title="Şirket genel bakışı" />
-      <View style={styles.block}>
-        <Fact label="Şirket tipi" value={company.companyType ? companyTypeLabel(company.companyType) : '—'} />
-        <Fact label="Kuruluş yılı" value={company.foundedYear ? String(company.foundedYear) : '—'} mono />
-        <Fact label="Ürün grupları" value={productGroups || '—'} />
-        <Fact label="Şehir" value={[company.district, company.city].filter(Boolean).join('/') || '—'} />
-        <Fact label="Ana pazarlar" value={company.mainMarkets || '—'} last />
-      </View>
+  const factRow = (label: string, value: string, mono?: boolean, onPress?: () => void) => (
+    <ListRow
+      key={label}
+      title={label}
+      left={null}
+      right={
+        onPress ? undefined : (
+          <Text
+            numberOfLines={2}
+            style={[mono ? t.type.mono14 : t.type.body14, { color: t.colors.ink2, textAlign: 'right', maxWidth: t.size.emptyTextWidth }]}
+          >
+            {value}
+          </Text>
+        )
+      }
+      subtitle={onPress ? value : undefined}
+      onPress={onPress}
+    />
+  );
 
+  const aboutContent = (
+    <View style={{ gap: t.space[4] }}>
+      {route.params?.focus === 'references' ? referencesContent : null}
+
+      <SectionTitle title="Hakkında" />
+      <Card>
+        {company.about ? (
+          <Text style={[t.type.body16, { color: t.colors.ink }]}>{company.about}</Text>
+        ) : isOwnCompany ? (
+          <Pressable
+            onPress={() => navigation.navigate('CompanySetup', { step: 'tanitim' })}
+            accessibilityRole="button"
+            accessibilityLabel="Firmanızı tanıtan bir yazı ekleyin"
+            style={({ pressed }) => [{ minHeight: t.size.touchMin, justifyContent: 'center', opacity: pressed ? 0.6 : 1 }]}
+          >
+            <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
+              Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.
+            </Text>
+            <Text style={[t.type.label14, { color: t.colors.brand }]}>Tanıtım yazısı ekle</Text>
+          </Pressable>
+        ) : (
+          <Text style={[t.type.body16, { color: t.colors.ink2 }]}>Bu firma henüz tanıtım yazısı eklememiş.</Text>
+        )}
+      </Card>
+
+      <SectionTitle title="İletişim" />
+      <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
+        {factRow('E-posta', company.contactEmail || '—')}
+        {factRow('Telefon', company.contactPhone || '—', true)}
+        {company.website ? (
+          <ListRow
+            title="Web sitesi"
+            subtitle={company.website}
+            left={null}
+            onPress={() => Linking.openURL(websiteUrl(company.website)).catch(() => {})}
+          />
+        ) : null}
+        {company.address || company.city || company.district
+          ? factRow(
+              'Adres',
+              [company.address, [company.district, company.city].filter(Boolean).join('/')].filter(Boolean).join(', ')
+            )
+          : null}
+        {factRow('Vergi numarası', company.taxId, true)}
+        {isOwnCompany ? factRow('Şirket kodu', company.companyCode, true) : null}
+      </Card>
+
+      <SectionTitle title="Şirket genel bakışı" />
+      <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
+        {factRow('Şirket tipi', company.companyType ? companyTypeLabel(company.companyType) : '—')}
+        {factRow('Kuruluş yılı', company.foundedYear ? String(company.foundedYear) : '—', true)}
+        {factRow('Ürün grupları', productGroups || '—')}
+        {factRow('Şehir', [company.district, company.city].filter(Boolean).join('/') || '—')}
+        {factRow('Ana pazarlar', company.mainMarkets || '—')}
+        {factRow(
+          'Doğrulama',
+          company.verification === 'dogrulanmis'
+            ? 'Doğrulanmış üretici'
+            : company.verification === 'inceleniyor'
+              ? 'İnceleniyor'
+              : 'Doğrulanmamış',
+          false,
+          isOwnCompany ? () => navigation.navigate('Verification') : undefined
+        )}
+      </Card>
+
+      {ownTools}
+
+      {route.params?.focus === 'references' ? null : referencesContent}
+    </View>
+  );
+
+  // --- Belgeler sekmesi (sertifikalar + firma görselleri) ----------------
+  const docsContent = (
+    <View style={{ gap: t.space[4] }}>
       {company.certificatePhotoCount ? (
         <>
-          <SectionHeader title="Sertifikalar ve başarılar" count={company.certificatePhotoCount} />
+          <SectionTitle title={`Sertifikalar ve başarılar (${company.certificatePhotoCount})`} />
           <CompanyPhotoGallery
             companyId={company.id}
             kind="certificate"
@@ -962,7 +1088,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
       {company.officePhotoCount ? (
         <>
-          <SectionHeader title="Firmadan görseller" count={company.officePhotoCount} />
+          <SectionTitle title={`Firmadan görseller (${company.officePhotoCount})`} />
           <CompanyPhotoGallery
             companyId={company.id}
             kind="office"
@@ -972,180 +1098,101 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         </>
       ) : null}
 
-      <SectionHeader title="Özet" />
-      <View style={styles.block}>
-        <Fact label="Ürün sayısı" value={String(products.length)} />
-        <Fact label="Kişi sayısı" value={String(people.length)} />
-        {/* Kendi firmanızda satır dokunulabilir: doğrulama başvurusu ekranı. */}
-        <Fact
-          label="Doğrulama"
-          value={
-            company.verification === 'dogrulanmis'
-              ? 'Doğrulanmış üretici'
-              : company.verification === 'inceleniyor'
-                ? 'İnceleniyor'
-                : 'Doğrulanmamış'
-          }
-          last
-          onPress={isOwnCompany ? () => navigation.navigate('Verification') : undefined}
-          accessibilityLabel="Doğrulama durumu, başvuru ekranını aç"
-        />
-      </View>
-      {route.params?.focus === 'references' ? null : referencesContent}
-
-      {isOwnCompany ? (
-        <Text style={styles.footNote}>
-          Eksik bilgileri adım adım "Tamamla" ile ya da hepsini tek seferde "Firmayı Düzenle" ile ekleyebilirsiniz.
-        </Text>
+      {!company.certificatePhotoCount && !company.officePhotoCount ? (
+        <Card>
+          <EmptyState
+            icon="document-text-outline"
+            title={isOwnCompany ? 'Henüz belge eklemediniz' : 'Belge yok'}
+            description={
+              isOwnCompany
+                ? 'Sertifikalarınızı ve firma görsellerinizi ekleyin; alıcılar size daha çabuk güvenir.'
+                : 'Bu firma sertifika ya da görsel eklememiş.'
+            }
+            actionLabel={isOwnCompany ? 'Firmayı düzenle' : undefined}
+            onAction={isOwnCompany ? () => navigation.navigate('EditCompany', { companyId: company.id }) : undefined}
+          />
+        </Card>
       ) : null}
     </View>
   );
 
-  const productFilters =
-    products.length > 0 ? (
-      <View>
-        {typeGroups.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.block} contentContainerStyle={styles.chipStrip}>
-            <FilterChip
-              label="Tümü"
-              count={products.length}
-              selected={!typeFilter}
-              onPress={() => setTypeFilter(null)}
-            />
-            {typeGroups.map((group) => (
-              <FilterChip
-                key={group.type}
-                label={TYPE_LABELS[group.type]}
-                count={group.count}
-                selected={typeFilter === group.type}
-                onPress={() => setTypeFilter(typeFilter === group.type ? null : group.type)}
-              />
-            ))}
-          </ScrollView>
-        ) : null}
-        {usageGroups.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={[styles.block, styles.usageStripWrap]}
-            contentContainerStyle={styles.chipStrip}
-          >
-            {usageGroups.map((group) => (
-              <FilterChip
-                key={group.key}
-                label={group.label}
-                count={group.count}
-                selected={usageFilter === group.key}
-                tone="usage"
-                onPress={() => setUsageFilter(usageFilter === group.key ? null : group.key)}
-              />
-            ))}
-          </ScrollView>
-        ) : null}
-      </View>
-    ) : null;
-
-  // Makine parkı sekmesi (Faz 2, Adım 5): üstte kapasite bloğu, altında
-  // gruplara göre makine satırları. Kendi firmanda "Düzenle" yönetim ekranını
-  // açar; başka firmada yalnızca okunur.
+  // --- Makine parkı sekmesi ---------------------------------------------
   const parkSections = groupMachines(park?.machines ?? []);
   const capacityTons = monthlyCapacityText(park?.capacity.monthlyCapacityTons ?? null);
 
   const machinesContent = (
-    <View>
-      {parkLoading && !park ? <ActivityIndicator style={styles.loading} color={colors.primary} /> : null}
+    <View style={{ gap: t.space[4] }}>
+      {parkLoading && !park ? (
+        <Card>
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
+      ) : null}
       {parkFailed && !park ? (
-        <View style={styles.block}>
+        <Card>
           <EmptyState
-            compact
             icon="cloud-offline-outline"
             title="Makine parkı alınamadı"
-            message="Bağlantınızı kontrol edip tekrar deneyin."
+            description="Bağlantınızı kontrol edip tekrar deneyin."
             actionLabel="Tekrar dene"
             onAction={loadPark}
           />
-        </View>
+        </Card>
       ) : null}
 
       {park ? (
         <>
-          <View style={styles.block}>
-            <View style={styles.capacityBlock}>
-              <View style={styles.capacityTop}>
-                <View style={styles.capacityTexts}>
-                  <Text style={styles.capacityLabel}>Aylık kapasite</Text>
-                  <Text style={styles.capacityValue}>{capacityTons ?? 'Bildirilmedi'}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.contractTag,
-                    park.capacity.contractOpen ? styles.contractTagOpen : styles.contractTagClosed,
-                  ]}
-                >
-                  <Ionicons
-                    name={park.capacity.contractOpen ? 'checkmark-circle' : 'remove-circle-outline'}
-                    size={13}
-                    color={park.capacity.contractOpen ? colors.success : colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.contractTagText,
-                      { color: park.capacity.contractOpen ? colors.success : colors.textMuted },
-                    ]}
-                  >
-                    {park.capacity.contractOpen ? 'Fason kapasitesi açık' : 'Fason almıyor'}
-                  </Text>
-                </View>
-              </View>
-              {park.capacity.note ? <Text style={styles.capacityNote}>{park.capacity.note}</Text> : null}
+          <Card>
+            <View style={{ gap: t.space[2] }}>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Aylık kapasite</Text>
+              <Text style={[t.type.mono20, { color: t.colors.ink }]}>{capacityTons ?? 'Bildirilmedi'}</Text>
+              <Badge
+                kind={park.capacity.contractOpen ? 'verified' : 'info'}
+                label={park.capacity.contractOpen ? 'Fason kapasitesi açık' : 'Fason almıyor'}
+              />
+              {park.capacity.note ? (
+                <Text style={[t.type.body16, { color: t.colors.ink }]}>{park.capacity.note}</Text>
+              ) : null}
               {park.capacity.updatedAt ? (
-                <Text style={styles.capacityUpdated}>güncellendi: {formatRelativeTime(park.capacity.updatedAt)}</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
+                  güncellendi: {formatRelativeTime(park.capacity.updatedAt)}
+                </Text>
               ) : null}
               {isOwnCompany ? (
-                <View style={styles.capacityAction}>
-                  <PrimaryButton
-                    label="Düzenle"
-                    variant="outline"
-                    size="sm"
-                    icon="create-outline"
-                    onPress={() => navigation.navigate('MachinePark')}
-                    accessibilityLabel="Makine parkını ve kapasiteyi düzenle"
-                  />
-                </View>
+                <Button
+                  kind="secondary"
+                  label="Düzenle"
+                  icon="create-outline"
+                  onPress={() => navigation.navigate('MachinePark')}
+                  accessibilityLabel="Makine parkını ve kapasiteyi düzenle"
+                />
               ) : null}
             </View>
-          </View>
+          </Card>
 
           {parkSections.length ? (
             parkSections.map((section) => (
-              <View key={section.group}>
-                <SectionHeader title={section.label} count={section.count} />
-                <View style={styles.block}>
+              <View key={section.group} style={{ gap: t.space[3] }}>
+                <SectionTitle title={`${section.label} (${section.count})`} />
+                <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
                   {section.items.map((machine, index) => (
-                    <View
+                    <ListRow
                       key={machine.id}
-                      style={[styles.machineRow, index < section.items.length - 1 && styles.machineDivider]}
-                    >
-                      <Text style={styles.machineTitle}>
-                        {machine.kind}
-                        <Text style={styles.machineCount}>{`  × ${machine.count}`}</Text>
-                      </Text>
-                      {machineSummary(machine) ? (
-                        <Text style={styles.machineSummary}>{machineSummary(machine)}</Text>
-                      ) : null}
-                      {machine.note ? <Text style={styles.machineNote}>{machine.note}</Text> : null}
-                    </View>
+                      title={`${machine.kind} × ${machine.count}`}
+                      subtitle={[machineSummary(machine), machine.note].filter(Boolean).join(' · ') || undefined}
+                      left={<Icon name="machine" color="brand" />}
+                      divider={index < section.items.length - 1}
+                    />
                   ))}
-                </View>
+                </Card>
               </View>
             ))
           ) : (
-            <View style={styles.block}>
+            <Card>
               <EmptyState
-                compact
-                icon="hardware-chip-outline"
+                icon="machine"
                 title={isOwnCompany ? 'Makine parkınız boş' : 'Makine parkı yok'}
-                message={
+                description={
                   isOwnCompany
                     ? 'Makinelerinizi girdiğinizde fason iş arayanlar sizi pus, fayn ve çalışma enine göre bulabilir.'
                     : 'Bu firma makine parkını henüz girmedi.'
@@ -1153,117 +1200,224 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 actionLabel={isOwnCompany ? 'Makine ekle' : undefined}
                 onAction={isOwnCompany ? () => navigation.navigate('MachineForm') : undefined}
               />
-            </View>
+            </Card>
           )}
         </>
       ) : null}
     </View>
   );
 
+  // --- Ürünler sekmesi ---------------------------------------------------
+  const gridTitle = typeFilter ? TYPE_LABELS[typeFilter] : 'Ürünler';
+
+  const productFilters =
+    products.length > 0 ? (
+      <View style={{ gap: t.space[2] }}>
+        {typeGroups.length > 1 ? (
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: t.space[2] }}
+            data={[{ type: null as ProductType | null, count: products.length }, ...typeGroups]}
+            keyExtractor={(item) => item.type ?? 'all'}
+            renderItem={({ item }) => (
+              <Chip
+                label={`${item.type ? TYPE_LABELS[item.type] : 'Tümü'} ${item.count}`}
+                selected={item.type ? typeFilter === item.type : !typeFilter}
+                onPress={() => {
+                  haptics.selection();
+                  setTypeFilter(item.type && typeFilter !== item.type ? item.type : null);
+                }}
+              />
+            )}
+          />
+        ) : null}
+        {usageGroups.length > 0 ? (
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0 }}
+            contentContainerStyle={{ gap: t.space[2] }}
+            data={usageGroups}
+            keyExtractor={(item) => item.key}
+            renderItem={({ item }) => (
+              <Chip
+                label={`${item.label} ${item.count}`}
+                selected={usageFilter === item.key}
+                onPress={() => {
+                  haptics.selection();
+                  setUsageFilter(usageFilter === item.key ? null : item.key);
+                }}
+              />
+            )}
+          />
+        ) : null}
+      </View>
+    ) : null;
+
+  const peopleRows = (
+    <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
+      {people.map((person, index) => (
+        <ListRow
+          key={person.id}
+          title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
+          subtitle={person.position}
+          left={
+            <UserAvatar
+              userId={person.id}
+              firstName={person.firstName}
+              lastName={person.lastName}
+              avatarUpdatedAt={person.avatarUpdatedAt}
+              size={t.size.avatar}
+            />
+          }
+          divider={index < people.length - 1}
+          onPress={() => navigation.navigate('Profile', { userId: person.id })}
+        />
+      ))}
+    </Card>
+  );
+
+  // --- Liste iskeleti ----------------------------------------------------
   const listHeader = (
-    <View>
+    <View style={{ gap: t.space[6] }}>
       {error ? (
-        <InlineError message={friendlyMessage(error, 'Firma bilgisi alınamadı')} onRetry={reload} style={styles.banner} />
+        <Card>
+          <Text style={[t.type.body14, { color: t.colors.danger }]}>
+            {friendlyMessage(error, 'Firma bilgisi alınamadı')}
+          </Text>
+          <Button kind="secondary" label="Tekrar dene" onPress={reload} style={{ marginTop: t.space[2] }} />
+        </Card>
       ) : null}
       {setupBanner}
       {identity}
-      {tabBar}
+      {actionRow}
+      {statsCard}
+      {tabStrip}
       {tab === 'about' ? aboutContent : null}
-      {tab === 'products' ? productFilters : null}
+      {tab === 'docs' ? docsContent : null}
       {tab === 'machines' ? machinesContent : null}
-      {tab === 'feed' && postsLoading ? <ActivityIndicator style={styles.loading} color={colors.primary} /> : null}
+      {tab === 'products' ? (
+        <View style={{ gap: t.space[3] }}>
+          {productFilters}
+          {visibleProducts.length ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <SectionTitle title={gridTitle} />
+              </View>
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>{visibleProducts.length} ürün</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      {tab === 'people' ? <SectionTitle title="Yetkililer" /> : null}
+      {tab === 'feed' && postsLoading ? (
+        <Card>
+          <SkeletonRow />
+          <SkeletonRow />
+        </Card>
+      ) : null}
     </View>
   );
 
-  const data: (Product | FeedPost | { id: string; firstName: string; lastName: string; position: string })[] =
+  const listFooter =
+    tab === 'products' && people.length ? (
+      <View style={{ gap: t.space[3], paddingTop: t.space[6] }}>
+        <SectionTitle title="Yetkililer" />
+        {peopleRows}
+      </View>
+    ) : null;
+
+  const listEmpty =
+    tab === 'about' || tab === 'machines' || tab === 'docs' ? null : tab === 'products' ? (
+      <Card>
+        <EmptyState
+          icon="sample"
+          title={typeFilter || usageFilter ? 'Bu süzgece uyan ürün yok' : 'Henüz ürün eklenmemiş'}
+          description={
+            typeFilter || usageFilter
+              ? 'Süzgeci kaldırıp tüm ürünlere bakabilirsiniz.'
+              : isOwnCompany
+                ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
+                : 'Bu firma henüz ürün eklemedi.'
+          }
+          actionLabel={typeFilter || usageFilter ? 'Süzgeci kaldır' : isOwnCompany ? 'Ürün ekle' : undefined}
+          onAction={
+            typeFilter || usageFilter
+              ? () => {
+                  setTypeFilter(null);
+                  setUsageFilter(null);
+                }
+              : isOwnCompany
+                ? () => navigation.navigate('AddProduct')
+                : undefined
+          }
+        />
+      </Card>
+    ) : tab === 'feed' ? (
+      postsLoading ? null : (
+        <Card>
+          <EmptyState
+            icon={postsFailed ? 'cloud-offline-outline' : 'messages'}
+            title={postsFailed ? 'Akış alınamadı' : 'Henüz gönderi yok'}
+            description={
+              postsFailed
+                ? 'Bağlantınızı kontrol edip tekrar deneyin.'
+                : isOwnCompany
+                  ? 'Paylaştığınız gönderiler firma sayfanızda burada görünür.'
+                  : 'Bu firma henüz gönderi paylaşmadı.'
+            }
+            actionLabel={postsFailed ? 'Tekrar dene' : isOwnCompany ? 'Gönderi paylaş' : undefined}
+            onAction={postsFailed ? loadPosts : isOwnCompany ? () => navigation.navigate('CreatePost') : undefined}
+          />
+        </Card>
+      )
+    ) : (
+      <Card>
+        <EmptyState icon="user" title="Kişi yok" description="Bu firmaya bağlı kullanıcı yok." />
+      </Card>
+    );
+
+  const data: (Product | FeedPost | CompanyEmployee)[] =
     tab === 'products' ? visibleProducts : tab === 'feed' ? posts ?? [] : tab === 'people' ? people : [];
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <FlatList
-        data={data as { id: string }[]}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={refreshControl(refreshing, () => {
-          refresh();
-          if (tab === 'feed') loadPosts();
-          if (tab === 'machines') loadPark();
-        })}
-        ListHeaderComponent={listHeader}
-        ListEmptyComponent={
-          tab === 'about' || tab === 'machines' ? null : tab === 'products' ? (
-            <View style={styles.block}>
-              <EmptyState
-                compact
-                icon="cube-outline"
-                title={typeFilter || usageFilter ? 'Bu süzgece uyan ürün yok' : 'Henüz ürün eklenmemiş'}
-                message={
-                  typeFilter || usageFilter
-                    ? 'Süzgeci kaldırıp tüm ürünlere bakabilirsiniz.'
-                    : isOwnCompany
-                      ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
-                      : 'Bu firma henüz ürün eklemedi.'
-                }
-                actionLabel={typeFilter || usageFilter ? 'Süzgeci kaldır' : isOwnCompany ? 'Ürün Ekle' : undefined}
-                onAction={
-                  typeFilter || usageFilter
-                    ? () => {
-                        setTypeFilter(null);
-                        setUsageFilter(null);
-                      }
-                    : isOwnCompany
-                      ? () => navigation.navigate('AddProduct')
-                      : undefined
-                }
-              />
-            </View>
-          ) : tab === 'feed' ? (
-            postsLoading ? null : (
-              <View style={styles.block}>
-                <EmptyState
-                  compact
-                  icon={postsFailed ? 'cloud-offline-outline' : 'chatbubbles-outline'}
-                  title={postsFailed ? 'Akış alınamadı' : 'Henüz gönderi yok'}
-                  message={
-                    postsFailed
-                      ? 'Bağlantınızı kontrol edip tekrar deneyin.'
-                      : isOwnCompany
-                        ? 'Paylaştığınız gönderiler firma sayfanızda burada görünür.'
-                        : 'Bu firma henüz gönderi paylaşmadı.'
-                  }
-                  actionLabel={postsFailed ? 'Tekrar dene' : isOwnCompany ? 'Gönderi Paylaş' : undefined}
-                  onAction={postsFailed ? loadPosts : isOwnCompany ? () => navigation.navigate('CreatePost') : undefined}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {appBar}
+      <Screen scroll={false} contentStyle={{ flex: 1, gap: 0 }}>
+        <FlatList
+          // numColumns değişince FlatList yeniden kurulmalı: anahtar sekmeye bağlı.
+          key={tab === 'products' ? 'grid3' : 'list1'}
+          numColumns={tab === 'products' ? 3 : 1}
+          columnWrapperStyle={tab === 'products' ? { gap: t.space[3] } : undefined}
+          data={data as { id: string }[]}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ gap: t.space[3], paddingBottom: t.space[10] }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl(refreshing, () => {
+            refresh();
+            loadTrust();
+            if (tab === 'feed') loadPosts();
+            if (tab === 'machines') loadPark();
+          })}
+          ListHeaderComponent={listHeader}
+          ListHeaderComponentStyle={{ paddingBottom: t.space[4] }}
+          ListFooterComponent={listFooter}
+          ListEmptyComponent={listEmpty}
+          renderItem={({ item }) => {
+            if (tab === 'products') {
+              const product = item as Product;
+              return (
+                <ProductTile
+                  product={product}
+                  onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
                 />
-              </View>
-            )
-          ) : (
-            <View style={styles.block}>
-              <EmptyState compact icon="people-outline" title="Kişi yok" message="Bu firmaya bağlı kullanıcı yok." />
-            </View>
-          )
-        }
-        renderItem={({ item, index }) => {
-          if (tab === 'products') {
-            const product = item as Product;
-            return (
-              <ProductRow
-                product={product}
-                showCompany={false}
-                divider={index < visibleProducts.length - 1}
-                // Herkes için ürün sayfası açılıyor; düzenleme oradaki düğmede.
-                onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
-                onRequestSample={
-                  !isOwnCompany && user
-                    ? () => navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
-                    : undefined
-                }
-              />
-            );
-          }
-          if (tab === 'feed') {
-            const post = item as FeedPost;
-            return (
-              <View style={styles.postWrap}>
+              );
+            }
+            if (tab === 'feed') {
+              const post = item as FeedPost;
+              return (
                 <PostCard
                   post={post}
                   isMine={post.author.id === user?.id}
@@ -1288,71 +1442,203 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                   onEdit={(p) => navigation.navigate('CreatePost', { postId: p.id })}
                   onDelete={removePost}
                 />
-              </View>
+              );
+            }
+            const person = item as CompanyEmployee;
+            return (
+              <ListRow
+                title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
+                subtitle={person.position}
+                left={
+                  <UserAvatar
+                    userId={person.id}
+                    firstName={person.firstName}
+                    lastName={person.lastName}
+                    avatarUpdatedAt={person.avatarUpdatedAt}
+                    size={t.size.avatar}
+                  />
+                }
+                onPress={() => navigation.navigate('Profile', { userId: person.id })}
+              />
             );
-          }
-          const person = item as CompanyEmployee;
-          return (
-            <ListRow
-              title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
-              subtitle={person.position}
-              left={
-                <UserAvatar
-                  userId={person.id}
-                  firstName={person.firstName}
-                  lastName={person.lastName}
-                  avatarUpdatedAt={person.avatarUpdatedAt}
-                  size={36}
-                />
-              }
-              minHeight={60}
-              divider={index < people.length - 1}
-              onPress={() => navigation.navigate('Profile', { userId: person.id })}
-            />
-          );
-        }}
-      />
-    </SafeAreaView>
+          }}
+        />
+      </Screen>
+    </View>
   );
 }
 
-function FilterChip({
+// 48px kare ikon düğmesi (kenarlıklı): eylem sırasının üçüncü öğesi.
+function SquareButton({
+  icon,
   label,
-  count,
-  selected,
   onPress,
-  tone = 'type',
 }: {
+  icon: React.ComponentProps<typeof Icon>['name'];
   label: string;
-  count: number;
-  selected: boolean;
   onPress: () => void;
-  tone?: 'type' | 'usage';
 }) {
+  const t = useTheme();
   return (
     <Pressable
-      onPress={() => {
-        haptics.selection();
-        onPress();
-      }}
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${label}, ${count} ürün`}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={({ pressed }) => [
-        styles.filterChip,
-        tone === 'usage' && styles.filterChipUsage,
-        selected && styles.filterChipSelected,
-        pressed && !selected && styles.tabPressed,
+        {
+          width: t.size.control,
+          height: t.size.control,
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.colors.lineStrong,
+          backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+        },
       ]}
     >
-      <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>{label}</Text>
-      <Text style={[styles.filterChipCount, selected && styles.filterChipTextSelected]}>{count}</Text>
+      <Icon name={icon} size={t.size.iconSm} color="ink" />
+    </Pressable>
+  );
+}
+
+// 64px firma logosu karesi: logo yoksa brandSoft zemin + brand baş harf.
+function CompanyLogo({
+  name,
+  companyId,
+  logoUpdatedAt,
+}: {
+  name: string;
+  companyId: string;
+  logoUpdatedAt: string | null;
+}) {
+  const t = useTheme();
+  const key = logoUpdatedAt ? companyLogoKey(companyId, logoUpdatedAt) : null;
+  const [logo, setLogo] = useState<string | null>(() => (key ? getCachedCompanyLogo(key) ?? null : null));
+
+  useEffect(() => {
+    if (!key) {
+      setLogo(null);
+      return;
+    }
+    const cached = getCachedCompanyLogo(key);
+    if (cached) {
+      setLogo(cached);
+      return;
+    }
+    let cancelled = false;
+    loadCompanyLogo(key)
+      .then((url) => {
+        if (!cancelled) setLogo(url);
+      })
+      .catch(() => {
+        // Logo gelmezse baş harf kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  const box = {
+    width: t.size.tabbar,
+    height: t.size.tabbar,
+    borderRadius: t.radius.md,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+  };
+
+  if (logo) {
+    return (
+      <View style={[box, { backgroundColor: t.colors.surface1 }]}>
+        <Image
+          source={{ uri: logo }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="contain"
+          accessibilityLabel={`${name} logosu`}
+        />
+      </View>
+    );
+  }
+  return (
+    <View style={[box, { backgroundColor: t.colors.brandSoft }]}>
+      <Text style={[t.type.title22, { color: t.colors.brand }]}>
+        {name.trim().charAt(0).toLocaleUpperCase('tr-TR') || '?'}
+      </Text>
+    </View>
+  );
+}
+
+// Ürün ızgarası karesi: kare kumaş görseli, altında ad ve mono ölçü satırı.
+function ProductTile({ product, onPress }: { product: Product; onPress: () => void }) {
+  const t = useTheme();
+  const [imageUrl, setImageUrl] = useState<string | null>(() => getCachedProductImage(product.id) ?? null);
+
+  useEffect(() => {
+    if (!product.hasImage) return;
+    const cached = getCachedProductImage(product.id);
+    if (cached) {
+      setImageUrl(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(product.id)
+      .then((url) => {
+        if (!cancelled) setImageUrl(url);
+      })
+      .catch(() => {
+        // Fotoğraf gelmezse yer tutucu kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product.id, product.hasImage]);
+
+  const specs = [product.weightGsm ? `${product.weightGsm} gr` : '', product.widthCm ? `${product.widthCm} cm` : '']
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${product.code}${specs ? `, ${specs}` : ''}`}
+      style={({ pressed }) => [{ flex: 1, minWidth: 0, gap: t.space[1], opacity: pressed ? 0.7 : 1 }]}
+    >
+      <View
+        style={{
+          width: '100%',
+          aspectRatio: 1,
+          borderRadius: t.radius.sm,
+          borderWidth: 1,
+          borderColor: t.colors.line,
+          backgroundColor: t.colors.surface2,
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <Icon name="fabric" color="ink3" />
+        )}
+      </View>
+      <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink }]}>
+        {product.code}
+      </Text>
+      {specs ? (
+        <Text numberOfLines={2} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+          {specs}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
 
 // Doğrulama düzeyi (Faz 2, Adım 7): boş düzeyde yalnızca "Doğrulandı".
-// Tarih varsa ay-yıl olarak eklenir: "Belge ile doğrulandı · Eylül 2026".
 function verificationLevelText(company: { verificationLevel?: string; verifiedAt?: string | null }): string {
   const level =
     company.verificationLevel === 'belge'
@@ -1362,6 +1648,20 @@ function verificationLevelText(company: { verificationLevel?: string; verifiedAt
         : 'Doğrulandı';
   const when = company.verifiedAt ? formatMonthYear(company.verifiedAt) : '';
   return when ? `${level} · ${when}` : level;
+}
+
+// Tipik yanıt süresi: saat/gün olarak okunur metin.
+function responseTimeText(medianHours: number | null): string | null {
+  if (medianHours == null) return null;
+  if (medianHours >= 48) return `${Math.round(medianHours / 24)} gün`;
+  if (medianHours < 1) return '<1 saat';
+  return `${Math.round(medianHours)} saat`;
+}
+
+// Adres "www" ile yazıldıysa başına https:// eklenir, yoksa Linking açamaz.
+function websiteUrl(website: string): string {
+  const lower = website.trim().toLowerCase();
+  return lower.startsWith('http://') || lower.startsWith('https://') ? website.trim() : `https://${website.trim()}`;
 }
 
 // Referans uçlarının hata kodları okunur Türkçeye çevriliyor.
@@ -1381,278 +1681,3 @@ function referenceErrorMessage(err: unknown): string {
   }
   return friendlyMessage(err, 'İşlem tamamlanamadı, tekrar deneyin.');
 }
-
-function VerificationTag({ status }: { status: VerificationStatus }) {
-  if (status === 'dogrulanmis') {
-    return (
-      <View style={[styles.tag, { backgroundColor: colors.accentSoft }]}>
-        <Ionicons name="checkmark" size={13} color={colors.primary} />
-        <Text style={[styles.tagText, { color: colors.primary }]}>Doğrulanmış</Text>
-      </View>
-    );
-  }
-  if (status === 'inceleniyor') {
-    return (
-      <View style={[styles.tag, { backgroundColor: colors.warningSoft }]}>
-        <Ionicons name="time-outline" size={13} color={colors.warning} />
-        <Text style={[styles.tagText, { color: colors.warning }]}>İnceleniyor</Text>
-      </View>
-    );
-  }
-  return (
-    <View style={[styles.tag, styles.tagOutline]}>
-      <Text style={[styles.tagText, { color: colors.textMuted }]}>Doğrulanmamış</Text>
-    </View>
-  );
-}
-
-// Web sitesi satırı: dokununca tarayıcıda açılır. Adres "www" ile yazıldıysa
-// başına https:// eklenir, yoksa Linking açamaz.
-function WebsiteFact({ website }: { website: string }) {
-  const lower = website.trim().toLowerCase();
-  const url = lower.startsWith('http://') || lower.startsWith('https://') ? website.trim() : `https://${website.trim()}`;
-  return (
-    <Pressable
-      onPress={() => Linking.openURL(url).catch(() => {})}
-      accessibilityRole="link"
-      accessibilityLabel={`Web sitesi: ${website}`}
-      style={({ pressed }) => [styles.fact, styles.factDivider, pressed && styles.tabPressed]}
-    >
-      <Text style={styles.factLabel}>Web sitesi</Text>
-      <Text style={[styles.factValue, styles.factLink]} numberOfLines={1}>
-        {website}
-      </Text>
-    </Pressable>
-  );
-}
-
-function Fact({
-  label,
-  value,
-  mono,
-  last,
-  onPress,
-  accessibilityLabel,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-  last?: boolean;
-  // Dokunulabilir özet satırı (kendi firmanızda "Doğrulama" → başvuru ekranı).
-  onPress?: () => void;
-  accessibilityLabel?: string;
-}) {
-  const body = (
-    <>
-      <Text style={styles.factLabel}>{label}</Text>
-      <Text style={[styles.factValue, mono && styles.factValueMono]} selectable={!onPress}>
-        {value}
-      </Text>
-      {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.chevron} /> : null}
-    </>
-  );
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel ?? `${label}: ${value}`}
-        style={({ pressed }) => [
-          styles.fact,
-          !last && styles.factDivider,
-          pressed && { backgroundColor: colors.pressed },
-        ]}
-      >
-        {body}
-      </Pressable>
-    );
-  }
-  return <View style={[styles.fact, !last && styles.factDivider]}>{body}</View>;
-}
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingBottom: spacing.xl },
-  banner: { margin: spacing.gutter, marginBottom: 0 },
-  block: { backgroundColor: colors.surface },
-  identityBlock: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  identityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.gutter },
-  identityTexts: { flex: 1, gap: spacing.xs },
-  name: { fontFamily: fonts.semibold, fontSize: 22, lineHeight: 28, color: colors.text },
-  tagRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: spacing.sm },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  tagOutline: { borderWidth: 1, borderColor: colors.border },
-  tagText: { ...typography.caption, fontFamily: fonts.semibold },
-  taxId: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
-  actions: { marginTop: 12, gap: spacing.sm },
-  // Davet bağlantısı (Faz 2, Adım 4): düğme değil, küçük metin bağlantısı.
-  inviteLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    minHeight: MIN_TOUCH,
-  },
-  inviteLinkPressed: { opacity: 0.6 },
-  inviteLinkText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
-  actionButton: { flex: 1, paddingHorizontal: spacing.sm },
-  // WhatsApp taslak satırı: düğmelerin arasında beyaz blok.
-  draftBlock: { backgroundColor: colors.surface, borderRadius: radius.md, overflow: 'hidden' },
-  // Sekmeler: seçili olanın altında lacivert çizgi (orijinal tasarım).
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tabBarContent: { flexGrow: 1 },
-  tabItem: {
-    flexGrow: 1,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
-  },
-  tabItemSelected: { borderBottomColor: colors.primary },
-  tabPressed: { backgroundColor: colors.pressed },
-  tabLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  tabLabelSelected: { color: colors.primary },
-  aboutBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md, gap: 6 },
-  aboutTitle: { ...typography.subtitle, color: colors.text },
-  about: { ...typography.body, color: colors.text },
-  aboutEmpty: { ...typography.body, color: colors.textMuted },
-  aboutEmptyAction: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent, marginTop: spacing.xs },
-  linkPressed: { opacity: 0.6 },
-  // Kendi firmasında sayfanın üstündeki "tamamla" şeridi (açık mavi blok).
-  setupBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-  },
-  setupTexts: { flex: 1, gap: 6 },
-  setupTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  setupTrack: { height: 6, borderRadius: radius.sm, backgroundColor: colors.surface, overflow: 'hidden' },
-  setupFill: { height: 6, borderRadius: radius.sm, backgroundColor: colors.primary },
-  setupHint: { ...typography.caption, color: colors.textMuted },
-  fact: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 44,
-    paddingHorizontal: spacing.gutter,
-  },
-  factDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  factLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  factValue: { ...typography.body, color: colors.text, flexShrink: 1, textAlign: 'right' },
-  factValueMono: { fontFamily: fonts.mono },
-  factLink: { color: colors.accent },
-  footNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-  chipStrip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingVertical: 10 },
-  usageStripWrap: { borderTopWidth: 1, borderTopColor: colors.divider },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  filterChipUsage: { backgroundColor: colors.surfaceTonal, borderColor: colors.border },
-  filterChipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterChipText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  filterChipCount: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
-  filterChipTextSelected: { color: colors.primaryText },
-  // Makine parkı sekmesi (Faz 2, Adım 5)
-  capacityBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md, gap: 6 },
-  capacityTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  capacityTexts: { flexShrink: 1, gap: 2 },
-  capacityLabel: { ...typography.caption, color: colors.textMuted },
-  capacityValue: { ...typography.mono, fontSize: 19, lineHeight: 25, color: colors.text },
-  contractTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  contractTagOpen: { backgroundColor: colors.successSoft },
-  contractTagClosed: { backgroundColor: colors.surfaceTonal },
-  contractTagText: { ...typography.caption, fontFamily: fonts.semibold },
-  capacityNote: { ...typography.body, color: colors.text },
-  capacityUpdated: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  capacityAction: { alignSelf: 'flex-start', marginTop: spacing.xs },
-  machineRow: { paddingHorizontal: spacing.gutter, paddingVertical: 10, gap: 2 },
-  machineDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  machineTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  machineCount: { fontFamily: fonts.monoSemibold },
-  machineSummary: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.textMuted },
-  machineNote: { ...typography.caption, color: colors.textMuted },
-  // Doğrulama düzeyi açıklaması (Faz 2, Adım 7)
-  verifyLine: { ...typography.caption, color: colors.textMuted },
-  verifyHint: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
-  verifyInfo: { ...typography.caption, color: colors.textMuted, marginTop: spacing.xs },
-  // Referanslar (Faz 2, Adım 7)
-  refRow: { flexDirection: 'row', alignItems: 'center', paddingRight: spacing.sm },
-  refDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  refTexts: {
-    flex: 1,
-    gap: 2,
-    minHeight: MIN_TOUCH + 8,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  refNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  refName: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent, flexShrink: 1 },
-  refCity: { ...typography.caption, color: colors.textMuted },
-  refDetail: { ...typography.caption, color: colors.text },
-  refNote: { ...typography.caption, color: colors.textMuted },
-  refActions: { gap: spacing.xs, paddingVertical: spacing.sm },
-  refRemove: { minHeight: MIN_TOUCH, justifyContent: 'center', paddingHorizontal: spacing.sm },
-  refRemoveText: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
-  refHint: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingTop: 6 },
-  refHintTight: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  refSuccess: {
-    ...typography.caption,
-    color: colors.success,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 6,
-  },
-  refEmpty: { ...typography.body, color: colors.textMuted, padding: spacing.gutter },
-  refFormBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.gutter, marginTop: spacing.blockGap },
-  refFormTitle: { ...typography.subtitle, color: colors.text, marginBottom: spacing.sm },
-  refFormActions: { flexDirection: 'row', gap: spacing.sm },
-  refFormButton: { flex: 1 },
-  loading: { marginVertical: spacing.lg },
-  postWrap: { marginBottom: spacing.blockGap },
-});

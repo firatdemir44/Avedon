@@ -32,7 +32,11 @@ export function EmptyState({ icon, title, description, actionLabel, onAction, st
           {description}
         </Text>
       ) : null}
-      {actionLabel && onAction ? <Button kind="secondary" label={actionLabel} onPress={onAction} /> : null}
+      {/* Button'un kendi `alignSelf: flex-start`i kapsayıcının ortalamasını
+          eziyordu; boş durumda düğme ortada olmalı (DESIGN.md §3). */}
+      {actionLabel && onAction ? (
+        <Button kind="secondary" label={actionLabel} onPress={onAction} style={{ alignSelf: 'center' }} />
+      ) : null}
     </View>
   );
 }

@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Platform, Share, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, Share, ActivityIndicator } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
@@ -19,7 +17,7 @@ import {
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
 import {
-  EmptyState,
+  EmptyState as LegacyEmptyState,
   ErrorState,
   InlineError,
   friendlyMessage,
@@ -28,19 +26,20 @@ import {
 import { refreshControl } from '../../components/refresh';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { SectionHeader } from '../../components/SectionHeader';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { ProductGallery } from '../../components/ProductGallery';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { ProductVideos } from '../../components/ProductVideos';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { CareSymbolIcon } from '../../components/CareSymbolIcon';
 import { careSymbolsView } from '../../features/care/symbols';
+import { getCachedGalleryImage, loadGalleryImage } from '../../features/products/productImageCache';
 import {
   STOCK_UNIT_LABELS,
+  categoryLabel,
   finishTagLabel,
   isYarnType,
+  subtypeLabel,
+  typeLabel,
   usageLabel,
   yarnRoleLabel,
   yarnTypeLabel,
@@ -52,7 +51,8 @@ import { openPdfDataUrl } from '../../features/docViewer';
 import { optionLabel, otherCountLabels, useYarnOptions } from '../../features/yarns/catalog';
 import { formatMeasure, toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Badge, Button, Card, Icon, Screen, SectionTitle } from '../../ui';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
 
@@ -71,6 +71,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 const fieldLabel = (field: string) => FIELD_LABELS[field] ?? field;
+
+// Ana görselin yüksekliği ve küçük görsel karesi (DESIGN.md'de adı olmayan
+// ekran-içi ölçüler; token eklemeden önce burada tanımlı).
+const HERO_HEIGHT = 260;
+const THUMB_SIZE = 60;
 
 // Belge tarihleri: "2027-03-01T00:00:00.000Z" → "01.03.2027".
 function formatDocDate(iso: string | null) {
@@ -115,13 +120,208 @@ function formatYarn(yarn: { role: string; count: number; unit: string; ply: numb
   return parts.join(' · ');
 }
 
-// Taslak: docs/tasarim-yonleri/CUrun.dc.html + orijinal tasarım "Ürün Sayfası"
-// (kaydırmalı galeri, favori yıldızı). Galeri + kod bloğu, çizgili özellik
-// satırları, firma satırı; eylemler ekranın altına sabit çubukta.
+// --- Ekrana özel küçük bileşenler (src/ui'ye girmeyecek kadar yerel) ---
+
+// Özellik satırı: etiket solda, değer sağda; sayı/ölçü eşit aralıklı yazıyla.
+// `sans`: serbest metin (kullanım, not) normal yazıyla.
+function SpecRow({ label, value, sans, last }: { label: string; value: string; sans?: boolean; last?: boolean }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: t.space[4],
+        minHeight: t.size.touchMin,
+        paddingVertical: t.space[2],
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: t.colors.line,
+      }}
+    >
+      <Text style={[t.type.body16, { color: t.colors.ink2, flexShrink: 1 }]}>{label}</Text>
+      <Text
+        style={[
+          sans ? t.type.body16 : t.type.mono14,
+          { color: t.colors.ink, flexShrink: 1, textAlign: 'right' },
+        ]}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+// Sertifika / test raporu / iplik satırı (kart içinde, arada 1px ayırıcı).
+function DocRow({
+  children,
+  last,
+  onPress,
+  accessibilityLabel,
+}: {
+  children: React.ReactNode;
+  last?: boolean;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}) {
+  const t = useTheme();
+  const base = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: t.space[3],
+    minHeight: t.size.touchMin,
+    paddingVertical: t.space[2],
+    borderBottomWidth: last ? 0 : 1,
+    borderBottomColor: t.colors.line,
+  };
+  if (!onPress) return <View style={base}>{children}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      style={({ pressed }) => [base, pressed ? { opacity: 0.6 } : null]}
+    >
+      {children}
+    </Pressable>
+  );
+}
+
+// Bölüm: başlık + kart. Başlık verilmezse yalnızca kart.
+function Section({ title, count, children }: { title?: string; count?: number; children: React.ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ gap: t.space[2] }}>
+      {title ? <SectionTitle title={count != null ? `${title} (${count})` : title} /> : null}
+      <Card>{children}</Card>
+    </View>
+  );
+}
+
+// Ana görsel + altındaki küçük görseller (artboard 3). Fotoğraflar liste
+// yanıtında gelmiyor; yalnızca seçili ve komşu sayfalar çekiliyor
+// (ProductGallery ile aynı önbellek). Dokununca tam ekran açılır.
+function Gallery({
+  productId,
+  imageCount,
+  onOpenImage,
+}: {
+  productId: string;
+  imageCount: number;
+  onOpenImage: (url: string) => void;
+}) {
+  const t = useTheme();
+  const [index, setIndex] = useState(0);
+  const [urls, setUrls] = useState<(string | null)[]>([]);
+
+  useEffect(() => {
+    setIndex(0);
+    setUrls(Array.from({ length: imageCount }, (_, i) => getCachedGalleryImage(productId, i) ?? null));
+  }, [productId, imageCount]);
+
+  useEffect(() => {
+    let cancelled = false;
+    for (const i of [index - 1, index, index + 1]) {
+      if (i < 0 || i >= imageCount) continue;
+      const cached = getCachedGalleryImage(productId, i);
+      if (cached) {
+        setUrls((prev) => (prev[i] === cached ? prev : Object.assign([...prev], { [i]: cached })));
+        continue;
+      }
+      loadGalleryImage(productId, i)
+        .then((url) => {
+          if (!cancelled) setUrls((prev) => Object.assign([...prev], { [i]: url }));
+        })
+        .catch(() => {
+          // Gelmeyen fotoğrafın yerinde yer tutucu kalır.
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, imageCount, index]);
+
+  if (imageCount === 0) {
+    return (
+      <View
+        style={{
+          height: HERO_HEIGHT,
+          backgroundColor: t.colors.surface2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: t.space[2],
+        }}
+      >
+        <Icon name="fabric" size={t.size.emptyIcon} color="ink3" />
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>Bu ürünün fotoğrafı yok</Text>
+      </View>
+    );
+  }
+
+  const current = urls[index];
+  return (
+    <View style={{ gap: t.space[3] }}>
+      <Pressable
+        onPress={() => current && onOpenImage(current)}
+        disabled={!current}
+        accessibilityRole="imagebutton"
+        accessibilityLabel={`Fotoğraf ${index + 1} / ${imageCount}`}
+        accessibilityHint="Tam ekran büyütür"
+        style={({ pressed }) => [
+          { height: HERO_HEIGHT, backgroundColor: t.colors.surface2 },
+          pressed ? { opacity: 0.9 } : null,
+        ]}
+      >
+        {current ? (
+          <Image source={{ uri: current }} style={{ width: '100%', height: HERO_HEIGHT }} resizeMode="cover" />
+        ) : (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={t.colors.ink3} />
+          </View>
+        )}
+      </Pressable>
+
+      {imageCount > 1 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], gap: t.space[2] }}
+        >
+          {Array.from({ length: imageCount }, (_, i) => (
+            <Pressable
+              key={i}
+              onPress={() => setIndex(i)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: i === index }}
+              accessibilityLabel={`Fotoğraf ${i + 1}`}
+              style={{
+                width: THUMB_SIZE,
+                height: THUMB_SIZE,
+                borderRadius: t.radius.sm,
+                overflow: 'hidden',
+                borderWidth: 1,
+                borderColor: i === index ? t.colors.brand : t.colors.line,
+                backgroundColor: t.colors.surface2,
+              }}
+            >
+              {urls[i] ? (
+                <Image source={{ uri: urls[i] as string }} style={{ flex: 1 }} resizeMode="cover" />
+              ) : null}
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
+// Taslak: design/artboards/3-Ürün-detayı.png. Üst bant + tam genişlik görsel,
+// kod + STOKTA rozeti, ürün adı, firma satırı, çizgili özellik kartı, ardından
+// pasaport bölümleri; eylemler yapışkan alt çubukta.
 export function ProductDetailScreen({ route, navigation }: Props) {
   const { productId } = route.params;
   const { user } = useSession();
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   // İplik etiketleri (Faz 2, Adım 6); kumaşta kullanılmaz ama kanca koşulsuz.
   const yarnOptions = useYarnOptions();
   // Düzenleme ekranından dönünce güncel veri görünsün diye odakta yenileniyor
@@ -135,6 +335,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   // Onaylandıktan sonra şerit hemen kalkar (yeniden yüklemeyi beklemeden).
   const [fieldsConfirmed, setFieldsConfirmed] = useState(false);
   const [confirmBusy, setConfirmBusy] = useState(false);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (product) setFavorite(!!product.isFavorite);
@@ -184,19 +389,10 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     };
   }, [productId]);
 
-  useEffect(() => {
-    // Taslakta başlık ürün kodu, eşit aralıklı yazıyla.
-    if (product) {
-      navigation.setOptions({
-        title: product.code,
-        headerTitleStyle: { ...typography.heading, fontFamily: fonts.monoSemibold, color: colors.primaryText },
-      });
-    }
-  }, [navigation, product]);
-
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        <AppBar title="Ürün" leading="back" onBack={() => navigation.goBack()} />
         <SkeletonDetail variant="product" />
       </View>
     );
@@ -204,11 +400,12 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   if (!product) {
     return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        <AppBar title="Ürün" leading="back" onBack={() => navigation.goBack()} />
         {error && !isNotFound(error) ? (
           <ErrorState error={error} fallback="Ürün alınamadı" onRetry={reload} />
         ) : (
-          <EmptyState icon="cube-outline" title="Ürün bulunamadı" message="Ürün kaldırılmış olabilir." />
+          <LegacyEmptyState icon="cube-outline" title="Ürün bulunamadı" message="Ürün kaldırılmış olabilir." />
         )}
       </View>
     );
@@ -222,10 +419,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const isYarn = isYarnType(product.type);
   const yarnSpec = product.yarn ?? null;
   const usages = isYarn ? '' : (product.usages ?? []).map(usageLabel).join(', ');
+  // Ürün adı: alt çeşit varsa o ("Özel Polar"), yoksa çeşit ("Örme" / "İplik").
+  const productName = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
 
   // --- Kumaş pasaportu ---
   const composition = product.composition ?? [];
   const compositionTotal = composition.reduce((sum, item) => sum + item.percent, 0);
+  const compositionText = composition.map((item) => `%${formatMeasure(item.percent)} ${fiberLabel(item.fiber)}`).join(' · ');
   const finishTags = isYarn ? [] : product.finishTags ?? [];
   // Bilinmeyen anahtarlar atılır, grup sırasına dizilir.
   const careSymbols = isYarn ? [] : careSymbolsView(product.careSymbols ?? []);
@@ -246,19 +446,22 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     ? []
     : (product.fieldMeta ?? []).filter((meta) => !meta.confirmedAt).map((meta) => meta.field);
 
-  // Kart: kod, gramaj, en (+ en tipi), çeşit/alt çeşit, kompozisyon, stok,
-  // MOQ ve termin, sertifika rozetleri. Aşağıdaki özet satırlarında bunlar
-  // tekrar edilmiyor; kartta olmayanlar (kullanım, içerik metni, not) kalıyor.
+  // Akıştaki kartın aynısı; ürün sayfasında dokunulamaz (onPress yok).
   const passportCardProduct = toPassportCardProduct({ ...product, certificates });
 
-  // Tek yüz tüp eninde kartta sığmayan hesap eni burada açıkça yazılır:
-  // "80 cm tek yüz tüp eni · hesap eni 160 cm". Diğer durumlarda en yalnızca
-  // pasaport kartında görünür (tekrar edilmez).
+  // Tek yüz tüp eninde hesap eni açıkça yazılır:
+  // "80 cm tek yüz tüp eni · hesap eni 160 cm".
   const widthSpec =
     !isYarn && product.widthType === 'tup' && product.widthMeaning === 'tup_tek_yuz'
       ? `${formatMeasure(product.widthCm)} cm tek yüz tüp eni · hesap eni ${formatMeasure(
           product.effectiveWidthCm ?? effectiveWidthCm(product.widthCm, product.widthMeaning)
         )} cm`
+      : `${formatMeasure(product.widthCm)} cm`;
+
+  const stockText = `${formatMeasure(product.stock)} ${STOCK_UNIT_LABELS[product.stockUnit].short}`;
+  const moqText =
+    product.moq != null
+      ? `${formatMeasure(product.moq)}${product.moqUnit ? ` ${STOCK_UNIT_LABELS[product.moqUnit].short}` : ''}`
       : '';
 
   // İplik özellik tablosu: numara (+ diğer birimlerdeki karşılığı), çeşit,
@@ -322,30 +525,31 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         ...(yarnSpec.sellerRole
           ? [{ label: 'Satıcı', value: optionLabel(yarnOptions.sellerRoles, yarnSpec.sellerRole), sans: true }]
           : []),
+        ...(moqText ? [{ label: 'Min. sipariş', value: moqText }] : []),
       ]
     : [];
 
   // "30/1 Ne" kayıtlıysa diğer sistemlerdeki karşılığı küçük gri satırda.
   const otherCounts = yarnSpec ? otherCountLabels(yarnSpec.countDtex, yarnSpec.countUnit) : '';
 
-  const specs: { label: string; value: string; sans?: boolean }[] = [
-    ...(widthSpec ? [{ label: 'En', value: widthSpec }] : []),
-    ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
-    // Kompozisyon satırları varsa içerik metni ayrı blokta gösteriliyor.
-    // İplikte özet zaten yukarıdaki iplik tablosunda; içerik metni tekrar olmaz.
-    ...(composition.length || isYarn ? [] : [{ label: 'İçerik', value: product.content }]),
-    ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
-  ];
+  // Artboard 3'teki özellik kartı (kumaş): tip, gramaj, en, içerik, stok,
+  // kullanım, min. sipariş. Boş olan satır çizilmez.
+  const specs: { label: string; value: string; sans?: boolean }[] = isYarn
+    ? yarnSpecs
+    : [
+        { label: 'Kumaş tipi', value: categoryLabel(product.type, product.subtype), sans: true },
+        ...(product.weightGsm ? [{ label: 'Gramaj', value: `${formatMeasure(product.weightGsm)} gr/m²` }] : []),
+        ...(product.widthCm ? [{ label: 'En', value: widthSpec }] : []),
+        ...(compositionText || product.content
+          ? [{ label: 'İçerik', value: compositionText || product.content }]
+          : []),
+        { label: 'Stok', value: stockText },
+        ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
+        ...(moqText ? [{ label: 'Min. sipariş', value: moqText }] : []),
+        ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
+      ];
 
   const commercial: { label: string; value: string }[] = [
-    ...(product.moq != null
-      ? [
-          {
-            label: 'En az sipariş',
-            value: `${formatMeasure(product.moq)}${product.moqUnit ? ` ${STOCK_UNIT_LABELS[product.moqUnit].short}` : ''}`,
-          },
-        ]
-      : []),
     ...(product.leadTimeDays != null ? [{ label: 'Termin', value: `${product.leadTimeDays} gün` }] : []),
     // Fiyat yanıtta yalnızca sahibine geliyor; başkasına alan hiç gelmiyor.
     ...(product.price ? [{ label: 'Fiyat', value: formatPrice(product.price) }] : []),
@@ -437,338 +641,77 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       ? navigation.navigate('YarnForm', { yarnId: product.id })
       : navigation.navigate('AddProduct', { productId: product.id });
 
-  const favoriteButton = isOwnProduct ? null : (
-    <Pressable
-      onPress={toggleFavorite}
-      accessibilityRole="button"
-      accessibilityState={{ selected: favorite }}
-      accessibilityLabel={favorite ? 'Takipten çık' : 'Takibe al'}
-      hitSlop={4}
-      style={({ pressed }) => [styles.favoriteButton, pressed && styles.favoritePressed]}
-    >
-      <Ionicons
-        name={favorite ? 'bookmark' : 'bookmark-outline'}
-        size={22}
-        color={favorite ? colors.primary : colors.text}
+  const openEdit = () =>
+    isYarn
+      ? navigation.navigate('YarnForm', { yarnId: product.id })
+      : navigation.navigate('AddProduct', { productId: product.id });
+
+  // Üst banttaki ikonlar: favori (kendi ürününde yok) ve paylaş.
+  const barActions = [
+    ...(isOwnProduct
+      ? []
+      : [
+          {
+            icon: (favorite ? 'heart' : 'heart-outline') as 'heart',
+            label: favorite ? 'Takipten çık' : 'Takibe al',
+            onPress: toggleFavorite,
+          },
+        ]),
+    ...(passportUrl
+      ? [{ icon: 'share' as const, label: linkCopied ? 'Bağlantı kopyalandı' : 'Paylaş', onPress: sharePassportLink }]
+      : []),
+  ];
+
+  // Yapışkan alt çubuk: ekranın tek dolu düğmesi "Numune talep et"; altında iki
+  // eşit sütun kenarlıklı eylem. Kendi ürününde düzenleme eylemleri.
+  const sticky = isOwnProduct ? (
+    <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+      <Button
+        kind="secondary"
+        label={isYarn ? 'İpliği düzenle' : 'Ürünü düzenle'}
+        icon="create-outline"
+        onPress={openEdit}
+        style={{ flex: 1 }}
       />
-    </Pressable>
-  );
-
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        {isOwnProduct && pendingFields.length ? (
-          <View style={styles.pendingBanner} accessibilityRole="alert">
-            <View style={styles.pendingTextWrap}>
-              <Ionicons name="sparkles-outline" size={18} color={colors.warning} />
-              <Text style={styles.pendingText}>
-                Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
-              </Text>
-            </View>
-            <View style={styles.pendingActions}>
-              <PrimaryButton
-                label={confirmBusy ? 'Onaylanıyor...' : 'Onayla'}
-                onPress={confirmFields}
-                disabled={confirmBusy}
-                style={styles.pendingButton}
-              />
-              <PrimaryButton
-                label="Düzenle"
-                variant="outline"
-                onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
-                style={styles.pendingButton}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        <View style={[styles.block, styles.heroBlock]}>
-          <ProductGallery
-            productId={product.id}
-            imageCount={product.imageCount ?? (product.hasImage ? 1 : 0)}
-            onOpenImage={setViewerUrl}
-            overlay={favoriteButton}
-          />
-          {/* Akıştaki kartın aynısı; ürün sayfasında dokunulamaz (onPress yok).
-              İplikte kumaş pasaportu kartı gösterilmez (gramaj/en 0). */}
-          {isYarn ? (
-            <View style={styles.yarnHead}>
-              <Text style={styles.yarnCode}>{product.code}</Text>
-              <Text style={styles.yarnSummary}>{yarnSpec?.summary || product.content}</Text>
-            </View>
-          ) : (
-            <PassportCard product={passportCardProduct} />
-          )}
-        </View>
-
-        {/* Fotoğrafların hemen altında videolar (en çok 3). Video varsa herkes
-            izler; ekleme/kaldırma yalnızca ürünün sahibi firmada. Kumaş ve
-            iplik aynı ekranı kullandığı için ikisinde de çalışır. */}
-        <ProductVideos productId={product.id} isOwner={isOwnProduct} />
-
-        {isYarn && yarnSpecs.length ? (
-          <View>
-            <SectionHeader title="İplik özellikleri" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.specBlock]}>
-              {yarnSpecs.map((spec, index) => (
-                <SpecRow
-                  key={spec.label}
-                  label={spec.label}
-                  value={spec.value}
-                  sans={spec.sans}
-                  last={index === yarnSpecs.length - 1}
-                />
-              ))}
-              {otherCounts ? <Text style={styles.passportNote}>Diğer birimlerde: {otherCounts}</Text> : null}
-            </View>
-          </View>
-        ) : null}
-
-        {specs.length ? (
-          <View style={[styles.block, styles.specBlock]}>
-            {specs.map((spec, index) => (
-              <SpecRow
-                key={spec.label}
-                label={spec.label}
-                value={spec.value}
-                sans={spec.sans}
-                last={index === specs.length - 1}
-              />
-            ))}
-          </View>
-        ) : null}
-
-        {composition.length ? (
-          <View>
-            <SectionHeader title="Kompozisyon" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              {composition.map((item) => (
-                <View key={`${item.fiber}-${item.percent}`} style={styles.fiberRow}>
-                  <View style={styles.fiberTexts}>
-                    <Text style={styles.fiberName}>{fiberLabel(item.fiber)}</Text>
-                    <Text style={styles.fiberPercent}>%{formatMeasure(item.percent)}</Text>
-                  </View>
-                  <View style={styles.fiberTrack}>
-                    <View style={[styles.fiberFill, { width: `${Math.min(100, item.percent)}%` }]} />
-                  </View>
-                </View>
-              ))}
-              {compositionTotal !== 100 ? (
-                <Text style={styles.passportNote}>Toplam %{formatMeasure(compositionTotal)}</Text>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-
-        {commercial.length ? (
-          <View>
-            <SectionHeader title="Ticari" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.specBlock]}>
-              {commercial.map((row, index) => (
-                <SpecRow key={row.label} label={row.label} value={row.value} last={index === commercial.length - 1} />
-              ))}
-              {product.price ? <Text style={styles.passportNote}>Fiyatı yalnızca siz görüyorsunuz.</Text> : null}
-            </View>
-          </View>
-        ) : null}
-
-        {/* Faz 3, Adım 6: anonim piyasa aralığı. Ticari bilgilerin yanında,
-            yalnızca oturum açmış kullanıcıya; veri yoksa kart hiç çizilmez
-            (`hideWhenUnavailable`) ki ürün sayfası kalabalıklaşmasın. */}
-        {user ? <PriceIndexCard productId={productId} hideWhenUnavailable /> : null}
-
-        {/* Bakım sembolleri (Fırat 2026-09-21): etiketteki işaretler yatay
-            sırada. Yalnızca kumaşta; iplikte bu alan yok. Eski kayıtlardaki
-            serbest metin (careNotes) varsa sembollerin altında küçük yazı. */}
-        {!isYarn && careSymbols.length ? (
-          <View>
-            <SectionHeader title="Bakım" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              <View style={styles.careRow}>
-                {careSymbols.map((symbol) => (
-                  <View key={symbol.key} style={styles.careItem} accessibilityLabel={symbol.label}>
-                    <CareSymbolIcon shape={symbol.shape} size={36} color={colors.text} />
-                    <Text style={styles.careLabel} numberOfLines={2}>
-                      {symbol.label}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-              {product.careNotes ? <Text style={styles.careNotes}>{product.careNotes}</Text> : null}
-            </View>
-          </View>
-        ) : null}
-
-        {finishTags.length ? (
-          <View>
-            <SectionHeader title="Apre / boya" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              <View style={styles.tagRow}>
-                {finishTags.map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{finishTagLabel(tag)}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {certificates.length ? (
-          <View>
-            <SectionHeader title="Sertifikalar" count={certificates.length} style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              {certificates.map((certificate, index) => {
-                const meta = [
-                  certificate.number ? `No ${certificate.number}` : '',
-                  certificate.validUntil ? `${formatDocDate(certificate.validUntil)} tarihine kadar` : '',
-                ]
-                  .filter(Boolean)
-                  .join(' · ');
-                const body = (
-                  <>
-                    <Ionicons name="ribbon-outline" size={18} color={colors.success} />
-                    <View style={styles.docTexts}>
-                      <Text style={styles.docTitle}>{certificateLabel(certificate.name)}</Text>
-                      {meta ? <Text style={styles.docMeta}>{meta}</Text> : null}
-                    </View>
-                    {certificate.hasImage ? <Ionicons name="image-outline" size={18} color={colors.chevron} /> : null}
-                  </>
-                );
-                const divider = index < certificates.length - 1;
-                return certificate.hasImage ? (
-                  <Pressable
-                    key={`${certificate.position}-${certificate.name}`}
-                    onPress={() => openDocImage('certificate', certificate.position)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${certificateLabel(certificate.name)} belgesini aç`}
-                    android_ripple={{ color: colors.pressed }}
-                    style={({ pressed }) => [styles.docRow, divider && styles.docDivider, pressed && styles.pressed]}
-                  >
-                    {body}
-                  </Pressable>
-                ) : (
-                  <View
-                    key={`${certificate.position}-${certificate.name}`}
-                    style={[styles.docRow, divider && styles.docDivider]}
-                  >
-                    {body}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
-        {yarns.length ? (
-          <View>
-            <SectionHeader title="İplik" count={yarns.length} style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              {yarns.map((yarn, index) => (
-                <View
-                  key={yarn.position}
-                  style={[styles.docRow, index < yarns.length - 1 && styles.docDivider]}
-                >
-                  <View style={styles.docTexts}>
-                    <Text style={styles.docTitle}>{yarn.role ? yarnRoleLabel(yarn.role) : `${index + 1}. iplik`}</Text>
-                    <Text style={styles.yarnValue}>{formatYarn(yarn)}</Text>
-                  </View>
-                  {/* Faz 2, Adım 6: iplik dizinini bu numarayla ön dolu açar.
-                      Satırın YANINDA ayrı bir dokunma alanı (web'de iç içe
-                      düğme olmasın). */}
-                  <Pressable
-                    onPress={() =>
-                      navigation.navigate('YarnDirectory', {
-                        preset: yarnDirectoryPreset(yarn),
-                        presetKey: Date.now(),
-                      })
-                    }
-                    hitSlop={6}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${formatYarn(yarn)} ipliğini kimler satıyor, iplik dizininde ara`}
-                    style={({ pressed }) => [styles.sellerLink, pressed && styles.assistantLinkPressed]}
-                  >
-                    <Text style={styles.sellerLinkText}>Kim satıyor?</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {testReports.length ? (
-          <View>
-            <SectionHeader title="Test raporları" count={testReports.length} style={styles.sectionHeader} />
-            <View style={[styles.block, styles.passportBlock]}>
-              {testReports.map((report, index) => {
-                const meta = [report.result, formatDocDate(report.testedAt)].filter(Boolean).join(' · ');
-                const divider = index < testReports.length - 1;
-                const body = (
-                  <>
-                    <Ionicons name="document-text-outline" size={18} color={colors.accent} />
-                    <View style={styles.docTexts}>
-                      <Text style={styles.docTitle}>{report.kind}</Text>
-                      {meta ? <Text style={styles.docMeta}>{meta}</Text> : null}
-                    </View>
-                    {report.hasImage ? <Ionicons name="image-outline" size={18} color={colors.chevron} /> : null}
-                  </>
-                );
-                return report.hasImage ? (
-                  <Pressable
-                    key={report.position}
-                    onPress={() => openDocImage('report', report.position)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${report.kind} raporunu aç`}
-                    android_ripple={{ color: colors.pressed }}
-                    style={({ pressed }) => [styles.docRow, divider && styles.docDivider, pressed && styles.pressed]}
-                  >
-                    {body}
-                  </Pressable>
-                ) : (
-                  <View key={report.position} style={[styles.docRow, divider && styles.docDivider]}>
-                    {body}
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
+      <Button
+        kind="secondary"
+        label="Gönderide paylaş"
+        icon="share"
+        accessibilityLabel="Bu ürünü gönderide paylaş"
+        onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
+        style={{ flex: 1 }}
+      />
+    </View>
+  ) : (
+    <View style={{ gap: t.space[2] }}>
+      <Button
+        size="lg"
+        label="Numune talep et"
+        icon="sample"
+        onPress={() =>
+          navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
+        }
+      />
+      <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+        <Button
+          kind="secondary"
+          label="Teklif iste"
+          icon="quote"
+          onPress={() =>
+            navigation.navigate('QuoteRequestForm', {
+              productId: product.id,
+              productCode: product.code,
+              stockUnit: product.stockUnit,
+            })
+          }
+          style={{ flex: 1 }}
+        />
         {company ? (
-          <Pressable
-            onPress={openCompany}
-            accessibilityRole="button"
-            accessibilityLabel={`${company.name}, firma sayfasını aç`}
-            android_ripple={{ color: colors.pressed }}
-            style={({ pressed }) => [styles.block, styles.companyRow, pressed && styles.pressed]}
-          >
-            <CompanyAvatar
-              name={company.name}
-              verification={company.verification}
-              size={36}
-              companyId={company.id}
-              logoUpdatedAt={company.logoUpdatedAt}
-            />
-            <View style={styles.companyTexts}>
-              <Text style={styles.companyName} numberOfLines={1}>
-                {company.name}
-              </Text>
-              <Text style={styles.companyMeta}>
-                {company.verification === 'dogrulanmis' ? (
-                  <Text style={styles.companyVerified}>Doğrulanmış üretici · </Text>
-                ) : null}
-                <Text style={styles.companyCount}>{product.companyProductCount} ürün</Text>
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-          </Pressable>
-        ) : null}
-
-        {/* Faz 2, Adım 3: firmanın asistanına bu ürünü sorma. Kendi ürününde
-            gösterilmez. Satır firma satırının ALTINDA ayrı bir dokunma alanı:
-            web'de iç içe düğme olmasın. */}
-        {company && !isOwnProduct ? (
-          <Pressable
+          <Button
+            kind="secondary"
+            label="Asistana sor"
+            icon="message"
+            accessibilityLabel={`${company.name} asistanına ${product.code} hakkında sor`}
             onPress={() =>
               navigation.navigate('SellerAssistant', {
                 companyId: company.id,
@@ -776,379 +719,493 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                 productCode: product.code,
               })
             }
-            accessibilityRole="button"
-            accessibilityLabel={`${company.name} asistanına ${product.code} hakkında sor`}
-            style={({ pressed }) => [styles.assistantLink, pressed && styles.assistantLinkPressed]}
-          >
-            <Ionicons name="sparkles" size={16} color={colors.assistant} />
-            <Text style={styles.assistantLinkText}>Asistana sor</Text>
-          </Pressable>
+            style={{ flex: 1 }}
+          />
         ) : null}
+      </View>
+    </View>
+  );
 
-        {/* Faz 3, Adım 3: görünüşçe benzeyen kumaşlar. Yalnızca kumaşta
-            (iplikte görünüm kartı çıkmaz) ve yalnızca sonuç varsa. */}
-        {!isYarn && similar.length ? (
-          <>
-            <SectionHeader title="Benzer kumaşlar" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.similarBlock]}>
-              <Text style={styles.similarNote}>Görünüşe göre benzer</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.similarStrip}
-              >
-                {similar.map((item) => (
-                  <Pressable
-                    key={item.product.id}
-                    onPress={() => navigation.push('ProductDetail', { productId: item.product.id })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${item.product.code}, ${
-                      item.product.company?.name ?? ''
-                    }, yüzde ${item.similarity} benzer`}
-                    style={({ pressed }) => [styles.similarCard, pressed && styles.pressed]}
-                  >
-                    <ProductThumbnail productId={item.product.id} hasImage={item.product.hasImage} size={104} />
-                    <Text style={styles.similarCode} numberOfLines={1}>
-                      {item.product.code}
-                    </Text>
-                    {item.product.company ? (
-                      <Text style={styles.similarCompany} numberOfLines={1}>
-                        {item.product.company.name}
-                      </Text>
-                    ) : null}
-                    <Text style={styles.similarScore}>%{item.similarity} benzer</Text>
-                    {item.reasons[0] ? (
-                      <Text style={styles.similarReason} numberOfLines={1}>
-                        {item.reasons[0]}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          </>
-        ) : null}
+  return (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title={productName} leading="back" onBack={() => navigation.goBack()} actions={barActions} />
 
-        {/* Faz 3, Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK. Kumaşta ve
-            iplikte aynı bölüm. Herkes pasaport sayfasını açıp paylaşabilir;
-            doluluk, eksik listesi ve QR yalnızca ürünün sahibine görünür. */}
-        {dpp ? (
-          <>
-            <SectionHeader title="Dijital pasaport" style={styles.sectionHeader} />
-            <View style={[styles.block, styles.dppBlock]}>
-              <Text style={styles.dppLead}>
-                Bu ürünün herkese açık pasaport sayfası hazır. Sayfada fiyat ve stok görünmez.
-              </Text>
-              <View style={styles.dppActions}>
-                <PrimaryButton
-                  label="Pasaport sayfasını aç"
-                  icon="open-outline"
-                  size="sm"
-                  variant="outline"
-                  onPress={openPassportPage}
-                  style={styles.dppAction}
-                />
-                <PrimaryButton
-                  label={linkCopied ? 'Kopyalandı' : 'Bağlantıyı paylaş'}
-                  icon={linkCopied ? 'checkmark' : 'share-social-outline'}
-                  size="sm"
-                  variant="outline"
-                  onPress={sharePassportLink}
-                  style={styles.dppAction}
-                />
+      <Screen scroll={false} noPadding sticky={sticky} contentStyle={{ paddingTop: 0, gap: 0 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: t.space[6] }}
+          refreshControl={refreshControl(refreshing, refresh)}
+        >
+          <Gallery
+            productId={product.id}
+            imageCount={product.imageCount ?? (product.hasImage ? 1 : 0)}
+            onOpenImage={setViewerUrl}
+          />
+
+          <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[6] }}>
+            {isOwnProduct && pendingFields.length ? (
+              <Card style={{ borderColor: t.colors.warning, gap: t.space[3] }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
+                  <Icon name="warning" size={t.size.iconSm} color="warning" />
+                  <Text style={[t.type.body14, { color: t.colors.ink, flex: 1 }]}>
+                    Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                  <Button
+                    kind="secondary"
+                    label={confirmBusy ? 'Onaylanıyor…' : 'Onayla'}
+                    icon="check"
+                    disabled={confirmBusy}
+                    onPress={confirmFields}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    kind="secondary"
+                    label="Düzenle"
+                    icon="create-outline"
+                    onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </Card>
+            ) : null}
+
+            {/* Kod + STOKTA rozeti, ürün adı, firma satırı */}
+            <View style={{ gap: t.space[2] }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+                <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{product.code}</Text>
+                {product.stock > 0 ? <Badge kind="info" label="Stokta" /> : null}
               </View>
+              <Text accessibilityRole="header" style={[t.type.title22, { color: t.colors.ink }]}>
+                {productName}
+              </Text>
 
-              {isOwnProduct ? (
-                <>
-                  <View style={styles.dppReady}>
-                    <Text style={styles.dppReadyText}>%{dpp.completenessPercent} hazır</Text>
-                    <View style={styles.dppTrack}>
+              {company ? (
+                <Pressable
+                  onPress={openCompany}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${company.name}, firma sayfasını aç`}
+                  style={({ pressed }) => [
+                    {
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: t.space[2],
+                      minHeight: t.size.touchMin,
+                    },
+                    pressed ? { opacity: 0.6 } : null,
+                  ]}
+                >
+                  <CompanyAvatar
+                    name={company.name}
+                    verification={company.verification}
+                    size={t.size.avatarSm}
+                    companyId={company.id}
+                    logoUpdatedAt={company.logoUpdatedAt}
+                  />
+                  <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink, flexShrink: 1 }]}>
+                    {company.name}
+                  </Text>
+                  {company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
+                  <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{product.companyProductCount} ürün</Text>
+                </Pressable>
+              ) : null}
+            </View>
+
+            {/* Özellik kartı (artboard 3) */}
+            {specs.length ? (
+              <Card>
+                {specs.map((spec, index) => (
+                  <SpecRow
+                    key={spec.label}
+                    label={spec.label}
+                    value={spec.value}
+                    sans={spec.sans}
+                    last={index === specs.length - 1}
+                  />
+                ))}
+                {isYarn && otherCounts ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
+                    Diğer birimlerde: {otherCounts}
+                  </Text>
+                ) : null}
+              </Card>
+            ) : null}
+
+            {commercial.length ? (
+              <Section title="Ticari">
+                {commercial.map((row, index) => (
+                  <SpecRow key={row.label} label={row.label} value={row.value} last={index === commercial.length - 1} />
+                ))}
+                {product.price ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
+                    Fiyatı yalnızca siz görüyorsunuz.
+                  </Text>
+                ) : null}
+              </Section>
+            ) : null}
+
+            {/* Kumaş pasaportu kartı (iplikte gösterilmez: gramaj/en 0) */}
+            {!isYarn ? (
+              <View style={{ gap: t.space[2] }}>
+                <SectionTitle title="Kumaş pasaportu" />
+                <PassportCard product={passportCardProduct} />
+              </View>
+            ) : null}
+
+            {composition.length ? (
+              <Section title="Kompozisyon">
+                {composition.map((item) => (
+                  <View key={`${item.fiber}-${item.percent}`} style={{ paddingVertical: t.space[1], gap: t.space[1] }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: t.space[2],
+                      }}
+                    >
+                      <Text style={[t.type.body16, { color: t.colors.ink, flexShrink: 1 }]}>
+                        {fiberLabel(item.fiber)}
+                      </Text>
+                      <Text style={[t.type.mono14, { color: t.colors.ink }]}>%{formatMeasure(item.percent)}</Text>
+                    </View>
+                    <View
+                      style={{
+                        height: t.space[1],
+                        borderRadius: t.radius.sm,
+                        backgroundColor: t.colors.surface2,
+                        overflow: 'hidden',
+                      }}
+                    >
                       <View
-                        style={[
-                          styles.dppFill,
-                          { width: `${Math.max(0, Math.min(100, dpp.completenessPercent))}%` },
-                        ]}
+                        style={{
+                          height: t.space[1],
+                          borderRadius: t.radius.sm,
+                          backgroundColor: t.colors.accent,
+                          width: `${Math.min(100, item.percent)}%`,
+                        }}
                       />
                     </View>
                   </View>
+                ))}
+                {compositionTotal !== 100 ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
+                    Toplam %{formatMeasure(compositionTotal)}
+                  </Text>
+                ) : null}
+              </Section>
+            ) : null}
 
-                  {dppMissing.length ? (
-                    <View style={styles.dppMissing}>
-                      <Text style={styles.dppMissingTitle}>Eksik bilgiler</Text>
-                      {dppMissing.map((item) => (
-                        <View key={item.key} style={styles.dppMissingRow}>
-                          <Ionicons name="ellipse-outline" size={12} color={colors.warning} />
-                          <Text style={styles.dppMissingText}>{item.label}</Text>
-                        </View>
-                      ))}
-                      <PrimaryButton
-                        label="Düzenle"
-                        icon="create-outline"
-                        size="sm"
-                        variant="outline"
-                        onPress={openPassportEdit}
-                        style={styles.dppEditButton}
-                      />
+            {/* Fotoğrafların ardından videolar (en çok 3). Video varsa herkes
+                izler; ekleme/kaldırma yalnızca ürünün sahibi firmada. */}
+            <ProductVideos productId={product.id} isOwner={isOwnProduct} />
+
+            {certificates.length ? (
+              <Section title="Sertifikalar" count={certificates.length}>
+                {certificates.map((certificate, index) => {
+                  const meta = [
+                    certificate.number ? `No ${certificate.number}` : '',
+                    certificate.validUntil ? `${formatDocDate(certificate.validUntil)} tarihine kadar` : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' · ');
+                  return (
+                    <DocRow
+                      key={`${certificate.position}-${certificate.name}`}
+                      last={index === certificates.length - 1}
+                      onPress={
+                        certificate.hasImage ? () => openDocImage('certificate', certificate.position) : undefined
+                      }
+                      accessibilityLabel={`${certificateLabel(certificate.name)} belgesini aç`}
+                    >
+                      <Icon name="checkmark-circle-outline" size={t.size.iconSm} color="success" />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[t.type.body16, { color: t.colors.ink }]}>
+                          {certificateLabel(certificate.name)}
+                        </Text>
+                        {meta ? <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{meta}</Text> : null}
+                      </View>
+                      {certificate.hasImage ? <Icon name="image-outline" size={t.size.iconSm} color="ink3" /> : null}
+                    </DocRow>
+                  );
+                })}
+              </Section>
+            ) : null}
+
+            {/* Bakım sembolleri: etiketteki işaretler yatay sırada (yalnızca kumaşta). */}
+            {!isYarn && careSymbols.length ? (
+              <Section title="Bakım">
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[4] }}>
+                  {careSymbols.map((symbol) => (
+                    <View
+                      key={symbol.key}
+                      accessibilityLabel={symbol.label}
+                      style={{ width: t.size.thumb, alignItems: 'center', gap: t.space[1] }}
+                    >
+                      <CareSymbolIcon shape={symbol.shape} size={t.size.chip} color={t.colors.ink} />
+                      <Text numberOfLines={2} style={[t.type.body14, { color: t.colors.ink3, textAlign: 'center' }]}>
+                        {symbol.label}
+                      </Text>
                     </View>
+                  ))}
+                </View>
+                {product.careNotes ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
+                    {product.careNotes}
+                  </Text>
+                ) : null}
+              </Section>
+            ) : null}
+
+            {finishTags.length ? (
+              <Section title="Apre / boya">
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                  {finishTags.map((tag) => (
+                    <View
+                      key={tag}
+                      style={{
+                        borderRadius: t.radius.sm,
+                        backgroundColor: t.colors.brandSoft,
+                        paddingHorizontal: t.space[2],
+                        paddingVertical: t.space[1],
+                      }}
+                    >
+                      <Text style={[t.type.body14, { color: t.colors.brand }]}>{finishTagLabel(tag)}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Section>
+            ) : null}
+
+            {/* İplik görünümü: kumaşın iplikleri + iplik dizinine bağlantı. */}
+            {yarns.length ? (
+              <Section title="İplik" count={yarns.length}>
+                {yarns.map((yarn, index) => (
+                  <DocRow key={yarn.position} last={index === yarns.length - 1}>
+                    <Icon name="yarn" size={t.size.iconSm} color="ink2" />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[t.type.body16, { color: t.colors.ink }]}>
+                        {yarn.role ? yarnRoleLabel(yarn.role) : `${index + 1}. iplik`}
+                      </Text>
+                      <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatYarn(yarn)}</Text>
+                    </View>
+                    {/* İplik dizinini bu numarayla ön dolu açar. Satırın YANINDA
+                        ayrı bir dokunma alanı (web'de iç içe düğme olmasın). */}
+                    <Pressable
+                      onPress={() =>
+                        navigation.navigate('YarnDirectory', {
+                          preset: yarnDirectoryPreset(yarn),
+                          presetKey: Date.now(),
+                        })
+                      }
+                      accessibilityRole="button"
+                      accessibilityLabel={`${formatYarn(yarn)} ipliğini kimler satıyor, iplik dizininde ara`}
+                      style={({ pressed }) => [
+                        { minHeight: t.size.touchMin, justifyContent: 'center', paddingLeft: t.space[2] },
+                        pressed ? { opacity: 0.6 } : null,
+                      ]}
+                    >
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Kim satıyor?</Text>
+                    </Pressable>
+                  </DocRow>
+                ))}
+              </Section>
+            ) : null}
+
+            {testReports.length ? (
+              <Section title="Test raporları" count={testReports.length}>
+                {testReports.map((report, index) => {
+                  const meta = [report.result, formatDocDate(report.testedAt)].filter(Boolean).join(' · ');
+                  return (
+                    <DocRow
+                      key={report.position}
+                      last={index === testReports.length - 1}
+                      onPress={report.hasImage ? () => openDocImage('report', report.position) : undefined}
+                      accessibilityLabel={`${report.kind} raporunu aç`}
+                    >
+                      <Icon name="requests" size={t.size.iconSm} color="ink2" />
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[t.type.body16, { color: t.colors.ink }]}>{report.kind}</Text>
+                        {meta ? <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{meta}</Text> : null}
+                      </View>
+                      {report.hasImage ? <Icon name="image-outline" size={t.size.iconSm} color="ink3" /> : null}
+                    </DocRow>
+                  );
+                })}
+              </Section>
+            ) : null}
+
+            {/* Anonim piyasa aralığı: yalnızca oturum açmış kullanıcıya, veri
+                yoksa kart hiç çizilmez (`hideWhenUnavailable`). */}
+            {user ? <PriceIndexCard productId={productId} hideWhenUnavailable /> : null}
+
+            {/* Görünüşçe benzeyen kumaşlar (yalnızca kumaşta ve sonuç varsa). */}
+            {!isYarn && similar.length ? (
+              <View style={{ gap: t.space[2] }}>
+                <SectionTitle title="Benzer kumaşlar" />
+                <Card noPadding style={{ paddingVertical: t.space[4] }}>
+                  <Text style={[t.type.body14, { color: t.colors.ink3, paddingHorizontal: t.space[4] }]}>
+                    Görünüşe göre benzer
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: t.space[4], paddingTop: t.space[3], gap: t.space[3] }}
+                  >
+                    {similar.map((item) => (
+                      <Pressable
+                        key={item.product.id}
+                        onPress={() => navigation.push('ProductDetail', { productId: item.product.id })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${item.product.code}, ${
+                          item.product.company?.name ?? ''
+                        }, yüzde ${item.similarity} benzer`}
+                        style={({ pressed }) => [
+                          { width: t.size.quickAction, gap: t.space[1] },
+                          pressed ? { opacity: 0.6 } : null,
+                        ]}
+                      >
+                        <ProductThumbnail
+                          productId={item.product.id}
+                          hasImage={item.product.hasImage}
+                          size={t.size.quickAction}
+                        />
+                        <Text numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink }]}>
+                          {item.product.code}
+                        </Text>
+                        {item.product.company ? (
+                          <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
+                            {item.product.company.name}
+                          </Text>
+                        ) : null}
+                        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>%{item.similarity} benzer</Text>
+                        {item.reasons[0] ? (
+                          <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3 }]}>
+                            {item.reasons[0]}
+                          </Text>
+                        ) : null}
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </Card>
+              </View>
+            ) : null}
+
+            {/* AB Dijital Ürün Pasaportu'na HAZIRLIK. Herkes pasaport sayfasını
+                açıp paylaşabilir; doluluk, eksik listesi ve QR yalnızca sahibine. */}
+            {dpp ? (
+              <Section title="Dijital pasaport">
+                <View style={{ gap: t.space[3] }}>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                    Bu ürünün herkese açık pasaport sayfası hazır. Sayfada fiyat ve stok görünmez.
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                    <Button
+                      kind="secondary"
+                      label="Pasaportu aç"
+                      icon="open-outline"
+                      onPress={openPassportPage}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      kind="secondary"
+                      label={linkCopied ? 'Kopyalandı' : 'Bağlantıyı paylaş'}
+                      icon={linkCopied ? 'check' : 'share'}
+                      onPress={sharePassportLink}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
+
+                  {isOwnProduct ? (
+                    <>
+                      <View style={{ gap: t.space[1] }}>
+                        <Text style={[t.type.mono14, { color: t.colors.ink }]}>%{dpp.completenessPercent} hazır</Text>
+                        <View
+                          style={{
+                            height: t.space[1],
+                            borderRadius: t.radius.sm,
+                            backgroundColor: t.colors.surface2,
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <View
+                            style={{
+                              height: t.space[1],
+                              borderRadius: t.radius.sm,
+                              backgroundColor: t.colors.accent,
+                              width: `${Math.max(0, Math.min(100, dpp.completenessPercent))}%`,
+                            }}
+                          />
+                        </View>
+                      </View>
+
+                      {dppMissing.length ? (
+                        <View style={{ gap: t.space[1] }}>
+                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Eksik bilgiler</Text>
+                          {dppMissing.map((item) => (
+                            <View
+                              key={item.key}
+                              style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}
+                            >
+                              <Icon name="warning" size={t.size.iconXs} color="warning" />
+                              <Text style={[t.type.body14, { color: t.colors.ink, flex: 1 }]}>{item.label}</Text>
+                            </View>
+                          ))}
+                          <Button
+                            kind="secondary"
+                            label="Düzenle"
+                            icon="create-outline"
+                            onPress={openPassportEdit}
+                            style={{ alignSelf: 'flex-start', marginTop: t.space[1] }}
+                          />
+                        </View>
+                      ) : null}
+
+                      <View style={{ alignItems: 'center', gap: t.space[3] }}>
+                        <Image
+                          source={{ uri: dppQrUrl(product.id) }}
+                          style={{
+                            width: t.size.emptyTextWidth,
+                            height: t.size.emptyTextWidth,
+                            maxWidth: '100%',
+                            borderRadius: t.radius.md,
+                            backgroundColor: t.colors.surface1,
+                          }}
+                          resizeMode="contain"
+                          accessibilityLabel={`${product.code} pasaport sayfasının QR kodu`}
+                        />
+                        <Text style={[t.type.body14, { color: t.colors.ink3, textAlign: 'center' }]}>
+                          QR'ı etiketinize ya da kartelanıza basabilirsiniz; okutan kişi fiyatsız, stoksuz pasaport
+                          sayfasını görür.
+                        </Text>
+                        <Button kind="secondary" label="QR'ı aç / indir" icon="qr-code-outline" onPress={openQr} />
+                      </View>
+                    </>
                   ) : null}
 
-                  <View style={styles.dppQrWrap}>
-                    <Image
-                      source={{ uri: dppQrUrl(product.id) }}
-                      style={styles.dppQr}
-                      resizeMode="contain"
-                      accessibilityLabel={`${product.code} pasaport sayfasının QR kodu`}
-                    />
-                    <Text style={styles.dppQrNote}>
-                      QR'ı etiketinize ya da kartelanıza basabilirsiniz; okutan kişi fiyatsız, stoksuz pasaport
-                      sayfasını görür.
-                    </Text>
-                    <PrimaryButton
-                      label="QR'ı aç / indir"
-                      icon="qr-code-outline"
-                      size="sm"
-                      variant="outline"
-                      onPress={openQr}
-                    />
-                  </View>
-                </>
-              ) : null}
+                  <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
+                    AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır.
+                  </Text>
+                </View>
+              </Section>
+            ) : null}
 
-              <Text style={styles.dppDisclaimer}>
-                AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır.
+            {error ? (
+              <InlineError message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')} onRetry={reload} />
+            ) : null}
+
+            {/* Yasal / bilgi notu: yapışkan çubuğun hemen üstünde. */}
+            {!isOwnProduct ? (
+              <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
+                Numune ücretsizdir; kargo alıcıya aittir. Teklif için miktar ve teslim tarihini belirtin.
               </Text>
-            </View>
-          </>
-        ) : null}
-
-        {error ? (
-          <InlineError
-            message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')}
-            onRetry={reload}
-            style={styles.banner}
-          />
-        ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        {isOwnProduct ? (
-          // Kendi ürününde "Firma" kendi firması; yerine ürünü akışta paylaşma.
-          <PrimaryButton
-            label="Paylaş"
-            icon="share-social-outline"
-            variant="outline"
-            size="lg"
-            accessibilityLabel="Bu ürünü gönderide paylaş"
-            onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
-          />
-        ) : (
-          // Faz 2, Adım 2: alt çubuğun ikincil eylemi artık "Teklif iste".
-          // Eski "Firma" düğmesi kalktı: 375px'lik telefonda üç `lg` düğme yan
-          // yana sığmıyordu ve firmaya gidiş zaten çubuğun hemen üstündeki
-          // firma satırından yapılıyor.
-          <PrimaryButton
-            label="Teklif iste"
-            icon="pricetag-outline"
-            variant="outline"
-            size="lg"
-            onPress={() =>
-              navigation.navigate('QuoteRequestForm', {
-                productId: product.id,
-                productCode: product.code,
-                stockUnit: product.stockUnit,
-              })
-            }
-          />
-        )}
-        {isOwnProduct ? (
-          <PrimaryButton
-            label={isYarn ? 'İpliği Düzenle' : 'Ürünü Düzenle'}
-            icon="create-outline"
-            size="lg"
-            // İplik kumaş formuyla düzenlenmez (sunucu 400 use_yarn_endpoint).
-            onPress={() =>
-              isYarn
-                ? navigation.navigate('YarnForm', { yarnId: product.id })
-                : navigation.navigate('AddProduct', { productId: product.id })
-            }
-            style={styles.actionMain}
-          />
-        ) : (
-          <PrimaryButton
-            label="Numune Talep Et"
-            icon="cube-outline"
-            size="lg"
-            onPress={() =>
-              navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
-            }
-            style={styles.actionMain}
-          />
-        )}
-      </View>
+            ) : null}
+          </View>
+        </ScrollView>
+      </Screen>
 
       <ImageViewerModal imageUrl={viewerUrl} visible={!!viewerUrl} onClose={() => setViewerUrl(null)} />
     </View>
   );
 }
-
-// sans: serbest metin (kullanım, not) eşit aralıklı yazıyla değil normal yazıyla.
-function SpecRow({ label, value, last, sans }: { label: string; value: string; last?: boolean; sans?: boolean }) {
-  return (
-    <View style={[styles.specRow, !last && styles.specDivider]}>
-      <Text style={styles.specLabel}>{label}</Text>
-      <Text style={[styles.specValue, sans && styles.specValueSans]}>{value}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.md, gap: spacing.blockGap },
-  block: { backgroundColor: colors.surface },
-  heroBlock: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.gutter, gap: 12 },
-  favoriteButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  favoritePressed: { backgroundColor: colors.pressed },
-  specBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.xs },
-  // Pasaport bölümleri: blok aralığı zaten gri boşluk, başlık üstü kısaltıldı.
-  sectionHeader: { paddingTop: spacing.sm },
-  passportBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm },
-  // Bakım sembolleri: yatay sıra, ikon + altında kısa etiket.
-  careRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, paddingVertical: 4 },
-  careItem: { width: 76, alignItems: 'center', gap: 2 },
-  careLabel: { ...typography.caption, fontSize: 11, lineHeight: 14, color: colors.textMuted, textAlign: 'center' },
-  careNotes: { ...typography.caption, color: colors.textMuted, paddingTop: spacing.sm },
-  // Kompozisyon: lif adı + oran, altında oranı gösteren ince çubuk.
-  fiberRow: { paddingVertical: 6, gap: 4 },
-  fiberTexts: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  fiberName: { ...typography.body, color: colors.text, flexShrink: 1 },
-  fiberPercent: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text },
-  fiberTrack: { height: 4, borderRadius: radius.sm, backgroundColor: colors.surfaceTonal, overflow: 'hidden' },
-  fiberFill: { height: 4, borderRadius: radius.sm, backgroundColor: colors.accent },
-  passportNote: { ...typography.caption, color: colors.textMuted, paddingTop: spacing.xs },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: spacing.xs },
-  tag: {
-    borderRadius: radius.sm,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  tagText: { ...typography.caption, fontFamily: fonts.medium, color: colors.primary },
-  // Sertifika, iplik ve test raporu satırları.
-  docRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH, paddingVertical: 6 },
-  docDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  docTexts: { flex: 1, gap: 1 },
-  docTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  docMeta: { ...typography.caption, color: colors.textMuted },
-  yarnValue: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
-  // İplikte pasaport kartının yerini alan sade başlık bloğu.
-  yarnHead: { gap: 2 },
-  yarnCode: { ...typography.mono, fontFamily: fonts.monoSemibold, fontSize: 15, color: colors.primary },
-  yarnSummary: { ...typography.subtitle, color: colors.text },
-  // Kumaş pasaportundaki iplik satırının yanındaki "Kim satıyor?" bağlantısı.
-  sellerLink: { minHeight: MIN_TOUCH, justifyContent: 'center', paddingLeft: spacing.sm },
-  sellerLinkText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
-  // Çıkarımdan gelen alanlar için onay şeridi (yalnızca ürünün sahibine).
-  pendingBanner: {
-    backgroundColor: colors.warningSoft,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.warning,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    gap: spacing.sm,
-  },
-  pendingTextWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  pendingText: { ...typography.label, fontFamily: fonts.regular, color: colors.text, flex: 1 },
-  pendingActions: { flexDirection: 'row', gap: spacing.sm },
-  pendingButton: { flex: 1 },
-  specRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    minHeight: 40,
-    paddingVertical: spacing.sm,
-    gap: spacing.md,
-  },
-  specDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  specLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  specValue: {
-    ...typography.mono,
-    fontFamily: fonts.monoMedium,
-    fontSize: 16,
-    color: colors.text,
-    flexShrink: 1,
-    textAlign: 'right',
-  },
-  specValueSans: { ...typography.body, color: colors.text },
-  companyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-  },
-  pressed: { backgroundColor: colors.pressed },
-  // Asistan kızılı: yalnızca asistana giden bu bağlantıda (renk kuralı).
-  assistantLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: MIN_TOUCH,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-  },
-  assistantLinkPressed: { opacity: 0.6 },
-  assistantLinkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.assistant },
-  // Benzer kumaşlar (Faz 3, Adım 3): yatay kaydırılan küçük kartlar.
-  similarBlock: { paddingTop: spacing.sm, paddingBottom: spacing.md },
-  similarNote: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter },
-  similarStrip: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, gap: spacing.sm },
-  similarCard: { width: 104, gap: 2, borderRadius: radius.md, paddingBottom: 4 },
-  similarCode: { ...typography.mono, fontFamily: fonts.monoSemibold, color: colors.primary },
-  similarCompany: { ...typography.caption, color: colors.accent },
-  similarScore: { fontFamily: fonts.monoSemibold, fontSize: 12, lineHeight: 16, color: colors.text },
-  similarReason: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  // Dijital pasaport (Faz 3, Adım 7).
-  dppBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm, gap: spacing.sm },
-  dppLead: { ...typography.caption, color: colors.textMuted },
-  dppActions: { flexDirection: 'row', gap: spacing.sm },
-  dppAction: { flex: 1 },
-  dppReady: { gap: 4, paddingTop: spacing.xs },
-  dppReadyText: { ...typography.mono, fontFamily: fonts.monoSemibold, fontSize: 16, color: colors.text },
-  dppTrack: { height: 4, borderRadius: radius.sm, backgroundColor: colors.surfaceTonal, overflow: 'hidden' },
-  dppFill: { height: 4, borderRadius: radius.sm, backgroundColor: colors.accent },
-  dppMissing: { gap: 4 },
-  dppMissingTitle: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
-  dppMissingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dppMissingText: { ...typography.label, fontFamily: fonts.regular, color: colors.text, flex: 1 },
-  dppEditButton: { alignSelf: 'flex-start', marginTop: spacing.xs },
-  dppQrWrap: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.xs },
-  dppQr: { width: 180, height: 180, backgroundColor: '#FFFFFF', borderRadius: radius.md },
-  dppQrNote: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
-  dppDisclaimer: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  companyTexts: { flex: 1 },
-  companyName: { ...typography.bodyStrong, color: colors.text },
-  companyMeta: { ...typography.caption },
-  companyVerified: { fontFamily: fonts.medium, color: colors.accent },
-  companyCount: { color: colors.textMuted },
-  banner: { marginHorizontal: spacing.gutter },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { flex: 1 },
-});

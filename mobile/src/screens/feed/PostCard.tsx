@@ -1,43 +1,44 @@
+// Paylaşım kartı (yeni tasarım, 3. adım — DESIGN.md §3 "Paylaşım kartı").
+//
+// surface-1 kart, radius-lg, 1px line, iç boşluk yok (bölümler kendi boşluğunu
+// taşır). Üst satır: 40px firma logosu karesi + firma adı + doğrulanmış rozeti,
+// altında "Kişi · Görev · zaman", sağda 44px "daha fazla". Metin body-16,
+// 3 satırdan uzunsa "…devamı". İsteğe bağlı görsel. Ürün bağlıysa 44px ürün
+// çipi. Alt satır 44px, üst kenarlık line, 3 eşit eylem.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+// İkincil eylemler (Takibe al, Teklif iste, Düzenle, Sil, Paylaş) "daha fazla"
+// menüsünde: DESIGN.md alt satırda TAM 3 eylem istiyor.
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
+import { Image, Pressable, Text, View } from 'react-native';
 import { PostVideo } from '../../components/PostVideo';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
+import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../features/companies/companyLogoCache';
 import { haptics } from '../../features/haptics';
 import { setProductFavorite, type FeedPost } from '../../api/client';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Avatar, Badge, Card, Icon, type AnyIconName } from '../../ui';
 
 interface Props {
   post: FeedPost;
   isMine: boolean;
-  // Kullanıcının firması: kendi firmasının ürününde "Teklif iste" gösterilmez
-  // (sunucu da 400 own_product döner).
+  /** Kendi firmasının ürününde "Teklif iste" gösterilmez (sunucu 400 own_product). */
   myCompanyId?: string | null;
   onToggleLike: (post: FeedPost) => void;
   onOpenComments: (post: FeedPost) => void;
-  // Pasaport kartı → ürün sayfası; "Numune talep et" → numune talep formu.
   onOpenProduct: (post: FeedPost) => void;
   onRequestSample: (post: FeedPost) => void;
   onOpenAuthor: (post: FeedPost) => void;
   onShare: (post: FeedPost) => void;
   onEdit: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
-  // "Teklif iste" → teklif isteği formu (Faz 2, Adım 2). Verilmezse düğme
-  // gösterilmez. Eski sohbet açan akış kalktı, bağlantı şartı da yok.
   onRequestQuote?: (post: FeedPost) => void;
 }
 
-// Taslak: docs/tasarim-2027/Main.dc.html. Kenardan kenara beyaz blok:
-// yazar satırı → görsel → kumaş pasaportu kartı → metin → eylem çubuğu.
-// Ürünlü gönderide eylemler ticari: Numune talep et · Takibe al · Teklif iste
-// (+ yorum). Beğeni yalnızca ürünsüz duyurularda (Faz 1, Adım 6 kararı).
-// "Teklif iste" artık teklif isteği FORMUNU açıyor (Faz 2, Adım 2); eski
-// sohbet açan akış ve bağlantı sorusu kalktı.
+const BODY_LINES = 3;
+
 function PostCardComponent({
   post,
   isMine,
@@ -52,10 +53,12 @@ function PostCardComponent({
   onDelete,
   onRequestQuote,
 }: Props) {
+  const t = useTheme();
   const [imageUrl, setImageUrl] = useState<string | null>(
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     if (!post.hasImage || imageUrl) return;
@@ -70,12 +73,10 @@ function PostCardComponent({
     };
   }, [post.id, post.hasImage, imageUrl]);
 
-  // Gönderide kendi fotoğrafı ya da videosu yoksa ürünün kapak fotoğrafı
-  // gösteriliyor (kullanıcı geri bildirimi 2026-09-16: "ürün resmi akışta
-  // görünmüyor"). Fotoğraf listede gelmiyor, burada tek tek çekiliyor.
+  // Gönderide kendi fotoğrafı/videosu yoksa ürünün kapak fotoğrafı gösterilir.
   const productWithImage = !post.hasImage && !post.video && post.product?.hasImage ? post.product : null;
   const [productImageUrl, setProductImageUrl] = useState<string | null>(() =>
-    productWithImage ? getCachedProductImage(productWithImage.id) ?? null : null
+    productWithImage ? (getCachedProductImage(productWithImage.id) ?? null) : null
   );
 
   useEffect(() => {
@@ -93,9 +94,7 @@ function PostCardComponent({
       .then((url) => {
         if (!cancelled) setProductImageUrl(url);
       })
-      .catch(() => {
-        // Fotoğraf gelmezse kart ölçü şeridiyle devam eder.
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -106,8 +105,26 @@ function PostCardComponent({
   const authorName = `${post.author.firstName} ${post.author.lastName}`;
   const product = post.product;
 
-  // "Takibe Al" = ProductFavorite kaydı. İyimser: düğme hemen değişir, sunucu
-  // reddederse eski haline döner.
+  // Firma logosu (yoksa baş harf karesi).
+  const logoId = company?.id;
+  const logoStamp = company?.logoUpdatedAt ?? null;
+  const [logoUrl, setLogoUrl] = useState<string | null>(() =>
+    logoId && logoStamp ? (getCachedCompanyLogo(companyLogoKey(logoId, logoStamp)) ?? null) : null
+  );
+  useEffect(() => {
+    if (!logoId || !logoStamp || logoUrl) return;
+    let cancelled = false;
+    loadCompanyLogo(companyLogoKey(logoId, logoStamp))
+      .then((url) => {
+        if (!cancelled) setLogoUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [logoId, logoStamp, logoUrl]);
+
+  // "Takibe Al" = ProductFavorite kaydı. İyimser güncelleme.
   const [following, setFollowing] = useState(!!product?.isFavorite);
   const [followBusy, setFollowBusy] = useState(false);
   useEffect(() => {
@@ -131,11 +148,11 @@ function PostCardComponent({
     }
   };
 
-  // Kendi firmasının ürününe teklif istenmez (sunucu 400 own_product).
   const isOwnProduct = !!product && !!myCompanyId && product.companyId === myCompanyId;
   const canRequestQuote = !!product && !isOwnProduct && !!onRequestQuote;
 
   const meta = [
+    authorName,
     post.author.position,
     formatRelativeTime(post.createdAt),
     post.visibility === 'connections' ? 'Bağlantılarım' : null,
@@ -144,171 +161,258 @@ function PostCardComponent({
     .filter(Boolean)
     .join(' · ');
 
+  const pad = { paddingHorizontal: t.space[4] } as const;
+
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
+    <Card noPadding>
+      {/* Üst satır */}
+      <View
+        style={[
+          pad,
+          { flexDirection: 'row', alignItems: 'center', gap: t.space[3], paddingTop: t.space[3] },
+        ]}
+      >
         <Pressable
           onPress={() => onOpenAuthor(post)}
           accessibilityRole="button"
           accessibilityLabel={`${authorName}${company ? `, ${company.name}` : ''}, profili aç`}
-          style={({ pressed }) => [styles.author, pressed && styles.pressedFade]}
+          style={({ pressed }) => [
+            { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: t.space[3] },
+            pressed && { opacity: 0.6 },
+          ]}
         >
-          <CompanyAvatar
-            name={company?.name ?? post.author.firstName}
-            verification={company?.verification}
-            companyId={company?.id}
-            logoUpdatedAt={company?.logoUpdatedAt}
-            size={36}
-          />
-          <View style={styles.authorTexts}>
-            <Text style={styles.authorLine} numberOfLines={1}>
-              <Text style={styles.authorName}>{authorName}</Text>
-              {company ? <Text style={styles.authorCompany}> · {company.name}</Text> : null}
-            </Text>
-            <Text style={styles.meta} numberOfLines={1}>
+          {logoUrl ? (
+            <Image
+              source={{ uri: logoUrl }}
+              resizeMode="cover"
+              style={{
+                width: t.size.avatar,
+                height: t.size.avatar,
+                borderRadius: t.radius.sm,
+                borderWidth: 1,
+                borderColor: t.colors.line,
+              }}
+            />
+          ) : (
+            <Avatar name={company?.name ?? authorName} kind="company" />
+          )}
+          <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+              <Text numberOfLines={1} style={[t.type.body16Strong, { color: t.colors.ink, flexShrink: 1 }]}>
+                {company?.name ?? authorName}
+              </Text>
+              {company?.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
+            </View>
+            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3 }]}>
               {meta}
             </Text>
           </View>
         </Pressable>
-        {isMine ? (
-          <Pressable
-            onPress={() => setMenuOpen((open) => !open)}
-            accessibilityRole="button"
-            accessibilityLabel="Gönderi seçenekleri"
-            accessibilityState={{ expanded: menuOpen }}
-            style={({ pressed }) => [styles.menuButton, pressed && styles.pressedBg]}
-          >
-            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textMuted} />
-          </Pressable>
-        ) : null}
+        <Pressable
+          onPress={() => setMenuOpen((open) => !open)}
+          accessibilityRole="button"
+          accessibilityLabel="Gönderi seçenekleri"
+          accessibilityState={{ expanded: menuOpen }}
+          style={({ pressed }) => ({
+            width: t.size.touchMin,
+            height: t.size.touchMin,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: t.radius.md,
+            backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+          })}
+        >
+          <Icon name="ellipsis-horizontal" size={t.size.iconSm} color="ink3" />
+        </Pressable>
       </View>
 
       {menuOpen ? (
-        <View style={styles.ownerMenu}>
-          <OwnerAction icon="create-outline" label="Düzenle" onPress={() => onEdit(post)} />
-          <OwnerAction icon="trash-outline" label="Sil" danger onPress={() => onDelete(post)} />
+        <View style={[pad, { flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2], paddingTop: t.space[3] }]}>
+          <MenuAction icon="share" label="Paylaş" onPress={() => onShare(post)} />
+          {product ? (
+            <MenuAction
+              icon={following ? 'check' : 'heart'}
+              label={following ? 'Takipte' : 'Takibe al'}
+              onPress={toggleFollow}
+            />
+          ) : null}
+          {canRequestQuote ? (
+            <MenuAction icon="quote" label="Teklif iste" onPress={() => onRequestQuote?.(post)} />
+          ) : null}
+          {isMine ? <MenuAction icon="create-outline" label="Düzenle" onPress={() => onEdit(post)} /> : null}
+          {isMine ? (
+            <MenuAction icon="trash-outline" label="Sil" danger onPress={() => onDelete(post)} />
+          ) : null}
         </View>
       ) : null}
 
-      {/* Görsel metinden önce: kaydırırken görsel gecikmesin. */}
+      {/* Metin */}
+      {post.body ? (
+        <Pressable
+          onPress={() => setExpanded((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={expanded ? 'Metni kısalt' : 'Devamını oku'}
+          style={[pad, { paddingTop: t.space[3] }]}
+        >
+          <Text numberOfLines={expanded ? undefined : BODY_LINES} style={[t.type.body16, { color: t.colors.ink }]}>
+            {post.body}
+          </Text>
+          {!expanded && post.body.length > 140 ? (
+            <Text style={[t.type.label14, { color: t.colors.brand, paddingTop: t.space[1] }]}>…devamı</Text>
+          ) : null}
+        </Pressable>
+      ) : null}
+
+      {/* Görsel */}
       {post.video ? (
-        <PostVideo key={post.video.id} video={post.video} />
-      ) : post.hasImage ? (
-        imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.image}
-            resizeMode="cover"
-            accessibilityLabel={`${authorName} gönderisinin fotoğrafı`}
+        <View style={{ paddingTop: t.space[3] }}>
+          <PostVideo key={post.video.id} video={post.video} />
+        </View>
+      ) : post.hasImage || productWithImage ? (
+        <View style={[pad, { paddingTop: t.space[3] }]}>
+          <PostImage
+            uri={post.hasImage ? imageUrl : productImageUrl}
+            onPress={productWithImage ? () => onOpenProduct(post) : undefined}
           />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={24} color={colors.chevron} />
-          </View>
-        )
-      ) : productWithImage ? (
-        productImageUrl ? (
+        </View>
+      ) : null}
+
+      {/* Ürün çipi */}
+      {product ? (
+        <View style={[pad, { paddingTop: t.space[3] }]}>
           <Pressable
             onPress={() => onOpenProduct(post)}
             accessibilityRole="button"
-            accessibilityLabel={`${productWithImage.code} ürün fotoğrafı, ürün sayfasını aç`}
-            style={({ pressed }) => pressed && styles.pressedImage}
+            accessibilityLabel={`${product.code} ürün sayfasını aç`}
+            style={({ pressed }) => ({
+              minHeight: t.size.touchMin,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[3],
+              paddingHorizontal: t.space[2],
+              borderRadius: t.radius.md,
+              borderWidth: 1,
+              borderColor: t.colors.line,
+              backgroundColor: pressed ? t.colors.surface2 : t.colors.surface0,
+              minWidth: 0,
+            })}
           >
-            <Image source={{ uri: productImageUrl }} style={styles.image} resizeMode="cover" />
-          </Pressable>
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <Ionicons name="image-outline" size={24} color={colors.chevron} />
-          </View>
-        )
-      ) : null}
-
-      {product ? (
-        <PassportCard product={toPassportCardProduct(product)} onPress={() => onOpenProduct(post)} />
-      ) : null}
-
-      {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
-
-      {product ? (
-        <View style={styles.actionBar}>
-          {/* Taslakta düğmenin bir de kutu ikonu var; 375px'lik telefonda dört
-              eylem yan yana sığmadığı ve yazı kırpıldığı için ikon düştü,
-              yazının tamamı kaldı. */}
-          <PrimaryButton
-            label="Numune talep et"
-            size="sm"
-            onPress={() => onRequestSample(post)}
-            accessibilityLabel={`${product.code} için numune talep et`}
-            style={styles.sampleButton}
-          />
-          <PrimaryButton
-            label={following ? 'Takipte' : 'Takibe al'}
-            icon={following ? 'bookmark' : 'bookmark-outline'}
-            size="sm"
-            variant={following ? 'primary' : 'outline'}
-            onPress={toggleFollow}
-            accessibilityLabel={following ? `${product.code} takipten çık` : `${product.code} takibe al`}
-          />
-          {canRequestQuote ? (
-            <Pressable
-              onPress={() => onRequestQuote?.(post)}
-              accessibilityRole="button"
-              accessibilityLabel={`${product.code} için teklif iste`}
-              style={({ pressed }) => [styles.iconButton, pressed && styles.pressedBg]}
+            <View
+              style={{
+                width: t.size.avatarSm,
+                height: t.size.avatarSm,
+                borderRadius: t.radius.sm,
+                backgroundColor: t.colors.surface2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+              }}
             >
-              <Ionicons name="pricetag-outline" size={18} color={colors.primary} />
-            </Pressable>
-          ) : null}
-          <CountAction
-            icon="chatbubble-outline"
-            count={post.commentCount}
-            label="Yorumlar"
-            onPress={() => onOpenComments(post)}
-            style={styles.commentAction}
-            hitSlop={8}
-          />
+              {productImageUrl ? (
+                <Image source={{ uri: productImageUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+              ) : (
+                <Icon name="fabric" size={t.size.iconSm} color="ink3" />
+              )}
+            </View>
+            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink, flexShrink: 1 }]}>
+              {product.subtype || product.type}
+            </Text>
+            <Text numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+              {product.code}
+            </Text>
+          </Pressable>
         </View>
-      ) : (
-        <View style={styles.actionBar}>
-          <CountAction
-            icon={post.likedByMe ? 'heart' : 'heart-outline'}
-            count={post.likeCount}
-            active={post.likedByMe}
-            label={post.likedByMe ? 'Beğeniyi geri al' : 'Beğen'}
-            onPress={() => onToggleLike(post)}
+      ) : null}
+
+      {/* Alt eylem satırı: 3 eşit eylem */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: t.space[3],
+          borderTopWidth: 1,
+          borderTopColor: t.colors.line,
+        }}
+      >
+        <BarAction
+          icon={post.likedByMe ? 'heart' : 'heart-outline'}
+          label={post.likedByMe ? 'Beğeniyi geri al' : 'Beğen'}
+          count={post.likeCount}
+          active={post.likedByMe}
+          onPress={() => onToggleLike(post)}
+        />
+        <BarAction
+          icon="message"
+          label="Yorumlar"
+          count={post.commentCount}
+          onPress={() => onOpenComments(post)}
+        />
+        {product ? (
+          <BarAction
+            icon="sample"
+            label={`${product.code} için numune talep et`}
+            text="Numune talep et"
+            brand
+            onPress={() => onRequestSample(post)}
           />
-          <CountAction
-            icon="chatbubble-outline"
-            count={post.commentCount}
-            label="Yorumlar"
-            onPress={() => onOpenComments(post)}
-          />
-          <CountAction icon="arrow-redo-outline" label="Paylaş" onPress={() => onShare(post)} />
-        </View>
-      )}
-    </View>
+        ) : (
+          <BarAction icon="share" label="Paylaş" text="Paylaş" brand onPress={() => onShare(post)} />
+        )}
+      </View>
+    </Card>
   );
 }
 
-function CountAction({
+function PostImage({ uri, onPress }: { uri: string | null; onPress?: () => void }) {
+  const t = useTheme();
+  const box = {
+    width: '100%',
+    aspectRatio: 343 / 180,
+    borderRadius: t.radius.md,
+    backgroundColor: t.colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  } as const;
+
+  const content = uri ? (
+    <Image source={{ uri }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+  ) : (
+    <Icon name="image-outline" color="ink3" />
+  );
+
+  if (!onPress) return <View style={box}>{content}</View>;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel="Ürün fotoğrafı, ürün sayfasını aç"
+      style={({ pressed }) => [box, pressed && { opacity: 0.9 }]}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+function BarAction({
   icon,
-  count,
   label,
+  text,
+  count,
   active,
+  brand,
   onPress,
-  style,
-  hitSlop,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
-  count?: number;
+  icon: AnyIconName;
   label: string;
+  text?: string;
+  count?: number;
   active?: boolean;
+  brand?: boolean;
   onPress: () => void;
-  style?: StyleProp<ViewStyle>;
-  // Dar eylem çubuğunda düğme küçülür, dokunma alanı hitSlop ile 44'te kalır.
-  hitSlop?: number;
 }) {
-  const color = active ? colors.accent : colors.textMuted;
+  const t = useTheme();
+  const color = brand ? t.colors.brand : active ? t.colors.accent : t.colors.ink2;
   const showCount = count !== undefined && count > 0;
   return (
     <Pressable
@@ -316,120 +420,63 @@ function CountAction({
       accessibilityRole="button"
       accessibilityLabel={showCount ? `${label}, ${count}` : label}
       accessibilityState={active !== undefined ? { selected: active } : undefined}
-      hitSlop={hitSlop}
-      style={({ pressed }) => [styles.countAction, style, pressed && styles.pressedFade]}
+      style={({ pressed }) => ({
+        flex: 1,
+        minWidth: 0,
+        minHeight: t.size.touchMin,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: t.space[1],
+        paddingHorizontal: t.space[2],
+        backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+      })}
     >
-      <Ionicons name={icon} size={20} color={color} />
-      {showCount ? <Text style={[styles.countText, { color }]}>{count}</Text> : null}
+      <Icon name={icon} size={t.size.iconSm} colorValue={color} />
+      {showCount ? <Text style={[t.type.label14, { color }]}>{count}</Text> : null}
+      {text ? (
+        <Text numberOfLines={1} style={[t.type.label14, { color, flexShrink: 1 }]}>
+          {text}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
 
-function OwnerAction({
+function MenuAction({
   icon,
   label,
   danger,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: AnyIconName;
   label: string;
   danger?: boolean;
   onPress: () => void;
 }) {
-  const color = danger ? colors.danger : colors.primary;
+  const t = useTheme();
+  const color = danger ? t.colors.danger : t.colors.brand;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Gönderiyi ${label.toLocaleLowerCase('tr-TR')}`}
-      style={({ pressed }) => [styles.ownerAction, pressed && styles.pressedBg]}
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        minHeight: t.size.chip,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[1],
+        paddingHorizontal: t.space[3],
+        borderRadius: t.radius.full,
+        borderWidth: 1,
+        borderColor: t.colors.lineStrong,
+        backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+      })}
     >
-      <Ionicons name={icon} size={16} color={color} />
-      <Text style={[styles.ownerActionText, { color }]}>{label}</Text>
+      <Icon name={icon} size={t.size.iconSm} colorValue={color} />
+      <Text style={[t.type.label14, { color }]}>{label}</Text>
     </Pressable>
   );
 }
 
 export const PostCard = React.memo(PostCardComponent);
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 12,
-    paddingBottom: spacing.xs,
-    gap: 10,
-  },
-  pressedFade: { opacity: 0.6 },
-  pressedImage: { opacity: 0.9 },
-  pressedBg: { backgroundColor: colors.pressed },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  author: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: MIN_TOUCH },
-  authorTexts: { flex: 1, minWidth: 0 },
-  authorLine: { ...typography.bodyStrong, color: colors.text },
-  authorName: { fontFamily: fonts.semibold },
-  authorCompany: { fontFamily: fonts.regular, color: colors.textMuted },
-  meta: { ...typography.caption, color: colors.textMuted },
-  menuButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    marginRight: -10,
-  },
-  ownerMenu: { flexDirection: 'row', gap: spacing.sm },
-  ownerAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 36,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-  },
-  ownerActionText: { ...typography.label, fontFamily: fonts.semibold },
-  image: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  imagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  body: { ...typography.body, color: colors.text },
-  actionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 52,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
-  },
-  sampleButton: { flexShrink: 1, flexGrow: 1, minWidth: 0 },
-  iconButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  disabled: { opacity: 0.4 },
-  countAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    minHeight: MIN_TOUCH,
-    minWidth: MIN_TOUCH,
-    paddingRight: spacing.gutter,
-  },
-  // Ürünlü gönderide yorum düğmesi sağ uçta: sağ boşluğu düğmelerin hizasına
-  // çekiyoruz, yoksa kartın kenarından içeride kalıyor.
-  commentAction: { justifyContent: 'center', minWidth: 32, paddingRight: 0 },
-  countText: { ...typography.label, fontFamily: fonts.semibold },
-});

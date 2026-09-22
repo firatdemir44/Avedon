@@ -1,7 +1,12 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { HeaderButton } from '../../components/HeaderButton';
-import { View, Text, Pressable, FlatList, ActivityIndicator, Share, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// Ana sayfa (yeni tasarım, 3. adım — DESIGN.md §8, artboard 1).
+//
+// Rota adı `Feed` DEĞİŞMEDİ (başka ekranlar oraya navigate ediyor); sekme
+// etiketi "Ana sayfa". Düzen: AppBar (logo + Avedon + zil + profil) → 48px
+// arama kutusu → "Bugün" sayaçları → 4 kısayol → "Sektörden" akışı.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, Share, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
@@ -9,31 +14,42 @@ import { useSession } from '../../context/SessionContext';
 import {
   deletePost,
   fetchFeed,
+  fetchToday,
   likePost,
   unlikePost,
   type FeedCursor,
   type FeedPost,
   type FeedScope,
+  type TodaySummary,
 } from '../../api/client';
 import { PostCard } from './PostCard';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Button,
+  EmptyState,
+  Icon,
+  QuickAction,
+  Screen,
+  SearchBox,
+  SectionTitle,
+  Skeleton,
+  StatBox,
+} from '../../ui';
 
 type Props = MainTabScreenProps<'Feed'>;
 
 // Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
 const REFRESH_THROTTLE_MS = 30000;
-
-// Ürünler ekranındaki görünüm seçimiyle aynı kalıp: iki eşit düğme, seçim
-// cihazda hatırlanır (Faz 1, Adım 6).
 const SCOPE_KEY = 'avedon.feedScope';
 
 export function FeedScreen({ navigation }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [cursor, setCursor] = useState<FeedCursor | null>(null);
@@ -41,9 +57,8 @@ export function FeedScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<FeedScope>('all');
-  // Kayıtlı seçim okunana kadar akışı çekmiyoruz, yoksa "Bağlantılarım"
-  // seçiliyken önce "Tümü" yükleniyor ve liste iki kez zıplıyor.
   const [scopeReady, setScopeReady] = useState(false);
+  const [today, setToday] = useState<TodaySummary | null>(null);
   const loadingMoreRef = useRef(false);
   const lastLoadedAtRef = useRef(0);
   const hasPostsRef = useRef(false);
@@ -60,12 +75,19 @@ export function FeedScreen({ navigation }: Props) {
       .finally(() => setScopeReady(true));
   }, []);
 
+  const loadToday = useCallback(() => {
+    fetchToday()
+      .then(setToday)
+      .catch(() => {
+        // Sayaçlar gelmezse kutular "—" gösterir; akış yine çalışır.
+      });
+  }, []);
+
   const loadFirstPage = useCallback((silent = false) => {
     if (!silent) setLoading(true);
     const requested = scopeRef.current;
     return fetchFeed(null, 10, requested)
       .then(({ posts: fetched, nextCursor }) => {
-        // Kullanıcı yükleme sürerken sekme değiştirdiyse eski yanıt yazılmasın.
         if (scopeRef.current !== requested) return;
         setPosts(fetched);
         setCursor(nextCursor);
@@ -97,32 +119,18 @@ export function FeedScreen({ navigation }: Props) {
     loadFirstPage();
   };
 
-  // Yorum ekranından dönünce yorum sayısı güncellensin diye odaklanmada ilk
-  // sayfa yeniden yükleniyor. Ama bu sekmeli yapıda her sekme geçişinde de
-  // tetikleniyor ve listeyi (dolayısıyla kaydırma konumunu) sıfırlıyordu —
-  // 30 saniyeden yeni bir yükleme varsa atlıyoruz.
+  // Odaklanmada sessiz yenileme; 30 saniyeden yeni yükleme varsa atlanır
+  // (yoksa her sekme geçişinde liste başa sarıyordu).
   useFocusEffect(
     useCallback(() => {
+      loadToday();
       if (!scopeReady) return;
       const stale = consumeFeedStale();
       const isFresh = Date.now() - lastLoadedAtRef.current < REFRESH_THROTTLE_MS;
-      // `posts` bu kapanışta hep ilk değeri ([]) görüyordu, kısıtlama hiç
-      // devreye girmiyordu; güncel durum ref'ten okunuyor.
       if (!stale && isFresh && hasPostsRef.current) return;
-      // Liste ekrandayken iskelete dönmeden sessizce yenile.
       loadFirstPage(hasPostsRef.current);
-    }, [loadFirstPage, scopeReady])
+    }, [loadFirstPage, loadToday, scopeReady])
   );
-
-  // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil); sol üstteki
-  // "Firma asistanı" kısayolu kalktı. "Gönderi paylaş" önce sağ alta yüzen düğme olarak
-  // taşınmıştı; Fırat fark etmedi ("artıyı kaldırmışsın, tekrar yerine koyalım"), bu yüzden
-  // başlığın sağına, zilin yanına geri alındı.
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => <HeaderButton icon="add" label="Gönderi paylaş" onPress={() => navigation.navigate('CreatePost')} />,
-    });
-  }, [navigation]);
 
   const loadMore = async () => {
     if (!cursor || loadingMoreRef.current) return;
@@ -146,12 +154,9 @@ export function FeedScreen({ navigation }: Props) {
   const handleToggleLike = async (post: FeedPost) => {
     const wasLiked = post.likedByMe;
     haptics.light();
-    // İyimser güncelleme, sunucudan dönen kesin sayıyla düzeltiliyor.
     setPosts((prev) =>
       prev.map((p) =>
-        p.id === post.id
-          ? { ...p, likedByMe: !wasLiked, likeCount: p.likeCount + (wasLiked ? -1 : 1) }
-          : p
+        p.id === post.id ? { ...p, likedByMe: !wasLiked, likeCount: p.likeCount + (wasLiked ? -1 : 1) } : p
       )
     );
     try {
@@ -161,9 +166,7 @@ export function FeedScreen({ navigation }: Props) {
       );
     } catch {
       setPosts((prev) =>
-        prev.map((p) =>
-          p.id === post.id ? { ...p, likedByMe: wasLiked, likeCount: post.likeCount } : p
-        )
+        prev.map((p) => (p.id === post.id ? { ...p, likedByMe: wasLiked, likeCount: post.likeCount } : p))
       );
     }
   };
@@ -191,159 +194,238 @@ export function FeedScreen({ navigation }: Props) {
     }
   };
 
-  const scopeToggle = (
-    <View style={styles.toggleBar} accessibilityRole="tablist">
-      {(
-        [
-          { value: 'all', label: 'Tümü', icon: 'earth-outline' },
-          { value: 'connections', label: 'Bağlantılarım', icon: 'people-outline' },
-        ] as const
-      ).map((option) => {
-        const selected = scope === option.value;
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() => changeScope(option.value)}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            accessibilityLabel={
-              option.value === 'all' ? 'Tüm gönderiler' : 'Yalnızca bağlantılarımın gönderileri'
-            }
-            style={({ pressed }) => [
-              styles.toggleOption,
-              selected && styles.toggleSelected,
-              pressed && !selected && styles.togglePressed,
-            ]}
-          >
-            <Ionicons name={option.icon} size={18} color={selected ? colors.primaryText : colors.textMuted} />
-            <Text style={[styles.toggleText, selected && styles.toggleTextSelected]} numberOfLines={1}>
-              {option.label}
+  const stat = (value: number | undefined) => (today ? String(value ?? 0) : '—');
+
+  const header = (
+    <View style={{ gap: t.space[6], paddingBottom: t.space[6] }}>
+      <SearchBox
+        placeholder="Kumaş, iplik veya firma ara"
+        accessibilityLabel="Arama yap"
+        onPress={() => navigation.navigate('GlobalSearch')}
+      />
+
+      {/* Bugün */}
+      <View style={{ gap: t.space[3] }}>
+        {/* Artboard 1: "Bugün" solda, firma adı sağda (tek satır, kısaltılır). */}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: t.space[3] }}>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>Bugün</Text>
+          {today?.companyName ? (
+            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
+              {today.companyName}
             </Text>
-          </Pressable>
-        );
-      })}
+          ) : null}
+        </View>
+        <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+          <StatCard
+            value={stat(today?.pendingSamples)}
+            label="Bekleyen numune"
+            accent
+            onPress={() => navigation.navigate('Requests')}
+          />
+          <StatCard
+            value={stat(today?.newQuotes)}
+            label="Yeni teklif"
+            onPress={() => navigation.navigate('Requests')}
+          />
+          <StatCard
+            value={stat(today?.unreadMessages)}
+            label="Okunmamış mesaj"
+            onPress={() => navigation.navigate('Conversations')}
+          />
+        </View>
+      </View>
+
+      {/* Kısayollar: 2 sütun */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
+        <QuickAction
+          style={{ flexBasis: '47%', flexGrow: 1 }}
+          icon="sample"
+          label="Numune talep et"
+          onPress={() => navigation.navigate('ProductList')}
+        />
+        <QuickAction
+          style={{ flexBasis: '47%', flexGrow: 1 }}
+          icon="quote"
+          label="Teklif iste"
+          onPress={() => navigation.navigate('ProductList')}
+        />
+        <QuickAction
+          style={{ flexBasis: '47%', flexGrow: 1 }}
+          icon="calculator"
+          label="Hesap araçları"
+          onPress={() => navigation.navigate('Calculators')}
+        />
+        <QuickAction
+          style={{ flexBasis: '47%', flexGrow: 1 }}
+          icon="sparkles-outline"
+          label="Tekstil asistanı"
+          onPress={() => navigation.navigate('AssistantTab')}
+        />
+      </View>
+
+      {/* Sektörden */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+        <SectionTitle
+          style={{ flex: 1 }}
+          title="Sektörden"
+          linkLabel={scope === 'all' ? 'Bağlantılarım' : 'Tümü'}
+          onLinkPress={() => changeScope(scope === 'all' ? 'connections' : 'all')}
+        />
+        {/* "+" bant ikonuna sığmadı (bantta en fazla 2 ikon); paylaşma
+            eylemi bölüm başlığının sağında sessiz düğme olarak duruyor. */}
+        <Button
+          kind="quiet"
+          icon="plus"
+          label="Paylaş"
+          onPress={() => navigation.navigate('CreatePost')}
+        />
+      </View>
+
+      {error && posts.length > 0 ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[2],
+            padding: t.space[3],
+            borderRadius: t.radius.md,
+            backgroundColor: t.colors.dangerSoft,
+          }}
+        >
+          <Icon name="warning" size={t.size.iconSm} color="danger" />
+          <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+        </View>
+      ) : null}
     </View>
   );
-
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        {scopeToggle}
-        <SkeletonList variant="post" />
-      </View>
-    );
-  }
 
   return (
-    <View style={styles.container}>
-      {scopeToggle}
-      <FlatList
-        data={posts}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ItemSeparatorComponent={BlockGap}
-        refreshControl={refreshControl(refreshing, () => {
-          setRefreshing(true);
-          loadFirstPage(true);
-        })}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.4}
-        ListHeaderComponent={
-          error && posts.length > 0 ? (
-            <InlineError message={error} onRetry={() => loadFirstPage(true)} style={styles.banner} />
-          ) : null
-        }
-        ListEmptyComponent={
-          error ? (
-            <ErrorState error={error} onRetry={() => loadFirstPage()} />
-          ) : scope === 'connections' ? (
-            <EmptyState
-              icon="people-outline"
-              title="Bağlantı akışı boş"
-              message="Henüz bağlantınız yok ya da bağlantılarınız paylaşım yapmadı."
-              actionLabel="Bağlantı bul"
-              onAction={() => navigation.navigate('Connections')}
-            />
-          ) : (
-            <EmptyState
-              icon="newspaper-outline"
-              title="Akış henüz boş"
-              message="İlk gönderiyi siz paylaşın ya da bağlantı kurarak akışınızı zenginleştirin."
-              actionLabel="Gönderi paylaş"
-              onAction={() => navigation.navigate('CreatePost')}
-            />
-          )
-        }
-        ListFooterComponent={
-          cursor ? <ActivityIndicator style={{ marginVertical: spacing.md }} color={colors.primary} /> : null
-        }
-        renderItem={({ item }) => (
-          <PostCard
-            post={item}
-            isMine={item.author.id === user?.id}
-            myCompanyId={user?.companyId ?? null}
-            onToggleLike={handleToggleLike}
-            onRequestQuote={(p) =>
-              p.product &&
-              navigation.navigate('QuoteRequestForm', {
-                productId: p.product.id,
-                productCode: p.product.code,
-                stockUnit: p.product.stockUnit,
-              })
-            }
-            onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
-            onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
-            onOpenProduct={(post) => post.product && navigation.navigate('ProductDetail', { productId: post.product.id })}
-            onRequestSample={(post) =>
-              post.product &&
-              navigation.navigate('SampleRequestForm', {
-                productId: post.product.id,
-                productCode: post.product.code,
-              })
-            }
-            onShare={handleShare}
-            onEdit={(post) => navigation.navigate('CreatePost', { postId: post.id })}
-            onDelete={handleDelete}
-          />
-        )}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar
+        leading="logo"
+        title="Avedon"
+        actions={[
+          {
+            icon: 'bell',
+            label: 'Bildirimler',
+            dot: !!today && today.unreadNotifications > 0,
+            onPress: () => navigation.navigate('Notifications'),
+          },
+          { icon: 'user', label: 'Profilim', onPress: () => navigation.navigate('MyProfile') },
+        ]}
       />
+      <Screen scroll={false} noPadding>
+        <FlatList
+          data={loading ? [] : posts}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          ItemSeparatorComponent={() => <View style={{ height: t.space[4] }} />}
+          refreshControl={refreshControl(refreshing, () => {
+            setRefreshing(true);
+            loadToday();
+            loadFirstPage(true);
+          })}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            loading ? (
+              <View style={{ gap: t.space[4] }}>
+                <Skeleton height={t.size.toolBox * 2} />
+                <Skeleton height={t.size.toolBox * 2} />
+              </View>
+            ) : error ? (
+              <EmptyState
+                icon="warning"
+                title="Akış alınamadı"
+                description={error}
+                actionLabel="Tekrar dene"
+                onAction={() => loadFirstPage()}
+              />
+            ) : (
+              <EmptyState
+                icon="home"
+                title="Firmaları takip et, yenilikleri burada gör"
+                description="Bağlantı kurduğun firmaların paylaşımları bu akışta listelenir."
+                actionLabel="Firmaları keşfet"
+                onAction={() => navigation.navigate('Connections')}
+              />
+            )
+          }
+          ListFooterComponent={
+            cursor ? (
+              <ActivityIndicator style={{ marginVertical: t.space[4] }} color={t.colors.brand} />
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              isMine={item.author.id === user?.id}
+              myCompanyId={user?.companyId ?? null}
+              onToggleLike={handleToggleLike}
+              onRequestQuote={(p) =>
+                p.product &&
+                navigation.navigate('QuoteRequestForm', {
+                  productId: p.product.id,
+                  productCode: p.product.code,
+                  stockUnit: p.product.stockUnit,
+                })
+              }
+              onOpenComments={(post) => navigation.navigate('PostComments', { postId: post.id })}
+              onOpenAuthor={(post) => navigation.navigate('Profile', { userId: post.author.id })}
+              onOpenProduct={(post) =>
+                post.product && navigation.navigate('ProductDetail', { productId: post.product.id })
+              }
+              onRequestSample={(post) =>
+                post.product &&
+                navigation.navigate('SampleRequestForm', {
+                  productId: post.product.id,
+                  productCode: post.product.code,
+                })
+              }
+              onShare={handleShare}
+              onEdit={(post) => navigation.navigate('CreatePost', { postId: post.id })}
+              onDelete={handleDelete}
+            />
+          )}
+        />
+      </Screen>
     </View>
   );
 }
 
-function BlockGap() {
-  return <View style={styles.blockGap} />;
+// İstatistik kutusu bir karta oturuyor (artboard 1): dokununca ilgili ekran.
+// `Card onPress` kullanılmıyor — o, sağa chevron koyup üç sütunda etiketi
+// harf harf kırıyordu; kartın kendisi Pressable.
+function StatCard({
+  value,
+  label,
+  accent,
+  onPress,
+}: {
+  value: string;
+  label: string;
+  accent?: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${value} ${label}`}
+      style={({ pressed }) => ({
+        flex: 1,
+        minWidth: 0,
+        padding: t.space[3],
+        borderRadius: t.radius.lg,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+      })}
+    >
+      <StatBox value={value} label={label} accent={accent} />
+    </Pressable>
+  );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.blockGap * 2 },
-  blockGap: { height: spacing.blockGap },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  toggleBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  toggleOption: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-  },
-  toggleSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  togglePressed: { backgroundColor: colors.pressed },
-  toggleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted, flexShrink: 1 },
-  toggleTextSelected: { color: colors.primaryText },
-});

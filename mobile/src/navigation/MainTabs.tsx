@@ -1,127 +1,112 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import type { MainTabParamList } from './types';
 import { useSession } from '../context/SessionContext';
-import { fetchUnreadMessageCount } from '../api/client';
+import { fetchToday } from '../api/client';
 import { FeedScreen } from '../screens/feed/FeedScreen';
 import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { AssistantScreen } from '../screens/assistant/AssistantScreen';
+import { RequestsScreen } from '../screens/requests/RequestsScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { MainHeader } from '../components/MainHeader';
-import { colors, fonts, typography } from '../theme';
+import { TabBarFromNavigation } from '../ui';
+import { colors } from '../theme';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const UNREAD_POLL_MS = 20000;
+const BADGE_POLL_MS = 20000;
 
+// Yeni tasarım, 3. adım (DESIGN.md §2): çubukta TAM 5 sekme —
+// Ana sayfa · Katalog · Talepler · Mesajlar · Hesap. Çubuğu artık
+// `src/ui`deki TabBar çiziyor (64px, surface-1, ikon + etiket, accent nokta).
+//
+// AssistantTab: sekmeden ÇIKTI ama rota olarak DURUYOR. Pek çok ekran
+// `navigation.navigate('AssistantTab')` çağırıyor (hesap araçları, ana sayfa
+// kısayolu, ürün ekranları); rotayı kök yığına taşımak bu çağrıların hepsini
+// kırardı. Bu yüzden en az kırılgan yol seçildi: rota sekme navigatöründe
+// kalır, çubukta `hiddenRoutes` ile gizlenir.
 export function MainTabs() {
   const { user } = useSession();
-  const [unread, setUnread] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [openRequests, setOpenRequests] = useState(0);
 
-  const refreshUnread = useCallback(() => {
+  const refreshBadges = useCallback(() => {
     if (!user) return;
     if (AppState.currentState !== 'active') return;
-    fetchUnreadMessageCount()
-      .then(({ count }) => setUnread(count))
+    // Tek istek: mesaj ve talep rozetlerinin ikisini de "Bugün" ucu veriyor.
+    fetchToday()
+      .then((today) => {
+        setUnreadMessages(today.unreadMessages);
+        setOpenRequests(today.pendingSamples + today.newQuotes);
+      })
       .catch(() => {});
   }, [user]);
 
   useEffect(() => {
-    refreshUnread();
-    const timer = setInterval(refreshUnread, UNREAD_POLL_MS);
+    refreshBadges();
+    const timer = setInterval(refreshBadges, BADGE_POLL_MS);
     return () => clearInterval(timer);
-  }, [refreshUnread]);
+  }, [refreshBadges]);
 
   return (
     <Tab.Navigator
       initialRouteName="Feed"
       backBehavior="firstRoute"
+      tabBar={(props) => (
+        <TabBarFromNavigation
+          {...props}
+          hiddenRoutes={['AssistantTab']}
+          // Talepler sekmesinin ikonu numune kutusu (artboard 1 ve 7).
+          icons={{ Requests: 'sample' }}
+        />
+      )}
       screenOptions={{
-        headerShown: true,
-        // Ortak üst başlık (2026-09-21): profil · "Arama Yap" · zil. Ekranlar
-        // `headerRight` ile kendi ek eylemlerini verir (Mesajlar'daki "Yeni",
-        // Asistan'daki hafıza/sohbetler); zil bileşenin kendi içinde.
-        header: ({ options, navigation: tabNavigation }) => (
-          <MainHeader
-            right={options.headerRight?.({ tintColor: colors.primaryText, canGoBack: tabNavigation.canGoBack() })}
-          />
-        ),
+        // Her ekran kendi `AppBar`ını (src/ui) çiziyor; navigatörün başlığı kapalı.
+        headerShown: false,
         freezeOnBlur: true,
-        // Android'de klavye açılınca sekme çubuğu arama kutusunun üstüne binmesin.
-        tabBarHideOnKeyboard: true,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 12, fontFamily: fonts.medium },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-        tabBarBadgeStyle: { backgroundColor: colors.notification, fontFamily: fonts.semibold, fontSize: 12 },
-        // C · Pazar Masası: lacivert üst bant, beyaz başlık (bkz. theme/index.ts).
-        headerTitleStyle: { ...typography.heading, color: colors.primaryText },
-        headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.primary },
-        headerTintColor: colors.primaryText,
       }}
     >
+      <Tab.Screen name="Feed" component={FeedScreen} options={{ title: 'Ana sayfa' }} />
+      <Tab.Screen name="ProductList" component={ProductListScreen} options={{ title: 'Katalog' }} />
       <Tab.Screen
-        name="Feed"
-        component={FeedScreen}
+        name="Requests"
+        component={RequestsScreen}
+        listeners={{ focus: refreshBadges }}
         options={{
-          title: 'Akış',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'home' : 'home-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="ProductList"
-        component={ProductListScreen}
-        options={{
-          title: 'Ürünler',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'grid' : 'grid-outline'} color={color} size={size} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="AssistantTab"
-        component={AssistantScreen}
-        options={{
-          title: 'Asistan',
-          // Asistan kızılı YALNIZCA seçili asistan ikonunda; diğer sekmeler
-          // lacivert kalır (bkz. theme/index.ts colors.assistant kuralı).
-          tabBarActiveTintColor: colors.assistant,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'sparkles' : 'sparkles-outline'} color={color} size={size} />
-          ),
+          title: 'Talepler',
+          // `tabBarBadge` yalnızca bildirim NOKTASINI açar (src/ui TabBar).
+          tabBarBadge: openRequests > 0 ? openRequests : undefined,
         }}
       />
       <Tab.Screen
         name="Conversations"
         component={ConversationsListScreen}
-        // Sohbetten geri dönünce de rozet tazelensin.
-        listeners={{ focus: refreshUnread }}
+        listeners={{ focus: refreshBadges }}
         options={{
           title: 'Mesajlar',
-          tabBarBadge: unread > 0 ? unread : undefined,
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'chatbubbles' : 'chatbubbles-outline'} color={color} size={size} />
-          ),
+          tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
         }}
       />
-      {/* Beşinci sekme (Fırat 2026-09-21): Profil alt çubuktan çıkınca
-          hesaplamalar buraya geri geldi. */}
+      <Tab.Screen name="Calculators" component={CalculatorsListScreen} options={{ title: 'Hesap' }} />
+
+      {/* Çubukta görünmez (hiddenRoutes); yalnızca navigate ile açılır.
+          Kendi üst başlığı yok, ortak MainHeader'ı kullanmayı sürdürüyor. */}
       <Tab.Screen
-        name="Calculators"
-        component={CalculatorsListScreen}
+        name="AssistantTab"
+        component={AssistantScreen}
         options={{
-          title: 'Hesaplamalar',
-          // Beş sekmede 375 px'te "Hesaplamalar" sığmıyor; sekme etiketi kısa.
-          tabBarLabel: 'Hesap',
-          tabBarAccessibilityLabel: 'Hesaplamalar',
-          tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons name={focused ? 'calculator' : 'calculator-outline'} color={color} size={size} />
+          title: 'Asistan',
+          tabBarButton: () => null,
+          headerShown: true,
+          header: ({ options, navigation: tabNavigation }) => (
+            <MainHeader
+              right={options.headerRight?.({
+                tintColor: colors.primaryText,
+                canGoBack: tabNavigation.canGoBack(),
+              })}
+            />
           ),
         }}
       />

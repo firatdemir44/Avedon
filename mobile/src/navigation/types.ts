@@ -24,7 +24,14 @@ export type MainTabParamList = {
     | undefined;
   // Firma asistanı (Faz 1, Adım 5). Rota adı "AssistantTab": yığındaki
   // asistan ekranlarıyla (AssistantThreads, AssistantMemory) çakışmasın.
+  // 2026-09-22 (yeni tasarım, 3. adım): asistan alt çubuktan ÇIKTI ama rota
+  // olarak kaldı — pek çok ekran `navigate('AssistantTab')` çağırıyor.
+  // MainTabs'te `hiddenRoutes` ile çubukta gizleniyor.
   AssistantTab: undefined;
+  // Talepler sekmesi (yeni tasarım, artboard 7): numune + teklif, gelen ve
+  // gönderdiğim. Veriyi eski MySampleRequests/IncomingSampleRequests/
+  // QuoteRequests ekranlarıyla aynı uçlardan alır; o rotalar da yerinde kalır.
+  Requests: undefined;
   Conversations: undefined;
   // Hesaplayıcı ızgarası (Fırat 2026-09-21): Profil alt çubuktan çıkınca
   // hesaplamalar beşinci sekme olarak geri geldi. Rota adı "Calculators";

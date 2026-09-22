@@ -66,10 +66,17 @@ export function ChipRow({ children, style }: ChipRowProps) {
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
-      style={style}
-      contentContainerStyle={{ flexDirection: 'row', gap: t.space[2], paddingVertical: t.space[1] }}
+      // flexGrow: 0 olmazsa satır, kapsayıcının boş yüksekliğini kaplıyor ve
+      // çipler dikey olarak uzuyordu (375 px'te devasa kapsüller).
+      style={[{ flexGrow: 0, flexShrink: 0 }, style]}
+      contentContainerStyle={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        paddingVertical: t.space[1],
+      }}
     >
-      <View style={{ flexDirection: 'row', gap: t.space[2] }}>{children}</View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>{children}</View>
     </ScrollView>
   );
 }

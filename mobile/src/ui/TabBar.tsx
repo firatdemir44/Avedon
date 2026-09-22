@@ -98,24 +98,39 @@ export const routeIcons: Record<string, AnyIconName> = {
 export interface TabBarFromNavigationProps extends BottomTabBarProps {
   /** Rota adı → ikon eşlemesini genişletir. */
   icons?: Record<string, AnyIconName>;
+  /**
+   * Çubukta GÖSTERİLMEYECEK rota adları. Navigatörde kayıtlı kalırlar —
+   * `navigation.navigate('AssistantTab')` gibi çağrılar bozulmaz — yalnızca
+   * sekme çubuğunda çizilmezler (DESIGN.md §2: çubukta tam 5 sekme).
+   */
+  hiddenRoutes?: string[];
 }
 
 /** react-navigation bottom-tabs `tabBar` prop'u için sarmalayıcı. */
-export function TabBarFromNavigation({ state, descriptors, navigation, icons }: TabBarFromNavigationProps) {
+export function TabBarFromNavigation({
+  state,
+  descriptors,
+  navigation,
+  icons,
+  hiddenRoutes,
+}: TabBarFromNavigationProps) {
   const map = { ...routeIcons, ...(icons ?? {}) };
-  const items: TabItem[] = state.routes.map((route) => {
-    const { options } = descriptors[route.key];
-    const label =
-      typeof options.tabBarLabel === 'string'
-        ? options.tabBarLabel
-        : (options.title ?? route.name);
-    return {
-      key: route.key,
-      label,
-      icon: map[route.name] ?? 'info',
-      dot: options.tabBarBadge != null,
-    };
-  });
+  const hidden = new Set(hiddenRoutes ?? []);
+  const items: TabItem[] = state.routes
+    .filter((route) => !hidden.has(route.name))
+    .map((route) => {
+      const { options } = descriptors[route.key];
+      const label =
+        typeof options.tabBarLabel === 'string'
+          ? options.tabBarLabel
+          : (options.title ?? route.name);
+      return {
+        key: route.key,
+        label,
+        icon: map[route.name] ?? 'info',
+        dot: options.tabBarBadge != null,
+      };
+    });
 
   const activeKey = state.routes[state.index]?.key ?? '';
 

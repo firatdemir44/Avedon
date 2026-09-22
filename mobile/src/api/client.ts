@@ -370,6 +370,20 @@ export function fetchUnreadMessageCount() {
   return request<{ count: number }>('/conversations/unread-count');
 }
 
+// Ana sayfa "Bugün" kutuları (yeni tasarım, DESIGN.md §8 artboard 1): tek
+// istekte bekleyen numune / yeni teklif / okunmamış mesaj sayıları.
+export type TodaySummary = {
+  pendingSamples: number;
+  newQuotes: number;
+  unreadMessages: number;
+  unreadNotifications: number;
+  companyName: string | null;
+};
+
+export function fetchToday() {
+  return request<TodaySummary>('/me/today');
+}
+
 export function startConversation(userId: string) {
   return request<{ conversation: ConversationSummary }>('/conversations', {
     method: 'POST',

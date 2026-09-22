@@ -27,6 +27,8 @@ export type { ProductCardProps } from './ProductCard';
 export { QuickAction } from './QuickAction';
 export type { QuickActionProps } from './QuickAction';
 export { Screen } from './Screen';
+export { SearchBox } from './SearchBox';
+export type { SearchBoxProps } from './SearchBox';
 export type { ScreenProps } from './Screen';
 export { SectionTitle } from './SectionTitle';
 export type { SectionTitleProps } from './SectionTitle';
