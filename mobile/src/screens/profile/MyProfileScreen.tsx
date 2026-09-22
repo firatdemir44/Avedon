@@ -214,7 +214,7 @@ export function MyProfileScreen({ navigation }: Props) {
       onPress: () => navigation.navigate('ConnectionRequests'),
       badge: pendingRequests,
     },
-    user?.isAdmin ? { key: 'admin', title: 'Firma Doğrulama (Admin)', onPress: () => navigation.navigate('Admin') } : null,
+    user?.isAdmin ? { key: 'admin', title: 'Firma Doğrulama', onPress: () => navigation.navigate('Admin') } : null,
   ].filter((item): item is MenuItem => item !== null);
 
   return (

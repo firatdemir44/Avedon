@@ -2,6 +2,18 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Pilot sahibinin (Melide) ilk kullanıcısı yönetici olur; firma doğrulamayı telefondan yapar.
+// Yöneticilik başkalarına görünmez (isAdmin yalnızca kişinin kendi oturumuna döner). Her açılışta
+// çalışır, tekrar zararsız. Firma kimliği canlı veritabanından (2026-09-15 kaydı).
+const PILOT_ADMIN_COMPANY_ID = 'cmu2ijc910001pf4zkihljf86';
+async function grantPilotAdmin() {
+  const owner = await prisma.user.findFirst({ where: { companyId: PILOT_ADMIN_COMPANY_ID }, orderBy: { createdAt: 'asc' }, select: { id: true, isAdmin: true } });
+  if (!owner) return console.log('Pilot yönetici: firma kullanıcısı bulunamadı, atlandı.');
+  if (owner.isAdmin) return;
+  await prisma.user.update({ where: { id: owner.id }, data: { isAdmin: true } });
+  console.log('Pilot yönetici yetkisi verildi.');
+}
+
 async function main() {
   await prisma.user.upsert({
     where: { phone: '05000000000' },
@@ -24,6 +36,7 @@ async function main() {
   // şart — kalıcı diskteki boş bir veritabanına ilk açılışta demo dolardı.
   if (process.env.RENDER === 'true') {
     console.log('Canlı ortam: örnek veri atlandı.');
+    await grantPilotAdmin();
     return;
   }
 
