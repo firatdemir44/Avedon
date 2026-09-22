@@ -54,7 +54,7 @@ export function CompanyLogoPicker({ companyName, preview, onChange, onError, hin
     <View>
       <View style={styles.logoRow}>
         {preview ? (
-          <Image source={{ uri: preview }} style={[styles.logo, styles.logoImage]} resizeMode="cover" />
+          <Image source={{ uri: preview }} style={[styles.logo, styles.logoImage]} resizeMode="contain" />
         ) : (
           <View style={styles.logo}>
             <Text style={styles.logoInitial}>{initial}</Text>

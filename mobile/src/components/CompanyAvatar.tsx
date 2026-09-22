@@ -50,7 +50,8 @@ export function CompanyAvatar({ name, verification, size = 36, companyId, logoUp
         <Image
           source={{ uri: logo }}
           style={[styles.box, styles.logoBox, { width: size, height: size }]}
-          resizeMode="cover"
+          // Logo kareye sığar; kenarları kırpılmaz (yatay logolar taşıyordu).
+          resizeMode="contain"
           accessibilityLabel={name ? `${name} logosu` : 'Firma logosu'}
         />
       ) : (
