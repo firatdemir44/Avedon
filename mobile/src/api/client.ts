@@ -180,13 +180,96 @@ export function updateCompany(id: string, input: UpdateCompanyInput) {
   });
 }
 
+// Kişi profili (LinkedIn benzeri düzen, 2026-09-22): tek deneyim satırı.
+// endMonth/endYear null ise görev devam ediyor demektir.
+export interface UserExperience {
+  id: string;
+  title: string;
+  company: string;
+  startMonth: number;
+  startYear: number;
+  endMonth: number | null;
+  endYear: number | null;
+  location: string;
+  description: string;
+}
+
+// Deneyim ekleme/düzenleme gövdesi. Devam eden görevde endMonth/endYear
+// GÖNDERİLMEZ (sunucu ikisini birlikte bekliyor).
+export interface UserExperienceInput {
+  title: string;
+  company: string;
+  startMonth: number;
+  startYear: number;
+  endMonth?: number;
+  endYear?: number;
+  location?: string;
+  description?: string;
+}
+
 export type PublicUserProfile = Pick<
   User,
   'id' | 'firstName' | 'lastName' | 'position' | 'accountType' | 'avatarUpdatedAt'
 > & {
   phone?: string;
   company: Pick<Company, 'id' | 'name' | 'verification' | 'logoUpdatedAt'> | null;
+  // backend/src/routes/userProfile.ts profileExtras(): eski kayıtlarda boş metin.
+  headline: string;
+  location: string;
+  about: string;
+  coverUpdatedAt: string | null;
+  connectionCount: number;
+  experiences: UserExperience[];
 };
+
+// Başlık / konum / hakkında düzenleme (PUT /users/me/profile).
+export function updateMyProfile(input: { headline?: string; location?: string; about?: string }) {
+  return request<{
+    profile: {
+      headline: string;
+      location: string;
+      about: string;
+      coverUpdatedAt: string | null;
+      connectionCount: number;
+      experiences: UserExperience[];
+    };
+  }>('/users/me/profile', { method: 'PUT', body: JSON.stringify(input) });
+}
+
+// Kapak fotoğrafı — avatarla aynı desen: fotoğrafın kendisi profil yanıtında
+// gelmez, yalnızca `coverUpdatedAt` gelir ve önbellek anahtarı olur.
+export function fetchUserCover(id: string) {
+  return request<{ imageUrl: string }>(`/users/${id}/cover`);
+}
+
+export function uploadMyCover(image: string | null) {
+  return request<{ coverUpdatedAt: string | null }>('/users/me/cover', {
+    method: 'PUT',
+    body: JSON.stringify({ image }),
+  });
+}
+
+// Sunucudaki sınır (backend/src/routes/userProfile.ts MAX_COVER_CHARS).
+export const MAX_COVER_CHARS = 600_000;
+
+export function createMyExperience(input: UserExperienceInput) {
+  return request<{ experience: UserExperience }>('/users/me/experiences', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateMyExperience(id: string, input: UserExperienceInput) {
+  return request<{ experience: UserExperience }>(`/users/me/experiences/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteMyExperience(id: string) {
+  // 204: gövde yok, request() boş gövdeyi {} olarak okuyor.
+  return request<Record<string, never>>(`/users/me/experiences/${id}`, { method: 'DELETE' });
+}
 
 export function fetchUserProfile(id: string) {
   return request<{ user: PublicUserProfile }>(`/users/${id}`);

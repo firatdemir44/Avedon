@@ -3,7 +3,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProductFilters } from '../features/products/filters';
 import type { PassportImport } from '../features/products/passportImport';
-import type { ExtractOutcome } from '../api/client';
+import type { ExtractOutcome, UserExperience } from '../api/client';
 import type { YarnDirectoryPreset } from '../screens/yarns/YarnDirectoryScreen';
 import type { RfqSelectionItem } from '../features/quotes/rfqSelection';
 
@@ -150,6 +150,11 @@ export type RootStackParamList = {
   Deals: { role?: 'buyer' | 'seller' } | undefined;
   GarmentVisualCost: undefined;
   Profile: { userId: string };
+  // Kişi profili düzenleme (LinkedIn benzeri başlık, 2026-09-22). Alanlar
+  // profil ekranından ön dolu gelir; kaydedince geri dönülür.
+  ProfileEdit: { headline?: string; location?: string; about?: string } | undefined;
+  // Deneyim ekle/düzenle. experience verilirse düzenleme kipi (sil düğmesiyle).
+  ExperienceForm: { experience?: UserExperience } | undefined;
   Connections: undefined;
   ConnectionRequests: undefined;
   // Davetler (Faz 2, Adım 4): "tedarikçini / müşterini davet et". Davet

@@ -607,6 +607,18 @@ export function ProductListScreen({ navigation, route }: Props) {
             <Ionicons name="camera-outline" size={22} color={colors.primary} />
           </Pressable>
         ) : null}
+        {/* Faz 2, Adım 5: fason kapasite araması. 2026-09-22'de profil
+            menüsünden kaldırıldı, tek girişi burası. */}
+        {user ? (
+          <Pressable
+            onPress={() => navigation.navigate('CapacitySearch')}
+            accessibilityRole="button"
+            accessibilityLabel="Fason kapasite ara"
+            style={({ pressed }) => [styles.filterButton, pressed && styles.togglePressed]}
+          >
+            <Ionicons name="hardware-chip-outline" size={22} color={colors.primary} />
+          </Pressable>
+        ) : null}
         {/* Hesaplama araçları Hesaplamalar sekmesinde; burada yalnızca katalogla
             doğrudan ilgili kısayol kalıyor. */}
         {user?.companyId ? (

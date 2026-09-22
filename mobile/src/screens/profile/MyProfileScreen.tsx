@@ -2,10 +2,17 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { MAX_AVATAR_CHARS, fetchIncomingConnectionRequests, uploadMyAvatar } from '../../api/client';
+import {
+  MAX_AVATAR_CHARS,
+  MAX_COVER_CHARS,
+  fetchIncomingConnectionRequests,
+  uploadMyAvatar,
+  uploadMyCover,
+} from '../../api/client';
 import { confirmAction } from '../../features/confirm';
-import { pickAvatarPhoto } from '../../features/imagePicker';
+import { pickAvatarPhoto, pickCoverPhoto } from '../../features/imagePicker';
 import { setCachedUserAvatar, userAvatarKey } from '../../features/users/userAvatarCache';
+import { setCachedUserCover, userCoverKey } from '../../features/users/userCoverCache';
 import { ListRow } from '../../components/ListRow';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { SkeletonDetail } from '../../components/Skeleton';
@@ -13,6 +20,7 @@ import { InlineError } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
+import { ExperienceSection } from './ExperienceSection';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = RootStackScreenProps<'MyProfile'>;
@@ -27,8 +35,64 @@ export function MyProfileScreen({ navigation }: Props) {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // Kapak yüklendikten sonra profil yeniden çekilene kadar geçerli olan değer;
+  // undefined = "sunucudan geleni kullan".
+  const [coverOverride, setCoverOverride] = useState<string | null | undefined>(undefined);
 
   const hasPhoto = !!user?.avatarUpdatedAt;
+  const coverUpdatedAt = coverOverride !== undefined ? coverOverride : profile?.coverUpdatedAt ?? null;
+  const hasCover = !!coverUpdatedAt;
+
+  const photoErrorText = (err: unknown) => {
+    const code = err instanceof Error ? err.message : '';
+    return code === 'permission_denied'
+      ? 'Galeriye erişim izni verilmedi.'
+      : code === 'camera_permission_denied'
+        ? 'Kameraya erişim izni verilmedi.'
+        : code === 'image_too_large'
+          ? 'Fotoğraf çok büyük, daha küçük bir fotoğraf deneyin.'
+          : 'Fotoğraf yüklenemedi, tekrar deneyin.';
+  };
+
+  // Kapak fotoğrafı: avatarla aynı akış (1200 px'e küçült, JPEG, data URL).
+  const changeCover = async () => {
+    if (!user) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      const picked = await pickCoverPhoto('gallery', MAX_COVER_CHARS);
+      if (!picked) return;
+      const { coverUpdatedAt: next } = await uploadMyCover(picked.dataUrl);
+      if (next) setCachedUserCover(userCoverKey(user.id, next), picked.dataUrl);
+      setCoverOverride(next);
+      reload();
+    } catch (err) {
+      setPhotoError(photoErrorText(err));
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const removeCover = async () => {
+    const ok = await confirmAction({
+      title: 'Kapak fotoğrafını kaldır',
+      message: 'Kapak fotoğrafınız kaldırılacak. Yerine düz lacivert zemin görünecek.',
+      confirmLabel: 'Kaldır',
+      destructive: true,
+    });
+    if (!ok) return;
+    setPhotoBusy(true);
+    setPhotoError(null);
+    try {
+      await uploadMyCover(null);
+      setCoverOverride(null);
+      reload();
+    } catch {
+      setPhotoError('Kapak fotoğrafı kaldırılamadı, tekrar deneyin.');
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
 
   // Fotoğrafı seç/çek → 512 px kareye küçült → sunucuya yükle. Başarılı olunca
   // oturumdaki kullanıcı güncellenir (üst çubuktaki avatar anında değişsin) ve
@@ -44,16 +108,7 @@ export function MyProfileScreen({ navigation }: Props) {
       if (avatarUpdatedAt) setCachedUserAvatar(userAvatarKey(user.id, avatarUpdatedAt), picked.dataUrl);
       updateUser({ avatarUpdatedAt });
     } catch (err) {
-      const code = err instanceof Error ? err.message : '';
-      setPhotoError(
-        code === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : code === 'camera_permission_denied'
-            ? 'Kameraya erişim izni verilmedi.'
-            : code === 'image_too_large'
-              ? 'Fotoğraf çok büyük, daha küçük bir fotoğraf deneyin.'
-              : 'Fotoğraf yüklenemedi, tekrar deneyin.'
-      );
+      setPhotoError(photoErrorText(err));
     } finally {
       setPhotoBusy(false);
     }
@@ -103,6 +158,15 @@ export function MyProfileScreen({ navigation }: Props) {
         {hasPhoto ? (
           <PrimaryButton label="Kaldır" variant="secondary" size="sm" disabled={photoBusy} onPress={removePhoto} />
         ) : null}
+        {hasCover ? (
+          <PrimaryButton
+            label="Kapağı Kaldır"
+            variant="secondary"
+            size="sm"
+            disabled={photoBusy}
+            onPress={removeCover}
+          />
+        ) : null}
       </View>
       {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
     </View>
@@ -134,15 +198,10 @@ export function MyProfileScreen({ navigation }: Props) {
     // Faz 3, Adım 4: kabul edilen tekliften doğan sipariş kayıtları.
     { key: 'deals', title: 'Siparişlerim', onPress: () => navigation.navigate('Deals') },
     { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
-    // Faz 2, Adım 6: iplik dizini (Ürünler sekmesindeki "İplik" ile aynı ekran).
-    { key: 'yarnDirectory', title: 'İplik Dizini', onPress: () => navigation.navigate('YarnDirectory') },
-    // Faz 3, Adım 3: elindeki kumaşın fotoğrafıyla görünüşçe benzerini bulma.
-    { key: 'similarSearch', title: 'Fotoğrafla Kumaş Ara', onPress: () => navigation.navigate('SimilarSearch') },
-    // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
-    { key: 'capacitySearch', title: 'Fason Kapasite Ara', onPress: () => navigation.navigate('CapacitySearch') },
-    user?.companyId
-      ? { key: 'machinePark', title: 'Makine Parkım', onPress: () => navigation.navigate('MachinePark') }
-      : null,
+    // 2026-09-22 menü temizliği: İplik Dizini (Ürünler sekmesindeki "İplik"),
+    // Fotoğrafla Kumaş Ara ve Fason Kapasite Ara (Ürünler sekmesindeki araç
+    // düğmeleri) ile Makine Parkım (firma sayfasındaki "Makine parkı") buradan
+    // kaldırıldı — hepsine kendi bağlamlarından erişiliyor.
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
     { key: 'watchRules', title: 'İzlediklerim', onPress: () => navigation.navigate('WatchRules') },
     { key: 'recentlyViewed', title: 'Son Baktıklarım', onPress: () => navigation.navigate('RecentlyViewedProducts') },
@@ -166,13 +225,32 @@ export function MyProfileScreen({ navigation }: Props) {
         {loading ? (
           <SkeletonDetail variant="profile" />
         ) : profile ? (
-          <ProfileIdentity
-            profile={profile}
-            avatarSize={88}
-            avatarUpdatedAt={user?.avatarUpdatedAt ?? null}
-            belowIdentity={photoActions}
-            onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
-          />
+          <>
+            <ProfileIdentity
+              profile={profile}
+              avatarSize={88}
+              avatarUpdatedAt={user?.avatarUpdatedAt ?? null}
+              belowIdentity={photoActions}
+              isSelf
+              coverUpdatedAt={coverUpdatedAt}
+              onEditCover={changeCover}
+              onEditProfile={() =>
+                navigation.navigate('ProfileEdit', {
+                  headline: profile.headline,
+                  location: profile.location,
+                  about: profile.about,
+                })
+              }
+              onOpenConnections={() => navigation.navigate('Connections')}
+              onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
+            />
+            <ExperienceSection
+              experiences={profile.experiences ?? []}
+              isSelf
+              onAdd={() => navigation.navigate('ExperienceForm')}
+              onEdit={(experience) => navigation.navigate('ExperienceForm', { experience })}
+            />
+          </>
         ) : (
           <View style={styles.bannerWrap}>
             <InlineError message={error ?? 'Profil alınamadı'} onRetry={reload} />

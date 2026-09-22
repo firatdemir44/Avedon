@@ -17,6 +17,7 @@ import {
 import { haptics } from '../../features/haptics';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
+import { ExperienceSection } from './ExperienceSection';
 import { SkeletonDetail } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
 import { colors, fonts, spacing, typography } from '../../theme';
@@ -122,6 +123,8 @@ export function ProfileScreen({ navigation, route }: Props) {
           profile={profile}
           onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
         />
+
+        <ExperienceSection experiences={profile.experiences ?? []} />
 
         {error ? (
           <View style={styles.bannerWrap}>

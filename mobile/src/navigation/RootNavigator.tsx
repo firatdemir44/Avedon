@@ -59,6 +59,8 @@ import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
+import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
+import { ExperienceFormScreen } from '../screens/profile/ExperienceFormScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
@@ -418,6 +420,17 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Firma Doğrulama (Admin)' }}
             />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: 'Profil' }} />
+            {/* Kişi profili düzenleme ve deneyim formu (2026-09-22). */}
+            <Stack.Screen
+              name="ProfileEdit"
+              component={ProfileEditScreen}
+              options={{ headerShown: true, title: 'Profili Düzenle' }}
+            />
+            <Stack.Screen
+              name="ExperienceForm"
+              component={ExperienceFormScreen}
+              options={{ headerShown: true, title: 'Deneyim Ekle' }}
+            />
             <Stack.Screen
               name="Connections"
               component={ConnectionsListScreen}

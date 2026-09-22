@@ -151,6 +151,49 @@ export async function pickAvatarPhoto(
 }
 
 /**
+ * Profil kapak fotoğrafı (LinkedIn benzeri başlık, 2026-09-22): geniş şerit
+ * olduğu için 16:6 kırpma penceresiyle seçilir, 1200 px genişliğe küçültülür ve
+ * JPEG olarak sıkıştırılır. Sunucunun karakter sınırını aşarsa kademeli olarak
+ * daha da küçültülür; en küçüğü de sığmazsa `image_too_large` fırlatır.
+ */
+export async function pickCoverPhoto(
+  source: 'camera' | 'gallery',
+  maxChars: number
+): Promise<CompressedImage | null> {
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) throw new Error('camera_permission_denied');
+  } else {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) throw new Error('permission_denied');
+  }
+
+  // Kırpma penceresi web'de desteklenmiyor, orada sessizce atlanır (kapak
+  // zaten "cover" ile ortadan kırpılarak çiziliyor).
+  const options: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ['images'],
+    allowsEditing: true,
+    aspect: [16, 6],
+  };
+  const result =
+    source === 'camera'
+      ? await ImagePicker.launchCameraAsync(options)
+      : await ImagePicker.launchImageLibraryAsync(options);
+  if (result.canceled || !result.assets[0]) return null;
+  const asset = result.assets[0];
+
+  for (const [maxWidth, compress] of [
+    [1200, 0.7],
+    [900, 0.6],
+    [700, 0.5],
+  ] as const) {
+    const image = await shrink(asset, maxWidth, compress);
+    if (image && image.dataUrl.length <= maxChars) return image;
+  }
+  throw new Error('image_too_large');
+}
+
+/**
  * Elde hazır duran bir fotoğrafı (data URL) ürün fotoğrafı sınırına sığdırır:
  * WhatsApp taslağından gelen etiket fotoğrafı sunucuda kendi sınırıyla
  * saklanıyor, ürün fotoğrafı sınırı daha dar olabiliyor. Zaten sığıyorsa

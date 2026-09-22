@@ -4,6 +4,8 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
 
+- 2026-09-22: **Profil sayfası LinkedIn düzenine geçti (Fırat kararı).** Menüden İplik Dizini, Fotoğrafla Kumaş Ara, Fason Kapasite Ara, Makine Parkım kaldırıldı (erişim: Ürünler sekmesi, firma sayfası; fason kapasite arama Ürünler arama çubuğunda çip). Sunucu 19681ac: `UserProfile` (başlık/konum/hakkında/kapak) + `UserExperience`, `/api/users/me/profile|cover|experiences`, profil yanıtında `connectionCount`; test 18/18. Mobil: kapak + 88 px avatar + başlık/firma/konum/"N bağlantı"/Hakkında, `ProfileEditScreen`, `ExperienceFormScreen`, Deneyim bölümü (süre hesabı). Tarayıcıda denendi: menü, deneyim ekleme, düzenleme ekranı. **Telefonda kontrol bekliyor:** kapak fotoğrafı seçme/kırpma (16:6), deneyim silme. Takipçi sayısı yok (kişi takibi özelliği yok).
+
 - 2026-09-22: **İki teknik temizlik tamamlandı.** (1) Eski `Product.imageUrl` sütunu kaldırıldı (1074003; kopyası olmayan kayıt varsa önce ProductImage'a alınır; canlıda 4 Melide ürünü ve fotoğrafları doğrulandı). (2) Kumaş ve iplik formlarındaki tekrar eden bileşim/sertifika editörleri `components/passport/` altında tek nüshaya indi (−640 satır; gönderilen gövde değişmedi; tarayıcıda iki formda satır ekle/kaldır denendi). **Telefonda kontrol bekliyor:** sertifika belge fotoğrafı seçme.
 
 Aşağıdaki "Açık İşler" bölümü tarihsel kayıttır; güncel durum bu listedir. Bir iş kapanınca buradan silinir.
