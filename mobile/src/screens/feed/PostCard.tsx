@@ -251,6 +251,7 @@ function PostCardComponent({
       {/* Metin */}
       {post.body ? (
         <Pressable
+          hitSlop={{ top: t.space[1], bottom: t.space[1] }}
           onPress={() => setExpanded((v) => !v)}
           accessibilityRole="button"
           accessibilityLabel={expanded ? 'Metni kısalt' : 'Devamını oku'}

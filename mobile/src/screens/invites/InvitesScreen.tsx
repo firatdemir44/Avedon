@@ -275,8 +275,9 @@ export function InvitesScreen({ navigation }: Props) {
               />
             ) : null}
 
-            {/* Ekranın tek dolu düğmesi. */}
+            {/* Davet kartı açıkken oradaki WhatsApp düğmesi dolu; bu düğme kenarlıklı olur (ekranda tek dolu düğme). */}
             <Button
+              kind={current ? 'secondary' : 'primary'}
               size="lg"
               label="Davet oluştur"
               loading={submitting}

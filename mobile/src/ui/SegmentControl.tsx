@@ -49,6 +49,7 @@ export function SegmentControl<T extends string>({
         return (
           <Pressable
             key={o.value}
+            hitSlop={{ top: (t.size.touchMin - t.size.chip) / 2, bottom: (t.size.touchMin - t.size.chip) / 2 }}
             onPress={() => onChange(o.value)}
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}

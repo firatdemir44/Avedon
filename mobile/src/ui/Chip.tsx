@@ -19,6 +19,7 @@ export function Chip({ label, selected = false, onPress, icon, disabled, style }
   const fg = selected ? t.colors.onBrand : t.colors.ink;
   return (
     <Pressable
+      hitSlop={{ top: (t.size.touchMin - t.size.chip) / 2, bottom: (t.size.touchMin - t.size.chip) / 2 }}
       onPress={disabled ? undefined : onPress}
       disabled={disabled}
       accessibilityRole="button"
