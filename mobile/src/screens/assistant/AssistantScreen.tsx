@@ -51,6 +51,7 @@ import { isSameCalendarDay } from '../../features/time';
 import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
+import { setVoicePersona } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
@@ -159,6 +160,8 @@ export function AssistantScreen({ navigation }: Props) {
 
   const chosenPersona = persona?.persona ?? null;
   const effectivePersona: AssistantPersonaKey = chosenPersona ?? persona?.effective ?? 'ipek';
+  // Sesli okuma kişiliğin sesiyle (İpek kadın, Mert erkek).
+  useEffect(() => setVoicePersona(effectivePersona), [effectivePersona]);
   const personaName = personaLabel(effectivePersona, persona);
   const subtitle = companyName ? `${companyName} · ${personaName}` : personaName;
 

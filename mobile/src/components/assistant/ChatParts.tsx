@@ -8,11 +8,12 @@
 // gönder düğmesi marka rengindedir.
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ActivityIndicator, type ViewStyle } from 'react-native';
 import { formatClockTime, formatDayLabel } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import { Chip, ChipRow, Icon, type AnyIconName } from '../../ui';
+import { canListen, canSpeak, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, type ListenError } from '../../features/speech';
 
 export function ChatDayChip({ createdAt }: { createdAt: string }) {
   const t = useTheme();
@@ -57,12 +58,34 @@ export function UserBubble({ text, createdAt, local }: { text: string; createdAt
 
 export function AssistantBubble({ text, createdAt }: { text: string; createdAt?: string }) {
   const t = useTheme();
+  const id = useRef(`b-${Math.random().toString(36).slice(2)}`).current;
+  const [speaking, setSpeaking] = useState(false);
+  useEffect(() => onSpeakingChange((cur) => setSpeaking(cur === id)), [id]);
+  // Balon ekrandan kalkınca okuma sürüyorsa durur.
+  useEffect(() => () => { if (speaking) stopSpeaking(); }, [speaking]);
   return (
     <View style={assistantBubbleStyle(t)}>
       <Text style={[t.type.body16, { color: t.colors.ink }]}>{text}</Text>
-      {createdAt ? (
-        <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatClockTime(createdAt)}</Text>
-      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[2] }}>
+        {createdAt ? <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatClockTime(createdAt)}</Text> : <View />}
+        {canSpeak() ? (
+          <Pressable
+            onPress={() => toggleSpeak(id, text)}
+            accessibilityRole="button"
+            accessibilityLabel={speaking ? 'Okumayı durdur' : 'Sesli oku'}
+            hitSlop={t.space[2]}
+            style={({ pressed }) => ({
+              minWidth: t.size.touchMin,
+              minHeight: t.size.touchMin / 1.5,
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Icon name={speaking ? 'stop-circle-outline' : 'volume-high-outline'} size={t.size.iconSm} colorValue={t.colors.brand} />
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -127,6 +150,7 @@ export function AssistantComposer({
   chips?: ComposerChip[];
 }) {
   const t = useTheme();
+  const [micError, setMicError] = useState<string | null>(null);
   return (
     <View
       style={[
@@ -192,8 +216,64 @@ export function AssistantComposer({
             } as never,
           ]}
         />
-        <SendButton onPress={onSend} canSend={canSend} />
+        {canListen() && !value.trim() ? (
+          <MicButton onText={onChangeText} onError={setMicError} />
+        ) : (
+          <SendButton onPress={onSend} canSend={canSend} />
+        )}
       </View>
+      {micError ? (
+        <Text style={[t.type.body14, { color: t.colors.danger, textAlign: 'center' }]}>{micError}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+const MIC_ERRORS: Record<ListenError, string> = {
+  'not-allowed': 'Mikrofon izni kapalı. Tarayıcı ayarlarından bu siteye mikrofon izni verin.',
+  'no-speech': 'Ses duyulmadı, tekrar deneyin.',
+  network: 'Ses tanıma için internet bağlantısı gerekiyor.',
+  other: 'Ses tanınamadı, tekrar deneyin.',
+};
+
+// Mikrofon: dokun, konuş; konuşma bitince metin kutuya yazılır, gönder düğmesi çıkar.
+// Metin göndermeden önce görülür ve düzeltilebilir.
+function MicButton({ onText, onError }: { onText: (t: string) => void; onError: (m: string | null) => void }) {
+  const t = useTheme();
+  const [listening, setListening] = useState(false);
+  const stopRef = useRef<(() => void) | null>(null);
+  useEffect(() => () => stopRef.current?.(), []);
+  const toggle = () => {
+    if (listening) {
+      stopRef.current?.();
+      return;
+    }
+    onError(null);
+    stopSpeaking();
+    setListening(true);
+    stopRef.current = startListening({
+      onText: (text) => onText(text),
+      onEnd: () => setListening(false),
+      onError: (e) => onError(MIC_ERRORS[e]),
+    });
+  };
+  return (
+    <View style={{ paddingBottom: (t.size.control - t.size.touchMin) / 2 }}>
+      <Pressable
+        onPress={toggle}
+        accessibilityRole="button"
+        accessibilityLabel={listening ? 'Dinlemeyi durdur' : 'Konuşarak sor'}
+        style={({ pressed }) => ({
+          width: t.size.touchMin,
+          height: t.size.touchMin,
+          borderRadius: t.radius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: listening ? t.colors.danger : pressed ? t.colors.brandStrong : t.colors.brand,
+        })}
+      >
+        <Icon name={listening ? 'stop' : 'mic-outline'} size={t.size.iconSm} colorValue={t.colors.onBrand} />
+      </Pressable>
     </View>
   );
 }
