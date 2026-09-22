@@ -33,12 +33,18 @@ export const MAX_CERTIFICATES = 10;
 export const MAX_TEST_REPORTS = 10;
 // Ürün fotoğrafıyla aynı sınır (validation.ts).
 const MAX_DOC_IMAGE_CHARS = 700_000;
+// Sertifika/test raporu belgesi PDF de olabilir (Fırat 2026-09-22; Textile Exchange gibi belgeler PDF gelir).
+// Belge ~1,5 MB'a kadar (base64 ile ~2 MB).
+const MAX_DOC_PDF_CHARS = 2_100_000;
 
 // Ayrıştırılan kompozisyonun kayda YAZILMASI için gereken güven. Altı: metin
 // düz kalır, kullanıcı formda satırlara kendisi böler.
 export const COMPOSITION_AUTOPARSE_MIN_CONFIDENCE = 0.9;
 
-const docImage = z.string().startsWith('data:image/').max(MAX_DOC_IMAGE_CHARS);
+const docImage = z.union([
+  z.string().startsWith('data:image/').max(MAX_DOC_IMAGE_CHARS),
+  z.string().startsWith('data:application/pdf;base64,').max(MAX_DOC_PDF_CHARS),
+]);
 // Belge fotoğrafı: yeni data URL · { existing: eskiSıra } (mevcut korunur) · null (yok)
 const docImageInput = z.union([docImage, z.object({ existing: z.number().int().min(0).max(19) }).strict()]).nullable();
 
