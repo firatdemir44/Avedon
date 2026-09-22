@@ -34,7 +34,7 @@ export function CompanyLogoPicker({ companyName, preview, onChange, onError, hin
     try {
       // Logo küçük görünür; 400 px genişlik her ekranda net durmaya yetiyor ve
       // dosyayı sunucunun kabul ettiği boyutun çok altında tutuyor.
-      const picked = await pickCompressedImage(400, 0.8);
+      const picked = await pickCompressedImage(400, 0.8, true);
       if (!picked) return;
       onChange(picked.dataUrl);
     } catch (err) {

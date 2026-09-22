@@ -12,7 +12,8 @@ export interface CompressedImage {
  * boyutta bir fotoğraf (birkaç MB) backend'e gidip isteği tıkayabiliyordu,
  * bu yüzden sıkıştırmayı expo-image-manipulator ile kendimiz yapıyoruz.
  */
-export async function pickCompressedImage(maxWidth = 1000, compress = 0.6): Promise<CompressedImage | null> {
+// keepTransparency: PNG olarak kaydeder (logo); JPEG şeffaf zemini siyaha çeviriyordu.
+export async function pickCompressedImage(maxWidth = 1000, compress = 0.6, keepTransparency = false): Promise<CompressedImage | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
     throw new Error('permission_denied');
@@ -23,7 +24,7 @@ export async function pickCompressedImage(maxWidth = 1000, compress = 0.6): Prom
   });
   if (result.canceled || !result.assets[0]) return null;
 
-  return shrink(result.assets[0], maxWidth, compress);
+  return shrink(result.assets[0], maxWidth, compress, false, keepTransparency);
 }
 
 /**
@@ -228,7 +229,8 @@ async function shrink(
   maxWidth: number,
   compress: number,
   // true: sınır uzun kenara uygulanır (dikey fotoğrafta yüksekliğe).
-  longEdge = false
+  longEdge = false,
+  keepTransparency = false
 ): Promise<CompressedImage | null> {
   const actions: ImageManipulator.Action[] = [];
   if (longEdge && asset.height && asset.height > asset.width && asset.height > maxWidth) {
@@ -239,7 +241,7 @@ async function shrink(
 
   const manipulated = await ImageManipulator.manipulateAsync(asset.uri, actions, {
     compress,
-    format: ImageManipulator.SaveFormat.JPEG,
+    format: keepTransparency ? ImageManipulator.SaveFormat.PNG : ImageManipulator.SaveFormat.JPEG,
     base64: true,
   });
 
@@ -247,6 +249,6 @@ async function shrink(
 
   return {
     uri: manipulated.uri,
-    dataUrl: `data:image/jpeg;base64,${manipulated.base64}`,
+    dataUrl: `data:image/${keepTransparency ? 'png' : 'jpeg'};base64,${manipulated.base64}`,
   };
 }
