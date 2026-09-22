@@ -1,32 +1,72 @@
+// Gönderiye eklenecek ürünü seçme ekranı (yeni tasarım, 4. adım — DESIGN.md §2–3).
+// Veri katmanı değişmedi: aynı uç, aynı arama, aynı `popTo` dönüşü. Sunum
+// yenilendi: AppBar + ui/SearchBox + ui/ProductCard + ui/EmptyState.
+//
+// Kullanıcı geri bildirimi (2026-09-16): firmaların yüzlerce kumaşı olacak,
+// hepsini gönderi ekranında listelemek ekranı kullanılmaz hale getirir. Arama
+// sunucuda yapılıyor; tek seferde ilk 30 ürün geliyor, gerisine aramayla ulaşılıyor.
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, FlatList } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchMyProducts, type MyProductOption } from '../../api/client';
-import { ProductThumbnail } from '../../components/ProductThumbnail';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SearchField } from '../../components/SearchField';
-import { SectionHeader } from '../../components/SectionHeader';
-import { EmptyState } from '../../components/StateView';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { categoryLabel } from '../../features/products/catalog';
 import { haptics } from '../../features/haptics';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Button,
+  EmptyState,
+  ProductCard,
+  Screen,
+  SearchBox,
+  SectionTitle,
+  SkeletonRow,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'SelectProduct'>;
 
-// Gönderiye eklenecek ürünü seçme ekranı. Kullanıcı geri bildirimi (2026-09-16):
-// firmaların yüzlerce kumaşı olacak, hepsini gönderi ekranında listelemek
-// ekranı kullanılmaz hale getirir. Arama sunucuda yapılıyor; tek seferde ilk
-// 30 ürün geliyor, gerisine aramayla ulaşılıyor.
 const PAGE_SIZE = 30;
+const SEARCH_DEBOUNCE_MS = 300;
+
+// Kapak fotoğrafı liste yanıtında gelmiyor; önbellekten / tek tek çekilir.
+function useProductImage(productId: string, hasImage: boolean) {
+  const [uri, setUri] = useState<string | null>(() => getCachedProductImage(productId) ?? null);
+  useEffect(() => {
+    if (!hasImage) return;
+    const cached = getCachedProductImage(productId);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(productId)
+      .then((url) => {
+        if (!cancelled) setUri(url);
+      })
+      .catch(() => {
+        // Fotoğraf gelmezse kart yer tutucuyla çalışır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, hasImage]);
+  return uri;
+}
 
 export function SelectProductScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const selectedId = route.params?.selectedId ?? null;
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<MyProductOption[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     const signal = { cancelled: false };
@@ -47,7 +87,7 @@ export function SelectProductScreen({ navigation, route }: Props) {
         .finally(() => {
           if (!signal.cancelled) setLoading(false);
         });
-    }, 300);
+    }, SEARCH_DEBOUNCE_MS);
     return () => {
       signal.cancelled = true;
       clearTimeout(timer);
@@ -65,146 +105,127 @@ export function SelectProductScreen({ navigation, route }: Props) {
 
   const searching = !!query.trim();
 
-  return (
-    <View style={styles.screen}>
-      <View style={styles.searchBar}>
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Ürün kodu, içerik, çeşit ara"
-          accessibilityLabel="Kendi ürünlerimde ara"
-        />
-      </View>
-
-      {loading && products.length === 0 ? (
-        <ActivityIndicator style={styles.loading} color={colors.primary} />
-      ) : (
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={
-            products.length > 0 ? (
-              <SectionHeader
-                title={searching ? 'Arama sonuçları' : 'Ürünlerim'}
-                count={searching ? products.length : total}
-                first
-              />
-            ) : null
-          }
-          ListFooterComponent={
-            !searching && total > products.length ? (
-              <Text style={styles.footerNote}>
-                {total} üründen ilk {products.length} tanesi gösteriliyor. Aradığınızı bulmak için yukarıdan arayın.
-              </Text>
-            ) : null
-          }
-          ListEmptyComponent={
-            failed ? (
-              <EmptyState
-                icon="cloud-offline-outline"
-                title="Ürünler alınamadı"
-                message="Bağlantınızı kontrol edip tekrar deneyin."
-              />
-            ) : searching ? (
-              <EmptyState
-                icon="search-outline"
-                title="Sonuç bulunamadı"
-                message={`"${query.trim()}" ile eşleşen ürününüz yok.`}
-                actionLabel="Aramayı temizle"
-                onAction={() => setQuery('')}
-              />
-            ) : (
-              <EmptyState
-                icon="cube-outline"
-                title="Firmanızın ürünü yok"
-                message="Önce bir ürün kartı ekleyin, sonra gönderilerinizde paylaşabilirsiniz."
-                actionLabel="Ürün Ekle"
-                onAction={() => navigation.navigate('AddProduct')}
-              />
-            )
-          }
-          renderItem={({ item, index }) => {
-            const selected = item.id === selectedId;
-            return (
-              <Pressable
-                onPress={() => select(item)}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                accessibilityLabel={`${item.code}, ${categoryLabel(item.type, item.subtype ?? '')}${selected ? ', seçili' : ''}`}
-                android_ripple={{ color: colors.pressed }}
-                style={({ pressed }) => [
-                  styles.row,
-                  index < products.length - 1 && styles.divider,
-                  selected && styles.rowSelected,
-                  pressed && !selected && styles.rowPressed,
-                ]}
-              >
-                <ProductThumbnail productId={item.id} hasImage={item.hasImage} size={44} />
-                <View style={styles.texts}>
-                  <Text style={styles.code}>{item.code}</Text>
-                  <Text style={styles.meta}>{categoryLabel(item.type, item.subtype ?? '')}</Text>
-                </View>
-                {selected ? <Ionicons name="checkmark-circle" size={24} color={colors.primary} /> : null}
-              </Pressable>
-            );
-          }}
-        />
-      )}
-
+  const header = (
+    <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
+      <SearchBox
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Ürün kodu, içerik, çeşit ara"
+        accessibilityLabel="Kendi ürünlerimde ara"
+      />
       {products.length > 0 ? (
-        <View style={styles.actionBar}>
-          <PrimaryButton
-            label="Yeni Ürün Ekle"
-            icon="add"
-            variant="outline"
-            size="lg"
-            onPress={() => navigation.navigate('AddProduct')}
-          />
-        </View>
+        <SectionTitle
+          title={`${searching ? 'Arama sonuçları' : 'Ürünlerim'} · ${searching ? products.length : total}`}
+        />
       ) : null}
+    </View>
+  );
+
+  const empty = failed ? (
+    <EmptyState
+      icon="warning"
+      title="Ürünler alınamadı"
+      description="Bağlantınızı kontrol edip tekrar deneyin."
+    />
+  ) : searching ? (
+    <EmptyState
+      icon="search"
+      title="Sonuç bulunamadı"
+      description={`"${query.trim()}" ile eşleşen ürününüz yok.`}
+      actionLabel="Aramayı temizle"
+      onAction={() => setQuery('')}
+    />
+  ) : (
+    <EmptyState
+      icon="fabric"
+      title="Firmanızın ürünü yok"
+      description="Önce bir ürün kartı ekleyin, sonra gönderilerinizde paylaşabilirsiniz."
+      actionLabel="Ürün ekle"
+      onAction={() => navigation.navigate('AddProduct')}
+    />
+  );
+
+  return (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Ürün seç" leading="back" onBack={() => navigation.goBack()} />
+      <Screen
+        scroll={false}
+        noPadding
+        sticky={
+          products.length > 0 ? (
+            <Button
+              kind="secondary"
+              size="lg"
+              label="Yeni ürün ekle"
+              icon="plus"
+              onPress={() => navigation.navigate('AddProduct')}
+            />
+          ) : undefined
+        }
+      >
+        {loading && products.length === 0 ? (
+          <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
+            {header}
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
+          </View>
+        ) : (
+          <FlatList
+            data={products}
+            keyExtractor={(item) => item.id}
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingHorizontal: t.space[4],
+              paddingBottom: t.space[10],
+              gap: t.space[3],
+            }}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={header}
+            ListEmptyComponent={empty}
+            ListFooterComponent={
+              !searching && total > products.length ? (
+                <Text style={[t.type.body14, { color: t.colors.ink2, paddingTop: t.space[3] }]}>
+                  {total} üründen ilk {products.length} tanesi gösteriliyor. Aradığınızı bulmak için yukarıdan
+                  arayın.
+                </Text>
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <SelectableProductCard
+                product={item}
+                selected={item.id === selectedId}
+                onSelect={() => select(item)}
+              />
+            )}
+          />
+        )}
+      </Screen>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  searchBar: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  loading: { marginTop: spacing.xl },
-  list: { paddingBottom: spacing.xl },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minHeight: 60,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  rowSelected: { backgroundColor: colors.accentSoft },
-  rowPressed: { backgroundColor: colors.pressed },
-  texts: { flex: 1, gap: 1 },
-  code: { ...typography.monoStrong, color: colors.primary },
-  meta: { ...typography.caption, color: colors.textMuted },
-  footerNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-  actionBar: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-  },
-});
+// Fotoğraf hook'u kart başına çalıştığı için ayrı bileşen (hook koşullu çağrılamaz).
+function SelectableProductCard({
+  product,
+  selected,
+  onSelect,
+}: {
+  product: MyProductOption;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const t = useTheme();
+  const imageUri = useProductImage(product.id, product.hasImage);
+  const name = categoryLabel(product.type, product.subtype ?? '');
+  return (
+    <ProductCard
+      name={name}
+      code={product.code}
+      specs={selected ? 'Gönderiye eklenmiş ürün' : undefined}
+      imageUri={imageUri}
+      onPress={onSelect}
+      style={selected ? { borderColor: t.colors.brand, backgroundColor: t.colors.brandSoft } : undefined}
+    />
+  );
+}

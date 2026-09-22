@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Image, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// "Fotoğrafla kumaş ara" — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
+// pickLookPhoto + searchSimilarByPhoto. Görünüm: AppBar · giriş kartı (Card)
+// · fotoğraf önizleme · ProductCard sonuç listesi (altında benzerlik rozeti +
+// nedenler) · kenarlıklı "Başka fotoğrafla ara".
+// Ekranda tek dolu düğme: "Fotoğraf çek" (web'de "Galeriden seç").
+// Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
+import React, { useLayoutEffect, useState } from 'react';
+import { Image, Platform, Text, View } from 'react-native';
 import {
   ApiError,
   MAX_LOOK_IMAGE_CHARS,
@@ -8,14 +13,13 @@ import {
   type LookSearchResult,
   type SimilarProductResult,
 } from '../../api/client';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { ProductRow } from '../../components/ProductRow';
-import { SectionHeader } from '../../components/SectionHeader';
-import { EmptyState, InlineError } from '../../components/StateView';
 import { pickLookPhoto } from '../../features/imagePicker';
 import { haptics } from '../../features/haptics';
+import { categoryLabel } from '../../features/products/catalog';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Badge, Button, Card, EmptyState, Icon, ProductCard, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { ErrorBanner, productSpecs, useProductImage } from './FavoriteProductsScreen';
 
 type Props = RootStackScreenProps<'SimilarSearch'>;
 
@@ -24,6 +28,9 @@ type Props = RootStackScreenProps<'SimilarSearch'>;
 // okunmaz — bu sınır ekranda açıkça yazılı, sonuçların üstünde durur.
 const HONESTY_NOTE =
   'Yalnızca görünüm karşılaştırılır. Gramaj ve içerik fotoğraftan okunamaz; ürün sayfasından kontrol edin.';
+
+// Önizleme karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
+const PREVIEW_SIZE = 72;
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -45,10 +52,16 @@ function errorMessage(err: unknown): string {
 }
 
 export function SimilarSearchScreen({ navigation }: Props) {
+  const t = useTheme();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<LookSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const start = async (source: 'camera' | 'gallery') => {
     setError(null);
@@ -82,208 +95,155 @@ export function SimilarSearchScreen({ navigation }: Props) {
     setError(null);
   };
 
+  // Kamera yalnızca telefonda; web'de tarayıcı kamerası yok, dosya seçici tek
+  // (ve dolu) düğme olarak kalır.
+  const hasCamera = Platform.OS !== 'web';
   const pickers = (
-    <View style={styles.pickerRow}>
-      {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok, dosya seçici kalır. */}
-      {Platform.OS !== 'web' ? (
-        <PrimaryButton
-          label="Fotoğraf çek"
-          icon="camera-outline"
-          size="lg"
-          onPress={() => start('camera')}
-          style={styles.pickerButton}
-        />
-      ) : null}
-      <PrimaryButton
-        label="Galeriden seç"
-        icon="images-outline"
-        variant="outline"
+    <View style={{ gap: t.space[2] }}>
+      {hasCamera ? <Button size="lg" icon="camera" label="Fotoğraf çek" onPress={() => start('camera')} /> : null}
+      <Button
         size="lg"
+        kind={hasCamera ? 'secondary' : 'primary'}
+        icon="images-outline"
+        label="Galeriden seç"
         onPress={() => start('gallery')}
-        style={styles.pickerButton}
       />
     </View>
   );
 
+  const note = (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2], minWidth: 0 }}>
+      <Icon name="info" size={t.size.iconSm} color="ink3" />
+      <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{HONESTY_NOTE}</Text>
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {!photoUri && !searching ? (
-        <View style={styles.block}>
-          <Text style={styles.introTitle}>Elinizdeki kumaşın benzerini bulun</Text>
-          <Text style={styles.introText}>
-            Kumaşı düz bir zeminde, yakından ve iyi ışıkta çekin. Platformdaki ürünlerin fotoğraflarıyla
-            görünüm olarak karşılaştırılır.
-          </Text>
-          {pickers}
-          <Text style={styles.note}>{HONESTY_NOTE}</Text>
-        </View>
-      ) : null}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Fotoğrafla kumaş ara" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        {!photoUri && !searching ? (
+          <Card style={{ gap: t.space[3] }}>
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>Elindeki kumaşın benzerini bul</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              Kumaşı düz bir zeminde, yakından ve iyi ışıkta çek. Platformdaki ürünlerin fotoğraflarıyla
+              görünüm olarak karşılaştırılır.
+            </Text>
+            {pickers}
+            {note}
+          </Card>
+        ) : null}
 
-      {photoUri ? (
-        <View style={[styles.block, styles.previewBlock]}>
-          <Image source={{ uri: photoUri }} style={styles.preview} accessibilityLabel="Aranan fotoğraf" />
-          <View style={styles.previewTexts}>
-            {searching ? (
-              <>
-                <Text style={styles.previewTitle}>Kumaşın görünümü inceleniyor</Text>
-                <Text style={styles.previewMeta}>Birkaç saniye sürebilir.</Text>
-              </>
-            ) : result ? (
-              <>
-                <Text style={styles.previewTitle} numberOfLines={3}>
-                  Gördüğümüz: {result.look.summary}
-                </Text>
-                {result.remaining <= 5 ? (
-                  <Text style={styles.previewMeta}>Bugün {result.remaining} arama hakkınız kaldı</Text>
-                ) : null}
-              </>
-            ) : (
-              <Text style={styles.previewTitle}>Seçilen fotoğraf</Text>
-            )}
+        {photoUri ? (
+          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+            <Image
+              source={{ uri: photoUri }}
+              accessibilityLabel="Aranan fotoğraf"
+              style={{
+                width: PREVIEW_SIZE,
+                height: PREVIEW_SIZE,
+                borderRadius: t.radius.sm,
+                borderWidth: 1,
+                borderColor: t.colors.line,
+                backgroundColor: t.colors.surface2,
+              }}
+            />
+            <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
+              {searching ? (
+                <>
+                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Kumaşın görünümü inceleniyor</Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Birkaç saniye sürebilir.</Text>
+                </>
+              ) : result ? (
+                <>
+                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={3}>
+                    Gördüğümüz: {result.look.summary}
+                  </Text>
+                  {result.remaining <= 5 ? (
+                    <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                      Bugün {result.remaining} arama hakkınız kaldı
+                    </Text>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Seçilen fotoğraf</Text>
+              )}
+            </View>
+          </Card>
+        ) : null}
+
+        {/* Yükleme: iskelet satırlar (dönen simge yalnızca düğme içinde). */}
+        {searching ? (
+          <View style={{ gap: t.space[3] }}>
+            <SkeletonRow />
+            <SkeletonRow />
+            <SkeletonRow />
           </View>
-          {searching ? <ActivityIndicator color={colors.primary} /> : null}
-        </View>
-      ) : null}
+        ) : null}
 
-      {searching ? <SearchingSkeleton /> : null}
+        {error ? <ErrorBanner message={error} /> : null}
 
-      {error ? <InlineError message={error} style={styles.banner} /> : null}
-
-      {result && !searching ? (
-        <>
-          {!result.recognized ? (
-            <EmptyState
-              icon="camera-outline"
-              title="Fotoğrafta kumaşı seçemedik"
-              message="Kumaşı düz bir zeminde, yakından ve iyi ışıkta çekip yeniden deneyin."
-              style={styles.stateBlock}
-            />
-          ) : result.results.length === 0 ? (
-            <EmptyState
-              icon="search-outline"
-              title="Görünüşçe benzeyen ürün bulunamadı"
-              message="Katalog büyüdükçe sonuçlar artar."
-              style={styles.stateBlock}
-            />
-          ) : (
-            <>
-              <SectionHeader title="Benzer kumaşlar" count={result.results.length} />
-              <Text style={styles.honestyStrip}>{HONESTY_NOTE}</Text>
-              <View style={[styles.block, styles.listBlock]}>
-                {result.results.map((item, index) => (
-                  <SimilarResultRow
+        {result && !searching ? (
+          <>
+            {!result.recognized ? (
+              <EmptyState
+                icon="camera"
+                title="Fotoğrafta kumaşı seçemedik"
+                description="Kumaşı düz bir zeminde, yakından ve iyi ışıkta çekip yeniden dene."
+              />
+            ) : result.results.length === 0 ? (
+              <EmptyState
+                icon="search"
+                title="Görünüşçe benzeyen ürün bulunamadı"
+                description="Katalog büyüdükçe sonuçlar artar."
+              />
+            ) : (
+              <View style={{ gap: t.space[3] }}>
+                <SectionTitle title={`Benzer kumaşlar · ${result.results.length}`} />
+                {note}
+                {result.results.map((item) => (
+                  <SimilarResultCard
                     key={item.product.id}
                     item={item}
-                    divider={index < result.results.length - 1}
                     onPress={() => navigation.navigate('ProductDetail', { productId: item.product.id })}
                   />
                 ))}
               </View>
-            </>
-          )}
+            )}
 
-          <View style={[styles.block, styles.againBlock]}>
-            <PrimaryButton label="Başka fotoğrafla ara" variant="outline" size="lg" onPress={reset} />
-          </View>
-        </>
-      ) : null}
-    </ScrollView>
+            <Button size="lg" kind="secondary" label="Başka fotoğrafla ara" onPress={reset} />
+          </>
+        ) : null}
+      </Screen>
+    </View>
   );
 }
 
-// Ürün satırının altında benzerlik rozeti ve nedenler. ProductRow'un kendisi
-// değiştirilmedi: rozet satırın ALTINDA ayrı bir şeritte duruyor, böylece
-// iç içe dokunma alanı oluşmuyor (web kuralı).
-function SimilarResultRow({
-  item,
-  divider,
-  onPress,
-}: {
-  item: SimilarProductResult;
-  divider: boolean;
-  onPress: () => void;
-}) {
+// Ürün kartının ALTINDA benzerlik rozeti ve nedenler: kartın içine düğme /
+// dokunma alanı konmuyor (iç içe düğme olmaz).
+function SimilarResultCard({ item, onPress }: { item: SimilarProductResult; onPress: () => void }) {
+  const t = useTheme();
+  const product = item.product;
+  const imageUri = useProductImage(product.id, product.hasImage);
   return (
-    <View style={divider ? styles.resultDivider : undefined}>
-      <ProductRow product={item.product} onPress={onPress} divider={false} />
-      <View style={styles.reasonRow}>
-        <View style={styles.similarityBadge}>
-          <Text style={styles.similarityText}>%{item.similarity} benzer</Text>
-        </View>
-        {item.reasons.slice(0, 3).map((reason) => (
-          <View key={reason} style={styles.reasonChip}>
-            <Text style={styles.reasonText}>{reason}</Text>
-          </View>
-        ))}
+    <View style={{ gap: t.space[2], minWidth: 0 }}>
+      <ProductCard
+        name={categoryLabel(product.type, product.subtype ?? '')}
+        code={product.code}
+        specs={productSpecs(product)}
+        companyName={product.company?.name}
+        companyVerified={product.company?.verification === 'dogrulanmis'}
+        imageUri={imageUri}
+        onPress={onPress}
+      />
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+        <Badge kind="info" label={`%${item.similarity} benzer`} />
+        {item.reasons.length ? (
+          <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
+            {item.reasons.slice(0, 3).join(' · ')}
+          </Text>
+        ) : null}
       </View>
     </View>
   );
 }
-
-function SearchingSkeleton() {
-  return (
-    <View style={[styles.block, styles.searchingBlock]}>
-      <Ionicons name="color-filter-outline" size={22} color={colors.primary} />
-      <Text style={styles.searchingText}>Kumaşın görünümü inceleniyor</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.blockGap,
-    gap: spacing.sm,
-  },
-  introTitle: { ...typography.subtitle, color: colors.text },
-  introText: { ...typography.body, color: colors.textMuted },
-  pickerRow: { gap: spacing.sm, marginTop: spacing.xs },
-  pickerButton: { width: '100%' },
-  note: { ...typography.caption, color: colors.textMuted },
-  previewBlock: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  preview: { width: 64, height: 64, borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  previewTexts: { flex: 1, minWidth: 0, gap: 2 },
-  previewTitle: { ...typography.label, color: colors.text },
-  previewMeta: { ...typography.caption, color: colors.textMuted },
-  searchingBlock: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  searchingText: { ...typography.body, color: colors.textMuted },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  stateBlock: { backgroundColor: colors.surface, marginBottom: spacing.blockGap },
-  honestyStrip: {
-    ...typography.caption,
-    color: colors.textMuted,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.sm,
-  },
-  listBlock: { paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
-  againBlock: { paddingVertical: spacing.md },
-  resultDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  reasonRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 10,
-  },
-  similarityBadge: {
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  similarityText: { fontFamily: fonts.monoSemibold, fontSize: 12, lineHeight: 16, color: colors.primary },
-  reasonChip: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  reasonText: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-});

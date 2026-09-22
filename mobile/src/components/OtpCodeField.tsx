@@ -1,7 +1,10 @@
+// SMS doğrulama kodu alanı (yeni tasarım, 4. adım).
+// `ui/Input` (48px alan, odak çerçevesi) + altında "sessiz" düğme ile tekrar
+// gönderme. Sayaç dolana kadar düğme pasif. Ham hex / ham px yok.
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { TextField } from './TextField';
-import { colors, spacing, typography } from '../theme';
+import { View } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Button, Input } from '../ui';
 
 interface Props {
   code: string;
@@ -12,6 +15,7 @@ interface Props {
 }
 
 export function OtpCodeField({ code, onChangeCode, onResend, resendCooldownSeconds, resending }: Props) {
+  const t = useTheme();
   const [remaining, setRemaining] = useState(resendCooldownSeconds);
 
   useEffect(() => {
@@ -24,37 +28,35 @@ export function OtpCodeField({ code, onChangeCode, onResend, resendCooldownSecon
     return () => clearInterval(timer);
   }, [remaining > 0]);
 
+  const waiting = remaining > 0 || !!resending;
+
   return (
-    <View>
-      <TextField
-        label="Doğrulama Kodu"
+    <View style={{ gap: t.space[2], minWidth: 0 }}>
+      <Input
+        label="Doğrulama kodu"
         value={code}
         onChangeText={onChangeCode}
         placeholder="123456"
         keyboardType="number-pad"
+        inputMode="numeric"
         maxLength={6}
+        // Telefonun SMS kodunu otomatik doldurması.
+        autoComplete="one-time-code"
+        textContentType="oneTimeCode"
       />
-      <Pressable disabled={remaining > 0 || resending} onPress={onResend} style={styles.resendRow}>
-        <Text style={[styles.resendText, (remaining > 0 || resending) && styles.resendTextDisabled]}>
-          {remaining > 0 ? `Kodu tekrar gönder (${remaining}sn)` : resending ? 'Gönderiliyor...' : 'Kodu tekrar gönder'}
-        </Text>
-      </Pressable>
+      {/* Ekrandaki tek dolu düğme ana eylem; bu sessiz. */}
+      <Button
+        kind="quiet"
+        disabled={waiting}
+        onPress={onResend}
+        label={
+          remaining > 0
+            ? `Kodu tekrar gönder (${remaining} sn)`
+            : resending
+              ? 'Gönderiliyor…'
+              : 'Kodu tekrar gönder'
+        }
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  resendRow: {
-    alignSelf: 'flex-start',
-    justifyContent: 'center',
-    minHeight: 44,
-    marginBottom: spacing.sm,
-  },
-  resendText: {
-    ...typography.label,
-    color: colors.accent,
-  },
-  resendTextDisabled: {
-    color: colors.textMuted,
-  },
-});

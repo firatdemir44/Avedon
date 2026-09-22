@@ -1,6 +1,15 @@
+// Fason kapasite araması (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+//
+// Faz 2, Adım 5'teki mantık aynen duruyor: "28 fayn 30 pus süprem örecek fason
+// arıyorum". Süzgeç + sonuç listesi tek ekranda; sonuç satırı firma sayfasını
+// Makine parkı sekmesi açık halde açar. Sayfalama sunucunun hasMore/nextOffset
+// alanlarıyla (Faz 2, Adım 7).
+//
+// Görünüm yeni: AppBar + Screen, arama ui/SearchBox, süzgeçler ui/Chip,
+// sayısal alanlar ui/Input (birimli), sonuçlar ui/ListRow, tek dolu "Ara"
+// düğmesi yapışkan çubukta.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, ScrollView, Switch, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Switch } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   fetchMachineKinds,
@@ -9,12 +18,8 @@ import {
   type CapacitySearchParams,
   type MachineGroup,
 } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
-import { TextField } from '../../components/TextField';
-import { EmptyState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import {
   MACHINE_GROUP_LABELS,
@@ -22,13 +27,24 @@ import {
   machineOneLine,
   monthlyCapacityText,
 } from '../../features/machines/catalog';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  Input,
+  ListRow,
+  Screen,
+  SearchBox,
+  SectionTitle,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'CapacitySearch'>;
-
-// Faz 2, Adım 5: "28 fayn 30 pus süprem örecek fason arıyorum" araması.
-// Süzgeç formu + sonuç listesi tek ekranda; sonuç satırı firma sayfasını
-// Makine parkı sekmesi açık halde açar.
 
 const NUMBER_PATTERN = /^\d+([.,]\d+)?$/;
 
@@ -57,6 +73,7 @@ const GROUP_OPTIONS: { value: MachineGroup | ''; label: string }[] = [
 ];
 
 export function CapacitySearchScreen({ navigation }: Props) {
+  const t = useTheme();
   const [group, setGroup] = useState<MachineGroup | ''>('');
   const [kind, setKind] = useState('');
   const [gauge, setGauge] = useState('');
@@ -73,6 +90,11 @@ export function CapacitySearchScreen({ navigation }: Props) {
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const lastParams = useRef<CapacitySearchParams>({});
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,227 +181,231 @@ export function CapacitySearchScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.intro}>
-        Aradığınız makineyi tarif edin: fason kapasitesini bildiren firmalar ve eşleşen makineleri listelenir. Fiyat ve
-        doluluk takvimi burada yoktur, firmayla konuşmanız gerekir.
-      </Text>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Fason kapasite ara" leading="back" onBack={() => navigation.goBack()} />
 
-      <SectionHeader title="Grup" first />
-      <View style={styles.block}>
-        <ChipSelect
-          options={GROUP_OPTIONS}
-          value={group}
-          onChange={(next) => {
-            haptics.selection();
-            setGroup(next);
-          }}
-          compact
+      <Screen
+        sticky={
+          <Button
+            size="lg"
+            label="Ara"
+            icon="search"
+            loading={searching}
+            disabled={searching}
+            onPress={() => void search()}
+          />
+        }
+      >
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+          Aradığın makineyi tarif et: fason kapasitesini bildiren firmalar ve eşleşen makineleri listelenir. Fiyat ve
+          doluluk takvimi burada yoktur, firmayla konuşman gerekir.
+        </Text>
+
+        <SearchBox
+          placeholder="Makine türü — örn. süprem"
+          value={kind}
+          onChangeText={setKind}
+          onSubmitEditing={() => void search()}
+          accessibilityLabel="Makine türü ara"
         />
-      </View>
 
-      <SectionHeader title="Makine türü" />
-      <View style={styles.block}>
-        <TextField label="Tür" value={kind} onChangeText={setKind} placeholder="Örn. süprem" maxLength={80} />
-        {suggestions.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipStrip}>
-            {suggestions.map((item) => (
-              <Pressable
-                key={item}
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Grup" />
+          <ChipRow>
+            {GROUP_OPTIONS.map((option) => (
+              <Chip
+                key={option.value || 'all'}
+                label={option.label}
+                selected={option.value === group}
                 onPress={() => {
                   haptics.selection();
-                  setKind(item);
+                  setGroup(option.value);
                 }}
-                accessibilityRole="button"
-                accessibilityLabel={`${item}, makine türü olarak yaz`}
-                style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-              >
-                <Text style={styles.chipText}>{item}</Text>
-              </Pressable>
+              />
             ))}
-          </ScrollView>
-        ) : null}
-      </View>
-
-      <SectionHeader title="Teknik" />
-      <View style={styles.block}>
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <TextField label="Fayn" value={gauge} onChangeText={setGauge} placeholder="Örn. 28" keyboardType="numeric" />
-          </View>
-          <View style={styles.half}>
-            <TextField
-              label="Pus (inç)"
-              value={diameterInch}
-              onChangeText={setDiameterInch}
-              placeholder="Örn. 30"
-              keyboardType="numeric"
-            />
-          </View>
+          </ChipRow>
         </View>
-        <TextField
-          label="En az çalışma eni (cm)"
-          value={widthMin}
-          onChangeText={setWidthMin}
-          placeholder="Örn. 180"
-          keyboardType="numeric"
-        />
-      </View>
 
-      <SectionHeader title="Firma" />
-      <View style={styles.block}>
-        <TextField label="Şehir" value={city} onChangeText={setCity} placeholder="Örn. Bursa" maxLength={60} />
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Yalnızca fason açık</Text>
-          <Switch
-            value={onlyOpen}
-            onValueChange={(value) => {
-              haptics.selection();
-              setOnlyOpen(value);
-            }}
-            trackColor={{ true: colors.primary, false: colors.border }}
-            accessibilityLabel="Yalnızca fason kapasitesi açık firmalar"
-          />
-        </View>
-      </View>
-
-      {searchError ? <InlineError message={searchError} style={styles.banner} /> : null}
-
-      <View style={styles.searchWrap}>
-        <PrimaryButton
-          label={searching ? 'Aranıyor...' : 'Ara'}
-          size="lg"
-          icon="search"
-          onPress={() => void search()}
-          disabled={searching}
-        />
-      </View>
-
-      {results === null ? null : results.length === 0 ? (
-        <View style={styles.block}>
-          <EmptyState
-            compact
-            icon="hardware-chip-outline"
-            title="Eşleşen firma yok"
-            message="Süzgeci gevşetip tekrar deneyin: türü kısaltmak ya da fayn/pus alanlarını boşaltmak çoğu zaman yeter."
-          />
-        </View>
-      ) : (
-        <>
-          <SectionHeader title="Sonuçlar" count={results.length} />
-          <View style={styles.block}>
-            {results.map((result, index) => (
-              <Pressable
-                key={result.company.id}
-                onPress={() => openCompany(result.company.id)}
-                accessibilityRole="button"
-                accessibilityLabel={`${result.company.name}${result.company.city ? `, ${result.company.city}` : ''}, ${result.matchedCount} eşleşen makine. Firma sayfasını aç`}
-                android_ripple={{ color: colors.pressed }}
-                style={({ pressed }) => [
-                  styles.resultRow,
-                  index < results.length - 1 && styles.divider,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <CompanyAvatar
-                  name={result.company.name}
-                  size={40}
-                  companyId={result.company.id}
-                  logoUpdatedAt={result.company.logoUpdatedAt}
-                  verification={result.company.verification}
+        {suggestions.length ? (
+          <View style={{ gap: t.space[2] }}>
+            <SectionTitle title="Öneriler" />
+            <ChipRow>
+              {suggestions.map((item) => (
+                <Chip
+                  key={item}
+                  label={item}
+                  selected={item === kind}
+                  onPress={() => {
+                    haptics.selection();
+                    setKind(item);
+                  }}
                 />
-                <View style={styles.resultTexts}>
-                  <Text style={styles.resultName} numberOfLines={1}>
-                    {result.company.name}
-                  </Text>
-                  {result.company.city ? <Text style={styles.resultCity}>{result.company.city}</Text> : null}
-                  <Text style={styles.resultCapacity}>
-                    {[
-                      monthlyCapacityText(result.capacity.monthlyCapacityTons)
-                        ? `Aylık ${monthlyCapacityText(result.capacity.monthlyCapacityTons)}`
-                        : null,
-                      result.capacity.contractOpen ? 'fason açık' : 'fason almıyor',
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </Text>
-                  {result.matchedMachines.map((machine) => (
-                    <Text key={machine.id} style={styles.resultMachine} numberOfLines={1}>
-                      {machineOneLine(machine)}
-                    </Text>
-                  ))}
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-              </Pressable>
-            ))}
+              ))}
+            </ChipRow>
           </View>
-          {nextOffset !== null ? (
-            <View style={styles.moreWrap}>
-              <PrimaryButton
-                label={loadingMore ? 'Yükleniyor...' : 'Daha fazla göster'}
-                variant="outline"
-                onPress={() => void loadMore()}
-                disabled={loadingMore}
-                accessibilityLabel="Daha fazla firma göster"
+        ) : null}
+
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Teknik" />
+          <Card>
+            <View style={{ gap: t.space[3] }}>
+              <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Fayn"
+                  value={gauge}
+                  onChangeText={setGauge}
+                  placeholder="Örn. 28"
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
+                  error={gaugeValue.invalid ? 'Yalnızca rakam' : null}
+                />
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Pus"
+                  unit="inç"
+                  value={diameterInch}
+                  onChangeText={setDiameterInch}
+                  placeholder="Örn. 30"
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
+                  error={diameterValue.invalid ? 'Yalnızca rakam' : null}
+                />
+              </View>
+              <Input
+                label="En az çalışma eni"
+                unit="cm"
+                value={widthMin}
+                onChangeText={setWidthMin}
+                placeholder="Örn. 180"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                error={widthValue.invalid ? 'Yalnızca rakam' : null}
               />
             </View>
-          ) : null}
-        </>
-      )}
-    </ScrollView>
+          </Card>
+        </View>
+
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Firma" />
+          <Card>
+            <View style={{ gap: t.space[3] }}>
+              <Input label="Şehir" value={city} onChangeText={setCity} placeholder="Örn. Bursa" maxLength={60} />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: t.space[3],
+                  minHeight: t.size.touchMin,
+                }}
+              >
+                <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+                  Yalnızca fason açık firmalar
+                </Text>
+                <Switch
+                  value={onlyOpen}
+                  onValueChange={(value) => {
+                    haptics.selection();
+                    setOnlyOpen(value);
+                  }}
+                  trackColor={{ true: t.colors.brand, false: t.colors.lineStrong }}
+                  accessibilityLabel="Yalnızca fason kapasitesi açık firmalar"
+                />
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {searchError ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{searchError}</Text>
+          </View>
+        ) : null}
+
+        {results === null ? null : results.length === 0 ? (
+          <EmptyState
+            icon="machine"
+            title="Eşleşen firma yok"
+            description="Süzgeci gevşetip tekrar dene: türü kısaltmak ya da fayn/pus alanlarını boşaltmak çoğu zaman yeter."
+          />
+        ) : (
+          <View style={{ gap: t.space[2] }}>
+            <SectionTitle title={`Sonuçlar (${results.length})`} />
+            <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
+              {results.map((result, index) => {
+                const capacity = [
+                  monthlyCapacityText(result.capacity.monthlyCapacityTons)
+                    ? `Aylık ${monthlyCapacityText(result.capacity.monthlyCapacityTons)}`
+                    : null,
+                  result.capacity.contractOpen ? 'fason açık' : 'fason almıyor',
+                  result.company.city || null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ');
+                return (
+                  <View key={result.company.id}>
+                    <ListRow
+                      title={result.company.name}
+                      subtitle={capacity}
+                      left={
+                        <CompanyAvatar
+                          name={result.company.name}
+                          size={t.size.avatar}
+                          companyId={result.company.id}
+                          logoUpdatedAt={result.company.logoUpdatedAt}
+                          verification={result.company.verification}
+                        />
+                      }
+                      right={
+                        result.company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : undefined
+                      }
+                      divider={false}
+                      onPress={() => openCompany(result.company.id)}
+                    />
+                    {/* Eşleşen makineler satırın ALTINDA: tek satırlık alt metne sığmaz. */}
+                    <View
+                      style={{
+                        gap: t.space[1],
+                        paddingBottom: t.space[3],
+                        borderBottomWidth: index < results.length - 1 ? 1 : 0,
+                        borderBottomColor: t.colors.line,
+                      }}
+                    >
+                      {result.matchedMachines.map((machine) => (
+                        <Text key={machine.id} numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+                          {machineOneLine(machine)}
+                        </Text>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })}
+            </Card>
+            {nextOffset !== null ? (
+              <Button
+                kind="secondary"
+                fullWidth
+                label="Daha fazla göster"
+                accessibilityLabel="Daha fazla firma göster"
+                loading={loadingMore}
+                disabled={loadingMore}
+                onPress={() => void loadMore()}
+              />
+            ) : null}
+          </View>
+        )}
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  intro: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-  block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter },
-  banner: { marginHorizontal: spacing.gutter, marginTop: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  chipStrip: { gap: spacing.sm, paddingBottom: spacing.md },
-  chip: {
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  chipPressed: { backgroundColor: colors.pressed },
-  chipText: { ...typography.label, fontFamily: fonts.medium, color: colors.text },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    minHeight: MIN_TOUCH,
-    paddingBottom: spacing.md,
-  },
-  switchLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  searchWrap: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md },
-  moreWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginHorizontal: -spacing.gutter,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    minHeight: 64,
-  },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  resultTexts: { flex: 1, gap: 2 },
-  resultName: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent },
-  resultCity: { ...typography.caption, color: colors.textMuted },
-  resultCapacity: { ...typography.caption, fontFamily: fonts.mono, color: colors.text },
-  resultMachine: { ...typography.caption, color: colors.textMuted },
-});

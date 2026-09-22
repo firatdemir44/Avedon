@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable } from 'react-native';
 import { fetchPriceIndex, type PriceIndex, type PriceIndexBand } from '../api/client';
-import { SectionHeader } from './SectionHeader';
+import { Card, Icon, SectionTitle } from '../ui';
 import { formatMeasure, formatNumber } from '../features/calculators/parse';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 // Faz 3, Adım 6: anonim fiyat / termin endeksi kartı ("Piyasa aralığı").
 // Ürün kuralları (sunucuyla aynı, değiştirilmez):
@@ -26,9 +25,14 @@ const POSITION_TEXT: Record<'below' | 'within' | 'above', string> = {
 const priceRange = (band: PriceIndexBand) =>
   `${formatNumber(band.price.p25, 2)} – ${formatNumber(band.price.p75, 2)} ${band.currency}/${band.unit}`;
 
+// Bant yüksekliği ve ortanca çizgisi (DESIGN.md'de adı olmayan ekran-içi ölçü).
+const TRACK_HEIGHT = 6;
+const MEDIAN_WIDTH = 2;
+
 // Yatay ince bant: p25-p75 dolu, ortanca çizgi. Kütüphane yok, saf View.
 // Ölçek aralığın biraz dışına taşırılır ki dolu kısım kenara yapışmasın.
 function BandBar({ price }: { price: PriceIndexBand['price'] }) {
+  const t = useTheme();
   const span = price.p75 - price.p25;
   const pad = span > 0 ? span * 0.5 : Math.max(price.median * 0.1, 0.01);
   const min = price.p25 - pad;
@@ -38,27 +42,53 @@ function BandBar({ price }: { price: PriceIndexBand['price'] }) {
   const width = Math.max(pct(price.p75) - left, 1);
   return (
     // Görsel yalnızca süsleme: her sayı zaten metinde yazılı.
-    <View style={styles.track} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <View style={[styles.trackFill, { left: `${left}%`, width: `${width}%` }]} />
-      <View style={[styles.trackMedian, { left: `${pct(price.median)}%` }]} />
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        height: TRACK_HEIGHT,
+        borderRadius: t.radius.full,
+        backgroundColor: t.colors.surface2,
+        overflow: 'hidden',
+        marginVertical: t.space[1] / 2,
+      }}
+    >
+      <View
+        style={{ position: 'absolute', top: 0, bottom: 0, backgroundColor: t.colors.brandSoft, left: `${left}%`, width: `${width}%` }}
+      />
+      <View
+        style={{ position: 'absolute', top: 0, bottom: 0, width: MEDIAN_WIDTH, backgroundColor: t.colors.brand, left: `${pct(price.median)}%` }}
+      />
     </View>
   );
 }
 
 function Band({ band, last }: { band: PriceIndexBand; last: boolean }) {
+  const t = useTheme();
   return (
-    <View style={[styles.band, !last && styles.bandDivider]}>
-      <Text style={styles.bandPrice}>
-        {priceRange(band)} <Text style={styles.bandMedian}>· ortanca {formatNumber(band.price.median, 2)}</Text>
+    <View
+      style={{
+        paddingVertical: t.space[3],
+        gap: t.space[1],
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: t.colors.line,
+      }}
+    >
+      <Text style={[t.type.mono20, { color: t.colors.brand }]}>
+        {priceRange(band)}{' '}
+        <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>· ortanca {formatNumber(band.price.median, 2)}</Text>
       </Text>
       <BandBar price={band.price} />
       {band.leadTimeDays ? (
-        <Text style={styles.bandLead}>
+        <Text style={[t.type.body16, { color: t.colors.ink }]}>
           Tipik termin {formatMeasure(band.leadTimeDays.p25)}–{formatMeasure(band.leadTimeDays.p75)} gün
         </Text>
       ) : null}
-      <Text style={styles.bandSample}>({band.sampleSize} teklif)</Text>
-      {band.myPosition ? <Text style={styles.bandPosition}>{POSITION_TEXT[band.myPosition]}</Text> : null}
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>({band.sampleSize} teklif)</Text>
+      {/* Nötr: satıcının yerini bildirir, yargı bildirmez (uyarı rengi yok). */}
+      {band.myPosition ? (
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{POSITION_TEXT[band.myPosition]}</Text>
+      ) : null}
     </View>
   );
 }
@@ -76,6 +106,7 @@ export function PriceIndexCard({
   // (sayfa kalabalıklaşmasın). Satıcıya "henüz veri yok" da gösterilir.
   hideWhenUnavailable?: boolean;
 }) {
+  const t = useTheme();
   const [index, setIndex] = useState<PriceIndex | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -99,12 +130,14 @@ export function PriceIndexCard({
   if (!index.available && hideWhenUnavailable) return null;
 
   return (
-    <View>
-      <SectionHeader title="Piyasa aralığı" />
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-      <View style={styles.block}>
-        <Text style={styles.cluster}>{index.cluster.label}</Text>
-        <Text style={styles.window}>son {index.cluster.windowDays} gün</Text>
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title="Piyasa aralığı" />
+      {subtitle ? <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: -t.space[2] }]}>{subtitle}</Text> : null}
+      <Card>
+        <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{index.cluster.label}</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2, paddingBottom: t.space[2] }]}>
+          son {index.cluster.windowDays} gün
+        </Text>
 
         {index.available ? (
           index.bands.map((band, position) => (
@@ -112,71 +145,31 @@ export function PriceIndexCard({
           ))
         ) : (
           // Nötr: veri azlığı bir kusur değil, uyarı rengi kullanılmaz.
-          <Text style={styles.empty}>
+          <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
             Bu kalite için henüz yeterli teklif birikmedi. En az {index.rules.minSellers} farklı satıcıdan{' '}
             {index.rules.minQuotes} teklif olunca aralık görünür.
           </Text>
         )}
-      </View>
+      </Card>
 
       <Pressable
         onPress={() => setOpen((value) => !value)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel="Piyasa aralığı nasıl hesaplanıyor"
-        style={({ pressed }) => [styles.methodToggle, pressed && styles.pressedFade]}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[1],
+          minHeight: t.size.touchMin,
+          alignSelf: 'flex-start',
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
-        <Text style={styles.methodToggleText}>Nasıl hesaplanıyor?</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} />
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplanıyor?</Text>
+        <Icon name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
       </Pressable>
-      {open ? <Text style={styles.methodText}>{index.note}</Text> : null}
+      {open ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{index.note}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  subtitle: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 6,
-    marginTop: -2,
-  },
-  block: { backgroundColor: colors.surface, paddingTop: 10 },
-  cluster: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, paddingHorizontal: spacing.gutter },
-  window: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingBottom: spacing.sm },
-  band: { paddingHorizontal: spacing.gutter, paddingVertical: 10, gap: 4 },
-  bandDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  bandPrice: { ...typography.mono, fontFamily: fonts.monoSemibold, fontSize: 16, lineHeight: 22, color: colors.primary },
-  bandMedian: { ...typography.mono, fontSize: 13, lineHeight: 22, color: colors.textMuted },
-  track: {
-    height: 6,
-    borderRadius: radius.sm,
-    backgroundColor: colors.chip,
-    overflow: 'hidden',
-    marginVertical: 2,
-  },
-  trackFill: { position: 'absolute', top: 0, bottom: 0, backgroundColor: colors.accentSoft },
-  trackMedian: { position: 'absolute', top: 0, bottom: 0, width: 2, backgroundColor: colors.primary },
-  bandLead: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  bandSample: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  // Nötr: satıcının yerini bildirir, yargı bildirmez (uyarı rengi yok).
-  bandPosition: { ...typography.caption, color: colors.textMuted },
-  empty: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: spacing.sm,
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: spacing.gutter,
-  },
-  methodToggleText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
-  methodText: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingBottom: spacing.sm },
-  pressedFade: { opacity: 0.6 },
-});

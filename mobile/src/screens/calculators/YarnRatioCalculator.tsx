@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcSectionRow,
@@ -18,7 +18,8 @@ import {
 import { yarnUsageRatios } from '../../features/calculators/formulas';
 import { formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen } from '../../ui';
 
 interface Fields {
   rows: YarnFeedRowFields[];
@@ -26,16 +27,21 @@ interface Fields {
 
 const INITIAL: Fields = { rows: [{ ...EMPTY_FEED_ROW }, { ...EMPTY_FEED_ROW, system: 'denye' }] };
 
-export function YarnRatioCalculator() {
+export function YarnRatioCalculator({ navigation }: RootStackScreenProps<'YarnRatioCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('yarn_ratio', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const percents = useMemo(() => yarnUsageRatios(toFeedRows(f.rows)), [f.rows]);
   const usable = percents.filter((p) => p > 0).length;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.hint}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="İplik kullanım oranı" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin.
           Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.
         </Text>
@@ -57,13 +63,7 @@ export function YarnRatioCalculator() {
           <CalcFormulaRow text="Her iplik için bir devirde örülen gram = sistem sayısı × ilmek boyu (50 iğne cm ÷ 5) × Tex. Paylar bu gramların toplamına bölünür." />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-});

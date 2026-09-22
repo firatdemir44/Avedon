@@ -6,13 +6,18 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  StyleSheet,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { getCachedGalleryImage, loadGalleryImage } from '../features/products/productImageCache';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
+
+// Ürün sayfası galerisinin varsayılan yüksekliği (DESIGN.md'de adı olmayan
+// ekran-içi ölçü; ProductDetailScreen'deki HERO_HEIGHT ile aynı dilde).
+const GALLERY_HEIGHT = 260;
+// Etkin sayfa noktası daha uzun çizilir.
+const DOT_ACTIVE_WIDTH = 16;
 
 interface Props {
   productId: string;
@@ -23,10 +28,12 @@ interface Props {
   overlay?: React.ReactNode;
 }
 
-// Ürün sayfasının kaydırmalı fotoğraf galerisi (orijinal tasarım "Ürün Sayfası").
-// Fotoğraflar liste yanıtında gelmiyor; yalnızca görünen ve komşu sayfalar
-// çekiliyor, böylece 6 fotoğraflı üründe açılışta 6 istek gitmiyor.
-export function ProductGallery({ productId, imageCount, height = 260, onOpenImage, overlay }: Props) {
+// Ürün sayfasının kaydırmalı fotoğraf galerisi. Fotoğraflar liste yanıtında
+// gelmiyor; yalnızca görünen ve komşu sayfalar çekiliyor, böylece 6
+// fotoğraflı üründe açılışta 6 istek gitmiyor. Kumaş görseli (DESIGN.md §3):
+// koyu temada da kendi renginde, 1px line çerçeve.
+export function ProductGallery({ productId, imageCount, height = GALLERY_HEIGHT, onOpenImage, overlay }: Props) {
+  const t = useTheme();
   const [width, setWidth] = useState(0);
   const [index, setIndex] = useState(0);
   const [urls, setUrls] = useState<(string | null)[]>([]);
@@ -57,11 +64,26 @@ export function ProductGallery({ productId, imageCount, height = 260, onOpenImag
     };
   }, [productId, imageCount, index]);
 
+  const frame = {
+    width: '100%' as const,
+    borderRadius: t.radius.lg,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    overflow: 'hidden' as const,
+    backgroundColor: t.colors.surface2,
+  };
+  const placeholder = {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: t.space[2],
+    backgroundColor: t.colors.surface2,
+  };
+
   if (imageCount === 0) {
     return (
-      <View style={[styles.frame, styles.placeholder, { height }]}>
-        <Ionicons name="image-outline" size={28} color={colors.chevron} />
-        <Text style={styles.placeholderText}>Bu ürünün fotoğrafı yok</Text>
+      <View style={[frame, placeholder, { height }]}>
+        <Icon name="image-outline" size={t.size.emptyIcon} color="ink3" />
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bu ürünün fotoğrafı yok</Text>
         {overlay}
       </View>
     );
@@ -74,7 +96,7 @@ export function ProductGallery({ productId, imageCount, height = 260, onOpenImag
   };
 
   return (
-    <View style={[styles.frame, { height }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+    <View style={[frame, { height }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {width > 0 ? (
         <ScrollView
           horizontal
@@ -94,13 +116,13 @@ export function ProductGallery({ productId, imageCount, height = 260, onOpenImag
                 accessibilityRole="imagebutton"
                 accessibilityLabel={`Fotoğraf ${i + 1} / ${imageCount}`}
                 accessibilityHint="Tam ekran büyütür"
-                style={({ pressed }) => [{ width, height }, pressed && styles.pressed]}
+                style={({ pressed }) => [{ width, height }, pressed && { opacity: 0.9 }]}
               >
                 {url ? (
                   <Image source={{ uri: url }} style={{ width, height }} resizeMode="cover" />
                 ) : (
-                  <View style={[styles.placeholder, { width, height }]}>
-                    <ActivityIndicator color={colors.chevron} />
+                  <View style={[placeholder, { width, height }]}>
+                    <ActivityIndicator color={t.colors.ink3} />
                   </View>
                 )}
               </Pressable>
@@ -111,14 +133,45 @@ export function ProductGallery({ productId, imageCount, height = 260, onOpenImag
 
       {imageCount > 1 ? (
         <>
-          <View style={styles.counter} pointerEvents="none">
-            <Text style={styles.counterText}>
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              left: t.space[2],
+              top: t.space[2],
+              backgroundColor: t.colors.overlay,
+              borderRadius: t.radius.sm,
+              paddingHorizontal: t.space[2],
+              paddingVertical: t.space[1] / 2,
+            }}
+          >
+            <Text style={[t.type.mono14, { color: t.colors.onBrand }]}>
               {index + 1}/{imageCount}
             </Text>
           </View>
-          <View style={styles.dots} pointerEvents="none">
+          <View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              bottom: t.space[2],
+              left: 0,
+              right: 0,
+              flexDirection: 'row',
+              justifyContent: 'center',
+              gap: t.space[1] + t.space[1] / 2,
+            }}
+          >
             {Array.from({ length: imageCount }, (_, i) => (
-              <View key={i} style={[styles.dot, i === index && styles.dotActive]} />
+              <View
+                key={i}
+                style={{
+                  width: i === index ? DOT_ACTIVE_WIDTH : t.size.dot,
+                  height: t.size.dot,
+                  borderRadius: t.radius.full,
+                  backgroundColor: t.colors.onBrand,
+                  opacity: i === index ? 1 : 0.6,
+                }}
+              />
             ))}
           </View>
         </>
@@ -127,31 +180,3 @@ export function ProductGallery({ productId, imageCount, height = 260, onOpenImag
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  frame: { width: '100%', borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceTonal },
-  placeholder: { alignItems: 'center', justifyContent: 'center', gap: spacing.xs, backgroundColor: colors.surfaceTonal },
-  placeholderText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  pressed: { opacity: 0.9 },
-  counter: {
-    position: 'absolute',
-    left: spacing.sm,
-    top: spacing.sm,
-    backgroundColor: 'rgba(17,26,34,0.6)',
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  counterText: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.primaryText },
-  dots: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  dot: { width: 7, height: 7, borderRadius: radius.pill, backgroundColor: 'rgba(255,255,255,0.6)' },
-  dotActive: { backgroundColor: colors.primaryText, width: 16 },
-});

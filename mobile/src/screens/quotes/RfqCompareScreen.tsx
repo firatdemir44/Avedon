@@ -1,28 +1,35 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, Modal, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Teklif karşılaştırma tablosu (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı Faz 3, Adım 1'deki gibi; yalnızca sunum yeni. Tablo: sabit
+// etiket sütunu + yatay kaydırılan firma sütunları; 375 px'te sayfa taşmaz,
+// yalnızca tablonun kendi alanı kayar.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { fetchRfq, type RfqCompare, type RfqRow } from '../../api/client';
+import { fetchRfq, type RfqRow } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage, isNotFound } from '../../components/StateView';
+import { friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { quoteStatusLabel } from '../../components/QuoteStatusBadge';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { formatMeasure } from '../../features/calculators/parse';
 import { formatQuantity, formatQuoteDate, unitShort } from '../../features/quotes/format';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Screen } from '../../ui';
 
 type Props = RootStackScreenProps<'RfqCompare'>;
 
-// Dar ekranda en az iki sütun görünsün: 375px'te 108 + 2×164 sığıyor.
-const LABEL_WIDTH = 108;
-const COLUMN_WIDTH = 164;
-
-const HEADER_HEIGHT = 92;
-const FLAG_HEIGHT = 32;
-const ACTION_HEIGHT = 52;
+// Tablo ölçüleri (DESIGN.md'de adı olmayan ekran-içi ölçüler). Dar ekranda
+// etiket sütunu + en az bir tam firma sütunu görünür: 375 − 2×16 = 343 px'te
+// 104 + 176 sığar, ikinci sütunun başı da görünür (kaydırılabildiği anlaşılır).
+const LABEL_WIDTH = 104;
+const COLUMN_WIDTH = 176;
+const HEADER_HEIGHT = 96;
+const FLAG_HEIGHT = 60; // alt alta iki rozet (22 + 4 + 22) + iç boşluk
+const ROW_SINGLE = 48; // tek satır değer
+const ROW_DOUBLE = 64; // değer + alt not ya da 2 satır metin
+const ACTION_HEIGHT = 64;
 
 // "4,20 USD / m"
 function priceText(value: number, currency: string, unit: string) {
@@ -44,14 +51,42 @@ function statusText(row: RfqRow): string {
   return 'Teklif verildi';
 }
 
-// Bileşen olarak: `styles` dosyanın altında tanımlı, modül yüklenirken
-// değerlendirilen bir sabit olsaydı henüz tanımsız olurdu.
+// --- Hücre içi küçük bileşenler ------------------------------------------
+
 function Empty() {
-  return <Text style={styles.cellMuted}>·</Text>;
+  const t = useTheme();
+  return <Text style={[t.type.body14, { color: t.colors.ink3 }]}>·</Text>;
+}
+
+function CellValue({ text, warn }: { text: string; warn?: boolean }) {
+  const t = useTheme();
+  return (
+    <Text style={[t.type.mono14, { color: warn ? t.colors.warning : t.colors.ink }]} numberOfLines={1}>
+      {text}
+    </Text>
+  );
+}
+
+function CellText({ text, muted }: { text: string; muted?: boolean }) {
+  const t = useTheme();
+  return (
+    <Text style={[t.type.body14, { color: muted ? t.colors.ink2 : t.colors.ink }]} numberOfLines={2}>
+      {text}
+    </Text>
+  );
+}
+
+function CellNote({ text, warn }: { text: string; warn?: boolean }) {
+  const t = useTheme();
+  return (
+    <Text style={[t.type.caption12, { color: warn ? t.colors.warning : t.colors.ink3 }]} numberOfLines={2}>
+      {text}
+    </Text>
+  );
 }
 
 // Ödeme koşulu ve Not hücreleri 2 satırda kırpılıyor. Uzun metinde hücreye
-// dokunmak tam metni alt panelde açar; satır yükseklikleri sabit kalsın diye
+// dokunmak tam metni alt sayfada açar; satır yükseklikleri sabit kalsın diye
 // hücrenin içine ek bir şey konmuyor.
 const LONG_TEXT = 40;
 
@@ -64,21 +99,22 @@ function ExpandableCell({
   text: string;
   onExpand: (cell: { label: string; text: string }) => void;
 }) {
-  if (text.length <= LONG_TEXT) {
-    return (
-      <Text style={styles.cellText} numberOfLines={2}>
-        {text}
-      </Text>
-    );
-  }
+  const t = useTheme();
+  if (text.length <= LONG_TEXT) return <CellText text={text} />;
   return (
     <Pressable
       onPress={() => onExpand({ label, text })}
       accessibilityRole="button"
       accessibilityLabel={`${label}, tamamını gör`}
-      style={({ pressed }) => [styles.expandCell, pressed && styles.pressedQuiet]}
+      // Hücrenin tamamını kaplar ki sabit yükseklikte de kolay dokunulsun.
+      style={({ pressed }) => ({
+        alignSelf: 'stretch',
+        justifyContent: 'center',
+        flex: 1,
+        backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+      })}
     >
-      <Text style={styles.cellText} numberOfLines={2}>
+      <Text style={[t.type.body14, { color: t.colors.brand }]} numberOfLines={2}>
         {text}
       </Text>
     </Pressable>
@@ -96,29 +132,26 @@ const ROW_SPECS: RowSpec[] = [
   {
     key: 'price',
     label: 'Birim fiyat',
-    height: 62,
+    height: ROW_DOUBLE,
     render: (row) => {
       const comparable = row.quote?.comparablePrice;
       if (!comparable) {
         // Teklif var ama çevrilemedi (gramaj/en yok) ya da hiç teklif yok.
         return (
-          <Text style={styles.cellMuted} numberOfLines={2}>
-            {row.quote?.price
-              ? priceText(row.quote.price.value, row.quote.price.currency, row.quote.price.unit)
-              : statusText(row)}
-          </Text>
+          <CellText
+            muted
+            text={
+              row.quote?.price
+                ? priceText(row.quote.price.value, row.quote.price.currency, row.quote.price.unit)
+                : statusText(row)
+            }
+          />
         );
       }
       return (
         <View>
-          <Text style={styles.cellStrong} numberOfLines={1}>
-            {priceText(comparable.value, comparable.currency, comparable.unit)}
-          </Text>
-          {comparable.converted && row.quote?.price ? (
-            <Text style={styles.cellTiny} numberOfLines={2}>
-              {convertedNote(row.quote.price)}
-            </Text>
-          ) : null}
+          <CellValue text={priceText(comparable.value, comparable.currency, comparable.unit)} />
+          {comparable.converted && row.quote?.price ? <CellNote text={convertedNote(row.quote.price)} /> : null}
         </View>
       );
     },
@@ -126,34 +159,24 @@ const ROW_SPECS: RowSpec[] = [
   {
     key: 'total',
     label: 'Tahmini toplam',
-    height: 44,
+    height: ROW_SINGLE,
     render: (row) => {
       const total = row.quote?.estimatedTotal;
       if (!total) return <Empty />;
-      return (
-        <Text style={styles.cellValue} numberOfLines={1}>
-          {formatMeasure(total.value)} {total.currency}
-        </Text>
-      );
+      return <CellValue text={`${formatMeasure(total.value)} ${total.currency}`} />;
     },
   },
   {
     key: 'moq',
     label: 'En az sipariş',
-    height: 52,
+    height: ROW_DOUBLE,
     render: (row) => {
       const quote = row.quote;
       if (!quote || quote.moq == null) return <Empty />;
       return (
         <View>
-          <Text style={[styles.cellValue, quote.moqAboveQuantity && styles.cellWarn]} numberOfLines={1}>
-            {formatMeasure(quote.moq)} {unitShort(quote.moqUnit || '')}
-          </Text>
-          {quote.moqAboveQuantity ? (
-            <Text style={styles.cellTinyWarn} numberOfLines={1}>
-              ihtiyacınızın üstünde
-            </Text>
-          ) : null}
+          <CellValue text={`${formatMeasure(quote.moq)} ${unitShort(quote.moqUnit || '')}`} warn={quote.moqAboveQuantity} />
+          {quote.moqAboveQuantity ? <CellNote warn text="ihtiyacınızın üstünde" /> : null}
         </View>
       );
     },
@@ -161,20 +184,16 @@ const ROW_SPECS: RowSpec[] = [
   {
     key: 'lead',
     label: 'Termin',
-    height: 44,
+    height: ROW_SINGLE,
     render: (row) => {
       if (row.quote?.leadTimeDays == null) return <Empty />;
-      return (
-        <Text style={styles.cellValue} numberOfLines={1}>
-          {row.quote.leadTimeDays} gün
-        </Text>
-      );
+      return <CellValue text={`${row.quote.leadTimeDays} gün`} />;
     },
   },
   {
     key: 'payment',
     label: 'Ödeme koşulu',
-    height: 52,
+    height: ROW_DOUBLE,
     render: (row, onExpand) => {
       if (!row.quote?.paymentTerms) return <Empty />;
       return <ExpandableCell label="Ödeme koşulu" text={row.quote.paymentTerms} onExpand={onExpand} />;
@@ -183,20 +202,16 @@ const ROW_SPECS: RowSpec[] = [
   {
     key: 'valid',
     label: 'Geçerlilik',
-    height: 44,
+    height: ROW_SINGLE,
     render: (row) => {
       if (!row.quote?.validUntil) return <Empty />;
-      return (
-        <Text style={styles.cellValue} numberOfLines={1}>
-          {formatQuoteDate(row.quote.validUntil)}
-        </Text>
-      );
+      return <CellValue text={formatQuoteDate(row.quote.validUntil)} />;
     },
   },
   {
     key: 'note',
     label: 'Not',
-    height: 52,
+    height: ROW_DOUBLE,
     render: (row, onExpand) => {
       if (!row.quote?.note) return <Empty />;
       return <ExpandableCell label="Not" text={row.quote.note} onExpand={onExpand} />;
@@ -205,86 +220,131 @@ const ROW_SPECS: RowSpec[] = [
   {
     key: 'status',
     label: 'Durum',
-    height: 44,
-    render: (row) => (
-      <Text style={styles.cellText} numberOfLines={2}>
-        {statusText(row)}
-      </Text>
-    ),
+    height: ROW_SINGLE,
+    render: (row) => <CellText text={statusText(row)} />,
   },
 ];
+
+// Uyarı şeridi (RequestsScreen'deki banner kalıbı).
+function Notice({ tone, text }: { tone: 'danger' | 'warning'; text: string }) {
+  const t = useTheme();
+  return (
+    <View
+      accessibilityRole="alert"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: tone === 'danger' ? t.colors.dangerSoft : t.colors.warningSoft,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color={tone} />
+      <Text style={[t.type.body14, { color: t.colors[tone], flex: 1, minWidth: 0 }]}>{text}</Text>
+    </View>
+  );
+}
 
 // Faz 3, Adım 1'in asıl ekranı: gelen teklifleri yan yana koyan tablo.
 // Telefonda yatay kayar; ilk sütun sabit etiketlerdir, her firma bir sütun.
 // Para birimi ÇEVRİLMEZ — "en düşük fiyat" işareti sunucuda yalnızca aynı
 // para birimi içinde veriliyor, ekran da bunu yazıyor.
 export function RfqCompareScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { rfqId } = route.params;
-  const insets = useSafeAreaInsets();
-  // Kırpılan hücrenin tam metni (alt panel).
+  // Kırpılan hücrenin tam metni (alt sayfa).
   const [expanded, setExpanded] = useState<{ label: string; text: string } | null>(null);
   const { data: rfq, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchRfq(rfqId).then((res) => res.rfq)
   );
 
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const shell = (children: React.ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Teklif karşılaştırma" leading="back" onBack={() => navigation.goBack()} />
+      {children}
+    </View>
+  );
+
   if (status === 'loading') {
-    return (
-      <View style={styles.screen}>
-        <SkeletonDetail variant="product" />
-      </View>
-    );
+    return shell(<SkeletonDetail variant="product" />);
   }
 
   if (!rfq) {
-    return (
-      <View style={styles.screen}>
+    return shell(
+      <Screen>
         {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Karşılaştırma alınamadı" onRetry={reload} />
+          <EmptyState
+            icon="warning"
+            title="Yüklenemedi"
+            description={friendlyMessage(error, 'Karşılaştırma alınamadı')}
+            actionLabel="Tekrar dene"
+            onAction={reload}
+          />
         ) : (
           <EmptyState
             icon="git-compare-outline"
             title="Karşılaştırma bulunamadı"
-            message="İstek kaldırılmış ya da size ait olmayabilir."
+            description="İstek kaldırılmış ya da size ait olmayabilir."
           />
         )}
-      </View>
+      </Screen>
     );
   }
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        <View style={styles.summary}>
-          <Text style={styles.title}>{rfq.title}</Text>
-          <Text style={styles.summaryMeta}>
-            İstenen miktar: <Text style={styles.summaryValue}>{formatQuantity(rfq.quantity, rfq.unit)}</Text>
-          </Text>
-          {rfq.targetDate ? (
-            <Text style={styles.summaryMeta}>
-              İstenen termin: <Text style={styles.summaryValue}>{formatQuoteDate(rfq.targetDate)}</Text>
+  // Hücre kutusu: ortalanmış, alt kenarlık.
+  const cell = (height: number) => ({
+    height,
+    justifyContent: 'center' as const,
+    paddingHorizontal: t.space[3],
+    borderBottomWidth: 1,
+    borderBottomColor: t.colors.line,
+  });
+
+  return shell(
+    <Screen scroll={false} noPadding>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+        refreshControl={refreshControl(refreshing, refresh)}
+      >
+        <Card>
+          <View style={{ gap: t.space[2] }}>
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>{rfq.title}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[4] }}>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>İstenen miktar</Text>
+              <Text style={[t.type.mono14, { color: t.colors.ink }]}>{formatQuantity(rfq.quantity, rfq.unit)}</Text>
+            </View>
+            {rfq.targetDate ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[4] }}>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>İstenen termin</Text>
+                <Text style={[t.type.mono14, { color: t.colors.ink }]}>{formatQuoteDate(rfq.targetDate)}</Text>
+              </View>
+            ) : null}
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              {rfq.requestCount} firmaya soruldu · {rfq.quotedCount} teklif geldi
             </Text>
-          ) : null}
-          <Text style={styles.summaryMeta}>
-            {rfq.requestCount} firmaya soruldu · {rfq.quotedCount} teklif geldi
-          </Text>
-          {rfq.note ? <Text style={styles.summaryNote}>“{rfq.note}”</Text> : null}
-        </View>
+            {rfq.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>“{rfq.note}”</Text> : null}
+          </View>
+        </Card>
 
         {rfq.currencies.length > 1 ? (
-          <View style={styles.currencyBox} accessibilityRole="alert">
-            <Ionicons name="information-circle-outline" size={16} color={colors.warning} />
-            <Text style={styles.currencyText}>
-              Teklifler farklı para birimlerinde; en düşük fiyat işareti yalnızca aynı para birimi içinde verilir.
-            </Text>
-          </View>
+          <Notice
+            tone="warning"
+            text="Teklifler farklı para birimlerinde; en düşük fiyat işareti yalnızca aynı para birimi içinde verilir."
+          />
         ) : null}
 
         {error ? (
-          <InlineError
-            message={friendlyMessage(error, 'Karşılaştırma yenilenemedi')}
-            onRetry={reload}
-            style={styles.banner}
-          />
+          <View style={{ gap: t.space[2] }}>
+            <Notice tone="danger" text={friendlyMessage(error, 'Karşılaştırma yenilenemedi')} />
+            <Button kind="secondary" label="Tekrar dene" onPress={reload} />
+          </View>
         ) : null}
 
         {/* Faz 3, Adım 6: tablonun üstünde tek piyasa aralığı kartı. Satırlar
@@ -298,232 +358,102 @@ export function RfqCompareScreen({ route, navigation }: Props) {
           />
         ) : null}
 
-        <View style={styles.tableWrap}>
-          <View style={styles.table}>
+        <Card noPadding style={{ overflow: 'hidden' }}>
+          <View style={{ flexDirection: 'row', minWidth: 0 }}>
             {/* Sabit etiket sütunu: yatay kaydırmada yerinde kalır. */}
-            <View style={styles.labelColumn}>
-              <View style={[styles.labelCell, { height: HEADER_HEIGHT }]}>
-                <Text style={styles.labelHeaderText}>Firma</Text>
+            <View
+              style={{
+                width: LABEL_WIDTH,
+                borderRightWidth: 1,
+                borderRightColor: t.colors.line,
+                backgroundColor: t.colors.surface1,
+              }}
+            >
+              <View style={cell(HEADER_HEIGHT)}>
+                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Firma</Text>
               </View>
-              <View style={[styles.labelCell, { height: FLAG_HEIGHT }]} />
+              <View style={cell(FLAG_HEIGHT)} />
               {ROW_SPECS.map((spec) => (
-                <View key={spec.key} style={[styles.labelCell, { height: spec.height }]}>
-                  <Text style={styles.labelText} numberOfLines={2}>
+                <View key={spec.key} style={cell(spec.height)}>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]} numberOfLines={2}>
                     {spec.label}
                   </Text>
                 </View>
               ))}
-              <View style={[styles.labelCell, { height: ACTION_HEIGHT }]} />
+              <View style={[cell(ACTION_HEIGHT), { borderBottomWidth: 0 }]} />
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.columns}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator
+              style={{ flex: 1, minWidth: 0 }}
+              contentContainerStyle={{ flexDirection: 'row' }}
+            >
               {rfq.rows.map((row) => (
-                <View key={row.requestId} style={styles.column}>
-                  <View style={[styles.cell, styles.headerCell, { height: HEADER_HEIGHT }]}>
-                    <View style={styles.companyLine}>
-                      <Text style={styles.companyName} numberOfLines={2}>
+                <View
+                  key={row.requestId}
+                  style={{ width: COLUMN_WIDTH, borderRightWidth: 1, borderRightColor: t.colors.line }}
+                >
+                  <View style={[cell(HEADER_HEIGHT), { backgroundColor: t.colors.surface2, gap: t.space[1] / 2 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
+                      <Text style={[t.type.body16Strong, { color: t.colors.ink, flexShrink: 1 }]} numberOfLines={2}>
                         {row.company.name}
                       </Text>
                       {row.company.verification === 'dogrulanmis' ? (
-                        <Ionicons
-                          name="checkmark-circle"
-                          size={14}
-                          color={colors.success}
-                          accessibilityLabel="Doğrulanmış firma"
-                        />
+                        <View accessibilityLabel="Doğrulanmış firma" accessibilityRole="image">
+                          <Icon name="shield-checkmark-outline" size={t.size.iconSm} color="success" />
+                        </View>
                       ) : null}
                     </View>
-                    <Text style={styles.companyMeta} numberOfLines={1}>
+                    <Text style={[t.type.caption12, { color: t.colors.ink3 }]} numberOfLines={1}>
                       {row.company.confirmedReferenceCount > 0
                         ? `${row.company.confirmedReferenceCount} referans`
                         : 'Referans yok'}
                     </Text>
-                    <Text style={styles.productCode} numberOfLines={1}>
+                    <Text style={[t.type.mono14, { color: t.colors.ink2 }]} numberOfLines={1}>
                       {row.product.code}
                     </Text>
                   </View>
 
-                  <View style={[styles.cell, { height: FLAG_HEIGHT }]}>
-                    <View style={styles.flagRow}>
-                      {row.flags.includes('lowest_price') ? (
-                        <View style={[styles.flag, styles.flagBest]}>
-                          <Text style={styles.flagBestText}>En düşük fiyat</Text>
-                        </View>
-                      ) : null}
-                      {row.flags.includes('fastest') ? (
-                        <View style={[styles.flag, styles.flagFast]}>
-                          <Text style={styles.flagFastText}>En kısa termin</Text>
-                        </View>
-                      ) : null}
+                  <View style={cell(FLAG_HEIGHT)}>
+                    {/* İki rozet yan yana sütuna sığmaz; alt alta. */}
+                    <View style={{ gap: t.space[1] }}>
+                      {row.flags.includes('lowest_price') ? <Badge kind="delivered" label="En düşük fiyat" /> : null}
+                      {row.flags.includes('fastest') ? <Badge kind="new" label="En kısa termin" /> : null}
                     </View>
                   </View>
 
                   {ROW_SPECS.map((spec) => (
-                    <View key={spec.key} style={[styles.cell, { height: spec.height }]}>
+                    <View key={spec.key} style={cell(spec.height)}>
                       {spec.render(row, setExpanded)}
                     </View>
                   ))}
 
-                  <View style={[styles.cell, { height: ACTION_HEIGHT }]}>
-                    <Pressable
-                      onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: row.requestId })}
-                      accessibilityRole="button"
+                  <View style={[cell(ACTION_HEIGHT), { borderBottomWidth: 0 }]}>
+                    <Button
+                      kind="secondary"
+                      fullWidth
+                      label="Teklifi aç"
                       accessibilityLabel={`${row.company.name} teklifini aç`}
-                      style={({ pressed }) => [styles.openButton, pressed && styles.pressedQuiet]}
-                    >
-                      <Text style={styles.openText}>Teklifi aç</Text>
-                      <Ionicons name="chevron-forward" size={16} color={colors.primary} />
-                    </Pressable>
+                      onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: row.requestId })}
+                    />
                   </View>
                 </View>
               ))}
             </ScrollView>
           </View>
-        </View>
+        </Card>
 
-        <Text style={styles.footNote}>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
           Kabul ve ret işlemi teklifin kendi sayfasında yapılır. Fiyatlar istenen birime çevrilir; para birimi
           çevrilmez.
         </Text>
       </ScrollView>
 
-      <Modal
-        visible={expanded !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setExpanded(null)}
-      >
-        <Pressable style={styles.sheetBackdrop} onPress={() => setExpanded(null)} accessibilityLabel="Kapat">
-          {/* Panelin içine dokunmak kapatmasın; zemine dokunmak kapatır.
-              (Panel ayrı bir Pressable olsaydı web'de iç içe düğme olurdu.) */}
-          <View
-            onStartShouldSetResponder={() => true}
-            style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}
-          >
-            <Text style={styles.sheetTitle} accessibilityRole="header">
-              {expanded?.label}
-            </Text>
-            <ScrollView style={styles.sheetScroll}>
-              <Text style={styles.sheetText}>{expanded?.text}</Text>
-            </ScrollView>
-            <Pressable
-              onPress={() => setExpanded(null)}
-              accessibilityRole="button"
-              accessibilityLabel="Kapat"
-              style={({ pressed }) => [styles.sheetClose, pressed && styles.pressedQuiet]}
-            >
-              <Text style={styles.sheetCloseText}>Kapat</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
-    </View>
+      <BottomSheet visible={expanded !== null} onClose={() => setExpanded(null)} title={expanded?.label}>
+        <Text style={[t.type.body16, { color: t.colors.ink }]}>{expanded?.text}</Text>
+        <Button kind="secondary" label="Kapat" onPress={() => setExpanded(null)} />
+      </BottomSheet>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  summary: { backgroundColor: colors.surface, padding: spacing.gutter, gap: 3 },
-  title: { ...typography.heading, color: colors.primary },
-  summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  summaryValue: { ...typography.mono, fontSize: 15, color: colors.text },
-  summaryNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
-  currencyBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginHorizontal: spacing.gutter,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  currencyText: { ...typography.caption, color: colors.warning, flex: 1 },
-  banner: { marginHorizontal: spacing.gutter },
-  tableWrap: { backgroundColor: colors.surface, paddingVertical: spacing.sm },
-  table: { flexDirection: 'row' },
-  labelColumn: {
-    width: LABEL_WIDTH,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  labelCell: {
-    justifyContent: 'center',
-    paddingHorizontal: spacing.gutter,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  labelHeaderText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
-  labelText: { ...typography.caption, fontFamily: fonts.medium, color: colors.textMuted },
-  columns: { flexDirection: 'row' },
-  column: { width: COLUMN_WIDTH, borderRightWidth: 1, borderRightColor: colors.divider },
-  cell: {
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerCell: { backgroundColor: colors.surfaceTonal, gap: 2 },
-  companyLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  companyName: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary, flexShrink: 1 },
-  companyMeta: { ...typography.caption, color: colors.textMuted },
-  productCode: { ...typography.mono, fontSize: 13, lineHeight: 18, color: colors.accent },
-  flagRow: { flexDirection: 'row', gap: 4 },
-  flag: { borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
-  flagBest: { backgroundColor: colors.successSoft },
-  flagBestText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 15, color: colors.success },
-  flagFast: { backgroundColor: colors.accentSoft },
-  flagFastText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 15, color: colors.primary },
-  cellStrong: {
-    ...typography.mono,
-    fontFamily: fonts.monoSemibold,
-    fontSize: 16,
-    lineHeight: 21,
-    color: colors.primary,
-  },
-  cellValue: { ...typography.mono, fontSize: 15, color: colors.text },
-  cellText: { ...typography.caption, color: colors.text },
-  cellMuted: { ...typography.caption, color: colors.textMuted },
-  cellWarn: { color: colors.warning },
-  cellTiny: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  cellTinyWarn: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.warning },
-  openButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-    minHeight: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  pressedQuiet: { backgroundColor: colors.pressed },
-  // Hücrenin tamamını kaplar ki sabit yükseklikte de kolay dokunulsun.
-  expandCell: { alignSelf: 'stretch', justifyContent: 'center', flex: 1 },
-  sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-    gap: spacing.sm,
-  },
-  sheetScroll: { maxHeight: 280 },
-  sheetTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  sheetText: { ...typography.body, color: colors.text },
-  sheetClose: {
-    alignSelf: 'flex-start',
-    minHeight: 44,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  sheetCloseText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  openText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  footNote: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter },
-});

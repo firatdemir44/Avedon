@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Teklif isteği formu (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri/işlev katmanı Faz 2, Adım 2'deki gibi: gövde ve hata kodları aynı.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useState } from 'react';
+import { View, Text } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { ApiError, createQuoteRequest } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { STOCK_UNITS, STOCK_UNIT_LABELS, type StockUnit } from '../../features/products/catalog';
 import { parseNumber } from '../../features/calculators/parse';
 import { DATE_PATTERN } from '../../features/quotes/format';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, Card, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
 
 type Props = RootStackScreenProps<'QuoteRequestForm'>;
 
@@ -21,8 +21,8 @@ const UNIT_OPTIONS = STOCK_UNITS.map((unit) => ({ value: unit, label: STOCK_UNIT
 // formu. Bağlantı şartı YOK (Fırat'ın kararı 2026-09-17), istek doğrudan
 // satıcı firmaya düşer.
 export function QuoteRequestFormScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { productId, productCode, stockUnit } = route.params;
-  const insets = useSafeAreaInsets();
   const [quantity, setQuantity] = useState('');
   const [unit, setUnit] = useState<StockUnit>(stockUnit === 'kg' ? 'kg' : 'm');
   const [targetDate, setTargetDate] = useState('');
@@ -31,6 +31,11 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   // 409 already_open: aynı ürüne açık isteği var, ikincisi açılmaz.
   const [existingId, setExistingId] = useState<string | null>(null);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const quantityValue = parseNumber(quantity);
   const dateInvalid = !!targetDate.trim() && !DATE_PATTERN.test(targetDate.trim());
@@ -79,36 +84,55 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.block}>
-          <Text style={styles.code}>{productCode}</Text>
-          <Text style={styles.lead}>Ne kadar ve ne zaman istediğinizi yazın; satıcı firma teklifini hazırlayıp gönderir.</Text>
-        </View>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Teklif iste" leading="back" onBack={() => navigation.goBack()} />
+      <Screen
+        sticky={
+          <Button
+            size="lg"
+            label="Teklif iste"
+            loading={submitting}
+            disabled={!canSubmit}
+            onPress={submit}
+          />
+        }
+      >
+        <Card>
+          <View style={{ gap: t.space[1] }}>
+            <Text style={[t.type.mono20, { color: t.colors.ink }]}>{productCode}</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              Ne kadar ve ne zaman istediğinizi yazın; satıcı firma teklifini hazırlayıp gönderir.
+            </Text>
+          </View>
+        </Card>
 
-        <View style={styles.block}>
-          <TextField
+        <View style={{ gap: t.space[4] }}>
+          <SectionTitle title="İstek bilgileri" />
+          <Input
             label="Miktar"
             value={quantity}
             onChangeText={setQuantity}
+            inputMode="decimal"
             keyboardType="decimal-pad"
             placeholder="Örn. 1500"
+            unit={STOCK_UNIT_LABELS[unit].short}
           />
-          <Text style={styles.fieldLabel}>Birim</Text>
-          <ChipSelect options={UNIT_OPTIONS} value={unit} onChange={setUnit} />
+          <View style={{ gap: t.space[1] }}>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim</Text>
+            <SegmentControl<StockUnit> stretch accessibilityLabel="Birim" value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
+          </View>
 
-          <TextField
-            label="İstenen termin tarihi (YYYY-AA-GG, isteğe bağlı)"
+          <Input
+            label="İstenen termin tarihi (isteğe bağlı)"
             value={targetDate}
             onChangeText={setTargetDate}
             placeholder="2026-11-15"
             autoCapitalize="none"
+            helper="YYYY-AA-GG biçiminde yazın."
+            error={dateInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
           />
-          {dateInvalid ? (
-            <Text style={styles.fieldError}>Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).</Text>
-          ) : null}
 
-          <TextField
+          <Input
             label="Not (isteğe bağlı)"
             value={note}
             onChangeText={setNote}
@@ -118,49 +142,31 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
         </View>
 
         {error ? (
-          <View style={styles.bannerWrap}>
-            <InlineError message={error} />
+          <View style={{ gap: t.space[3] }}>
+            <View
+              accessibilityRole="alert"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.dangerSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+            </View>
             {existingId ? (
-              <PrimaryButton
+              <Button
+                kind="secondary"
                 label="Mevcut isteğe git"
-                variant="outline"
                 onPress={() => navigation.replace('QuoteRequestDetail', { requestId: existingId })}
-                style={styles.existingButton}
               />
             ) : null}
           </View>
         ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        <PrimaryButton
-          label={submitting ? 'Gönderiliyor...' : 'Teklif iste'}
-          size="lg"
-          disabled={!canSubmit}
-          onPress={submit}
-          style={styles.actionMain}
-        />
-      </View>
+      </Screen>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingTop: spacing.md, paddingBottom: spacing.xs },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 20, lineHeight: 26, color: colors.primary },
-  lead: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2, marginBottom: spacing.sm },
-  fieldLabel: { ...typography.label, color: colors.text, marginBottom: spacing.xs, marginLeft: spacing.sm },
-  fieldError: { ...typography.caption, color: colors.danger, marginTop: -spacing.sm, marginBottom: spacing.sm },
-  bannerWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
-  existingButton: { alignSelf: 'flex-start' },
-  actionBar: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { width: '100%' },
-});

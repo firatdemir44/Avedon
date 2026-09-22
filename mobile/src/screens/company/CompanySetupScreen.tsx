@@ -1,15 +1,16 @@
+// Firma sayfasını tamamlama sihirbazı (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı eskisiyle aynı (adım başına updateCompany, aynı gövde); yalnızca
+// görünüm: AppBar + Screen, adım göstergesi caption12 + ilerleme çubuğu,
+// alanlar `ui/Input`, her adımda tek dolu düğme ("Kaydet ve devam" / "Bitir"),
+// "Atla" kenarlıklı.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Platform, Share, StyleSheet } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Platform, Share, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { TextField } from '../../components/TextField';
-import { ChipSelect } from '../../components/ChipSelect';
 import { PhotoGridEditor } from '../../components/PhotoGridEditor';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { CompanyLogoPicker } from '../../components/CompanyLogoPicker';
-import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { ErrorState, friendlyMessage } from '../../components/StateView';
 import { ApiError, fetchCompany, updateCompany, type UpdateCompanyInput } from '../../api/client';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
@@ -24,7 +25,21 @@ import {
   type CompanySetupStepKey,
 } from '../../features/companies/completeness';
 import { COMPANY_TYPES } from '../../features/products/catalog';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  Skeleton,
+  SkeletonText,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'CompanySetup'>;
 
@@ -40,9 +55,9 @@ const STEP_HINTS: Record<CompanySetupStepKey, string> = {
 };
 
 export function CompanySetupScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const companyId = user?.companyId ?? null;
-  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -77,6 +92,11 @@ export function CompanySetupScreen({ route, navigation }: Props) {
 
   const loadedRef = useRef(false);
   const requestedStep = route.params?.step;
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (!companyId) {
@@ -278,133 +298,184 @@ export function CompanySetupScreen({ route, navigation }: Props) {
     Share.share({ message }).catch(() => {});
   };
 
+  const shell = (children: React.ReactNode, sticky?: React.ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Firma sayfanı tamamla" leading="back" onBack={() => navigation.goBack()} />
+      <Screen sticky={sticky}>{children}</Screen>
+    </View>
+  );
+
   if (!companyId) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <EmptyState
-          icon="business-outline"
-          title="Firmaya bağlı değilsiniz"
-          message="Bu adımlar yalnızca bir firmaya bağlı hesaplarda kullanılır."
-        />
-      </SafeAreaView>
+    return shell(
+      <EmptyState
+        icon="business-outline"
+        title="Firmaya bağlı değilsiniz"
+        description="Bu adımlar yalnızca bir firmaya bağlı hesaplarda kullanılır."
+      />
     );
   }
 
   if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonDetail variant="company" />
-      </SafeAreaView>
+    return shell(
+      <>
+        <Skeleton height={t.space[2]} />
+        <SkeletonText lines={2} />
+        <SkeletonText lines={4} />
+      </>
     );
   }
 
   if (loadError && !loadedRef.current) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={loadError} fallback="Firma bilgisi alınamadı" onRetry={() => navigation.replace('CompanySetup', route.params)} />
-      </SafeAreaView>
+    return shell(
+      <ErrorState
+        error={loadError}
+        fallback="Firma bilgisi alınamadı"
+        onRetry={() => navigation.replace('CompanySetup', route.params)}
+      />
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <View style={styles.progressBlock}>
-        <View style={styles.segments}>
+  const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
+  const fieldLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
+
+  const yearError = stepKey === 'tanitim' ? foundedYearError(foundedYear) : null;
+
+  return shell(
+    <>
+      {/* Adım göstergesi: ilerleme parçaları + "1 / 5 · Tanıtım" (caption12). */}
+      <View style={{ gap: t.space[2] }}>
+        <View style={{ flexDirection: 'row', gap: t.space[1] }} accessibilityElementsHidden>
           {completeness.steps.map((step, i) => (
             <View
               key={step.key}
-              style={[
-                styles.segment,
-                step.done && styles.segmentDone,
-                i === stepIndex && !step.done && styles.segmentCurrent,
-              ]}
+              style={{
+                flex: 1,
+                height: t.space[1],
+                borderRadius: t.radius.full,
+                backgroundColor: step.done ? t.colors.brand : i === stepIndex ? t.colors.brandSoft : t.colors.surface2,
+                borderWidth: i === stepIndex && !step.done ? 1 : 0,
+                borderColor: t.colors.brand,
+              }}
             />
           ))}
         </View>
-        <View style={styles.progressMeta}>
-          <Text style={styles.stepCount}>
-            {stepIndex + 1} / {COMPANY_SETUP_STEP_ORDER.length}
-          </Text>
-          <Text style={styles.stepTitle} numberOfLines={1}>
-            {completeness.steps[stepIndex].title}
-          </Text>
-        </View>
+        <Text
+          accessibilityRole="header"
+          style={[t.type.caption12, { color: t.colors.ink3 }]}
+        >{`${stepIndex + 1} / ${COMPANY_SETUP_STEP_ORDER.length} · ${completeness.steps[stepIndex].title}`}</Text>
+        <Text style={[t.type.title22, { color: t.colors.ink }]}>{completeness.steps[stepIndex].title}</Text>
+        {hint(STEP_HINTS[stepKey])}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.stepHint}>{STEP_HINTS[stepKey]}</Text>
+      {error ? (
+        <View
+          accessibilityRole="alert"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[2],
+            padding: t.space[3],
+            borderRadius: t.radius.md,
+            backgroundColor: t.colors.dangerSoft,
+          }}
+        >
+          <Icon name="warning" size={t.size.iconSm} color="danger" />
+          <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+        </View>
+      ) : null}
 
-        {stepKey === 'tanitim' ? (
-          <View>
-            <TextField
-              label="Hakkında"
-              value={about}
-              onChangeText={setAbout}
-              multiline
-              placeholder="Ne ürettiğiniz, aylık kapasiteniz ve öne çıkan özelliğiniz. Örnek: 1998'den beri süprem ve interlok örüyoruz; aylık 120 ton kapasite, OEKO-TEX sertifikalı boyahane."
-            />
-            <Text style={styles.label}>Şirket tipi</Text>
-            <ChipSelect options={TYPE_OPTIONS} value={companyType} onChange={setCompanyType} compact />
-            <TextField
-              label="Kuruluş yılı"
-              value={foundedYear}
-              onChangeText={setFoundedYear}
-              keyboardType="number-pad"
-              maxLength={4}
-              placeholder="2002"
-            />
-          </View>
-        ) : null}
-
-        {stepKey === 'iletisim' ? (
-          <View>
-            <TextField
-              label="İletişim e-postası"
-              value={contactEmail}
-              onChangeText={setContactEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              textContentType="emailAddress"
-              placeholder="ornek@firma.com"
-            />
-            <TextField
-              label="İletişim telefonu"
-              value={contactPhone}
-              onChangeText={setContactPhone}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
-              placeholder="0212 000 00 00"
-            />
-            <TextField
-              label="Web sitesi"
-              value={website}
-              onChangeText={setWebsite}
-              autoCapitalize="none"
-              keyboardType="url"
-              placeholder="www.firmaniz.com"
-            />
-            <View style={styles.row}>
-              <View style={styles.half}>
-                <TextField label="Şehir" value={city} onChangeText={setCity} placeholder="İstanbul" autoCapitalize="words" />
-              </View>
-              <View style={styles.half}>
-                <TextField
-                  label="İlçe / Bölge"
-                  value={district}
-                  onChangeText={setDistrict}
-                  placeholder="Bağcılar"
-                  autoCapitalize="words"
+      {stepKey === 'tanitim' ? (
+        <View style={{ gap: t.space[3] }}>
+          <Input
+            label="Hakkında"
+            value={about}
+            onChangeText={setAbout}
+            multiline
+            placeholder="Ne ürettiğiniz, aylık kapasiteniz ve öne çıkan özelliğiniz. Örnek: 1998'den beri süprem ve interlok örüyoruz; aylık 120 ton kapasite, OEKO-TEX sertifikalı boyahane."
+          />
+          <View style={{ gap: t.space[1] }}>
+            {fieldLabel('Şirket tipi')}
+            <ChipRow>
+              {TYPE_OPTIONS.map((o) => (
+                <Chip
+                  key={o.value || 'bos'}
+                  label={o.label}
+                  selected={o.value === companyType}
+                  onPress={() => setCompanyType(o.value)}
                 />
-              </View>
-            </View>
-            <TextField label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
-            <TextField label="Ana pazarlar" value={mainMarkets} onChangeText={setMainMarkets} placeholder="Avrupa, Türkiye" />
+              ))}
+            </ChipRow>
           </View>
-        ) : null}
+          <Input
+            label="Kuruluş yılı"
+            value={foundedYear}
+            onChangeText={setFoundedYear}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="2002"
+            error={yearError}
+          />
+        </View>
+      ) : null}
 
-        {stepKey === 'logo' ? (
+      {stepKey === 'iletisim' ? (
+        <View style={{ gap: t.space[3] }}>
+          <Input
+            label="İletişim e-postası"
+            value={contactEmail}
+            onChangeText={setContactEmail}
+            keyboardType="email-address"
+            inputMode="email"
+            autoCapitalize="none"
+            autoComplete="email"
+            textContentType="emailAddress"
+            placeholder="ornek@firma.com"
+          />
+          <Input
+            label="İletişim telefonu"
+            value={contactPhone}
+            onChangeText={setContactPhone}
+            keyboardType="phone-pad"
+            inputMode="tel"
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            placeholder="0212 000 00 00"
+          />
+          <Input
+            label="Web sitesi"
+            value={website}
+            onChangeText={setWebsite}
+            autoCapitalize="none"
+            keyboardType="url"
+            inputMode="url"
+            placeholder="www.firmaniz.com"
+          />
+          <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Input
+              containerStyle={{ flex: 1 }}
+              label="Şehir"
+              value={city}
+              onChangeText={setCity}
+              placeholder="İstanbul"
+              autoCapitalize="words"
+            />
+            <Input
+              containerStyle={{ flex: 1 }}
+              label="İlçe / bölge"
+              value={district}
+              onChangeText={setDistrict}
+              placeholder="Bağcılar"
+              autoCapitalize="words"
+            />
+          </View>
+          <Input label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
+          <Input label="Ana pazarlar" value={mainMarkets} onChangeText={setMainMarkets} placeholder="Avrupa, Türkiye" />
+        </View>
+      ) : null}
+
+      {stepKey === 'logo' ? (
+        <Card>
           <CompanyLogoPicker
             companyName={name}
             preview={logoPreview}
@@ -414,135 +485,104 @@ export function CompanySetupScreen({ route, navigation }: Props) {
               setLogoChange(dataUrl);
             }}
           />
-        ) : null}
+        </Card>
+      ) : null}
 
-        {stepKey === 'fotograflar' ? (
-          <View>
-            <Text style={styles.label}>
-              Firmadan görseller ({gallery.photos.office.length}/{MAX_COMPANY_PHOTOS})
-            </Text>
-            <Text style={styles.hint}>Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.</Text>
-            <PhotoGridEditor
-              photos={gallery.photos.office}
-              max={MAX_COMPANY_PHOTOS}
-              busy={gallery.picking === 'office'}
-              onAdd={() => addPhoto('office')}
-              onRemove={(key) => gallery.remove('office', key)}
-              onMoveFirst={(key) => gallery.moveFirst('office', key)}
-              firstBadge="İlk"
-            />
-            <Text style={[styles.label, styles.sectionGap]}>
-              Sertifikalar ve başarılar ({gallery.photos.certificate.length}/{MAX_COMPANY_PHOTOS})
-            </Text>
-            <Text style={styles.hint}>Kalite belgeleri ve ödüller isteğe bağlı, ama alıcıların güveni için önemli.</Text>
-            <PhotoGridEditor
-              photos={gallery.photos.certificate}
-              max={MAX_COMPANY_PHOTOS}
-              busy={gallery.picking === 'certificate'}
-              onAdd={() => addPhoto('certificate')}
-              onRemove={(key) => gallery.remove('certificate', key)}
-              onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
-              firstBadge="İlk"
-            />
-          </View>
-        ) : null}
-
-        {stepKey === 'urun' ? (
-          <View>
-            <Text style={styles.label}>Şirket kodunuz</Text>
-            <Text style={styles.companyCode} selectable>
-              {companyCode}
-            </Text>
-            <Text style={styles.hint}>
-              Çalışanlarınız kayıt olurken bu kodu girerek firmanıza katılır.
-            </Text>
-            <PrimaryButton
-              label={codeCopied ? 'Kod kopyalandı' : 'Kodu paylaş'}
-              variant="outline"
-              icon={codeCopied ? 'checkmark' : 'share-outline'}
-              onPress={shareCode}
-            />
-
-            <Text style={[styles.label, styles.sectionGap]}>İlk ürününüz</Text>
-            {productCount > 0 ? (
-              <View style={styles.doneRow}>
-                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                <Text style={styles.doneText}>{productCount} ürününüz var.</Text>
+      {stepKey === 'fotograflar' ? (
+        <>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title={`Firmadan görseller (${gallery.photos.office.length}/${MAX_COMPANY_PHOTOS})`} />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                {hint('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.')}
+                <PhotoGridEditor
+                  photos={gallery.photos.office}
+                  max={MAX_COMPANY_PHOTOS}
+                  busy={gallery.picking === 'office'}
+                  onAdd={() => addPhoto('office')}
+                  onRemove={(key) => gallery.remove('office', key)}
+                  onMoveFirst={(key) => gallery.moveFirst('office', key)}
+                  firstBadge="İlk"
+                />
               </View>
-            ) : (
-              <Text style={styles.hint}>
-                Ürünleriniz katalogda aranabilir olur ve firma sayfanızda listelenir.
-              </Text>
-            )}
-            <PrimaryButton
-              label={productCount > 0 ? 'Yeni ürün ekleyin' : 'İlk ürününüzü ekleyin'}
-              variant={productCount > 0 ? 'outline' : 'primary'}
-              icon="add"
-              onPress={() => navigation.navigate('AddProduct')}
-            />
+            </Card>
           </View>
-        ) : null}
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle
+              title={`Sertifikalar ve başarılar (${gallery.photos.certificate.length}/${MAX_COMPANY_PHOTOS})`}
+            />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                {hint('Kalite belgeleri ve ödüller isteğe bağlı, ama alıcıların güveni için önemli.')}
+                <PhotoGridEditor
+                  photos={gallery.photos.certificate}
+                  max={MAX_COMPANY_PHOTOS}
+                  busy={gallery.picking === 'certificate'}
+                  onAdd={() => addPhoto('certificate')}
+                  onRemove={(key) => gallery.remove('certificate', key)}
+                  onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
+                  firstBadge="İlk"
+                />
+              </View>
+            </Card>
+          </View>
+        </>
+      ) : null}
 
-        {error ? <InlineError message={error} style={styles.error} /> : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: spacing.sm + insets.bottom }]}>
-        <PrimaryButton label="Atla" variant="outline" size="lg" onPress={goNext} style={styles.actionButton} />
-        <PrimaryButton
-          label={saving ? 'Kaydediliyor...' : isLast ? 'Bitir' : 'Kaydet ve devam'}
-          size="lg"
-          disabled={saving}
-          onPress={saveAndContinue}
-          style={styles.actionButton}
-        />
-      </View>
-    </SafeAreaView>
+      {stepKey === 'urun' ? (
+        <>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Şirket kodunuz" />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                <Text selectable style={[t.type.display28, { color: t.colors.brand, fontFamily: t.type.mono20.fontFamily }]}>
+                  {companyCode}
+                </Text>
+                {hint('Çalışanlarınız kayıt olurken bu kodu girerek firmanıza katılır.')}
+                <Button
+                  kind="secondary"
+                  fullWidth
+                  label={codeCopied ? 'Kod kopyalandı' : 'Kodu paylaş'}
+                  icon={codeCopied ? 'check' : 'share'}
+                  onPress={shareCode}
+                />
+              </View>
+            </Card>
+          </View>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="İlk ürününüz" />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                {productCount > 0 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+                    <Icon name="check" size={t.size.iconSm} color="success" />
+                    <Text style={[t.type.body16, { color: t.colors.ink }]}>{productCount} ürününüz var.</Text>
+                  </View>
+                ) : (
+                  hint('Ürünleriniz katalogda aranabilir olur ve firma sayfanızda listelenir.')
+                )}
+                {/* Ekranda tek dolu düğme alt çubukta; bu eylem kenarlıklı. */}
+                <Button
+                  kind="secondary"
+                  fullWidth
+                  label={productCount > 0 ? 'Yeni ürün ekleyin' : 'İlk ürününüzü ekleyin'}
+                  icon="plus"
+                  onPress={() => navigation.navigate('AddProduct')}
+                />
+              </View>
+            </Card>
+          </View>
+        </>
+      ) : null}
+    </>,
+    <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+      <Button kind="secondary" label="Atla" onPress={goNext} style={{ flex: 1 }} />
+      <Button
+        label={isLast ? 'Bitir' : 'Kaydet ve devam'}
+        loading={saving}
+        onPress={saveAndContinue}
+        style={{ flex: 2 }}
+      />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  progressBlock: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
-  },
-  segments: { flexDirection: 'row', gap: 4 },
-  segment: { flex: 1, height: 6, borderRadius: radius.sm, backgroundColor: colors.divider },
-  segmentDone: { backgroundColor: colors.primary },
-  segmentCurrent: { backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.primary },
-  progressMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepCount: { ...typography.mono, color: colors.textMuted },
-  stepTitle: { ...typography.subtitle, color: colors.text, flexShrink: 1 },
-  content: { padding: spacing.lg, paddingBottom: spacing.xl },
-  stepHint: { ...typography.body, color: colors.textMuted, marginBottom: spacing.md },
-  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  sectionGap: { marginTop: spacing.lg },
-  companyCode: {
-    ...typography.monoStrong,
-    fontSize: 30,
-    lineHeight: 38,
-    letterSpacing: 2,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  doneRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: MIN_TOUCH - 12, marginBottom: spacing.sm },
-  doneText: { ...typography.body, color: colors.text },
-  error: { marginTop: spacing.md },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.sm,
-  },
-  actionButton: { flex: 1 },
-});

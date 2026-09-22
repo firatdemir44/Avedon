@@ -1,11 +1,14 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Etiketten okunanların onay ekranı (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Hiçbir şey kaydetmez: işaretli alanlar ürün formuna aktarılır, kullanıcı
+// formu normal kaydeder. Görünüm: okunan alanlar `Card` içinde işaretlenebilir
+// satırlar + güven rozeti (`Badge`), eksikler ayrı kart, altta tek dolu
+// "Forma aktar" + kenarlıklı "Vazgeç".
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import type { ExtractionFieldName } from '../../api/client';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
 import {
   AUTO_SELECT_CONFIDENCE,
   CERTAIN_CONFIDENCE,
@@ -17,24 +20,33 @@ import {
   hasValue,
 } from '../../features/products/passportImport';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Badge, Button, Card, Icon, Screen, SectionTitle, type BadgeKind } from '../../ui';
 
 type Props = RootStackScreenProps<'PassportReview'>;
 
 // Güven rozeti: yüksekse etikette birebir yazıyor, ortadaysa kontrol edilmeli,
 // düşükse şüpheli (varsayılan olarak işaretsiz gelir).
-function confidenceBadge(confidence: number) {
-  if (confidence >= CERTAIN_CONFIDENCE) return { label: 'Etikette yazıyor', style: styles.badgeSure };
-  if (confidence >= AUTO_SELECT_CONFIDENCE) return { label: 'Kontrol edin', style: styles.badgeCheck };
-  return { label: 'Şüpheli', style: styles.badgeDoubt };
+function confidenceBadge(confidence: number): { kind: BadgeKind; label: string } {
+  if (confidence >= CERTAIN_CONFIDENCE) return { kind: 'verified', label: 'Etikette yazıyor' };
+  if (confidence >= AUTO_SELECT_CONFIDENCE) return { kind: 'pending', label: 'Kontrol edin' };
+  return { kind: 'cancelled', label: 'Şüpheli' };
 }
 
-// Etiketten okunanların onay ekranı (Faz 1, Adım 3). Hiçbir şey kaydetmez:
-// işaretli alanlar ürün formuna aktarılır, kullanıcı formu normal kaydeder.
+// Sayı ve kod alanları eşit aralıklı yazıyla.
+function isMonoField(field: ExtractionFieldName) {
+  return field === 'code' || field === 'weightGsm' || field === 'widthCm' || field === 'yarns';
+}
+
 export function PassportReviewScreen({ navigation, route }: Props) {
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   const { productId, outcome } = route.params;
   const { extraction, warnings, rejected, meta } = outcome;
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const readFields = useMemo(
     () => EXTRACTION_FIELDS.filter((field) => hasValue(extraction, field)),
@@ -65,219 +77,169 @@ export function PassportReviewScreen({ navigation, route }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.introBlock}>
-          <Text style={styles.intro}>
-            Etiketten okunanlar. İşaretli alanlar forma aktarılır; sonra düzenleyebilirsiniz.
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Etiketten okunanlar" leading="back" onBack={() => navigation.goBack()} />
+      <Screen
+        sticky={
+          <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Button kind="secondary" label="Vazgeç" onPress={() => navigation.goBack()} style={{ flex: 1 }} />
+            <Button
+              label={`Forma aktar (${selected.length})`}
+              disabled={selected.length === 0}
+              onPress={transfer}
+              style={{ flex: 2 }}
+            />
+          </View>
+        }
+      >
+        <View style={{ gap: t.space[1] }}>
+          <Text style={[t.type.body16, { color: t.colors.ink }]}>
+            İşaretli alanlar forma aktarılır; sonra düzenleyebilirsiniz.
           </Text>
-          {meta.mock ? <Text style={styles.mockNote}>Test kipi: gerçek model çağrılmadı.</Text> : null}
+          {meta.mock ? (
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Test kipi: gerçek model çağrılmadı.</Text>
+          ) : null}
         </View>
 
         {warnings.notes.length ? (
-          <View style={styles.warningBox} accessibilityRole="alert">
-            <View style={styles.warningTitleRow}>
-              <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
-              <Text style={styles.warningTitle}>Dikkat</Text>
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.warningSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="warning" />
+            <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+              <Text style={[t.type.label14, { color: t.colors.warning }]}>Dikkat</Text>
+              {warnings.notes.map((note) => (
+                <Text key={note} style={[t.type.body14, { color: t.colors.ink }]}>
+                  {note}
+                </Text>
+              ))}
             </View>
-            {warnings.notes.map((note) => (
-              <Text key={note} style={styles.warningNote}>
-                {note}
-              </Text>
-            ))}
           </View>
         ) : null}
 
-        <SectionHeader title="Okunan alanlar" count={readFields.length} />
-        <View style={styles.block}>
-          {readFields.length === 0 ? (
-            <Text style={styles.emptyNote}>Etiketten hiçbir alan okunamadı. Bilgileri elle girebilirsiniz.</Text>
-          ) : null}
-          {readFields.map((field, index) => {
-            const checked = selected.includes(field);
-            const badge = confidenceBadge(extraction[field].confidence);
-            const evidence = extraction[field].evidence;
-            return (
-              <Pressable
-                key={field}
-                onPress={() => toggle(field)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked }}
-                // react-native-web accessibilityState.checked'i aria-checked'e
-                // çevirmiyor; ekran okuyucu seçimi duysun.
-                aria-checked={checked}
-                accessibilityLabel={`${FIELD_LABELS[field]}, ${formatFieldValue(extraction, field)}, ${badge.label}`}
-                style={({ pressed }) => [
-                  styles.fieldRow,
-                  index < readFields.length - 1 && styles.rowDivider,
-                  pressed && styles.rowPressed,
-                ]}
-              >
-                <Ionicons
-                  name={checked ? 'checkbox' : 'square-outline'}
-                  size={22}
-                  color={checked ? colors.primary : colors.chevron}
-                  style={styles.checkbox}
-                />
-                <View style={styles.fieldBody}>
-                  <View style={styles.fieldHead}>
-                    <Text style={styles.fieldName}>{FIELD_LABELS[field]}</Text>
-                    <Text style={[styles.badge, badge.style]}>{badge.label}</Text>
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title={`Okunan alanlar (${readFields.length})`} />
+          <Card noPadding>
+            {readFields.length === 0 ? (
+              <Text style={[t.type.body14, { color: t.colors.ink2, padding: t.space[4] }]}>
+                Etiketten hiçbir alan okunamadı. Bilgileri elle girebilirsiniz.
+              </Text>
+            ) : null}
+            {readFields.map((field, index) => {
+              const checked = selected.includes(field);
+              const badge = confidenceBadge(extraction[field].confidence);
+              const evidence = extraction[field].evidence;
+              const value = formatFieldValue(extraction, field);
+              return (
+                <Pressable
+                  key={field}
+                  onPress={() => toggle(field)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked }}
+                  // react-native-web accessibilityState.checked'i aria-checked'e
+                  // çevirmiyor; ekran okuyucu seçimi duysun.
+                  aria-checked={checked}
+                  accessibilityLabel={`${FIELD_LABELS[field]}, ${value}, ${badge.label}`}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: t.space[3],
+                    minHeight: t.size.row,
+                    paddingHorizontal: t.space[4],
+                    paddingVertical: t.space[3],
+                    borderBottomWidth: index < readFields.length - 1 ? 1 : 0,
+                    borderBottomColor: t.colors.line,
+                    backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+                  })}
+                >
+                  <Icon
+                    name={checked ? 'checkbox-outline' : 'square-outline'}
+                    color={checked ? 'brand' : 'ink3'}
+                  />
+                  <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: t.space[2],
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <Text style={[t.type.label14, { color: t.colors.ink2, flexShrink: 1 }]}>{FIELD_LABELS[field]}</Text>
+                      <Badge kind={badge.kind} label={badge.label} />
+                    </View>
+                    <Text style={[isMonoField(field) ? t.type.mono14 : t.type.body16, { color: t.colors.ink }]}>
+                      {value}
+                    </Text>
+                    {evidence ? (
+                      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Okunan: {evidence}</Text>
+                    ) : null}
                   </View>
-                  <Text style={isMonoField(field) ? styles.fieldValueMono : styles.fieldValue}>
-                    {formatFieldValue(extraction, field)}
-                  </Text>
-                  {evidence ? <Text style={styles.evidence}>Okunan: {evidence}</Text> : null}
-                </View>
-              </Pressable>
-            );
-          })}
+                </Pressable>
+              );
+            })}
+          </Card>
         </View>
 
         {missingFields.length ? (
-          <View style={styles.missingBlock}>
-            <Text style={styles.missingText}>
-              Bulunamadı: {missingFields.map((field) => FIELD_LABELS[field]).join(', ')}
-            </Text>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title={`Bulunamadı (${missingFields.length})`} />
+            <Card>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                {missingFields.map((field) => (
+                  <Badge key={field} kind="info" label={FIELD_LABELS[field]} />
+                ))}
+              </View>
+              <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: t.space[3] }]}>
+                Bu alanlar etikette okunamadı; formda elle girebilirsiniz.
+              </Text>
+            </Card>
           </View>
         ) : null}
 
         {rejected.length ? (
-          <>
-            <SectionHeader title="Okundu ama aktarılmadı" count={rejected.length} />
-            <View style={styles.block}>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title={`Okundu ama aktarılmadı (${rejected.length})`} />
+            <Card noPadding>
               {rejected.map((item, index) => (
                 <View
                   key={`${item.field}-${item.raw}-${index}`}
-                  style={[styles.rejectedRow, index < rejected.length - 1 && styles.rowDivider]}
+                  style={{
+                    paddingHorizontal: t.space[4],
+                    paddingVertical: t.space[3],
+                    gap: t.space[1],
+                    borderBottomWidth: index < rejected.length - 1 ? 1 : 0,
+                    borderBottomColor: t.colors.line,
+                  }}
                 >
-                  <Text style={styles.rejectedRaw}>{item.raw}</Text>
-                  <Text style={styles.rejectedReason}>{REJECT_REASON_LABELS[item.reason] ?? item.reason}</Text>
+                  <Text style={[t.type.body16, { color: t.colors.ink }]}>{item.raw}</Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                    {REJECT_REASON_LABELS[item.reason] ?? item.reason}
+                  </Text>
                 </View>
               ))}
-            </View>
-          </>
+            </Card>
+          </View>
         ) : null}
 
         {extraction.notes.trim() ? (
-          <>
-            <SectionHeader title="Notlar" />
-            <View style={styles.block}>
-              <Text style={styles.notes}>{extraction.notes.trim()}</Text>
-            </View>
-          </>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Notlar" />
+            <Card>
+              <Text style={[t.type.body16, { color: t.colors.ink }]}>{extraction.notes.trim()}</Text>
+            </Card>
+          </View>
         ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        <PrimaryButton
-          label="Vazgeç"
-          variant="outline"
-          size="lg"
-          onPress={() => navigation.goBack()}
-          style={styles.actionSecondary}
-        />
-        <PrimaryButton
-          label={`Forma aktar (${selected.length})`}
-          size="lg"
-          disabled={selected.length === 0}
-          onPress={transfer}
-          style={styles.actionMain}
-        />
-      </View>
+      </Screen>
     </View>
   );
 }
-
-// Sayı ve kod alanları eşit aralıklı yazıyla (Pazar Masası kuralı).
-function isMonoField(field: ExtractionFieldName) {
-  return field === 'code' || field === 'weightGsm' || field === 'widthCm' || field === 'yarns';
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface },
-  introBlock: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    gap: 4,
-  },
-  intro: { ...typography.body, color: colors.text },
-  mockNote: { ...typography.caption, color: colors.textMuted },
-  // Sunucu uyarıları: ürün formundaki "Kaydedildi. Dikkat:" kutusuyla aynı.
-  warningBox: {
-    backgroundColor: colors.warningSoft,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.warning,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    marginTop: spacing.blockGap,
-    gap: 4,
-  },
-  warningTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  warningTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.warning },
-  warningNote: { ...typography.caption, color: colors.text },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm + 2,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  rowPressed: { backgroundColor: colors.pressed },
-  checkbox: { marginTop: 2 },
-  fieldBody: { flex: 1, gap: 2 },
-  fieldHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  fieldName: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted, flexShrink: 1 },
-  badge: {
-    ...typography.caption,
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    lineHeight: 15,
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    overflow: 'hidden',
-  },
-  badgeSure: { backgroundColor: colors.successSoft, color: colors.success },
-  badgeCheck: { backgroundColor: colors.warningSoft, color: colors.warning },
-  badgeDoubt: { backgroundColor: colors.dangerSoft, color: colors.danger },
-  fieldValue: { ...typography.body, color: colors.text },
-  fieldValueMono: { ...typography.mono, color: colors.text },
-  evidence: { ...typography.caption, color: colors.textMuted },
-  emptyNote: {
-    ...typography.body,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-  },
-  missingBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm },
-  missingText: { ...typography.caption, color: colors.textMuted },
-  rejectedRow: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    gap: 2,
-  },
-  rejectedRaw: { ...typography.body, color: colors.text },
-  rejectedReason: { ...typography.caption, color: colors.textMuted },
-  notes: {
-    ...typography.body,
-    color: colors.text,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-  },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionSecondary: { flex: 1 },
-  actionMain: { flex: 2 },
-});

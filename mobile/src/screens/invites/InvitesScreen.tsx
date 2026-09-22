@@ -1,6 +1,16 @@
+// Davetler (yeni tasarım, 4. adım — DESIGN.md §2, §3).
+//
+// Veri katmanı DEĞİŞMEDİ: aynı uçlar (fetchInvites / createInvite /
+// cancelInvite), aynı hata kodları, aynı paylaşım kalıbı ve aynı navigasyon
+// hedefleri. Yalnızca görünüm yeni: `Screen` + `Card` + `Input` + `ChipRow` +
+// `ListRow` + `Badge` + `Button`.
+//
+// Platform SMS GÖNDERMEZ: sunucu hazır paylaşım metnini üretir, kullanıcı onu
+// kendi WhatsApp'ından yollar.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, Linking, Platform, Share, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView, Linking, Platform, Share } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -10,24 +20,29 @@ import {
   type Invite,
   type InviteRelation,
 } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
-import { ListRow } from '../../components/ListRow';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
-import { SkeletonList } from '../../components/Skeleton';
-import { TextField } from '../../components/TextField';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  Input,
+  ListRow,
+  Screen,
+  SectionTitle,
+  SkeletonRow,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'Invites'>;
-
-// Davetler (Faz 2, Adım 4). Platform SMS GÖNDERMEZ: sunucu hazır paylaşım
-// metnini üretir, kullanıcı onu kendi WhatsApp'ından yollar.
 
 const RELATION_OPTIONS: { value: InviteRelation; label: string }[] = [
   { value: 'tedarikci', label: 'Tedarikçim' },
@@ -56,6 +71,7 @@ interface AlreadyMember {
 }
 
 export function InvitesScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchInvites);
 
   const [name, setName] = useState('');
@@ -169,17 +185,25 @@ export function InvitesScreen({ navigation }: Props) {
 
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="person" />
-      </View>
+      <Screen>
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </Screen>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
-        <ErrorState error={error} fallback="Davetler alınamadı" onRetry={reload} />
-      </View>
+      <Screen>
+        <EmptyState
+          icon="warning"
+          title="Davetler alınamadı"
+          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
     );
   }
 
@@ -188,241 +212,235 @@ export function InvitesScreen({ navigation }: Props) {
 
   return (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
+      style={{ flex: 1, backgroundColor: t.colors.surface0 }}
+      contentContainerStyle={{ paddingVertical: t.space[4], alignItems: 'center' }}
       keyboardShouldPersistTaps="handled"
       refreshControl={refreshControl(refreshing, refresh)}
     >
-      <Text style={styles.intro}>
-        Çalıştığınız tedarikçiyi ya da müşteriyi davet edin. Kayıt olunca bağlantınız olur; ürünlerini görür, numune
-        ve teklif işlerini buradan yürütürsünüz.
-      </Text>
-
-      <View style={styles.block}>
-        <View style={styles.form}>
-          <TextField
-            label="Ad (opsiyonel)"
-            value={name}
-            onChangeText={setName}
-            placeholder="Örn. Ahmet Yılmaz"
-            maxLength={80}
-          />
-          <TextField
-            label="Telefon (opsiyonel)"
-            value={phone}
-            onChangeText={setPhone}
-            placeholder="05XX XXX XX XX"
-            keyboardType="phone-pad"
-            maxLength={20}
-          />
-          <Text style={styles.hint}>Numarayı yazarsanız o kişi kayıt olunca doğrudan bağlantınız olur.</Text>
-
-          <Text style={styles.fieldLabel}>İlişki</Text>
-          <ChipSelect options={RELATION_OPTIONS} value={relation} onChange={setRelation} />
-
-          {formError ? <InlineError message={formError} /> : null}
-          {alreadyMember ? (
-            <PrimaryButton
-              label="Profili aç"
-              variant="outline"
-              size="sm"
-              onPress={() => navigation.navigate('Profile', { userId: alreadyMember.id })}
-              style={styles.memberAction}
-            />
-          ) : null}
-
-          <PrimaryButton
-            label={submitting ? 'Oluşturuluyor' : 'Davet oluştur'}
-            size="lg"
-            disabled={submitting}
-            onPress={() => void submit()}
-          />
-        </View>
-      </View>
-
-      {current ? (
-        <>
-          <SectionHeader title="Davet hazır" />
-          <View style={styles.block}>
-            <View style={styles.card}>
-              <Text style={styles.cardLabel}>Paylaşılacak metin</Text>
-              <Text style={styles.shareText}>{current.shareText}</Text>
-
-              <View style={styles.codeRow}>
-                <Text style={styles.codeLabel}>Davet kodu</Text>
-                <Text style={styles.code}>{current.code}</Text>
-              </View>
-
-              <PrimaryButton
-                label="WhatsApp'tan gönder"
-                icon="logo-whatsapp"
-                size="lg"
-                onPress={() => openWhatsApp(current)}
-              />
-              <PrimaryButton
-                label={copied ? 'Kopyalandı' : Platform.OS === 'web' ? 'Metni kopyala' : 'Paylaş'}
-                variant="outline"
-                size="lg"
-                icon={copied ? 'checkmark' : 'share-outline'}
-                onPress={() => void shareInvite(current)}
-                style={styles.secondAction}
-              />
-              <Text style={styles.cardNote}>
-                Mesajı biz göndermiyoruz; metni siz paylaşıyorsunuz. Kişi kayıt olunca haber vereceğiz.
-              </Text>
-            </View>
-          </View>
-        </>
-      ) : null}
-
-      <SectionHeader title="Davetlerim" />
-      <View style={styles.block}>
-        <Text style={styles.summary}>
-          {invites.length} davet · {joinedCount} katıldı
+      <View
+        style={{
+          width: '100%',
+          maxWidth: t.size.maxContentWidth,
+          paddingHorizontal: t.space[4],
+          gap: t.space[6],
+          minWidth: 0,
+        }}
+      >
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+          Çalıştığınız tedarikçiyi ya da müşteriyi davet edin. Kayıt olunca bağlantınız olur; ürünlerini görür,
+          numune ve teklif işlerini buradan yürütürsünüz.
         </Text>
-        {invites.length ? (
-          invites.map((invite, index) => {
-            const joined = invite.status === 'joined';
-            const title = invite.name || invite.phone || 'Açık davet';
-            const rel = relationLabel(invite.relation);
-            return (
-              <View key={invite.id} style={index < invites.length - 1 ? styles.divider : undefined}>
-                <ListRow
-                  title={title}
-                  subtitle={
-                    [invite.name && invite.phone ? invite.phone : '', rel].filter(Boolean).join(' · ') || undefined
-                  }
-                  chevron={false}
-                  divider={false}
-                  accessibilityLabel={`${title}. ${joined ? 'Katıldı' : 'Bekliyor'}`}
-                  right={
-                    <View style={styles.rowRight}>
-                      <View style={[styles.statusBadge, joined ? styles.statusJoined : styles.statusPending]}>
-                        <Text style={[styles.statusText, joined && styles.statusTextJoined]}>
-                          {joined ? 'Katıldı' : 'Bekliyor'}
-                        </Text>
-                      </View>
-                      <Text style={styles.time}>{formatRelativeTime(invite.createdAt)}</Text>
-                    </View>
-                  }
-                />
-                {/* Eylemler satırın ALTINDA ayrı dokunma alanları: web'de iç
-                    içe düğme olmasın. */}
-                <View style={styles.rowActions}>
-                  {joined && invite.joinedUser ? (
-                    <Pressable
-                      onPress={() => navigation.navigate('Profile', { userId: invite.joinedUser!.id })}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${invite.joinedUser.firstName} ${invite.joinedUser.lastName} profilini aç`}
-                      style={({ pressed }) => [styles.linkWrap, pressed && styles.linkPressed]}
-                    >
-                      <Ionicons name="person-outline" size={16} color={colors.accent} />
-                      <Text style={styles.link}>
-                        {invite.joinedUser.firstName} {invite.joinedUser.lastName}
-                      </Text>
-                    </Pressable>
-                  ) : (
-                    <>
-                      <Pressable
-                        onPress={() => {
-                          setCurrent(invite);
-                          setCopied(false);
-                        }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Yeniden paylaş: ${title}`}
-                        style={({ pressed }) => [styles.linkWrap, pressed && styles.linkPressed]}
-                      >
-                        <Ionicons name="share-outline" size={16} color={colors.accent} />
-                        <Text style={styles.link}>Yeniden paylaş</Text>
-                      </Pressable>
-                      <Pressable
-                        onPress={() => void remove(invite)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`İptal et: ${title}`}
-                        style={({ pressed }) => [styles.linkWrap, pressed && styles.linkPressed]}
-                      >
-                        <Ionicons name="close-circle-outline" size={16} color={colors.danger} />
-                        <Text style={[styles.link, styles.linkDanger]}>İptal et</Text>
-                      </Pressable>
-                    </>
-                  )}
+
+        {/* Davet formu */}
+        <Card>
+          <View style={{ gap: t.space[4], minWidth: 0 }}>
+            <Input
+              label="Ad (opsiyonel)"
+              value={name}
+              onChangeText={setName}
+              placeholder="Örn. Ahmet Yılmaz"
+              maxLength={80}
+            />
+            <Input
+              label="Telefon (opsiyonel)"
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="05XX XXX XX XX"
+              keyboardType="phone-pad"
+              maxLength={20}
+              helper="Numarayı yazarsanız o kişi kayıt olunca doğrudan bağlantınız olur."
+            />
+
+            <View style={{ gap: t.space[2], minWidth: 0 }}>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>İlişki</Text>
+              <ChipRow>
+                {RELATION_OPTIONS.map((option) => (
+                  <Chip
+                    key={option.value || 'bos'}
+                    label={option.label}
+                    selected={relation === option.value}
+                    onPress={() => setRelation(option.value)}
+                  />
+                ))}
+              </ChipRow>
+            </View>
+
+            {formError ? <InlineBanner message={formError} /> : null}
+            {alreadyMember ? (
+              <Button
+                kind="secondary"
+                label="Profili aç"
+                icon="user"
+                onPress={() => navigation.navigate('Profile', { userId: alreadyMember.id })}
+              />
+            ) : null}
+
+            {/* Ekranın tek dolu düğmesi. */}
+            <Button
+              size="lg"
+              label="Davet oluştur"
+              loading={submitting}
+              disabled={submitting}
+              onPress={() => void submit()}
+            />
+          </View>
+        </Card>
+
+        {current ? (
+          <View style={{ gap: t.space[3], minWidth: 0 }}>
+            <SectionTitle title="Davet hazır" />
+            <Card>
+              <View style={{ gap: t.space[3], minWidth: 0 }}>
+                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Paylaşılacak metin</Text>
+                <Text
+                  style={[
+                    t.type.body14,
+                    {
+                      color: t.colors.ink,
+                      backgroundColor: t.colors.surface2,
+                      borderRadius: t.radius.md,
+                      borderWidth: 1,
+                      borderColor: t.colors.line,
+                      padding: t.space[3],
+                    },
+                  ]}
+                >
+                  {current.shareText}
+                </Text>
+
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.space[2], minWidth: 0 }}>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Davet kodu</Text>
+                  <Text
+                    numberOfLines={1}
+                    style={[t.type.mono20, { color: t.colors.brand, flex: 1, minWidth: 0 }]}
+                  >
+                    {current.code}
+                  </Text>
                 </View>
+
+                {/* Bu bölümdeki tek dolu düğme; üstteki form düğmesi ekranda
+                    yalnızca form görünürken duruyor (davet oluşunca kart açılır). */}
+                <Button
+                  size="lg"
+                  label="WhatsApp'tan gönder"
+                  icon="whatsapp"
+                  onPress={() => openWhatsApp(current)}
+                />
+                <Button
+                  kind="secondary"
+                  size="lg"
+                  label={copied ? 'Kopyalandı' : Platform.OS === 'web' ? 'Metni kopyala' : 'Paylaş'}
+                  icon={copied ? 'check' : 'share'}
+                  onPress={() => void shareInvite(current)}
+                />
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  Mesajı biz göndermiyoruz; metni siz paylaşıyorsunuz. Kişi kayıt olunca haber vereceğiz.
+                </Text>
               </View>
-            );
-          })
-        ) : (
-          <EmptyState
-            compact
-            icon="person-add-outline"
-            title="Henüz davet yok"
-            message="Birlikte çalıştığınız firmadan bir kişiyi davet edin; kayıt olunca bağlantınız olur."
-          />
-        )}
+            </Card>
+          </View>
+        ) : null}
+
+        {/* Davetlerim */}
+        <View style={{ gap: t.space[2], minWidth: 0 }}>
+          <SectionTitle title="Davetlerim" />
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+            {invites.length} davet · {joinedCount} katıldı
+          </Text>
+
+          {invites.length ? (
+            invites.map((invite, index) => {
+              const joined = invite.status === 'joined';
+              const title = invite.name || invite.phone || 'Açık davet';
+              const rel = relationLabel(invite.relation);
+              const subtitle =
+                [invite.name && invite.phone ? invite.phone : '', rel, formatRelativeTime(invite.createdAt)]
+                  .filter(Boolean)
+                  .join(' · ') || undefined;
+              return (
+                <View key={invite.id} style={{ minWidth: 0 }}>
+                  <ListRow
+                    title={title}
+                    subtitle={subtitle}
+                    avatarName={title}
+                    avatarKind="person"
+                    // Rozet ikon + metin taşır, yalnız renk değil (DESIGN.md §6).
+                    right={<Badge kind={joined ? 'delivered' : 'pending'} label={joined ? 'Katıldı' : 'Bekliyor'} />}
+                    divider={index < invites.length - 1}
+                  />
+                  {/* Eylemler satırın İÇİNDE değil ALTINDA: iç içe düğme olmaz. */}
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      flexWrap: 'wrap',
+                      gap: t.space[2],
+                      paddingVertical: t.space[2],
+                      minWidth: 0,
+                    }}
+                  >
+                    {joined && invite.joinedUser ? (
+                      <Button
+                        kind="quiet"
+                        icon="user"
+                        label={`${invite.joinedUser.firstName} ${invite.joinedUser.lastName}`}
+                        accessibilityLabel={`${invite.joinedUser.firstName} ${invite.joinedUser.lastName} profilini aç`}
+                        onPress={() => navigation.navigate('Profile', { userId: invite.joinedUser!.id })}
+                      />
+                    ) : (
+                      <>
+                        <Button
+                          kind="quiet"
+                          icon="share"
+                          label="Yeniden paylaş"
+                          accessibilityLabel={`Yeniden paylaş: ${title}`}
+                          onPress={() => {
+                            setCurrent(invite);
+                            setCopied(false);
+                          }}
+                        />
+                        <Button
+                          kind="danger"
+                          icon="x"
+                          label="İptal et"
+                          accessibilityLabel={`İptal et: ${title}`}
+                          onPress={() => void remove(invite)}
+                        />
+                      </>
+                    )}
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <EmptyState
+              icon="plus"
+              title="Henüz davet yok"
+              description="Birlikte çalıştığınız firmadan bir kişiyi davet edin; kayıt olunca bağlantınız olur."
+            />
+          )}
+        </View>
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  intro: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  block: { backgroundColor: colors.surface, marginBottom: spacing.blockGap },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-
-  form: { padding: spacing.gutter },
-  fieldLabel: { ...typography.label, color: colors.text, marginBottom: spacing.xs, marginLeft: spacing.sm },
-  hint: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.md },
-  memberAction: { alignSelf: 'flex-start', marginBottom: spacing.sm },
-
-  card: { padding: spacing.gutter, gap: spacing.sm },
-  cardLabel: { ...typography.caption, fontFamily: fonts.medium, color: colors.textMuted },
-  shareText: {
-    ...typography.caption,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.text,
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.sm + 2,
-  },
-  codeRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm, marginBottom: spacing.xs },
-  codeLabel: { ...typography.caption, color: colors.textMuted },
-  code: { ...typography.monoStrong, fontSize: 22, lineHeight: 28, color: colors.primary, letterSpacing: 1 },
-  secondAction: { marginTop: spacing.xs },
-  cardNote: { ...typography.caption, fontSize: 11, lineHeight: 16, color: colors.textMuted },
-
-  summary: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.sm,
-  },
-  rowRight: { alignItems: 'flex-end', gap: 2 },
-  statusBadge: { borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2 },
-  statusPending: { backgroundColor: colors.warningSoft },
-  statusJoined: { backgroundColor: colors.successSoft },
-  statusText: { ...typography.caption, fontSize: 11, fontFamily: fonts.semibold, color: colors.warning },
-  statusTextJoined: { color: colors.success },
-  time: { ...typography.caption, fontFamily: fonts.mono, fontSize: 11, color: colors.textMuted },
-
-  rowActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: spacing.sm,
-  },
-  linkWrap: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH - 12, paddingVertical: 4 },
-  linkPressed: { opacity: 0.6 },
-  link: { ...typography.caption, fontFamily: fonts.semibold, color: colors.accent },
-  linkDanger: { color: colors.danger },
-});
+// Form hatası: ikon + metin, `dangerSoft` zemin (RequestsScreen'deki banner).
+function InlineBanner({ message }: { message: string }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.dangerSoft,
+        minWidth: 0,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{message}</Text>
+    </View>
+  );
+}

@@ -1,23 +1,27 @@
+// Bağlantı istekleri (yeni tasarım, 4. adım — DESIGN.md §3).
+//
+// Veri katmanı AYNI: uçlar, navigasyon hedefleri ve rota adları değişmedi.
+// Yalnızca görünüm yeni: `ui/Screen`, `ui/ListRow`, `ui/Button`, `ui/EmptyState`.
+// Kişi satırı (profile gider) ile Kabul et / Reddet düğmeleri kardeş öğeler;
+// web'de iç içe düğme oluşmuyor.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useState } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { fetchIncomingConnectionRequests, respondToConnectionRequest } from '../../api/client';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectionRequests'>;
 
-// Yeni düzen (5. aşama): çizgili istek satırları. Kişi alanı (profile gider) ile
-// Kabul Et / Reddet düğmeleri kardeş öğeler; web'de iç içe düğme oluşmuyor.
 export function ConnectionRequestsScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchIncomingConnectionRequests().then(({ requests }) => requests)
   );
@@ -42,33 +46,55 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="person" />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <View style={{ gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      </Screen>
     );
   }
 
   if (status === 'error') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="İstekler alınamadı" onRetry={reload} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <EmptyState
+          icon="warning"
+          title="İstekler alınamadı"
+          description={friendlyMessage(error, 'İstekler alınamadı')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
     );
   }
 
   const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'İstekler alınamadı') : null);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <Screen scroll={false} noPadding>
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           bannerMessage ? (
-            <View style={styles.bannerWrap}>
-              <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                padding: t.space[3],
+                marginBottom: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.dangerSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{bannerMessage}</Text>
             </View>
           ) : null
         }
@@ -76,67 +102,57 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
           <EmptyState
             icon="person-add-outline"
             title="Bekleyen istek yok"
-            message="Biri size bağlantı isteği gönderdiğinde burada kabul edebilir ya da reddedebilirsiniz."
+            description="Biri size bağlantı isteği gönderdiğinde burada kabul edebilir ya da reddedebilirsiniz."
           />
         }
         renderItem={({ item, index }) => {
           const name = `${item.requester.firstName} ${item.requester.lastName}`;
           const busy = updatingId === item.id;
+          const last = index === requests.length - 1;
           return (
-            <View style={[styles.row, index < requests.length - 1 && styles.rowDivider]}>
-              <Pressable
+            <View
+              style={{
+                paddingBottom: t.space[3],
+                borderBottomWidth: last ? 0 : 1,
+                borderBottomColor: t.colors.line,
+                minWidth: 0,
+              }}
+            >
+              <ListRow
+                title={name}
+                subtitle={item.requester.position}
+                avatarName={name}
+                avatarKind="person"
+                divider={false}
                 onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}
-                accessibilityRole="button"
-                accessibilityLabel={`${name}, ${item.requester.position}, profili aç`}
-                style={({ pressed }) => [styles.person, pressed && styles.pressedFade]}
-              >
-                <CompanyAvatar name={item.requester.firstName} size={36} />
-                <View style={styles.personTexts}>
-                  <Text style={styles.name} numberOfLines={1}>
-                    {name}
-                  </Text>
-                  <Text style={styles.meta} numberOfLines={1}>
-                    {item.requester.position}
-                  </Text>
-                </View>
-              </Pressable>
-              <View style={styles.actionRow}>
-                <PrimaryButton
-                  label={busy ? 'İşleniyor' : 'Kabul Et'}
-                  icon="checkmark"
+              />
+              {/* Düğmeler satırın İÇİNDE değil ALTINDA (iç içe düğme olmaz).
+                  Ekranda dolu düğme yok: kenarlıklı + tehlikeli. */}
+              <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
+                <Button
+                  kind="secondary"
+                  icon="check"
+                  label="Kabul et"
+                  loading={busy}
                   disabled={busy}
-                  onPress={() => handleRespond(item.id, 'accepted')}
                   accessibilityLabel={`${name} isteğini kabul et`}
-                  style={styles.actionButton}
+                  onPress={() => void handleRespond(item.id, 'accepted')}
+                  style={{ flex: 1, minWidth: 0 }}
                 />
-                <PrimaryButton
+                <Button
+                  kind="danger"
+                  icon="x"
                   label="Reddet"
-                  variant="outline"
                   disabled={busy}
-                  onPress={() => handleRespond(item.id, 'rejected')}
                   accessibilityLabel={`${name} isteğini reddet`}
-                  style={styles.actionButton}
+                  onPress={() => void handleRespond(item.id, 'rejected')}
+                  style={{ flex: 1, minWidth: 0 }}
                 />
               </View>
             </View>
           );
         }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
-  row: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingVertical: 12, gap: 10 },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  person: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  pressedFade: { opacity: 0.6 },
-  personTexts: { flex: 1, gap: 1 },
-  name: { ...typography.subtitle, color: colors.text },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
-  actionButton: { flex: 1, paddingHorizontal: spacing.sm },
-});

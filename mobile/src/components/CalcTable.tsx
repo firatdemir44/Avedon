@@ -9,16 +9,21 @@ import {
   type TextStyle,
   type TextInputProps,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { TableInput } from './TableInput';
 import { UnitToggle } from './UnitToggle';
 import { confirmAction } from '../features/confirm';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { space } from '../theme/tokens';
+import { Button, Icon } from '../ui';
 
 // "Hesap tablosu" kalıbı (kullanıcı isteği 2026-09-21: "hesaplama sistemini bir
 // tabloya dönüştürelim, Örme Parkuru'ndaki tablo gibi"). Hesap artık alt alta
 // etiketli kutular değil, TEK bir elektronik tablo: solda kalem adı, ortada
 // girilen değer, sağda birim; en altta vurgulu SONUÇ satırları.
+//
+// 2026-09-22 (yeni tasarım, 4. adım): tablo düzeni AYNEN kaldı; yalnızca renk,
+// yazı, köşe ve boşluklar DESIGN.md token'larına bağlandı. Ham hex / ham px yok:
+// renkler tema nesnesinden geldiği için stiller bileşen gövdesinde üretilir.
 //
 // 375 px KURALI: uygulama çoğunlukla telefonda WEB'de kullanılıyor. Web'de
 // <input> öğesinin kendi asgari genişliği var; her giriş hücresinde `minWidth: 0`
@@ -30,12 +35,14 @@ const VALUE_WIDTH = 104;
 const UNIT_WIDTH = 62;
 
 interface TableProps {
-  /** Üstteki lacivert başlık şeridi (tablo adı). */
+  /** Üstteki marka rengi başlık şeridi (tablo adı). */
   title?: string;
   children: React.ReactNode;
 }
 
 export function CalcTable({ title, children }: TableProps) {
+  const t = useTheme();
+
   // Zebra: yalnızca giriş satırları sayılır, ara başlıkta sayaç sıfırlanır.
   let inputIndex = 0;
   let first = true;
@@ -56,10 +63,24 @@ export function CalcTable({ title, children }: TableProps) {
   });
 
   return (
-    <View style={styles.table}>
+    <View
+      style={{
+        backgroundColor: t.colors.surface1,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.lg,
+        overflow: 'hidden',
+      }}
+    >
       {title ? (
-        <View style={styles.titleBar}>
-          <Text style={styles.titleText} accessibilityRole="header">
+        <View
+          style={{
+            backgroundColor: t.colors.surfaceBrand,
+            paddingHorizontal: t.space[3],
+            paddingVertical: t.space[2],
+          }}
+        >
+          <Text style={[t.type.label14, { color: t.colors.onBrand }]} accessibilityRole="header">
             {title}
           </Text>
         </View>
@@ -74,18 +95,35 @@ interface RowInternals {
   _zebra?: boolean;
 }
 
-// Tablo içinde ara başlık satırı: açık gri zemin, küçük büyük harf etiket.
+/** Satırlar arasındaki ince ayırıcı (ilk satırda çizilmez). */
+function useDivider(first?: boolean) {
+  const t = useTheme();
+  return first ? null : { borderTopWidth: 1, borderTopColor: t.colors.line };
+}
+
+// Tablo içinde ara başlık satırı: `surface2` zemin, küçük BÜYÜK HARF etiket.
 export function CalcSectionRow({ label, _first }: { label: string } & RowInternals) {
+  const t = useTheme();
+  const divider = useDivider(_first);
   return (
-    <View style={[styles.sectionRow, !_first && styles.divided]}>
-      <Text style={styles.sectionText}>{label.toLocaleUpperCase('tr-TR')}</Text>
+    <View
+      style={[
+        {
+          backgroundColor: t.colors.surface2,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[2],
+        },
+        divider,
+      ]}
+    >
+      <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{label.toLocaleUpperCase('tr-TR')}</Text>
     </View>
   );
 }
 
 interface InputRowProps extends RowInternals {
   label: string;
-  /** Kalem adının altındaki küçük gri açıklama. */
+  /** Kalem adının altındaki küçük açıklama. */
   hint?: string;
   value: string;
   onChangeText: (value: string) => void;
@@ -95,7 +133,7 @@ interface InputRowProps extends RowInternals {
   /** Birim yerine dokunmalı seçici (para birimi, numara sistemi). */
   unitToggle?: { options: { value: string; label: string }[]; value: string; onChange: (value: string) => void };
   keyboardType?: TextInputProps['keyboardType'];
-  /** Satırın altında kırmızı küçük uyarı. */
+  /** Satırın altında küçük hata metni. */
   error?: string;
 }
 
@@ -113,25 +151,34 @@ export function CalcInputRow({
   _first,
   _zebra,
 }: InputRowProps) {
+  const t = useTheme();
+  const divider = useDivider(_first);
   const inputRef = useRef<TextInput>(null);
   const unitLabel = unit ?? (unitToggle ? unitToggle.options.find((o) => o.value === unitToggle.value)?.label : '');
   const a11y = `${label}${unitLabel ? `, ${unitLabel}` : ''}`;
 
   return (
-    <View style={[!_first && styles.divided, _zebra && styles.zebra]}>
+    <View style={[divider, _zebra && { backgroundColor: t.colors.surface2 }]}>
       {/* Satırın herhangi bir yerine (kalem adına da) dokununca giriş odaklanır.
           TextInput düğme değildir; iç içe buton sorunu oluşmaz. */}
       <Pressable
         onPress={() => inputRef.current?.focus()}
         accessibilityLabel={`${a11y} alanına yaz`}
-        style={styles.inputRow}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          minHeight: t.size.touchMin,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[2],
+        }}
       >
-        <View style={styles.labelCell}>
-          <Text style={styles.labelText} numberOfLines={2}>
+        <View style={styles.flexCell}>
+          <Text style={[t.type.body14, { color: t.colors.ink }]} numberOfLines={2}>
             {label}
           </Text>
           {hint ? (
-            <Text style={styles.hintText} numberOfLines={2}>
+            <Text style={[t.type.caption12, { color: t.colors.ink3 }]} numberOfLines={2}>
               {hint}
             </Text>
           ) : null}
@@ -144,7 +191,7 @@ export function CalcInputRow({
             placeholder={placeholder}
             keyboardType={keyboardType}
             accessibilityLabel={a11y}
-            style={[styles.valueInput, !!error && styles.valueInputError]}
+            style={[styles.fullWidth, !!error && { borderColor: t.colors.danger }]}
           />
         </View>
         <View style={styles.unitCell}>
@@ -156,13 +203,22 @@ export function CalcInputRow({
               label={`${label} birimi`}
             />
           ) : unit ? (
-            <Text style={styles.unitText} numberOfLines={2}>
+            <Text style={[t.type.mono14, { color: t.colors.ink3 }]} numberOfLines={2}>
               {unit}
             </Text>
           ) : null}
         </View>
       </Pressable>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? (
+        <Text
+          style={[
+            t.type.body14,
+            { color: t.colors.danger, paddingHorizontal: t.space[3], paddingBottom: t.space[2] },
+          ]}
+        >
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -178,23 +234,45 @@ interface ResultRowProps extends RowInternals {
 }
 
 export function CalcResultRow({ label, value, unit, note, emphasis, _first }: ResultRowProps) {
+  const t = useTheme();
+  const divider = useDivider(_first);
+  const primary = emphasis === 'primary';
+  // Vurgulu satırda bütün metinler ters zeminde: `onBrand`.
+  const labelColor = primary ? t.colors.onBrand : t.colors.ink;
+  const mutedColor = primary ? t.colors.onBrand : t.colors.ink3;
+
   return (
     <View
-      style={[styles.resultRow, !_first && styles.divided, emphasis === 'primary' && styles.resultRowPrimary]}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          minHeight: t.size.touchMin,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[2],
+          backgroundColor: primary ? t.colors.surfaceBrand : t.colors.brandSoft,
+        },
+        divider,
+      ]}
       accessibilityLabel={`${label}: ${value}${unit ? ` ${unit}` : ''}`}
     >
-      <View style={styles.resultLabelCell}>
-        <Text style={[styles.resultLabel, emphasis === 'primary' && styles.resultLabelPrimary]} numberOfLines={2}>
+      <View style={styles.flexCell}>
+        <Text style={[t.type.label14, { color: labelColor }]} numberOfLines={2}>
           {label}
         </Text>
-        {note ? (
-          <Text style={[styles.hintText, emphasis === 'primary' && styles.onPrimaryMuted]}>{note}</Text>
-        ) : null}
+        {note ? <Text style={[t.type.caption12, { color: mutedColor }]}>{note}</Text> : null}
       </View>
-      <Text style={[styles.resultValue, emphasis === 'primary' && styles.resultValuePrimary]}>{value}</Text>
-      {unit ? (
-        <Text style={[styles.resultUnit, emphasis === 'primary' && styles.onPrimaryMuted]}>{unit}</Text>
-      ) : null}
+      <Text
+        numberOfLines={1}
+        style={[
+          primary ? t.type.display28 : t.type.mono20,
+          { color: primary ? t.colors.onBrand : t.colors.brand, textAlign: 'right', flexShrink: 1 },
+        ]}
+      >
+        {value}
+      </Text>
+      {unit ? <Text style={[t.type.mono14, { color: mutedColor }]}>{unit}</Text> : null}
     </View>
   );
 }
@@ -205,30 +283,67 @@ export function CalcNoteRow({
   tone = 'muted',
   _first,
 }: { text: string; tone?: 'muted' | 'warning' } & RowInternals) {
+  const t = useTheme();
+  const divider = useDivider(_first);
+  const warning = tone === 'warning';
   return (
-    <View style={[styles.noteRow, !_first && styles.divided, tone === 'warning' && styles.noteRowWarning]}>
-      {tone === 'warning' ? <Ionicons name="alert-circle-outline" size={16} color={colors.danger} /> : null}
-      <Text style={[styles.noteText, tone === 'warning' && styles.noteTextWarning]}>{text}</Text>
+    <View
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: t.space[2],
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[2],
+        },
+        divider,
+        warning && { backgroundColor: t.colors.dangerSoft },
+      ]}
+    >
+      {warning ? <Icon name="warning" size={t.size.iconSm} color="danger" /> : null}
+      <Text style={[t.type.body14, styles.flexCell, { color: warning ? t.colors.danger : t.colors.ink3 }]}>
+        {text}
+      </Text>
     </View>
   );
 }
 
 // Tablo altında katlanabilir "Nasıl hesaplandı?" satırı.
 export function CalcFormulaRow({ text, _first }: { text: string } & RowInternals) {
+  const t = useTheme();
+  const divider = useDivider(_first);
   const [open, setOpen] = React.useState(false);
   return (
-    <View style={[!_first && styles.divided]}>
+    <View style={divider}>
       <Pressable
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         accessibilityLabel={`Nasıl hesaplandı, ${open ? 'kapat' : 'aç'}`}
-        style={({ pressed }) => [styles.formulaToggle, pressed && styles.pressedRow]}
+        style={({ pressed }) => [
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[1],
+            minHeight: t.size.touchMin,
+            paddingHorizontal: t.space[3],
+          },
+          pressed && { backgroundColor: t.colors.surface2 },
+        ]}
       >
-        <Text style={styles.formulaToggleText}>Nasıl hesaplandı?</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.chevron} />
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>Nasıl hesaplandı?</Text>
+        <Icon name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="ink3" />
       </Pressable>
-      {open ? <Text style={styles.formulaText}>{text}</Text> : null}
+      {open ? (
+        <Text
+          style={[
+            t.type.body14,
+            { color: t.colors.ink3, paddingHorizontal: t.space[3], paddingBottom: t.space[3] },
+          ]}
+        >
+          {text}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -240,36 +355,74 @@ export function CalcSubRow({
   header,
   _first,
 }: { children: React.ReactNode; header?: boolean } & RowInternals) {
-  return <View style={[styles.subRow, header && styles.subHead, !_first && styles.divided]}>{children}</View>;
+  const t = useTheme();
+  const divider = useDivider(_first);
+  return (
+    <View
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[1],
+        },
+        header && { backgroundColor: t.colors.surface2 },
+        divider,
+      ]}
+    >
+      {children}
+    </View>
+  );
 }
 
 export function CalcSubHeadCell({ label, style }: { label: string; style?: StyleProp<TextStyle> }) {
+  const t = useTheme();
   return (
-    <Text style={[styles.subHeadText, style]} numberOfLines={2}>
+    <Text style={[t.type.caption12, { color: t.colors.ink2, textAlign: 'center' }, style]} numberOfLines={2}>
       {label}
     </Text>
   );
 }
 
 export function CalcAddRow({ label, onPress, _first }: { label: string; onPress: () => void } & RowInternals) {
+  const t = useTheme();
+  const divider = useDivider(_first);
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [styles.addRow, !_first && styles.divided, pressed && styles.pressedRow]}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: t.space[1],
+          minHeight: t.size.touchMin,
+        },
+        divider,
+        pressed && { backgroundColor: t.colors.surface2 },
+      ]}
     >
-      <Ionicons name="add" size={18} color={colors.accent} />
-      <Text style={styles.addText}>{label}</Text>
+      <Icon name="plus" size={t.size.iconSm} color="brand" />
+      <Text style={[t.type.label14, { color: t.colors.brand }]}>{label}</Text>
     </Pressable>
   );
 }
 
 export function CalcRemoveCell({ label, onPress }: { label: string; onPress?: () => void }) {
-  if (!onPress) return <View style={styles.removeCell} />;
+  const t = useTheme();
+  const cell = {
+    width: t.size.icon,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: t.size.touchMin,
+  } as const;
+  if (!onPress) return <View style={cell} />;
   return (
-    <Pressable style={styles.removeCell} onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label}>
-      <Ionicons name="close" size={18} color={colors.textMuted} />
+    <Pressable style={cell} onPress={onPress} hitSlop={8} accessibilityRole="button" accessibilityLabel={label}>
+      <Icon name="x" size={t.size.iconSm} color="ink3" />
     </Pressable>
   );
 }
@@ -288,147 +441,30 @@ export function CalcClearButton({ onClear }: { onClear: () => void }) {
     if (ok) onClear();
   };
   return (
-    <Pressable
-      onPress={press}
-      accessibilityRole="button"
+    <Button
+      kind="secondary"
+      label="Temizle"
+      icon="refresh-outline"
       accessibilityLabel="Alanları temizle"
-      style={({ pressed }) => [styles.clearButton, pressed && styles.pressedRow]}
-    >
-      <Ionicons name="refresh-outline" size={16} color={colors.textMuted} />
-      <Text style={styles.clearText}>Temizle</Text>
-    </Pressable>
+      onPress={press}
+    />
   );
 }
 
+// Yalnızca yerleşim (renk/yazı taşımaz): alt tablo sütun genişlikleri.
+// Hepsinde `minWidth: 0` — web'de <input> daralabilsin diye.
 export const calcCells = StyleSheet.create({
-  index: { width: 16, ...typography.label, color: colors.primary, textAlign: 'center' },
-  // Alt tablo sütunları: hepsi minWidth 0 (web'de <input> daralabilsin).
+  // Sıra numarası sütunu: 4px ızgaranın `space[4]` adımı (16).
+  index: { width: space[4], textAlign: 'center' },
   flex1: { flex: 1, minWidth: 0 },
   flex11: { flex: 1.1, minWidth: 0 },
   flex2: { flex: 2, minWidth: 0 },
 });
 
+// Renk/boşluk taşımayan sabit yerleşim ölçüleri (375 px kuralı).
 const styles = StyleSheet.create({
-  table: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-  },
-  titleBar: { backgroundColor: colors.primary, paddingHorizontal: 10, paddingVertical: 8 },
-  titleText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primaryText },
-  divided: { borderTopWidth: 1, borderTopColor: colors.divider },
-  zebra: { backgroundColor: colors.surfaceTonal },
-  pressedRow: { backgroundColor: colors.pressed },
-
-  sectionRow: { backgroundColor: colors.chip, paddingHorizontal: 10, paddingVertical: 6 },
-  sectionText: {
-    fontFamily: fonts.semibold,
-    fontSize: 11,
-    lineHeight: 15,
-    letterSpacing: 0.5,
-    color: colors.textMuted,
-  },
-
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  labelCell: { flex: 1, minWidth: 0 },
-  labelText: { ...typography.caption, fontSize: 14, lineHeight: 18, color: colors.text },
-  hintText: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+  flexCell: { flex: 1, minWidth: 0 },
+  fullWidth: { width: '100%' },
   valueCell: { width: VALUE_WIDTH, minWidth: 0 },
-  valueInput: { width: '100%', fontSize: 16 },
-  valueInputError: { borderColor: colors.danger },
   unitCell: { width: UNIT_WIDTH, minWidth: 0, alignItems: 'flex-start', justifyContent: 'center' },
-  unitText: { ...typography.caption, fontSize: 13, color: colors.textMuted },
-  errorText: {
-    ...typography.caption,
-    fontSize: 12,
-    color: colors.danger,
-    paddingHorizontal: 10,
-    paddingBottom: 6,
-  },
-
-  resultRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: colors.accentSoft,
-  },
-  resultRowPrimary: { backgroundColor: colors.primary },
-  resultLabelCell: { flex: 1, minWidth: 0 },
-  resultLabel: { ...typography.caption, fontSize: 14, lineHeight: 19, fontFamily: fonts.semibold, color: colors.text },
-  resultLabelPrimary: { color: colors.primaryText },
-  // Lacivert sonuç satırındaki ikincil metinler (birim, döviz karşılığı).
-  onPrimaryMuted: { color: colors.onPrimaryMuted },
-  resultValue: { fontFamily: fonts.monoSemibold, fontSize: 17, lineHeight: 23, color: colors.primary, textAlign: 'right' },
-  resultValuePrimary: { color: colors.primaryText, fontSize: 19, lineHeight: 25 },
-  resultUnit: { fontFamily: fonts.mono, fontSize: 12, lineHeight: 23, color: colors.textMuted, maxWidth: 58 },
-
-  noteRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  noteRowWarning: { backgroundColor: colors.dangerSoft },
-  noteText: { ...typography.caption, fontSize: 12, lineHeight: 17, color: colors.textMuted, flex: 1, minWidth: 0 },
-  noteTextWarning: { color: colors.danger },
-
-  formulaToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH, paddingHorizontal: 10 },
-  formulaToggleText: { ...typography.caption, fontSize: 12, color: colors.textMuted },
-  formulaText: {
-    ...typography.caption,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textMuted,
-    paddingHorizontal: 10,
-    paddingBottom: spacing.sm,
-  },
-
-  subRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5 },
-  subHead: { backgroundColor: colors.surfaceTonal, paddingVertical: 4 },
-  subHeadText: {
-    ...typography.caption,
-    fontSize: 11,
-    lineHeight: 14,
-    fontFamily: fonts.semibold,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minHeight: MIN_TOUCH,
-  },
-  addText: { ...typography.label, color: colors.accent },
-  clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-  },
-  clearText: { ...typography.label, color: colors.textMuted },
-  removeCell: { width: 24, alignItems: 'center', justifyContent: 'center', minHeight: MIN_TOUCH - 8 },
 });

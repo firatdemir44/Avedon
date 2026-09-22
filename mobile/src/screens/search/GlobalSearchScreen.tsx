@@ -1,16 +1,39 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+// Genel arama (yeni tasarım, 4. adım — DESIGN.md §2, §3).
+//
+// Veri katmanı DEĞİŞMEDİ: aynı `globalSearch` ucu, aynı gecikme (debounce),
+// aynı "son aramalar" deposu ve aynı navigasyon hedefleri. Yalnızca görünüm
+// yeni: arama kutusu banda gömülmez (`ui/SearchBox`, `main` içinde 48px ayrı
+// alan), sonuç türleri `ui/SegmentControl`, firmalar `ui/ListRow`, ürünler
+// `ui/ProductCard`, ilk/boş durum `ui/EmptyState`.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { globalSearch, type GlobalSearchCompany, type GlobalSearchResult } from '../../api/client';
-import { SearchField } from '../../components/SearchField';
-import { SectionHeader } from '../../components/SectionHeader';
-import { ProductRow } from '../../components/ProductRow';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
-import { EmptyState, InlineError, friendlyMessage } from '../../components/StateView';
-import { companyTypeLabel } from '../../features/products/catalog';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { friendlyMessage } from '../../components/StateView';
+import { categoryLabel, companyTypeLabel, isYarnType } from '../../features/products/catalog';
+import { formatComposition } from '../../features/products/glossaryLabels';
+import { formatMeasure } from '../../features/calculators/parse';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
+import type { Product } from '../../types';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  Button,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  ListRow,
+  ProductCard,
+  Screen,
+  SearchBox,
+  SectionTitle,
+  SegmentControl,
+  Skeleton,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'GlobalSearch'>;
 
@@ -23,12 +46,62 @@ const MIN_QUERY = 2;
 const RECENT_KEY = 'avedon.recentSearches';
 const MAX_RECENT = 5;
 
+// Sonuç türü süzgeci yalnızca GÖRÜNÜMDE çalışır: istek yine tek sefer atılır,
+// gelen üç grup burada gizlenir/gösterilir (fazladan ağ trafiği yok).
+type Kind = 'all' | 'companies' | 'fabrics' | 'yarns';
+
+const KIND_OPTIONS: { value: Kind; label: string }[] = [
+  { value: 'all', label: 'Tümü' },
+  { value: 'companies', label: 'Firma' },
+  { value: 'fabrics', label: 'Kumaş' },
+  { value: 'yarns', label: 'İplik' },
+];
+
+// Kart özellik satırı: "165 gr/m² · 160 cm · %94 PES %6 EA" (DESIGN.md §3).
+// İplikte gramaj/en 0'dır, onun yerine ipliğin kendi özeti yazılır.
+function specsOf(product: Product): string {
+  if (isYarnType(product.type)) return product.yarn?.summary || product.content;
+  const composition = product.composition ?? [];
+  const content = composition.length ? formatComposition(composition) : product.content;
+  return [`${formatMeasure(product.weightGsm)} gr/m²`, `${formatMeasure(product.widthCm)} cm`, content]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+// Kapak fotoğrafı arama yanıtında gelmiyor; önbellekten / tek tek çekilir
+// (ProductListScreen'deki kalıbın aynısı).
+function useProductImage(productId: string, hasImage: boolean) {
+  const [uri, setUri] = useState<string | null>(() => getCachedProductImage(productId) ?? null);
+  useEffect(() => {
+    if (!hasImage) return;
+    const cached = getCachedProductImage(productId);
+    if (cached) {
+      setUri(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(productId)
+      .then((url) => {
+        if (!cancelled) setUri(url);
+      })
+      .catch(() => {
+        // Fotoğraf gelmezse kart yer tutucuyla çalışır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, hasImage]);
+  return uri;
+}
+
 export function GlobalSearchScreen({ navigation }: Props) {
+  const t = useTheme();
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<GlobalSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>([]);
+  const [kind, setKind] = useState<Kind>('all');
   // Eski yanıt yeni sonucu ezmesin: yalnızca en son isteğin yanıtı yazılır.
   const requestIdRef = useRef(0);
 
@@ -99,10 +172,27 @@ export function GlobalSearchScreen({ navigation }: Props) {
   const hasResults =
     !!result && (result.companies.items.length > 0 || result.fabrics.items.length > 0 || result.yarns.items.length > 0);
 
+  // Segmentte hangi türlerin çizileceği.
+  const show = useMemo(
+    () => ({
+      companies: kind === 'all' || kind === 'companies',
+      fabrics: kind === 'all' || kind === 'fabrics',
+      yarns: kind === 'all' || kind === 'yarns',
+    }),
+    [kind]
+  );
+
+  // Seçili türde hiç sonuç yoksa "bu türde sonuç yok" durumu gösterilir.
+  const visibleCount =
+    (show.companies ? result?.companies.items.length ?? 0 : 0) +
+    (show.fabrics ? result?.fabrics.items.length ?? 0 : 0) +
+    (show.yarns ? result?.yarns.items.length ?? 0 : 0);
+
   return (
-    <View style={styles.container}>
-      <View style={styles.searchBar}>
-        <SearchField
+    <Screen scroll={false} noPadding>
+      {/* Arama kutusu banda gömülmez: `main` içinde 48px ayrı alan (DESIGN.md §2). */}
+      <View style={{ paddingHorizontal: t.space[4], gap: t.space[3] }}>
+        <SearchBox
           value={query}
           onChangeText={setQuery}
           placeholder="Firma, kumaş ya da iplik ara"
@@ -110,152 +200,183 @@ export function GlobalSearchScreen({ navigation }: Props) {
           autoFocus
           onSubmitEditing={() => run(query)}
         />
+        {trimmed.length >= MIN_QUERY ? (
+          <SegmentControl<Kind>
+            stretch
+            accessibilityLabel="Sonuç türü"
+            value={kind}
+            onChange={setKind}
+            options={KIND_OPTIONS}
+          />
+        ) : null}
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {error ? <InlineError message={error} onRetry={() => run(query)} style={styles.banner} /> : null}
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: t.space[10], gap: t.space[6] }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {error ? (
+          <View style={{ paddingHorizontal: t.space[4], gap: t.space[3] }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.dangerSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+            </View>
+            <Button kind="secondary" label="Tekrar dene" onPress={() => run(query)} />
+          </View>
+        ) : null}
 
         {trimmed.length < MIN_QUERY ? (
-          <View style={styles.block}>
-            <Text style={styles.hint}>
+          <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
               Firma adı, kumaş kodu, çeşit ya da iplik yazın. Örn. süprem, 30/1, Bursa
             </Text>
             {recent.length ? (
-              <View style={styles.recentWrap}>
-                <View style={styles.recentHead}>
-                  <Text style={styles.recentTitle}>Son aramalar</Text>
-                  <Pressable
-                    onPress={clearRecent}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel="Son aramaları temizle"
-                  >
-                    <Text style={styles.clearText}>Temizle</Text>
-                  </Pressable>
-                </View>
-                <View style={styles.chips}>
+              <View style={{ gap: t.space[2] }}>
+                <SectionTitle title="Son aramalar" linkLabel="Temizle" onLinkPress={clearRecent} />
+                {/* Çipler yatay kaydırılır, satır kırmaz (DESIGN.md §3). */}
+                <ChipRow>
                   {recent.map((item) => (
-                    <Pressable
-                      key={item}
-                      onPress={() => setQuery(item)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${item} aramasını tekrarla`}
-                      style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-                    >
-                      <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                      <Text style={styles.chipText} numberOfLines={1}>
-                        {item}
-                      </Text>
-                    </Pressable>
+                    <Chip key={item} icon="clock" label={item} onPress={() => setQuery(item)} />
                   ))}
-                </View>
+                </ChipRow>
               </View>
             ) : null}
           </View>
         ) : loading && !result ? (
-          <ActivityIndicator style={styles.spinner} color={colors.primary} />
+          <View style={{ paddingHorizontal: t.space[4], gap: t.space[3] }}>
+            <Skeleton height={t.size.row} />
+            <Skeleton height={t.size.row} />
+            <Skeleton height={t.size.row} />
+          </View>
         ) : hasResults && result ? (
-          <>
-            {result.companies.items.length ? (
-              <View>
-                <SectionHeader title="Firmalar" first />
-                <View style={styles.block}>
-                  {result.companies.items.map((company, index) => (
-                    <CompanyResultRow
-                      key={company.id}
-                      company={company}
-                      divider={index < result.companies.items.length - 1}
-                      onPress={() => go(() => navigation.navigate('CompanyProfile', { companyId: company.id }))}
-                    />
-                  ))}
+          visibleCount === 0 ? (
+            <EmptyState
+              icon="search"
+              title="Bu türde sonuç yok"
+              description="Başka bir sonuç türü seçin ya da aramayı değiştirin."
+              actionLabel="Tüm sonuçlar"
+              onAction={() => setKind('all')}
+            />
+          ) : (
+            <>
+              {show.companies && result.companies.items.length ? (
+                <View style={{ gap: t.space[2] }}>
+                  <View style={{ paddingHorizontal: t.space[4] }}>
+                    <SectionTitle title="Firmalar" />
+                  </View>
+                  <View>
+                    {result.companies.items.map((company, index) => (
+                      <CompanyResultRow
+                        key={company.id}
+                        company={company}
+                        divider={index < result.companies.items.length - 1}
+                        onPress={() => go(() => navigation.navigate('CompanyProfile', { companyId: company.id }))}
+                      />
+                    ))}
+                  </View>
+                  {/* Firmada "Tümünü gör" yok: firma listesi ekranı henüz yok. */}
                 </View>
-                {/* Firmada "Tümünü gör" yok: firma listesi ekranı henüz yok. */}
-              </View>
-            ) : null}
+              ) : null}
 
-            {result.fabrics.items.length ? (
-              <View>
-                <SectionHeader title="Kumaşlar" />
-                <View style={styles.block}>
-                  {result.fabrics.items.map((product, index) => (
-                    <ProductRow
+              {show.fabrics && result.fabrics.items.length ? (
+                <View style={{ gap: t.space[3] }}>
+                  <View style={{ paddingHorizontal: t.space[4] }}>
+                    <SectionTitle
+                      title="Kumaşlar"
+                      linkLabel={result.fabrics.hasMore ? 'Tümünü gör' : undefined}
+                      onLinkPress={
+                        result.fabrics.hasMore
+                          ? () =>
+                              go(() =>
+                                navigation.navigate('MainTabs', {
+                                  screen: 'ProductList',
+                                  params: { initialSearch: trimmed, searchKey: Date.now() },
+                                })
+                              )
+                          : undefined
+                      }
+                    />
+                  </View>
+                  {result.fabrics.items.map((product) => (
+                    <ProductResultCard
                       key={product.id}
                       product={product}
-                      divider={index < result.fabrics.items.length - 1}
                       onPress={() => go(() => navigation.navigate('ProductDetail', { productId: product.id }))}
                     />
                   ))}
                 </View>
-                {result.fabrics.hasMore ? (
-                  <SeeAll
-                    label="Tüm kumaş sonuçlarını gör"
-                    onPress={() =>
-                      go(() =>
-                        navigation.navigate('MainTabs', {
-                          screen: 'ProductList',
-                          params: { initialSearch: trimmed, searchKey: Date.now() },
-                        })
-                      )
-                    }
-                  />
-                ) : null}
-              </View>
-            ) : null}
+              ) : null}
 
-            {result.yarns.items.length ? (
-              <View>
-                <SectionHeader title="İplikler" />
-                <View style={styles.block}>
-                  {result.yarns.items.map((product, index) => (
-                    <ProductRow
+              {show.yarns && result.yarns.items.length ? (
+                <View style={{ gap: t.space[3] }}>
+                  <View style={{ paddingHorizontal: t.space[4] }}>
+                    <SectionTitle
+                      title="İplikler"
+                      linkLabel={result.yarns.hasMore ? 'Tümünü gör' : undefined}
+                      onLinkPress={
+                        result.yarns.hasMore
+                          ? () =>
+                              go(() =>
+                                navigation.navigate('YarnDirectory', {
+                                  preset: { search: trimmed },
+                                  presetKey: Date.now(),
+                                })
+                              )
+                          : undefined
+                      }
+                    />
+                  </View>
+                  {result.yarns.items.map((product) => (
+                    <ProductResultCard
                       key={product.id}
                       product={product}
-                      divider={index < result.yarns.items.length - 1}
                       onPress={() => go(() => navigation.navigate('ProductDetail', { productId: product.id }))}
                     />
                   ))}
                 </View>
-                {result.yarns.hasMore ? (
-                  <SeeAll
-                    label="Tüm iplik sonuçlarını gör"
-                    onPress={() =>
-                      go(() =>
-                        navigation.navigate('YarnDirectory', {
-                          preset: { search: trimmed },
-                          presetKey: Date.now(),
-                        })
-                      )
-                    }
-                  />
-                ) : null}
-              </View>
-            ) : null}
-          </>
+              ) : null}
+            </>
+          )
         ) : error ? null : (
           <EmptyState
-            icon="search-outline"
+            icon="search"
             title="Sonuç bulunamadı"
-            message={`“${trimmed}” için sonuç bulunamadı.`}
+            description={`“${trimmed}” için sonuç bulunamadı. Fotoğrafla benzer kumaş arayabilirsiniz.`}
             actionLabel="Fotoğrafla kumaş ara"
             onAction={() => navigation.navigate('SimilarSearch')}
           />
         )}
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
-function SeeAll({ label, onPress }: { label: string; onPress: () => void }) {
+// Ürün sonucu: kapak fotoğrafı hook'u kart başına çalıştığı için ayrı bileşen
+// (hook koşullu çağrılamaz).
+function ProductResultCard({ product, onPress }: { product: Product; onPress: () => void }) {
+  const t = useTheme();
+  const imageUri = useProductImage(product.id, product.hasImage);
   return (
-    <Pressable
+    <ProductCard
+      name={categoryLabel(product.type, product.subtype ?? '')}
+      code={product.code}
+      specs={specsOf(product)}
+      companyName={product.company?.name}
+      companyVerified={product.company?.verification === 'dogrulanmis'}
+      imageUri={imageUri}
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.seeAll, pressed && styles.seeAllPressed]}
-    >
-      <Text style={styles.seeAllText}>Tümünü gör</Text>
-      <Ionicons name="chevron-forward" size={16} color={colors.accent} />
-    </Pressable>
+      style={{ marginHorizontal: t.space[4] }}
+    />
   );
 }
 
@@ -268,101 +389,28 @@ function CompanyResultRow({
   divider: boolean;
   onPress: () => void;
 }) {
+  const t = useTheme();
   const meta = [company.city, companyTypeLabel(company.companyType), `${company.productCount} ürün`]
     .filter(Boolean)
     .join(' · ');
   return (
-    <Pressable
+    <ListRow
+      title={company.name}
+      subtitle={meta || undefined}
+      // Firma logosu gerçek görselden gelir; ListRow'un harf avatarı yerine
+      // hazır `CompanyAvatar` (zaten token'a bağlı) kullanılır.
+      left={
+        <CompanyAvatar
+          name={company.name}
+          verification={company.verification}
+          companyId={company.id}
+          logoUpdatedAt={company.logoUpdatedAt}
+          size={t.size.avatar}
+        />
+      }
+      divider={divider}
       onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={company.name}
-      style={({ pressed }) => [styles.companyRow, divider && styles.rowDivider, pressed && styles.rowPressed]}
-    >
-      <CompanyAvatar
-        name={company.name}
-        verification={company.verification}
-        companyId={company.id}
-        logoUpdatedAt={company.logoUpdatedAt}
-        size={40}
-      />
-      <View style={styles.companyTexts}>
-        <Text style={styles.companyName} numberOfLines={1}>
-          {company.name}
-        </Text>
-        {meta ? (
-          <Text style={styles.companyMeta} numberOfLines={1}>
-            {meta}
-          </Text>
-        ) : null}
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-    </Pressable>
+      style={{ paddingHorizontal: t.space[4] }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  searchBar: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  content: { paddingBottom: spacing.xl },
-  banner: { marginHorizontal: spacing.gutter, marginTop: spacing.md },
-  block: { backgroundColor: colors.surface },
-  spinner: { marginTop: spacing.xl },
-  hint: {
-    ...typography.body,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-  },
-  recentWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.md },
-  recentHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 32 },
-  recentTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  clearText: { ...typography.label, color: colors.danger },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.sm },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    minHeight: 36,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceTonal,
-    maxWidth: '100%',
-  },
-  chipPressed: { backgroundColor: colors.pressed },
-  chipText: { ...typography.label, color: colors.text, flexShrink: 1 },
-  companyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: 60,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    backgroundColor: colors.surface,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  rowPressed: { backgroundColor: colors.pressed },
-  companyTexts: { flex: 1, gap: 2 },
-  companyName: { ...typography.bodyStrong, color: colors.accent },
-  companyMeta: { ...typography.caption, color: colors.textMuted },
-  seeAll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: spacing.gutter,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  seeAllPressed: { backgroundColor: colors.pressed },
-  seeAllText: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent },
-});

@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// Numune talebi formu (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı değişmedi: aynı gövde (productId, deliveryMode, note) ile
+// POST /sample-requests, başarıda `replace('SampleRequestTracking')`.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useState } from 'react';
+import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import type { DeliveryMode } from '../../types';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import { createSampleRequest } from '../../api/client';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, Card, Chip, Icon, Input, Screen, SectionTitle } from '../../ui';
 
 type Props = RootStackScreenProps<'SampleRequestForm'>;
 
@@ -17,22 +19,28 @@ const OPTIONS: { mode: DeliveryMode; title: string; description: string }[] = [
   {
     mode: 'seller_ships',
     title: 'Satıcı göndersin',
-    description: 'Üretici firma numuneyi kargoyla adresinize gönderir.',
+    description: 'Üretici firma numuneyi kargoyla adresine gönderir.',
   },
   {
     mode: 'customer_courier',
     title: 'Kendi kuryemle alayım',
-    description: 'Numune hazır olunca sizin kuryeniz üreticiden teslim alır.',
+    description: 'Numune hazır olunca senin kuryen üreticiden teslim alır.',
   },
 ];
 
 export function SampleRequestFormScreen({ route, navigation }: Props) {
   const { productId, productCode } = route.params;
+  const t = useTheme();
   const { user } = useSession();
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode | null>(null);
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const handleSubmit = async () => {
     if (!user || !deliveryMode) return;
@@ -54,34 +62,50 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
     }
   };
 
+  const chosen = OPTIONS.find((o) => o.mode === deliveryMode);
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>{productCode} için numune talebi</Text>
-        <Text style={styles.sectionLabel}>Numuneyi nasıl almak istersiniz?</Text>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Numune talebi" leading="back" onBack={() => navigation.goBack()} />
 
-        {OPTIONS.map((option) => {
-          const selected = deliveryMode === option.mode;
-          return (
-            <Pressable
-              key={option.mode}
-              style={[styles.option, selected && styles.optionSelected]}
-              onPress={() => setDeliveryMode(option.mode)}
-            >
-              <View style={[styles.radio, selected && styles.radioSelected]}>
-                {selected ? <View style={styles.radioInner} /> : null}
-              </View>
-              <View style={styles.optionText}>
-                <Text style={[styles.optionTitle, selected && styles.optionTitleSelected]}>
-                  {option.title}
-                </Text>
-                <Text style={styles.optionDescription}>{option.description}</Text>
-              </View>
-            </Pressable>
-          );
-        })}
+      <Screen
+        sticky={
+          <Button
+            size="lg"
+            label="Talebi gönder"
+            loading={submitting}
+            disabled={!deliveryMode}
+            onPress={handleSubmit}
+          />
+        }
+      >
+        {/* Ürün özeti: hangi kumaş için talep açıldığı üstte görünsün. */}
+        <Card>
+          <View style={{ gap: t.space[1] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Numune istenen ürün</Text>
+            <Text style={[t.type.mono20, { color: t.colors.ink }]}>{productCode}</Text>
+          </View>
+        </Card>
 
-        <TextField
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Numuneyi nasıl almak istersin?" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+            {OPTIONS.map((option) => (
+              <Chip
+                key={option.mode}
+                label={option.title}
+                icon={deliveryMode === option.mode ? 'check' : undefined}
+                selected={deliveryMode === option.mode}
+                onPress={() => setDeliveryMode(option.mode)}
+              />
+            ))}
+          </View>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+            {chosen ? chosen.description : 'Devam etmek için bir teslim şekli seç.'}
+          </Text>
+        </View>
+
+        <Input
           label="Not (isteğe bağlı)"
           value={note}
           onChangeText={setNote}
@@ -89,52 +113,22 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
           multiline
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton
-          label={submitting ? 'Gönderiliyor...' : 'Talebi Gönder'}
-          disabled={submitting || !deliveryMode}
-          onPress={handleSubmit}
-        />
-      </ScrollView>
-    </SafeAreaView>
+        {error ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+          </View>
+        ) : null}
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  title: { ...typography.title, color: colors.primary, marginBottom: spacing.lg },
-  sectionLabel: { ...typography.label, color: colors.text, marginBottom: spacing.sm },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  optionSelected: {
-    borderColor: colors.accent,
-    borderWidth: 2,
-    backgroundColor: colors.surfaceTonal,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  radioSelected: { borderColor: colors.accent },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
-  optionText: { flex: 1, marginLeft: spacing.md },
-  optionTitle: { ...typography.bodyStrong, color: colors.text },
-  optionTitleSelected: { color: colors.primary },
-  optionDescription: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginTop: 2 },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.md },
-});

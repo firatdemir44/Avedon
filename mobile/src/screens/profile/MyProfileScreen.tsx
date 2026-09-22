@@ -1,5 +1,13 @@
+// Profilim + uygulamanın menü merkezi (yeni tasarım, 4. adım — DESIGN.md §3).
+//
+// Düzen: kimlik kartı (kapak + avatar + ad + başlık + firma) → Deneyim →
+// menü (tek tek kutular değil, chevron'lu `ui/ListRow` satırları) → Çıkış.
+// Ekranda dolu (primary) düğme YOK; fotoğraf eylemleri kenarlıklı, Çıkış
+// `danger`. Veri katmanı ve rota adları değişmedi.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Platform } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
@@ -13,23 +21,20 @@ import { confirmAction } from '../../features/confirm';
 import { pickAvatarPhoto, pickCoverPhoto } from '../../features/imagePicker';
 import { setCachedUserAvatar, userAvatarKey } from '../../features/users/userAvatarCache';
 import { setCachedUserCover, userCoverKey } from '../../features/users/userCoverCache';
-import { ListRow } from '../../components/ListRow';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SkeletonDetail } from '../../components/Skeleton';
 import { InlineError } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { ExperienceSection } from './ExperienceSection';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Icon, ListRow, Screen, SectionTitle, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
 
 type Props = RootStackScreenProps<'MyProfile'>;
 
-type MenuItem = { key: string; title: string; onPress: () => void; badge?: number };
+type MenuItem = { key: string; title: string; icon: AnyIconName; onPress: () => void; badge?: number };
 
-// Kendi profilim + uygulamanın menü merkezi (taslak CProfil.dc.html): kimlik
-// bloğu, tek beyaz blokta çizgili menü satırları, ayrı blokta Çıkış.
 export function MyProfileScreen({ navigation }: Props) {
+  const t = useTheme();
   const { user, logout, updateUser } = useSession();
   const { profile, loading, error, reload } = useUserProfile(user?.id ?? '');
   const [pendingRequests, setPendingRequests] = useState(0);
@@ -76,7 +81,7 @@ export function MyProfileScreen({ navigation }: Props) {
   const removeCover = async () => {
     const ok = await confirmAction({
       title: 'Kapak fotoğrafını kaldır',
-      message: 'Kapak fotoğrafınız kaldırılacak. Yerine düz lacivert zemin görünecek.',
+      message: 'Kapak fotoğrafınız kaldırılacak. Yerine düz zemin görünecek.',
       confirmLabel: 'Kaldır',
       destructive: true,
     });
@@ -135,47 +140,41 @@ export function MyProfileScreen({ navigation }: Props) {
     }
   };
 
+  // Fotoğraf eylemleri: hepsi kenarlıklı (ekranın tek dolu düğmesi harcanmaz).
   const photoActions = (
-    <View style={styles.photoActions}>
-      <View style={styles.photoButtons}>
-        <PrimaryButton
-          label={photoBusy ? 'İşleniyor...' : hasPhoto ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
-          variant="secondary"
-          size="sm"
-          disabled={photoBusy}
+    <View style={{ gap: t.space[2] }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+        <Button
+          kind="secondary"
+          icon="camera"
+          label={hasPhoto ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
+          loading={photoBusy}
           onPress={() => changePhoto('gallery')}
         />
         {/* Web'de tarayıcı kamerası yok (bkz. features/imagePicker). */}
         {Platform.OS !== 'web' ? (
-          <PrimaryButton
-            label="Kamera"
-            variant="secondary"
-            size="sm"
-            disabled={photoBusy}
-            onPress={() => changePhoto('camera')}
-          />
+          <Button kind="secondary" label="Kamera" disabled={photoBusy} onPress={() => changePhoto('camera')} />
         ) : null}
         {hasPhoto ? (
-          <PrimaryButton label="Kaldır" variant="secondary" size="sm" disabled={photoBusy} onPress={removePhoto} />
+          <Button kind="secondary" label="Kaldır" disabled={photoBusy} onPress={removePhoto} />
         ) : null}
         {hasCover ? (
-          <PrimaryButton
-            label="Kapağı Kaldır"
-            variant="secondary"
-            size="sm"
-            disabled={photoBusy}
-            onPress={removeCover}
-          />
+          <Button kind="secondary" label="Kapağı kaldır" disabled={photoBusy} onPress={removeCover} />
         ) : null}
       </View>
-      {photoError ? <Text style={styles.photoError}>{photoError}</Text> : null}
+      {photoError ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+          <Icon name="warning" size={t.size.iconSm} color="danger" />
+          <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{photoError}</Text>
+        </View>
+      ) : null}
     </View>
   );
 
-  // Zil artık ortak ana başlıkta (components/MainHeader); bu ekran yığına
-  // taşındığı için kendi başlığında ayrıca gösterilmiyor.
+  // Zil ortak ana başlıkta (components/MainHeader); bu ekran yığına taşındığı
+  // için kendi başlığında ayrıca gösterilmiyor.
 
-  // Taslakta "Bağlantı İstekleri" satırında bekleyen istek sayısı rozeti var.
+  // "Bağlantı İstekleri" satırında bekleyen istek sayısı rozeti var.
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
@@ -191,117 +190,126 @@ export function MyProfileScreen({ navigation }: Props) {
   );
 
   const menu = [
-    user?.companyId ? { key: 'company', title: 'Firmam', onPress: () => navigation.navigate('CompanyProfile') } : null,
-    { key: 'sampleRequests', title: 'Taleplerim', onPress: () => navigation.navigate('MySampleRequests') },
+    user?.companyId
+      ? { key: 'company', title: 'Firmam', icon: 'business-outline' as AnyIconName, onPress: () => navigation.navigate('CompanyProfile') }
+      : null,
+    { key: 'sampleRequests', title: 'Taleplerim', icon: 'sample' as AnyIconName, onPress: () => navigation.navigate('MySampleRequests') },
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
-    { key: 'quoteRequests', title: 'Tekliflerim', onPress: () => navigation.navigate('QuoteRequests') },
+    { key: 'quoteRequests', title: 'Tekliflerim', icon: 'quote' as AnyIconName, onPress: () => navigation.navigate('QuoteRequests') },
     // Faz 3, Adım 4: kabul edilen tekliften doğan sipariş kayıtları.
-    { key: 'deals', title: 'Siparişlerim', onPress: () => navigation.navigate('Deals') },
-    { key: 'favorites', title: 'Takip Ettiklerim', onPress: () => navigation.navigate('FavoriteProducts') },
+    { key: 'deals', title: 'Siparişlerim', icon: 'cart-outline' as AnyIconName, onPress: () => navigation.navigate('Deals') },
+    { key: 'favorites', title: 'Takip Ettiklerim', icon: 'heart' as AnyIconName, onPress: () => navigation.navigate('FavoriteProducts') },
     // 2026-09-22 menü temizliği: İplik Dizini (Ürünler sekmesindeki "İplik"),
     // Fotoğrafla Kumaş Ara ve Fason Kapasite Ara (Ürünler sekmesindeki araç
     // düğmeleri) ile Makine Parkım (firma sayfasındaki "Makine parkı") buradan
     // kaldırıldı — hepsine kendi bağlamlarından erişiliyor.
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
-    { key: 'watchRules', title: 'İzlediklerim', onPress: () => navigation.navigate('WatchRules') },
-    { key: 'recentlyViewed', title: 'Son Baktıklarım', onPress: () => navigation.navigate('RecentlyViewedProducts') },
-    { key: 'connections', title: 'Bağlantılarım', onPress: () => navigation.navigate('Connections') },
+    { key: 'watchRules', title: 'İzlediklerim', icon: 'eye-outline' as AnyIconName, onPress: () => navigation.navigate('WatchRules') },
+    { key: 'recentlyViewed', title: 'Son Baktıklarım', icon: 'clock' as AnyIconName, onPress: () => navigation.navigate('RecentlyViewedProducts') },
+    { key: 'connections', title: 'Bağlantılarım', icon: 'people-outline' as AnyIconName, onPress: () => navigation.navigate('Connections') },
     // Faz 2, Adım 4: tedarikçi/müşteri daveti (hazır metin, WhatsApp'tan paylaşılır).
-    { key: 'invites', title: 'Davet Et', onPress: () => navigation.navigate('Invites') },
+    { key: 'invites', title: 'Davet Et', icon: 'share' as AnyIconName, onPress: () => navigation.navigate('Invites') },
     {
       key: 'connectionRequests',
       title: 'Bağlantı İstekleri',
+      icon: 'person-add-outline' as AnyIconName,
       onPress: () => navigation.navigate('ConnectionRequests'),
       badge: pendingRequests,
     },
-    user?.isAdmin ? { key: 'admin', title: 'Firma Doğrulama', onPress: () => navigation.navigate('Admin') } : null,
+    user?.isAdmin
+      ? { key: 'admin', title: 'Firma Doğrulama', icon: 'shield-checkmark-outline' as AnyIconName, onPress: () => navigation.navigate('Admin') }
+      : null,
   ].filter((item): item is MenuItem => item !== null);
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Menü profil yüklenirken ya da yüklenemese de hep erişilebilir
-            (özellikle Çıkış): eskiden yükleme sürerken ekran tamamen boştu. */}
-        {loading ? (
-          <SkeletonDetail variant="profile" />
-        ) : profile ? (
-          <>
-            <ProfileIdentity
-              profile={profile}
-              avatarSize={88}
-              avatarUpdatedAt={user?.avatarUpdatedAt ?? null}
-              belowIdentity={photoActions}
-              isSelf
-              coverUpdatedAt={coverUpdatedAt}
-              onEditCover={changeCover}
-              onEditProfile={() =>
-                navigation.navigate('ProfileEdit', {
-                  headline: profile.headline,
-                  location: profile.location,
-                  about: profile.about,
-                })
-              }
-              onOpenConnections={() => navigation.navigate('Connections')}
-              onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
-            />
-            <ExperienceSection
-              experiences={profile.experiences ?? []}
-              isSelf
-              onAdd={() => navigation.navigate('ExperienceForm')}
-              onEdit={(experience) => navigation.navigate('ExperienceForm', { experience })}
-            />
-          </>
-        ) : (
-          <View style={styles.bannerWrap}>
-            <InlineError message={error ?? 'Profil alınamadı'} onRetry={reload} />
-          </View>
-        )}
+    <Screen>
+      {/* Menü, profil yüklenirken ya da yüklenemese de hep erişilebilir
+          (özellikle Çıkış): eskiden yükleme sürerken ekran tamamen boştu. */}
+      {loading ? (
+        <View style={{ gap: t.space[4] }}>
+          <Skeleton height={t.size.toolBox + t.size.thumb} />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      ) : profile ? (
+        <>
+          <ProfileIdentity
+            profile={profile}
+            avatarUpdatedAt={user?.avatarUpdatedAt ?? null}
+            belowIdentity={photoActions}
+            isSelf
+            coverUpdatedAt={coverUpdatedAt}
+            onEditCover={changeCover}
+            onEditProfile={() =>
+              navigation.navigate('ProfileEdit', {
+                headline: profile.headline,
+                location: profile.location,
+                about: profile.about,
+              })
+            }
+            onOpenConnections={() => navigation.navigate('Connections')}
+            onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
+          />
+          <ExperienceSection
+            experiences={profile.experiences ?? []}
+            isSelf
+            onAdd={() => navigation.navigate('ExperienceForm')}
+            onEdit={(experience) => navigation.navigate('ExperienceForm', { experience })}
+          />
+        </>
+      ) : (
+        <InlineError message={error ?? 'Profil alınamadı'} onRetry={reload} />
+      )}
 
-        <View style={styles.block}>
+      <View style={{ gap: t.space[3], minWidth: 0 }}>
+        <SectionTitle title="Kısayollar" />
+        <View
+          style={{
+            backgroundColor: t.colors.surface1,
+            borderWidth: 1,
+            borderColor: t.colors.line,
+            borderRadius: t.radius.lg,
+            paddingHorizontal: t.space[4],
+            overflow: 'hidden',
+            minWidth: 0,
+          }}
+        >
           {menu.map((item, index) => (
             <ListRow
               key={item.key}
               title={item.title}
+              left={<MenuIcon name={item.icon} />}
               divider={index < menu.length - 1}
               onPress={item.onPress}
-              accessibilityLabel={item.badge ? `${item.title}, ${item.badge} bekleyen` : item.title}
-              right={
-                item.badge ? (
-                  <View style={styles.countBadge}>
-                    <Text style={styles.countBadgeText}>{item.badge}</Text>
-                  </View>
-                ) : undefined
-              }
+              unread={!!item.badge}
+              unreadCount={item.badge}
             />
           ))}
         </View>
+      </View>
 
-        <View style={styles.block}>
-          {/* Çıkışta gezinme çağrısı yok: user null olunca RootNavigator zaten
-              giriş ekranlarına geçiyor. */}
-          <ListRow title="Çıkış" tone="danger" chevron={false} divider={false} onPress={logout} />
-        </View>
-      </ScrollView>
-    </View>
+      {/* Çıkışta gezinme çağrısı yok: user null olunca RootNavigator zaten
+          giriş ekranlarına geçiyor. */}
+      <Button kind="danger" fullWidth icon="log-out-outline" label="Çıkış yap" onPress={logout} />
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface },
-  bannerWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
-  photoActions: { paddingBottom: spacing.gutter, gap: spacing.xs },
-  photoButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  photoError: { ...typography.caption, color: colors.danger },
-  countBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: radius.pill,
-    backgroundColor: colors.notification,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
-  countBadgeText: { fontFamily: fonts.bold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
-});
+// Menü satırının solundaki 40px ikon karesi (liste satırı avatarıyla aynı ölçü).
+function MenuIcon({ name }: { name: AnyIconName }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        width: t.size.avatar,
+        height: t.size.avatar,
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.brandSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name={name} size={t.size.iconSm} color="brand" />
+    </View>
+  );
+}

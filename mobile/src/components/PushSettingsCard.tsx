@@ -1,7 +1,13 @@
+// Anlık bildirim ayarı — Bildirimler ekranının en üstünde bir kart.
+// YALNIZCA WEB'de ve yalnızca sunucuda Web Push açıkken görünür; native'de ve
+// desteklemeyen tarayıcılarda hiç çizilmez. Profil menüsüne ayrıca satır
+// eklenmedi (karışıklık olmasın).
+//
+// İç içe düğme yok: kartın kendisi dokunulamaz, düğmeler altında duruyor.
+// Yeni tasarım (4. adım): `ui/Card` + token'lar; ham hex / ham px yok.
+// Dışa aktarılan ad ve API (propsuz `PushSettingsCard`) DEĞİŞMEDİ.
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { PrimaryButton } from './PrimaryButton';
+import { Text, View } from 'react-native';
 import { ApiError, fetchPushPublicKey, sendTestPush } from '../api/client';
 import {
   currentPushState,
@@ -13,16 +19,11 @@ import {
 } from '../features/push/webPush';
 import { confirmAction } from '../features/confirm';
 import { haptics } from '../features/haptics';
-import { colors, radius, spacing, typography } from '../theme';
-
-// Anlık bildirim ayarı — Bildirimler ekranının en üstünde ince bir kart.
-// YALNIZCA WEB'de ve yalnızca sunucuda Web Push açıkken görünür; native'de ve
-// desteklemeyen tarayıcılarda hiç çizilmez. Profil menüsüne ayrıca satır
-// eklenmedi (karışıklık olmasın).
-//
-// İç içe düğme yok: kartın kendisi dokunulamaz, düğmeler yan yana duruyor.
+import { useTheme } from '../theme/ThemeContext';
+import { Button, Card, Icon } from '../ui';
 
 export function PushSettingsCard() {
+  const t = useTheme();
   const [support, setSupport] = useState<PushSupport | null>(null);
   const [permission, setPermission] = useState<PushPermission>('unavailable');
   const [subscribed, setSubscribed] = useState(false);
@@ -133,99 +134,84 @@ export function PushSettingsCard() {
   if (support === null || serverEnabled === null) return null;
   if (support === 'unsupported' || !serverEnabled) return null;
 
+  // Duruma göre başlık / açıklama / eylem. Ekranda dolu (primary) düğme yok:
+  // hepsi kenarlıklı (secondary) ya da tehlikeli (danger).
+  const title =
+    support === 'needs-install'
+      ? 'Anlık bildirim için ana ekrana ekleyin'
+      : permission === 'denied'
+        ? 'Bildirim izni kapalı'
+        : subscribed
+          ? 'Anlık bildirimler açık'
+          : 'Anlık bildirimleri aç';
+
+  const description =
+    support === 'needs-install'
+      ? "iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Avedon'u ana ekrandan açın."
+      : permission === 'denied'
+        ? 'Bildirim izni tarayıcıda kapalı. Tarayıcı ayarlarından bu site için bildirimlere izin verin.'
+        : subscribed
+          ? 'Yeni mesaj, teklif ve numune talepleri telefonunuza bildirim olarak gelir.'
+          : 'Yeni mesaj, teklif ve numune taleplerinde telefonunuza bildirim gelir.';
+
+  const showActions = support !== 'needs-install' && permission !== 'denied';
+
   return (
-    <View style={styles.block}>
-      <View style={styles.row}>
-        <Ionicons
-          name={subscribed ? 'notifications' : 'notifications-outline'}
-          size={22}
-          color={colors.primary}
-          style={styles.icon}
-        />
-        <View style={styles.body}>
-          {support === 'needs-install' ? (
-            <>
-              <Text style={styles.title}>Anlık bildirim için ana ekrana ekleyin</Text>
-              <Text style={styles.note}>
-                iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Avedon'u ana ekrandan açın.
-              </Text>
-            </>
-          ) : permission === 'denied' ? (
-            <>
-              <Text style={styles.title}>Bildirim izni kapalı</Text>
-              <Text style={styles.note}>
-                Bildirim izni tarayıcıda kapalı. Tarayıcı ayarlarından bu site için bildirimlere izin verin.
-              </Text>
-            </>
-          ) : subscribed ? (
-            <>
-              <Text style={styles.title}>Anlık bildirimler açık</Text>
-              <View style={styles.links}>
-                <Pressable
-                  onPress={sendTest}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  hitSlop={10}
-                  style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-                >
-                  <Text style={styles.linkText}>Deneme bildirimi gönder</Text>
-                </Pressable>
-                <Pressable
-                  onPress={turnOff}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  hitSlop={10}
-                  style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-                >
-                  <Text style={[styles.linkText, styles.linkDanger]}>Kapat</Text>
-                </Pressable>
-              </View>
-            </>
-          ) : (
-            <>
-              <Text style={styles.note}>
-                Yeni mesaj, teklif ve numune taleplerinde telefonunuza bildirim gelir.
-              </Text>
-              <PrimaryButton
-                label={busy ? 'Açılıyor...' : 'Anlık bildirimleri aç'}
-                size="sm"
-                onPress={() => void turnOn()}
-                disabled={busy}
-                style={styles.button}
-              />
-            </>
-          )}
-          {note ? (
-            <Text style={[styles.status, note.tone === 'error' && styles.statusError]}>{note.text}</Text>
-          ) : null}
+    <Card>
+      <View style={{ gap: t.space[3], minWidth: 0 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[3], minWidth: 0 }}>
+          <Icon name={subscribed ? 'notifications' : 'bell'} color="brand" />
+          {/* 375px'te taşma olmasın: metin sütunu daralabilmeli. */}
+          <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>{title}</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{description}</Text>
+          </View>
         </View>
-        {busy ? <ActivityIndicator color={colors.primary} style={styles.spinner} /> : null}
+
+        {showActions ? (
+          subscribed ? (
+            // Açıkken iki eylem var (deneme + kapatma); dolu düğme yok.
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+              <Button
+                kind="secondary"
+                icon="bell"
+                label="Deneme bildirimi gönder"
+                disabled={busy}
+                loading={busy}
+                onPress={() => void sendTest()}
+              />
+              <Button kind="danger" icon="x" label="Kapat" disabled={busy} onPress={() => void turnOff()} />
+            </View>
+          ) : (
+            <Button
+              kind="secondary"
+              icon="bell"
+              label="Anlık bildirimleri aç"
+              disabled={busy}
+              loading={busy}
+              onPress={() => void turnOn()}
+            />
+          )
+        ) : null}
+
+        {note ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+            <Icon
+              name={note.tone === 'error' ? 'warning' : 'check'}
+              size={t.size.iconSm}
+              color={note.tone === 'error' ? 'danger' : 'success'}
+            />
+            <Text
+              style={[
+                t.type.body14,
+                { color: note.tone === 'error' ? t.colors.danger : t.colors.success, flex: 1, minWidth: 0 },
+              ]}
+            >
+              {note.text}
+            </Text>
+          </View>
+        ) : null}
       </View>
-    </View>
+    </Card>
   );
 }
-
-const styles = StyleSheet.create({
-  block: { backgroundColor: colors.surface, marginBottom: spacing.blockGap },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    gap: spacing.sm,
-  },
-  icon: { marginTop: 2 },
-  // 375px'te taşma olmasın: metin sütunu daralabilmeli.
-  body: { flex: 1, minWidth: 0, gap: spacing.xs },
-  title: { ...typography.label, color: colors.text },
-  note: { ...typography.caption, color: colors.textMuted },
-  button: { alignSelf: 'flex-start', marginTop: spacing.xs },
-  links: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.xs },
-  link: { paddingVertical: spacing.xs },
-  linkPressed: { opacity: 0.6 },
-  linkText: { ...typography.caption, color: colors.accent },
-  linkDanger: { color: colors.danger },
-  status: { ...typography.caption, color: colors.success, marginTop: spacing.xs },
-  statusError: { color: colors.danger },
-  spinner: { marginTop: 2 },
-});

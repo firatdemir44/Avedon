@@ -1,16 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { ChipSelect } from '../../components/ChipSelect';
-import { MultiChipSelect } from '../../components/MultiChipSelect';
-import { SectionHeader } from '../../components/SectionHeader';
-import { CollapsibleSection } from '../../components/CollapsibleSection';
 import { CareSymbolPicker } from '../../components/CareSymbolPicker';
-import { ListRow } from '../../components/ListRow';
 import { CompositionEditor } from '../../components/passport/CompositionEditor';
 import { CertificatesEditor } from '../../components/passport/CertificatesEditor';
 import {
@@ -101,7 +92,21 @@ import {
 import { formatMeasure, parseNumber, toInputNumber } from '../../features/calculators/parse';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  Icon,
+  Input,
+  ListRow,
+  Screen,
+  SectionTitle,
+  SkeletonText,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'AddProduct'>;
 
@@ -183,8 +188,6 @@ const PRICE_UNIT_OPTIONS: { value: StockUnit; label: string }[] = [
   { value: 'kg', label: 'kilogram başına' },
 ];
 
-const PHOTO_SIZE = 96;
-const DOC_PHOTO_SIZE = 64;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 // Sunucu bakım sembolü hatalarını 400 invalid_body + fieldErrors.careSymbols
@@ -225,11 +228,13 @@ const emptyTestReportRow = (): TestReportRow => ({
 
 // Ürün kartı formu: çoklu fotoğraf, çeşit → alt çeşit, kullanım amaçları,
 // metre/kg stok ve kumaş pasaportu (kompozisyon, ticari bilgiler, iplik,
-// sertifikalar). Pazar Masası düzeni: gri zemin üstünde başlıklı beyaz
-// bloklar, altta sabit kaydet çubuğu.
+// sertifikalar). Yeni tasarım (4. adım, DESIGN.md §2/§3): AppBar + Screen,
+// bölümler SectionTitle + Card, alanlar ui/Input, çipler ui/Chip, tek dolu
+// kaydet düğmesi yapışkan alt çubukta. Veri katmanı ve gönderilen gövde
+// eskisiyle AYNI. Ham hex / ham px yok.
 export function AddProductScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { user } = useSession();
-  const insets = useSafeAreaInsets();
   const productId = route.params?.productId ?? null;
   const isEditing = !!productId;
   // WhatsApp taslağından gelindiyse (yalnızca yeni üründe anlamlı).
@@ -391,9 +396,10 @@ export function AddProductScreen({ navigation, route }: Props) {
     }
   };
 
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
   useLayoutEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Ürünü Düzenle' : 'Ürün Ekle' });
-  }, [navigation, isEditing]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (!productId) return;
@@ -1082,477 +1088,706 @@ export function AddProductScreen({ navigation, route }: Props) {
     }
   };
 
-  if (loading || draftLoading) {
-    return (
-      <View style={styles.screen}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </View>
-    );
-  }
-
   const subtypeOptions = [
     { value: '', label: 'Belirtilmemiş' },
     ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label })),
   ];
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {draftId ? (
-          <View style={styles.draftBar}>
-            <View style={styles.draftTextWrap}>
-              <Ionicons name="logo-whatsapp" size={16} color={colors.textMuted} style={styles.draftIcon} />
-              <Text style={styles.draftText}>
-                WhatsApp&apos;tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.
-              </Text>
-            </View>
-            {draftNote ? <Text style={styles.draftNote}>{draftNote}</Text> : null}
-            {draftError ? <Text style={styles.draftError}>{draftError}</Text> : null}
-            <Pressable
-              onPress={handleDismissDraft}
-              disabled={draftDismissing}
-              accessibilityRole="button"
-              accessibilityLabel="Taslağı sil"
-              style={({ pressed }) => [styles.draftLinkPress, pressed && styles.photoPressed]}
-            >
-              <Text style={styles.draftLink}>{draftDismissing ? 'Siliniyor…' : 'Taslağı sil'}</Text>
-            </Pressable>
-          </View>
-        ) : null}
+  const appBar = (
+    <AppBar title={isEditing ? 'Ürünü düzenle' : 'Ürün ekle'} leading="back" onBack={() => navigation.goBack()} />
+  );
 
-        {savedWarnings ? (
-          <View style={styles.warningBox} accessibilityRole="alert">
-            <View style={styles.warningTitleRow}>
-              <Ionicons name="alert-circle-outline" size={18} color={colors.warning} />
-              <Text style={styles.warningTitle}>Kaydedildi. Dikkat:</Text>
-            </View>
-            {savedWarnings.map((note) => (
-              <Text key={note} style={styles.warningNote}>
-                {note}
-              </Text>
-            ))}
-          </View>
-        ) : null}
+  if (loading || draftLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {appBar}
+        <Screen>
+          <SkeletonText lines={2} />
+          <SkeletonText lines={4} />
+          <SkeletonText lines={3} />
+        </Screen>
+      </View>
+    );
+  }
 
-        <SectionHeader title={`Fotoğraflar (${photos.length}/${MAX_PRODUCT_IMAGES})`} first />
-        <View style={styles.block}>
-          <View style={styles.photoGrid}>
-            {photos.map((photo, index) => (
-              <View key={photo.key} style={styles.photoTile}>
-                <Pressable
-                  onPress={() => index > 0 && makeCover(photo.key)}
-                  disabled={index === 0}
-                  // Yanındaki kaldır düğmesiyle kardeş (iç içe değil): web'de
-                  // iç içe <button> oluşmasın.
-                  accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-                  accessibilityLabel={index === 0 ? `Fotoğraf ${index + 1}, kapak` : `Fotoğraf ${index + 1}, kapak yap`}
-                  style={({ pressed }) => [styles.photoPress, pressed && styles.photoPressed]}
-                >
-                  {photo.uri ? (
-                    <Image source={{ uri: photo.uri }} style={styles.photo} />
-                  ) : (
-                    <View style={[styles.photo, styles.photoLoading]}>
-                      <ActivityIndicator color={colors.chevron} />
-                    </View>
-                  )}
-                </Pressable>
-                {index === 0 ? (
-                  <View style={styles.coverBadge} pointerEvents="none">
-                    <Text style={styles.coverBadgeText}>Kapak</Text>
-                  </View>
-                ) : null}
-                <Pressable
-                  onPress={() => removePhoto(photo.key)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
-                  style={({ pressed }) => [styles.removeButton, pressed && styles.removePressed]}
-                >
-                  <Ionicons name="close" size={16} color={colors.primaryText} />
-                </Pressable>
-              </View>
-            ))}
-            {photos.length < MAX_PRODUCT_IMAGES ? (
-              <Pressable
-                onPress={addPhoto}
-                disabled={pickingImage}
-                accessibilityRole="button"
-                accessibilityLabel="Fotoğraf ekle"
-                style={({ pressed }) => [styles.addTile, pressed && styles.photoPressed]}
-              >
-                {pickingImage ? (
-                  <ActivityIndicator color={colors.primary} />
-                ) : (
-                  <>
-                    <Ionicons name="add" size={26} color={colors.primary} />
-                    <Text style={styles.addTileText}>Fotoğraf</Text>
-                  </>
-                )}
-              </Pressable>
-            ) : null}
-          </View>
-          <Text style={styles.hint}>
-            İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokunun.
-          </Text>
-        </View>
+  // --- Sunum yardımcıları (yalnızca görünüm) ---
+  const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
+  const fieldLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
 
-        <SectionHeader title="Etiketten doldur" />
-        <View style={[styles.block, styles.extractBlock]}>
-          <Text style={styles.labelHint}>
-            Etiket, kartela ya da test raporundan bilgileri okuyup forma dolduralım. Aktarmadan önce siz onaylarsınız.
-          </Text>
-          <View style={styles.extractRow}>
-            <PrimaryButton
-              label={extracting ? 'Etiket okunuyor...' : 'Etiketten doldur'}
-              variant="outline"
-              icon="scan-outline"
-              disabled={extracting}
+  const dangerBanner = (text: string, key?: string) => (
+    <View
+      key={key ?? text}
+      accessibilityRole="alert"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.dangerSoft,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{text}</Text>
+    </View>
+  );
+
+  const section = (title: string, children: React.ReactNode) => (
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title={title} />
+      <Card>
+        <View style={{ gap: t.space[3] }}>{children}</View>
+      </Card>
+    </View>
+  );
+
+  // Daraltılabilir bölüm: başlık satırı 44px dokunma hedefi, sağda chevron.
+  const collapsible = (title: string, open: boolean, onToggle: () => void, children: React.ReactNode) => (
+    <View style={{ gap: t.space[3] }}>
+      <Pressable
+        onPress={() => {
+          haptics.selection();
+          onToggle();
+        }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${title}, ${open ? 'kapat' : 'aç'}`}
+        style={{
+          minHeight: t.size.touchMin,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: t.space[3],
+        }}
+      >
+        <Text accessibilityRole="header" numberOfLines={1} style={[t.type.title18, { color: t.colors.ink, flexShrink: 1 }]}>
+          {title}
+        </Text>
+        <Icon name={open ? 'chevron-up-outline' : 'chevron-down-outline'} color="ink3" />
+      </Pressable>
+      {open ? (
+        <Card>
+          <View style={{ gap: t.space[3] }}>{children}</View>
+        </Card>
+      ) : null}
+    </View>
+  );
+
+  const singleChips = <T extends string>(
+    label: string,
+    options: readonly { value: T; label: string }[],
+    value: T,
+    onChange: (v: T) => void,
+    subHint?: string
+  ) => (
+    <View style={{ gap: t.space[1] }}>
+      {fieldLabel(label)}
+      {subHint ? hint(subHint) : null}
+      <ChipRow>
+        {options.map((o) => (
+          <Chip
+            key={o.value || 'bos'}
+            label={o.label}
+            selected={o.value === value}
+            onPress={() => {
+              haptics.selection();
+              onChange(o.value);
+            }}
+          />
+        ))}
+      </ChipRow>
+    </View>
+  );
+
+  const multiChips = (
+    label: string,
+    options: readonly { key: string; label: string }[],
+    values: string[],
+    onChange: (v: string[]) => void,
+    subHint?: string
+  ) => (
+    <View style={{ gap: t.space[1] }}>
+      {fieldLabel(label)}
+      {subHint ? hint(subHint) : null}
+      <ChipRow>
+        {options.map((o) => {
+          const on = values.includes(o.key);
+          return (
+            <Chip
+              key={o.key}
+              label={o.label}
+              selected={on}
               onPress={() => {
                 haptics.selection();
-                setExtractError(null);
-                setSourceOpen((v) => !v);
+                onChange(on ? values.filter((v) => v !== o.key) : [...values, o.key]);
               }}
-              style={styles.extractButton}
             />
-            {extracting ? <ActivityIndicator color={colors.primary} /> : null}
-          </View>
+          );
+        })}
+      </ChipRow>
+    </View>
+  );
 
-          {sourceOpen && !extracting ? (
-            <View style={styles.sourceBox}>
-              {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
-              {Platform.OS !== 'web' ? (
-                <ListRow
-                  title="Fotoğraf çek"
-                  left={<Ionicons name="camera-outline" size={20} color={colors.primary} />}
-                  onPress={extractFromCamera}
-                />
-              ) : null}
-              <ListRow
-                title="Galeriden seç"
-                subtitle={`En fazla ${MAX_EXTRACT_IMAGES} fotoğraf`}
-                left={<Ionicons name="images-outline" size={20} color={colors.primary} />}
-                onPress={extractFromGallery}
-              />
-              <ListRow
-                title="PDF seç"
-                subtitle="Test raporu ya da kartela belgesi"
-                left={<Ionicons name="document-text-outline" size={20} color={colors.primary} />}
-                onPress={extractFromPdf}
-              />
-              <ListRow
-                title="Metin yapıştır"
-                subtitle="WhatsApp'tan gelen etiket bilgisi"
-                left={<Ionicons name="clipboard-outline" size={20} color={colors.primary} />}
-                divider={false}
-                onPress={() => {
-                  haptics.selection();
-                  setSourceOpen(false);
-                  setPasteOpen(true);
-                }}
-              />
-            </View>
+  const iconSquare = (name: React.ComponentProps<typeof Icon>['name']) => (
+    <View
+      style={{
+        width: t.size.avatar,
+        height: t.size.avatar,
+        borderRadius: t.radius.sm,
+        backgroundColor: t.colors.brandSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name={name} color="brand" />
+    </View>
+  );
+
+  // Tekrarlanan satır kutusu (iplik, test raporu): ince çerçeve, başlık + kaldır.
+  const rowCard = (
+    key: string,
+    title: string,
+    removeLabel: string,
+    onRemove: () => void,
+    children: React.ReactNode
+  ) => (
+    <View
+      key={key}
+      style={{
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.md,
+        padding: t.space[3],
+        gap: t.space[3],
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[2] }}>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{title}</Text>
+        <Pressable
+          onPress={onRemove}
+          accessibilityRole="button"
+          accessibilityLabel={removeLabel}
+          style={({ pressed }) => ({
+            width: t.size.touchMin,
+            height: t.size.touchMin,
+            marginRight: -t.space[2],
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: t.radius.md,
+            backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+          })}
+        >
+          <Icon name="x" size={t.size.iconSm} color="ink2" />
+        </Pressable>
+      </View>
+      {children}
+    </View>
+  );
+
+  const submitLabel = isEditing ? 'Değişiklikleri kaydet' : 'Ürünü kaydet';
+
+  return (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {appBar}
+      <Screen
+        scroll={false}
+        noPadding
+        sticky={
+          savedWarnings ? (
+            <Button
+              size="lg"
+              label="Devam"
+              onPress={() => {
+                if (createdProductId) void offerFeedShare(createdProductId);
+                else navigation.goBack();
+              }}
+            />
+          ) : (
+            <Button
+              size="lg"
+              label={submitLabel}
+              loading={submitting}
+              disabled={!canSubmit || deleting}
+              onPress={handleSubmit}
+            />
+          )
+        }
+      >
+        {/* Kendi ScrollView'u: kayıt uyarısı gelince başa kaydırmak için ref gerekiyor. */}
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {draftId ? (
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
+                  <Icon name="whatsapp" size={t.size.iconSm} color="ink2" />
+                  <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
+                    WhatsApp&apos;tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.
+                  </Text>
+                </View>
+                {draftNote ? hint(draftNote) : null}
+                {draftError ? dangerBanner(draftError) : null}
+                <Button kind="danger" label="Taslağı sil" loading={draftDismissing} onPress={handleDismissDraft} />
+              </View>
+            </Card>
           ) : null}
 
-          {pasteOpen ? (
-            <View style={styles.pasteBox}>
-              <TextField
-                label="Etiket metni"
-                value={pasteText}
-                onChangeText={setPasteText}
-                placeholder="Örn. 95% CO 5% EA, 220 gsm, 180 cm tubular"
-                multiline
-                maxLength={MAX_EXTRACT_TEXT}
-              />
-              <View style={styles.pasteActions}>
-                <PrimaryButton
-                  label="Oku"
-                  disabled={!pasteText.trim() || extracting}
-                  onPress={extractFromText}
-                  style={styles.pasteAction}
-                />
-                <PrimaryButton
-                  label="Kapat"
-                  variant="outline"
-                  onPress={() => {
-                    haptics.selection();
-                    setPasteOpen(false);
-                  }}
-                  style={styles.pasteAction}
-                />
+          {savedWarnings ? (
+            <View
+              accessibilityRole="alert"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: t.space[2],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.warningSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="warning" />
+              <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                <Text style={[t.type.label14, { color: t.colors.warning }]}>Kaydedildi. Dikkat:</Text>
+                {savedWarnings.map((note) => (
+                  <Text key={note} style={[t.type.body14, { color: t.colors.ink }]}>
+                    {note}
+                  </Text>
+                ))}
               </View>
             </View>
           ) : null}
 
-          {extractError ? <Text style={styles.extractError}>{extractError}</Text> : null}
-        </View>
-
-        <SectionHeader title="Kumaş" />
-        <View style={[styles.block, styles.formBlock]}>
-          <Text style={styles.label}>Çeşit</Text>
-          <ChipSelect options={TYPE_OPTIONS} value={type} onChange={changeType} />
-          {SUBTYPES[type].length > 0 ? (
+          {section(
+            `Fotoğraflar (${photos.length}/${MAX_PRODUCT_IMAGES})`,
             <>
-              <Text style={styles.label}>Alt çeşit</Text>
-              <ChipSelect options={subtypeOptions} value={subtype} onChange={changeSubtype} compact />
-            </>
-          ) : null}
-          <Text style={styles.label}>En tipi</Text>
-          <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={changeWidthType} compact />
-          {widthType === 'tup' ? (
-            <>
-              <Text style={styles.hint}>Tüp en genellikle ham kumaşta olur; boyalı kumaş çoğunlukla açık endir.</Text>
-              <Text style={styles.label}>Girdiğiniz en neyi gösteriyor?</Text>
-              <ChipSelect
-                options={WIDTH_MEANING_OPTIONS}
-                value={widthMeaning}
-                onChange={setWidthMeaning}
-                compact
-              />
-              {effectiveWidthText ? <Text style={styles.labelHint}>{effectiveWidthText}</Text> : null}
-            </>
-          ) : null}
-          <Text style={styles.label}>Kullanım amaçları</Text>
-          <Text style={styles.labelHint}>Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.</Text>
-          <MultiChipSelect options={USAGES} values={usages} onChange={changeUsages} />
-          <Text style={styles.label}>Apre / boya</Text>
-          <Text style={styles.labelHint}>Kumaşa uygulanan işlemler.</Text>
-          <MultiChipSelect options={FINISH_TAGS} values={finishTags} onChange={changeFinishTags} />
-        </View>
-
-        <SectionHeader title="Bilgiler" />
-        <View style={[styles.block, styles.formBlock]}>
-          <TextField label="Ürün Kodu" value={code} onChangeText={changeCode} placeholder="Örn. ORM-1042" />
-
-          <Text style={styles.label}>Kompozisyon</Text>
-          {compositionRowMode ? (
-            <>
-              <CompositionEditor
-                rows={compositionRows}
-                onChange={changeCompositionRows}
-                hint="Her satırda bir lif ve oranı. Toplam genelde 100 olur."
-                percentPlaceholder="Örn. 95"
-                totalWarning={compositionTotal !== 100}
-                totalSuffix={compositionTotal !== 100 ? ' (genelde 100 olur, yine de kaydedebilirsiniz)' : ''}
-              />
-              {/* Listede olmayan bir lif ya da serbest bir açıklama gerekiyorsa metne dönüş. */}
-              <Pressable
-                onPress={() => {
-                  haptics.selection();
-                  setCompositionRowMode(false);
-                  forgetExtracted('composition');
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="İçeriği metin olarak yaz"
-                style={({ pressed }) => [styles.textLink, pressed && styles.textLinkPressed]}
-              >
-                <Text style={styles.textLinkLabel}>Metin olarak yazmak istiyorum</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <TextField
-                label="İçerik"
-                value={content}
-                onChangeText={setContent}
-                placeholder="Örn. %95 Pamuk %5 Elastan"
-              />
-              <Pressable
-                onPress={switchToCompositionRows}
-                accessibilityRole="button"
-                accessibilityLabel="İçeriği kompozisyon satırlarına böl"
-                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-              >
-                <Ionicons name="git-branch-outline" size={18} color={colors.accent} />
-                <Text style={styles.addRowText}>Satırlara böl</Text>
-              </Pressable>
-              <Text style={styles.labelHint}>
-                Satırlara bölerseniz alıcılar lif ve orana göre arayabilir.
-              </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                {photos.map((photo, index) => (
+                  <View key={photo.key} style={{ width: t.size.thumb, height: t.size.thumb }}>
+                    <Pressable
+                      onPress={() => index > 0 && makeCover(photo.key)}
+                      disabled={index === 0}
+                      // Yanındaki kaldır düğmesiyle kardeş (iç içe değil): web'de
+                      // iç içe <button> oluşmasın.
+                      accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
+                      accessibilityLabel={
+                        index === 0 ? `Fotoğraf ${index + 1}, kapak` : `Fotoğraf ${index + 1}, kapak yap`
+                      }
+                      style={({ pressed }) => ({
+                        width: t.size.thumb,
+                        height: t.size.thumb,
+                        borderRadius: t.radius.sm,
+                        borderWidth: 1,
+                        borderColor: t.colors.line,
+                        backgroundColor: t.colors.surface2,
+                        overflow: 'hidden',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: pressed ? 0.8 : 1,
+                      })}
+                    >
+                      {photo.uri ? (
+                        <Image source={{ uri: photo.uri }} style={{ width: t.size.thumb, height: t.size.thumb }} />
+                      ) : (
+                        <ActivityIndicator color={t.colors.ink3} />
+                      )}
+                    </Pressable>
+                    {index === 0 ? (
+                      <Badge
+                        kind="info"
+                        label="Kapak"
+                        style={{ position: 'absolute', left: t.space[1], bottom: t.space[1] }}
+                      />
+                    ) : null}
+                    <Pressable
+                      onPress={() => removePhoto(photo.key)}
+                      hitSlop={t.space[2]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
+                      style={({ pressed }) => ({
+                        position: 'absolute',
+                        top: t.space[1],
+                        right: t.space[1],
+                        width: t.size.iconSm + t.space[2],
+                        height: t.size.iconSm + t.space[2],
+                        borderRadius: t.radius.full,
+                        backgroundColor: pressed ? t.colors.danger : t.colors.overlay,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      })}
+                    >
+                      <Icon name="x" size={t.size.iconXs} colorValue={t.colors.onBrand} />
+                    </Pressable>
+                  </View>
+                ))}
+                {photos.length < MAX_PRODUCT_IMAGES ? (
+                  <Pressable
+                    onPress={addPhoto}
+                    disabled={pickingImage}
+                    accessibilityRole="button"
+                    accessibilityLabel="Fotoğraf ekle"
+                    style={({ pressed }) => ({
+                      width: t.size.thumb,
+                      height: t.size.thumb,
+                      borderRadius: t.radius.sm,
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      borderColor: t.colors.lineStrong,
+                      backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: t.space[1] / 2,
+                    })}
+                  >
+                    {pickingImage ? (
+                      <ActivityIndicator color={t.colors.brand} />
+                    ) : (
+                      <>
+                        <Icon name="plus" color="brand" />
+                        <Text style={[t.type.caption12, { color: t.colors.brand }]}>Fotoğraf</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
+              </View>
+              {hint('İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokunun.')}
             </>
           )}
 
-          <View style={styles.fieldRow}>
-            <View style={styles.fieldHalf}>
-              <TextField
-                label="Gramaj (gr/m²)"
-                value={weightGsm}
-                onChangeText={changeWeightGsm}
-                placeholder="Örn. 220"
-                keyboardType="numeric"
+          {section(
+            'Etiketten doldur',
+            <>
+              {hint(
+                'Etiket, kartela ya da test raporundan bilgileri okuyup forma dolduralım. Aktarmadan önce siz onaylarsınız.'
+              )}
+              <Button
+                kind="secondary"
+                fullWidth
+                label="Etiketten doldur"
+                icon="scan-outline"
+                loading={extracting}
+                onPress={() => {
+                  haptics.selection();
+                  setExtractError(null);
+                  setSourceOpen((v) => !v);
+                }}
               />
-            </View>
-            <View style={styles.fieldHalf}>
-              <TextField label="En (cm)" value={widthCm} onChangeText={changeWidthCm} placeholder="Örn. 150" keyboardType="numeric" />
-            </View>
-          </View>
-          <Text style={styles.label}>Stok birimi</Text>
-          <ChipSelect options={UNIT_OPTIONS} value={stockUnit} onChange={setStockUnit} compact />
-          <TextField
-            label={`Stok (${STOCK_UNIT_LABELS[stockUnit].long})`}
-            value={stock}
-            onChangeText={setStock}
-            placeholder={stockUnit === 'm' ? 'Örn. 1200' : 'Örn. 450'}
-            keyboardType="numeric"
-          />
-          <TextField
-            label="Not (isteğe bağlı)"
-            value={useArea}
-            onChangeText={setUseArea}
-            placeholder="Örn. Şardonlu, yıkamalı"
-          />
-          {/* Pasaport alanları diğer ürün bilgileriyle birlikte girilir; ayrı
-              bir "pasaport için yeniden gir" bölümü YOK (Fırat 2026-09-21). */}
-          <TextField
-            label="Menşe ülke (isteğe bağlı)"
-            value={originCountry}
-            onChangeText={setOriginCountry}
-            placeholder="Örn. Türkiye"
-            maxLength={60}
-          />
-          <TextField
-            label="Geri dönüştürülmüş içerik (%)"
-            value={recycledPercent}
-            onChangeText={setRecycledPercent}
-            placeholder="Örn. 30"
-            keyboardType="numeric"
-          />
-          <Text style={styles.labelHint}>Dijital pasaportta görünür.</Text>
-        </View>
 
-        {/* Bakım sembolleri: etiketteki uluslararası işaretler; yazı yerine
-            sembol (Fırat 2026-09-21). Sembol listesi ve çizim tarifi tek
-            kaynaktan: backend/src/domain/care.ts → features/care/symbols.ts. */}
-        <CollapsibleSection
-          title={careSymbols.length ? `Bakım sembolleri · ${careSymbols.length} seçili` : 'Bakım sembolleri'}
-          open={careOpen}
-          onToggle={() => setCareOpen((v) => !v)}
-        >
-          <View style={[styles.block, styles.formBlock]}>
-            <CareSymbolPicker value={careSymbols} onChange={setCareSymbols} />
-          </View>
-        </CollapsibleSection>
-
-        <SectionHeader title="Ticari" />
-        <View style={[styles.block, styles.formBlock]}>
-          <TextField
-            label="En az sipariş (MOQ)"
-            value={moq}
-            onChangeText={setMoq}
-            placeholder="Örn. 300"
-            keyboardType="numeric"
-          />
-          <Text style={styles.label}>MOQ birimi</Text>
-          <Text style={styles.labelHint}>Stok biriminden farklı olabilir.</Text>
-          <ChipSelect options={MOQ_UNIT_OPTIONS} value={moqUnit} onChange={setMoqUnit} compact />
-          <TextField
-            label="Termin (gün)"
-            value={leadTimeDays}
-            onChangeText={setLeadTimeDays}
-            placeholder="Örn. 15"
-            keyboardType="numeric"
-          />
-          <TextField
-            label="Fiyat"
-            value={priceValue}
-            onChangeText={setPriceValue}
-            placeholder="Örn. 4,50"
-            keyboardType="numeric"
-          />
-          <Text style={styles.label}>Para birimi</Text>
-          <ChipSelect options={CURRENCY_OPTIONS} value={priceCurrency} onChange={setPriceCurrency} compact />
-          <Text style={styles.label}>Fiyat birimi</Text>
-          <ChipSelect options={PRICE_UNIT_OPTIONS} value={priceUnit} onChange={setPriceUnit} compact />
-          <Text style={styles.noteBox}>Fiyat yalnızca size görünür. Diğer firmalar ürün sayfasında fiyatı görmez.</Text>
-        </View>
-
-        <CollapsibleSection
-          title="İplik"
-          count={filledYarnRows.length || undefined}
-          open={yarnOpen}
-          onToggle={() => setYarnOpen((v) => !v)}
-        >
-          <View style={[styles.block, styles.formBlock]}>
-            {yarnRows.length === 0 ? (
-              <Text style={styles.labelHint}>İplik numarası ve tipi girilirse alıcı kumaşın tuşesini tahmin edebilir.</Text>
-            ) : null}
-            {yarnRows.map((row, index) => (
-              <View key={row.key} style={styles.rowCard}>
-                <View style={styles.rowCardHead}>
-                  <Text style={styles.rowCardTitle}>{index + 1}. iplik</Text>
-                  <Pressable
-                    onPress={() => removeYarnRow(row.key)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${index + 1}. iplik satırını kaldır`}
-                    style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                  >
-                    <Ionicons name="close" size={18} color={colors.textMuted} />
-                  </Pressable>
+              {sourceOpen && !extracting ? (
+                <View>
+                  {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
+                  {Platform.OS !== 'web' ? (
+                    <ListRow title="Fotoğraf çek" left={iconSquare('camera')} onPress={extractFromCamera} />
+                  ) : null}
+                  <ListRow
+                    title="Galeriden seç"
+                    subtitle={`En fazla ${MAX_EXTRACT_IMAGES} fotoğraf`}
+                    left={iconSquare('images-outline')}
+                    onPress={extractFromGallery}
+                  />
+                  <ListRow
+                    title="PDF seç"
+                    subtitle="Test raporu ya da kartela belgesi"
+                    left={iconSquare('quote')}
+                    onPress={extractFromPdf}
+                  />
+                  <ListRow
+                    title="Metin yapıştır"
+                    subtitle="WhatsApp'tan gelen etiket bilgisi"
+                    left={iconSquare('clipboard-outline')}
+                    divider={false}
+                    onPress={() => {
+                      haptics.selection();
+                      setSourceOpen(false);
+                      setPasteOpen(true);
+                    }}
+                  />
                 </View>
-                <Text style={styles.label}>Rol</Text>
-                <ChipSelect
-                  options={YARN_ROLE_OPTIONS}
-                  value={row.role}
-                  onChange={(role) => updateYarnRow(row.key, { role })}
-                  compact
-                />
-                <View style={styles.fieldRow}>
-                  <View style={styles.fieldHalf}>
-                    <TextField
-                      label="Numara"
-                      value={row.count}
-                      onChangeText={(count) => updateYarnRow(row.key, { count })}
-                      placeholder="Örn. 30"
-                      keyboardType="numeric"
+              ) : null}
+
+              {pasteOpen ? (
+                <View style={{ gap: t.space[3] }}>
+                  <Input
+                    label="Etiket metni"
+                    value={pasteText}
+                    onChangeText={setPasteText}
+                    placeholder="Örn. 95% CO 5% EA, 220 gsm, 180 cm tubular"
+                    multiline
+                    maxLength={MAX_EXTRACT_TEXT}
+                  />
+                  <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+                    <Button
+                      kind="secondary"
+                      label="Oku"
+                      disabled={!pasteText.trim() || extracting}
+                      onPress={extractFromText}
+                      style={{ flex: 1 }}
                     />
-                  </View>
-                  <View style={styles.fieldHalf}>
-                    <TextField
-                      label="Kat"
-                      value={row.ply}
-                      onChangeText={(ply) => updateYarnRow(row.key, { ply })}
-                      placeholder="1"
-                      keyboardType="number-pad"
+                    <Button
+                      kind="quiet"
+                      label="Kapat"
+                      onPress={() => {
+                        haptics.selection();
+                        setPasteOpen(false);
+                      }}
+                      style={{ flex: 1 }}
                     />
                   </View>
                 </View>
-                <Text style={styles.label}>Numara sistemi</Text>
-                <ChipSelect
-                  options={YARN_UNIT_OPTIONS}
-                  value={row.unit}
-                  onChange={(unit) => updateYarnRow(row.key, { unit })}
-                  compact
+              ) : null}
+
+              {extractError ? dangerBanner(extractError) : null}
+            </>
+          )}
+
+          {section(
+            'Kumaş',
+            <>
+              {singleChips('Çeşit', TYPE_OPTIONS, type, changeType)}
+              {SUBTYPES[type].length > 0 ? singleChips('Alt çeşit', subtypeOptions, subtype, changeSubtype) : null}
+              {singleChips('En tipi', WIDTH_TYPE_OPTIONS, widthType, changeWidthType)}
+              {widthType === 'tup' ? (
+                <>
+                  {hint('Tüp en genellikle ham kumaşta olur; boyalı kumaş çoğunlukla açık endir.')}
+                  {singleChips('Girdiğiniz en neyi gösteriyor?', WIDTH_MEANING_OPTIONS, widthMeaning, setWidthMeaning)}
+                  {effectiveWidthText ? (
+                    <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{effectiveWidthText}</Text>
+                  ) : null}
+                </>
+              ) : null}
+              {multiChips(
+                'Kullanım amaçları',
+                USAGES,
+                usages,
+                changeUsages,
+                'Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.'
+              )}
+              {multiChips('Apre / boya', FINISH_TAGS, finishTags, changeFinishTags, 'Kumaşa uygulanan işlemler.')}
+            </>
+          )}
+
+          {section(
+            'Bilgiler',
+            <>
+              <Input label="Ürün kodu" value={code} onChangeText={changeCode} placeholder="Örn. ORM-1042" autoCapitalize="characters" />
+
+              <View style={{ gap: t.space[2] }}>
+                {fieldLabel('Kompozisyon')}
+                {compositionRowMode ? (
+                  <>
+                    <CompositionEditor
+                      rows={compositionRows}
+                      onChange={changeCompositionRows}
+                      hint="Her satırda bir lif ve oranı. Toplam genelde 100 olur."
+                      percentPlaceholder="Örn. 95"
+                      totalWarning={compositionTotal !== 100}
+                      totalSuffix={compositionTotal !== 100 ? ' (genelde 100 olur, yine de kaydedebilirsiniz)' : ''}
+                    />
+                    {/* Listede olmayan bir lif ya da serbest bir açıklama gerekiyorsa metne dönüş. */}
+                    <Button
+                      kind="quiet"
+                      label="Metin olarak yazmak istiyorum"
+                      accessibilityLabel="İçeriği metin olarak yaz"
+                      onPress={() => {
+                        haptics.selection();
+                        setCompositionRowMode(false);
+                        forgetExtracted('composition');
+                      }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Input label="İçerik" value={content} onChangeText={setContent} placeholder="Örn. %95 Pamuk %5 Elastan" />
+                    <Button
+                      kind="secondary"
+                      label="Satırlara böl"
+                      icon="yarn"
+                      accessibilityLabel="İçeriği kompozisyon satırlarına böl"
+                      onPress={switchToCompositionRows}
+                    />
+                    {hint('Satırlara bölerseniz alıcılar lif ve orana göre arayabilir.')}
+                  </>
+                )}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Gramaj"
+                  unit="gr/m²"
+                  value={weightGsm}
+                  onChangeText={changeWeightGsm}
+                  placeholder="Örn. 220"
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
                 />
-                <Text style={styles.label}>İplik tipi</Text>
-                <ChipSelect
-                  options={YARN_TYPE_OPTIONS}
-                  value={row.yarnType}
-                  onChange={(yarnType) => updateYarnRow(row.key, { yarnType })}
-                  compact
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="En"
+                  unit="cm"
+                  value={widthCm}
+                  onChangeText={changeWidthCm}
+                  placeholder="Örn. 150"
+                  inputMode="decimal"
+                  keyboardType="decimal-pad"
                 />
               </View>
-            ))}
-            {yarnRows.length < MAX_YARNS ? (
-              <Pressable
-                onPress={addYarnRow}
-                accessibilityRole="button"
-                accessibilityLabel="İplik satırı ekle"
-                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-              >
-                <Ionicons name="add" size={18} color={colors.accent} />
-                <Text style={styles.addRowText}>İplik ekle</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </CollapsibleSection>
+              {singleChips('Stok birimi', UNIT_OPTIONS, stockUnit, setStockUnit)}
+              <Input
+                label="Stok"
+                unit={STOCK_UNIT_LABELS[stockUnit].long}
+                value={stock}
+                onChangeText={setStock}
+                placeholder={stockUnit === 'm' ? 'Örn. 1200' : 'Örn. 450'}
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+              />
+              <Input
+                label="Not (isteğe bağlı)"
+                value={useArea}
+                onChangeText={setUseArea}
+                placeholder="Örn. Şardonlu, yıkamalı"
+              />
+              {/* Pasaport alanları diğer ürün bilgileriyle birlikte girilir; ayrı
+                  bir "pasaport için yeniden gir" bölümü YOK (Fırat 2026-09-21). */}
+              <Input
+                label="Menşe ülke (isteğe bağlı)"
+                value={originCountry}
+                onChangeText={setOriginCountry}
+                placeholder="Örn. Türkiye"
+                maxLength={60}
+              />
+              <Input
+                label="Geri dönüştürülmüş içerik"
+                unit="%"
+                value={recycledPercent}
+                onChangeText={setRecycledPercent}
+                placeholder="Örn. 30"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                helper="Dijital pasaportta görünür."
+              />
+            </>
+          )}
 
-        <CollapsibleSection
-          title="Sertifikalar"
-          count={certificateRows.length || undefined}
-          open={certificateOpen}
-          onToggle={() => setCertificateOpen((v) => !v)}
-        >
-          <View style={[styles.block, styles.formBlock]}>
+          {/* Bakım sembolleri: etiketteki uluslararası işaretler; yazı yerine
+              sembol (Fırat 2026-09-21). Sembol listesi ve çizim tarifi tek
+              kaynaktan: backend/src/domain/care.ts → features/care/symbols.ts. */}
+          {collapsible(
+            careSymbols.length ? `Bakım sembolleri · ${careSymbols.length} seçili` : 'Bakım sembolleri',
+            careOpen,
+            () => setCareOpen((v) => !v),
+            <CareSymbolPicker value={careSymbols} onChange={setCareSymbols} />
+          )}
+
+          {section(
+            'Ticari',
+            <>
+              <Input
+                label="En az sipariş (MOQ)"
+                unit={moqUnit}
+                value={moq}
+                onChangeText={setMoq}
+                placeholder="Örn. 300"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+              />
+              {singleChips('MOQ birimi', MOQ_UNIT_OPTIONS, moqUnit, setMoqUnit, 'Stok biriminden farklı olabilir.')}
+              <Input
+                label="Termin"
+                unit="gün"
+                value={leadTimeDays}
+                onChangeText={setLeadTimeDays}
+                placeholder="Örn. 15"
+                inputMode="numeric"
+                keyboardType="number-pad"
+              />
+              <Input
+                label="Fiyat"
+                unit={`${priceCurrency}/${priceUnit}`}
+                value={priceValue}
+                onChangeText={setPriceValue}
+                placeholder="Örn. 4,50"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+              />
+              {singleChips('Para birimi', CURRENCY_OPTIONS, priceCurrency, setPriceCurrency)}
+              {singleChips('Fiyat birimi', PRICE_UNIT_OPTIONS, priceUnit, setPriceUnit)}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space[2],
+                  padding: t.space[3],
+                  borderRadius: t.radius.md,
+                  backgroundColor: t.colors.surface2,
+                }}
+              >
+                <Icon name="info" size={t.size.iconSm} color="ink2" />
+                <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
+                  Fiyat yalnızca size görünür. Diğer firmalar ürün sayfasında fiyatı görmez.
+                </Text>
+              </View>
+            </>
+          )}
+
+          {collapsible(
+            filledYarnRows.length ? `İplik (${filledYarnRows.length})` : 'İplik',
+            yarnOpen,
+            () => setYarnOpen((v) => !v),
+            <>
+              {yarnRows.length === 0
+                ? hint('İplik numarası ve tipi girilirse alıcı kumaşın tuşesini tahmin edebilir.')
+                : null}
+              {yarnRows.map((row, index) =>
+                rowCard(
+                  row.key,
+                  `${index + 1}. iplik`,
+                  `${index + 1}. iplik satırını kaldır`,
+                  () => removeYarnRow(row.key),
+                  <>
+                    {singleChips('Rol', YARN_ROLE_OPTIONS, row.role, (role) => updateYarnRow(row.key, { role }))}
+                    <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+                      <Input
+                        containerStyle={{ flex: 1 }}
+                        label="Numara"
+                        value={row.count}
+                        onChangeText={(count) => updateYarnRow(row.key, { count })}
+                        placeholder="Örn. 30"
+                        inputMode="decimal"
+                        keyboardType="decimal-pad"
+                      />
+                      <Input
+                        containerStyle={{ flex: 1 }}
+                        label="Kat"
+                        value={row.ply}
+                        onChangeText={(ply) => updateYarnRow(row.key, { ply })}
+                        placeholder="1"
+                        inputMode="numeric"
+                        keyboardType="number-pad"
+                      />
+                    </View>
+                    {singleChips('Numara sistemi', YARN_UNIT_OPTIONS, row.unit, (unit) =>
+                      updateYarnRow(row.key, { unit })
+                    )}
+                    {singleChips('İplik tipi', YARN_TYPE_OPTIONS, row.yarnType, (yarnType) =>
+                      updateYarnRow(row.key, { yarnType })
+                    )}
+                  </>
+                )
+              )}
+              {yarnRows.length < MAX_YARNS ? (
+                <Button kind="secondary" label="İplik ekle" icon="plus" accessibilityLabel="İplik satırı ekle" onPress={addYarnRow} />
+              ) : null}
+            </>
+          )}
+
+          {collapsible(
+            certificateRows.length ? `Sertifikalar (${certificateRows.length})` : 'Sertifikalar',
+            certificateOpen,
+            () => setCertificateOpen((v) => !v),
             <CertificatesEditor
               rows={certificateRows}
               onChange={changeCertificateRows}
@@ -1561,328 +1796,95 @@ export function AddProductScreen({ navigation, route }: Props) {
               picking={pickingDoc}
               onPickingChange={setPickingDoc}
             />
-          </View>
-        </CollapsibleSection>
+          )}
 
-        <CollapsibleSection
-          title="Test raporları"
-          count={filledTestReportRows.length || undefined}
-          open={testReportOpen}
-          onToggle={() => setTestReportOpen((v) => !v)}
-        >
-          <View style={[styles.block, styles.formBlock]}>
-            {testReportRows.length === 0 ? (
-              <Text style={styles.labelHint}>
-                Laboratuvar sonuçları (çekme, haslık, boncuklanma) alıcının güvenini artırır.
-              </Text>
-            ) : null}
-            {testReportRows.map((row, index) => (
-              <View key={row.key} style={styles.rowCard}>
-                <View style={styles.rowCardHead}>
-                  <Text style={styles.rowCardTitle}>{index + 1}. test</Text>
-                  <Pressable
-                    onPress={() => removeTestReportRow(row.key)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${index + 1}. test raporu satırını kaldır`}
-                    style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
-                  >
-                    <Ionicons name="close" size={18} color={colors.textMuted} />
-                  </Pressable>
-                </View>
-                <TextField
-                  label="Test türü"
-                  value={row.kind}
-                  onChangeText={(kind) => updateTestReportRow(row.key, { kind })}
-                  placeholder="Örn. Renk haslığı"
-                  maxLength={MAX_TEST_KIND_CHARS}
+          {collapsible(
+            filledTestReportRows.length ? `Test raporları (${filledTestReportRows.length})` : 'Test raporları',
+            testReportOpen,
+            () => setTestReportOpen((v) => !v),
+            <>
+              {testReportRows.length === 0
+                ? hint('Laboratuvar sonuçları (çekme, haslık, boncuklanma) alıcının güvenini artırır.')
+                : null}
+              {testReportRows.map((row, index) =>
+                rowCard(
+                  row.key,
+                  `${index + 1}. test`,
+                  `${index + 1}. test raporu satırını kaldır`,
+                  () => removeTestReportRow(row.key),
+                  <>
+                    <Input
+                      label="Test türü"
+                      value={row.kind}
+                      onChangeText={(kind) => updateTestReportRow(row.key, { kind })}
+                      placeholder="Örn. Renk haslığı"
+                      maxLength={MAX_TEST_KIND_CHARS}
+                    />
+                    {/* Öneri çipleri serbest metni doldurur, kısıtlamaz. */}
+                    <ChipRow>
+                      {TEST_KIND_SUGGESTIONS.map((suggestion) => (
+                        <Chip
+                          key={suggestion}
+                          label={suggestion}
+                          selected={row.kind === suggestion}
+                          onPress={() => {
+                            haptics.selection();
+                            updateTestReportRow(row.key, { kind: suggestion });
+                          }}
+                        />
+                      ))}
+                    </ChipRow>
+                    <Input
+                      label="Sonuç (isteğe bağlı)"
+                      value={row.result}
+                      onChangeText={(result) => updateTestReportRow(row.key, { result })}
+                      placeholder="Örn. 4-5 (iyi)"
+                      maxLength={MAX_TEST_RESULT_CHARS}
+                    />
+                    <Input
+                      label="Test tarihi (isteğe bağlı)"
+                      helper="YYYY-AA-GG biçiminde."
+                      value={row.testedAt}
+                      onChangeText={(testedAt) => updateTestReportRow(row.key, { testedAt })}
+                      placeholder="Örn. 2026-05-14"
+                      autoCapitalize="none"
+                    />
+                    <DocField
+                      image={row.image}
+                      onChange={(image) => updateTestReportRow(row.key, { image })}
+                      busy={pickingDoc === row.key}
+                      onBusyChange={(active) => setPickingDoc(active ? row.key : null)}
+                      onError={setError}
+                      disabled={pickingDoc !== null && pickingDoc !== row.key}
+                      labelPrefix={`${index + 1}. test raporu`}
+                    />
+                  </>
+                )
+              )}
+              {testReportRows.length < MAX_TEST_REPORTS ? (
+                <Button
+                  kind="secondary"
+                  label="Test raporu ekle"
+                  icon="plus"
+                  accessibilityLabel="Test raporu satırı ekle"
+                  onPress={addTestReportRow}
                 />
-                <View style={styles.suggestRow}>
-                  {TEST_KIND_SUGGESTIONS.map((suggestion) => (
-                    <Pressable
-                      key={suggestion}
-                      onPress={() => {
-                        haptics.selection();
-                        updateTestReportRow(row.key, { kind: suggestion });
-                      }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Test türü: ${suggestion}`}
-                      hitSlop={8}
-                      style={({ pressed }) => [styles.suggestChip, pressed && styles.suggestChipPressed]}
-                    >
-                      <Text style={styles.suggestChipText}>{suggestion}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <TextField
-                  label="Sonuç (isteğe bağlı)"
-                  value={row.result}
-                  onChangeText={(result) => updateTestReportRow(row.key, { result })}
-                  placeholder="Örn. 4-5 (iyi)"
-                  maxLength={MAX_TEST_RESULT_CHARS}
-                />
-                <TextField
-                  label="Test tarihi (YYYY-AA-GG, isteğe bağlı)"
-                  value={row.testedAt}
-                  onChangeText={(testedAt) => updateTestReportRow(row.key, { testedAt })}
-                  placeholder="Örn. 2026-05-14"
-                  autoCapitalize="none"
-                />
-                <DocField
-                  image={row.image}
-                  onChange={(image) => updateTestReportRow(row.key, { image })}
-                  busy={pickingDoc === row.key}
-                  onBusyChange={(active) => setPickingDoc(active ? row.key : null)}
-                  onError={setError}
-                  disabled={pickingDoc !== null && pickingDoc !== row.key}
-                  labelPrefix={`${index + 1}. test raporu`}
-                />
-              </View>
-            ))}
-            {testReportRows.length < MAX_TEST_REPORTS ? (
-              <Pressable
-                onPress={addTestReportRow}
-                accessibilityRole="button"
-                accessibilityLabel="Test raporu satırı ekle"
-                style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
-              >
-                <Ionicons name="add" size={18} color={colors.accent} />
-                <Text style={styles.addRowText}>Test raporu ekle</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </CollapsibleSection>
+              ) : null}
+            </>
+          )}
 
-        {formErrors.map((message) => (
-          <Text key={message} style={styles.error}>
-            {message}
-          </Text>
-        ))}
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+          {formErrors.length || error ? (
+            <View style={{ gap: t.space[2] }}>
+              {formErrors.map((message) => dangerBanner(message))}
+              {error ? dangerBanner(error, 'hata') : null}
+            </View>
+          ) : null}
 
-        {isEditing ? (
-          <View style={[styles.block, styles.deleteBlock]}>
-            <ListRow
-              title={deleting ? 'Siliniyor...' : 'Ürünü Sil'}
-              tone="danger"
-              chevron={false}
-              divider={false}
-              onPress={deleting ? undefined : handleDelete}
-            />
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        {savedWarnings ? (
-          <PrimaryButton
-            label="Devam"
-            size="lg"
-            onPress={() => {
-              if (createdProductId) void offerFeedShare(createdProductId);
-              else navigation.goBack();
-            }}
-            style={styles.actionMain}
-          />
-        ) : (
-          <PrimaryButton
-            label={submitting ? 'Kaydediliyor...' : isEditing ? 'Değişiklikleri Kaydet' : 'Ürünü Kaydet'}
-            size="lg"
-            disabled={!canSubmit || submitting || deleting}
-            onPress={handleSubmit}
-            style={styles.actionMain}
-          />
-        )}
-      </View>
+          {isEditing ? (
+            <Button kind="danger" fullWidth label="Ürünü sil" loading={deleting} onPress={handleDelete} />
+          ) : null}
+        </ScrollView>
+      </Screen>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface },
-  formBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter },
-  // WhatsApp taslağı bilgi şeridi: formun en üstünde ince, gri, dikkat çekmeyen.
-  draftBar: {
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    gap: 4,
-  },
-  draftTextWrap: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  draftIcon: { marginTop: 1 },
-  draftText: { ...typography.caption, color: colors.textMuted, flex: 1 },
-  draftNote: { ...typography.caption, color: colors.textMuted },
-  draftError: { ...typography.caption, color: colors.danger },
-  draftLinkPress: { alignSelf: 'flex-start' },
-  draftLink: { ...typography.caption, fontFamily: fonts.semibold, color: colors.danger },
-  photoGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.gutter,
-  },
-  photoTile: { width: PHOTO_SIZE, height: PHOTO_SIZE },
-  photoPress: { borderRadius: radius.md, overflow: 'hidden' },
-  photoPressed: { opacity: 0.8 },
-  photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  photoLoading: { alignItems: 'center', justifyContent: 'center' },
-  coverBadge: {
-    position: 'absolute',
-    left: 4,
-    bottom: 4,
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  coverBadgeText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
-  removeButton: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 26,
-    height: 26,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(17,26,34,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removePressed: { backgroundColor: colors.danger },
-  addTile: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  addTileText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  // Etiketten doldur bloğu (Adım 3): açıklama + çerçeveli düğme, altında
-  // ekran içinde açılan kaynak listesi (web'de Alert.alert çalışmıyor).
-  extractBlock: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, paddingBottom: spacing.sm },
-  extractRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  extractButton: { flex: 1 },
-  sourceBox: {
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  pasteBox: { marginTop: spacing.sm },
-  pasteActions: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  pasteAction: { flex: 1 },
-  extractError: { ...typography.caption, color: colors.danger, marginTop: spacing.sm },
-  label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
-  labelHint: { ...typography.caption, color: colors.textMuted, marginTop: -2, marginBottom: spacing.sm },
-  fieldRow: { flexDirection: 'row', gap: spacing.sm },
-  fieldHalf: { flex: 1 },
-  // Tekrarlanan satırlar (kompozisyon, iplik, sertifika): ince çerçeveli kutu.
-  rowCard: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingTop: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  rowCardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  rowCardTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  rowRemove: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  rowRemovePressed: { backgroundColor: colors.pressed },
-  addRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    minHeight: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    marginBottom: spacing.md,
-  },
-  addRowPressed: { backgroundColor: colors.pressed },
-  addRowText: { ...typography.label, color: colors.accent },
-  textLink: { minHeight: 44, justifyContent: 'center', marginBottom: spacing.sm },
-  textLinkPressed: { opacity: 0.6 },
-  textLinkLabel: { ...typography.label, color: colors.accent },
-  noteBox: {
-    ...typography.caption,
-    color: colors.textMuted,
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  // Kaydedildi ama makullük uyarısı var: sarı kutu (web'de Alert çalışmıyor).
-  warningBox: {
-    backgroundColor: colors.warningSoft,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.warning,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm + 2,
-    gap: 4,
-  },
-  warningTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  warningTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.warning },
-  warningNote: { ...typography.caption, color: colors.text },
-  // Test türü öneri çipleri: serbest metin alanını dolduran kısayollar
-  // (ChipSelect değil, çünkü değer listeyle sınırlı değil).
-  suggestRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: -spacing.xs, marginBottom: spacing.md },
-  suggestChip: {
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.chip,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  suggestChipPressed: { backgroundColor: colors.pressed },
-  suggestChipText: { ...typography.caption, color: colors.primary },
-  docRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
-  docPhoto: {
-    width: DOC_PHOTO_SIZE,
-    height: DOC_PHOTO_SIZE,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  docPhotoEmpty: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-  },
-  docActions: { flex: 1, flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-  deleteBlock: { marginTop: spacing.lg },
-  actionBar: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { flex: 1 },
-});

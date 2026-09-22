@@ -1,6 +1,13 @@
+// Bildirimler (yeni tasarım, 4. adım — DESIGN.md §3 liste satırı + rozet).
+//
+// Veri katmanı AYNI: uçlar, okundu işaretleme, navigasyon hedefleri ve rota
+// adları değişmedi. Yalnızca görünüm yeni: `ui/ListRow` (okunmamış satır için
+// `unread`), `ui/Card` içindeki PushSettingsCard, `ui/EmptyState`.
+// Üst bant stack navigator'dan geliyor (AppBar burada çizilmez).
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, FlatList } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -9,49 +16,67 @@ import {
   markNotificationsRead,
   type AppNotification,
 } from '../../api/client';
-import { ListRow } from '../../components/ListRow';
 import { PushSettingsCard } from '../../components/PushSettingsCard';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { setUnreadNotificationCount } from '../../features/notifications/unreadCount';
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
-import { colors, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { EmptyState, Icon, ListRow, Screen, SkeletonRow, type AnyIconName } from '../../ui';
 
 type Props = RootStackScreenProps<'Notifications'>;
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
 // Faz 2, Adım 1: uygulama içi bildirimler (push YOK). Satıra dokunmak hem
 // bildirimi okundu yapar hem ilgili ekranı açar.
-function iconFor(kind: string): IconName {
-  if (kind === 'watch_match') return 'bookmark';
-  if (kind.startsWith('sample_request')) return 'cube-outline';
+function iconFor(kind: string): AnyIconName {
+  if (kind === 'watch_match') return 'bookmark-outline';
+  if (kind.startsWith('sample_request')) return 'sample';
   if (kind.startsWith('connection')) return 'people-outline';
   // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
   // quote_accepted, quote_declined.
   if (kind.startsWith('quote')) return 'pricetag-outline';
   // Sipariş kaydı ve karşılıklı değerlendirme (Faz 3, Adım 4).
   if (kind === 'deal_review') return 'star-outline';
-  if (kind.startsWith('deal')) return 'cube-outline';
+  if (kind.startsWith('deal')) return 'sample';
   // Satıcı asistanı (Faz 2, Adım 3): soru geldi / soru cevaplandı.
   if (kind.startsWith('company_question')) return 'sparkles-outline';
   // Karşılıklı referanslar (Faz 2, Adım 7).
   if (kind.startsWith('reference')) return 'ribbon-outline';
   // WhatsApp'tan gelen etiket fotoğrafından hazırlanan ürün taslağı.
-  if (kind === 'product_draft') return 'logo-whatsapp';
+  if (kind === 'product_draft') return 'whatsapp';
   // Davetler (Faz 2, Adım 4): davet ettiğiniz kişi katıldı.
   if (kind === 'invite_joined') return 'person-add-outline';
   // Firma doğrulama başvurusu (2026-09-22).
-  if (kind === 'verification_approved') return 'shield-checkmark';
+  if (kind === 'verification_approved') return 'shield-checkmark-outline';
   if (kind === 'verification_rejected') return 'shield-outline';
   if (kind === 'verification_request') return 'shield-half-outline';
-  return 'notifications-outline';
+  return 'bell';
+}
+
+// Satırın solundaki 40px ikon karesi (DESIGN.md §3: brand-soft zemin, brand ikon).
+// `ui` içinde hazır bir "ikon karesi" bileşeni yok; ekran içinde token'larla çözüldü.
+function IconSquare({ name }: { name: AnyIconName }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        width: t.size.avatar,
+        height: t.size.avatar,
+        borderRadius: t.radius.sm,
+        backgroundColor: t.colors.brandSoft,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name={name} size={t.size.iconSm} color="brand" />
+    </View>
+  );
 }
 
 export function NotificationsScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() => fetchNotifications(30));
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -206,58 +231,84 @@ export function NotificationsScreen({ navigation }: Props) {
 
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="conversation" />
-      </View>
+      <Screen scroll={false}>
+        <View style={{ gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      </Screen>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
-        <ErrorState error={error} fallback="Bildirimler alınamadı" onRetry={reload} />
-      </View>
+      <Screen scroll={false}>
+        <EmptyState
+          icon="warning"
+          title="Bildirimler alınamadı"
+          description={friendlyMessage(error, 'Bildirimler alınamadı')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.screen}>
-      {actionError ? <InlineError message={actionError} style={styles.banner} /> : null}
+    <Screen scroll={false} noPadding>
       <FlatList
         data={notifications}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
-          <>
-          {/* Anlık bildirim ayarı (yalnızca web + sunucuda açıkken görünür). */}
-          <PushSettingsCard />
-          <View style={styles.block}>
-            {unreadCount > 0 ? (
-              <ListRow
-                title="Tümünü okundu say"
-                subtitle={`${unreadCount} okunmamış bildirim`}
-                left={<Ionicons name="checkmark-done-outline" size={22} color={colors.primary} />}
-                chevron={false}
-                onPress={markAllRead}
-              />
+          <View style={{ gap: t.space[4], paddingBottom: t.space[2] }}>
+            {actionError ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space[2],
+                  padding: t.space[3],
+                  borderRadius: t.radius.md,
+                  backgroundColor: t.colors.dangerSoft,
+                }}
+              >
+                <Icon name="warning" size={t.size.iconSm} color="danger" />
+                <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{actionError}</Text>
+              </View>
             ) : null}
-            <ListRow
-              title="İzlediklerim"
-              subtitle="Yeni ürün çıkınca haber alacağınız süzgeçler"
-              left={<Ionicons name="notifications-outline" size={22} color={colors.primary} />}
-              divider={false}
-              onPress={() => navigation.navigate('WatchRules')}
-            />
+            {/* Anlık bildirim ayarı (yalnızca web + sunucuda açıkken görünür). */}
+            <PushSettingsCard />
+            <View>
+              {unreadCount > 0 ? (
+                <ListRow
+                  title="Tümünü okundu say"
+                  subtitle={`${unreadCount} okunmamış bildirim`}
+                  left={<IconSquare name="check" />}
+                  unread
+                  unreadCount={unreadCount}
+                  onPress={markAllRead}
+                />
+              ) : null}
+              <ListRow
+                title="İzlediklerim"
+                subtitle="Yeni ürün çıkınca haber alacağınız süzgeçler"
+                left={<IconSquare name="bell" />}
+                divider={false}
+                onPress={() => navigation.navigate('WatchRules')}
+              />
+            </View>
           </View>
-          </>
         }
         ListEmptyComponent={
           <EmptyState
-            compact
-            icon="notifications-outline"
+            icon="bell"
             title="Henüz bildirim yok"
-            message="Bir kaliteyi izlemeye alırsanız yeni ürünler burada görünür."
+            description="Bir kaliteyi izlemeye alırsanız yeni ürünler burada görünür."
             actionLabel="İzleme kur"
             onAction={() => navigation.navigate('WatchRules')}
           />
@@ -267,43 +318,20 @@ export function NotificationsScreen({ navigation }: Props) {
             title={item.title}
             subtitle={item.body || undefined}
             divider={index < notifications.length - 1}
-            style={!item.read ? styles.unreadRow : undefined}
-            accessibilityLabel={`${item.read ? '' : 'Okunmamış. '}${item.title}${item.body ? `, ${item.body}` : ''}, ${formatRelativeTime(item.createdAt)}`}
-            left={
-              <View style={styles.leftWrap}>
-                <View style={[styles.dot, item.read && styles.dotHidden]} />
-                <Ionicons name={iconFor(item.kind)} size={22} color={colors.primary} />
-              </View>
-            }
-            right={<Text style={styles.time}>{formatRelativeTime(item.createdAt)}</Text>}
+            unread={!item.read}
+            left={<IconSquare name={iconFor(item.kind)} />}
+            time={formatRelativeTime(item.createdAt)}
             onPress={() => open(item)}
           />
         )}
         ListFooterComponent={
           notifications.length ? (
-            <Text style={styles.footerNote}>Son 30 bildirim gösterilir.</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[4] }]}>
+              Son 30 bildirim gösterilir.
+            </Text>
           ) : null
         }
       />
-    </View>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, marginBottom: spacing.blockGap },
-  banner: { margin: spacing.gutter },
-  // Okunmamış satır: hafif mavi ton + solda mavi nokta.
-  unreadRow: { backgroundColor: colors.accentSoft },
-  leftWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dot: { width: 8, height: 8, borderRadius: radius.pill, backgroundColor: colors.accent },
-  dotHidden: { backgroundColor: 'transparent' },
-  time: { ...typography.mono, fontSize: 13, lineHeight: 17, color: colors.textMuted },
-  footerNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-});

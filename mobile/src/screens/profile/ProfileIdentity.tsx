@@ -1,15 +1,22 @@
+// Kimlik başlığı (yeni tasarım, 4. adım — DESIGN.md §3 "Kart" + §5).
+//
+// Kapak fotoğrafı, kapağa taşan büyük yuvarlak avatar, ad · başlık · firma
+// (doğrulanmış rozetiyle) · konum · bağlantı sayısı, sonra Hakkında ve telefon.
+// Profilim ekranı ve başkasının profil ekranı ortak kullanır.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable, Image } from 'react-native';
 import type { PublicUserProfile } from '../../api/client';
 import { UserAvatar } from '../../components/UserAvatar';
 import { getCachedUserCover, loadUserCover, userCoverKey } from '../../features/users/userCoverCache';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Badge, Icon } from '../../ui';
 
 interface Props {
   profile: PublicUserProfile;
   onOpenCompany?: (companyId: string) => void;
-  // Profilim ekranında büyük avatar (88) ve altında fotoğraf düğmeleri var.
+  // Profilim ekranında büyük avatar ve altında fotoğraf düğmeleri var.
   avatarSize?: number;
   // Oturumdaki değerle anında tazelemek için (fotoğraf yükledikten sonra
   // profil yeniden çekilmeden önce); verilmezse profildeki değer kullanılır.
@@ -25,14 +32,10 @@ interface Props {
   onOpenConnections?: () => void;
 }
 
-// Taslak: docs/tasarim-yonleri/CProfil.dc.html + LinkedIn benzeri başlık
-// (Fırat, 2026-09-22): kapak fotoğrafı, kapağa taşan büyük yuvarlak avatar,
-// ad · başlık · firma · konum · bağlantı sayısı, sonra Hakkında ve telefon.
-// Profilim sekmesi ve başkasının profil ekranı ortak kullanır.
 export function ProfileIdentity({
   profile,
   onOpenCompany,
-  avatarSize = 88,
+  avatarSize,
   avatarUpdatedAt,
   belowIdentity,
   isSelf = false,
@@ -41,6 +44,9 @@ export function ProfileIdentity({
   onEditProfile,
   onOpenConnections,
 }: Props) {
+  const t = useTheme();
+  // Varsayılan avatar: ürün görseli (72) + bir ızgara adımı = 88, ham px yok.
+  const avatar = avatarSize ?? t.size.thumb + t.space[4];
   const name = `${profile.firstName} ${profile.lastName}`;
   const company = profile.company;
   // Başlık boşsa unvan ve firma adından otomatik kurulur.
@@ -50,8 +56,20 @@ export function ProfileIdentity({
   const about = profile.about?.trim() ?? '';
   const cover = coverUpdatedAt !== undefined ? coverUpdatedAt : profile.coverUpdatedAt;
 
+  // Bölümleri ayıran tam genişlik çizgi (kartın kendi iç boşluğu yok).
+  const divider = { borderTopWidth: 1, borderTopColor: t.colors.line } as const;
+
   return (
-    <View style={styles.block}>
+    <View
+      style={{
+        backgroundColor: t.colors.surface1,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.lg,
+        overflow: 'hidden',
+        minWidth: 0,
+      }}
+    >
       <View>
         <ProfileCover userId={profile.id} coverUpdatedAt={cover} />
         {isSelf && onEditCover ? (
@@ -59,28 +77,54 @@ export function ProfileIdentity({
             onPress={onEditCover}
             accessibilityRole="button"
             accessibilityLabel="Kapak fotoğrafını değiştir"
-            hitSlop={6}
-            style={({ pressed }) => [styles.coverEdit, pressed && styles.pressedFade]}
+            style={({ pressed }) => ({
+              position: 'absolute',
+              top: t.space[2],
+              right: t.space[2],
+              width: t.size.touchMin,
+              height: t.size.touchMin,
+              borderRadius: t.radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: t.colors.line,
+              backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+            })}
           >
-            <Ionicons name="pencil" size={16} color={colors.primary} />
+            <Icon name="create-outline" size={t.size.iconSm} color="brand" />
           </Pressable>
         ) : null}
       </View>
 
-      <View style={styles.body}>
-        <View style={[styles.avatarWrap, { marginTop: -(avatarSize / 2) }]}>
+      <View style={{ paddingHorizontal: t.space[4], paddingBottom: t.space[4], minWidth: 0 }}>
+        <View
+          style={{
+            alignSelf: 'flex-start',
+            marginTop: -(avatar / 2),
+            marginBottom: t.space[2],
+            borderRadius: t.radius.full,
+            borderWidth: t.space[1] / 2,
+            borderColor: t.colors.surface1,
+            backgroundColor: t.colors.surface1,
+            overflow: 'hidden',
+          }}
+        >
           {/* Kişi sayfası: kişinin kendi fotoğrafı (yoksa baş harfleri). */}
           <UserAvatar
             userId={profile.id}
             firstName={profile.firstName}
             lastName={profile.lastName}
             avatarUpdatedAt={avatarUpdatedAt !== undefined ? avatarUpdatedAt : profile.avatarUpdatedAt}
-            size={avatarSize}
+            size={avatar}
           />
         </View>
 
-        <View style={styles.nameRow}>
-          <Text style={styles.name} accessibilityRole="header">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+          <Text
+            accessibilityRole="header"
+            numberOfLines={2}
+            style={[t.type.title22, { color: t.colors.ink, flex: 1, minWidth: 0 }]}
+          >
             {name}
           </Text>
           {isSelf && onEditProfile ? (
@@ -88,15 +132,23 @@ export function ProfileIdentity({
               onPress={onEditProfile}
               accessibilityRole="button"
               accessibilityLabel="Profil bilgilerini düzenle"
-              hitSlop={8}
-              style={({ pressed }) => [styles.iconButton, pressed && styles.pressedFade]}
+              style={({ pressed }) => ({
+                width: t.size.touchMin,
+                height: t.size.touchMin,
+                borderRadius: t.radius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+              })}
             >
-              <Ionicons name="pencil" size={18} color={colors.primary} />
+              <Icon name="create-outline" size={t.size.iconSm} color="brand" />
             </Pressable>
           ) : null}
         </View>
 
-        {headline ? <Text style={styles.headline}>{headline}</Text> : null}
+        {headline ? (
+          <Text style={[t.type.body16, { color: t.colors.ink, marginTop: t.space[1] }]}>{headline}</Text>
+        ) : null}
 
         {company ? (
           <Pressable
@@ -104,65 +156,112 @@ export function ProfileIdentity({
             disabled={!onOpenCompany}
             accessibilityRole={onOpenCompany ? 'button' : undefined}
             accessibilityLabel={onOpenCompany ? `${company.name}, firma sayfasını aç` : company.name}
-            hitSlop={6}
-            style={({ pressed }) => [styles.companyLink, pressed && styles.pressedFade]}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              alignSelf: 'flex-start',
+              minHeight: t.size.touchMin,
+              minWidth: 0,
+              opacity: pressed && onOpenCompany ? 0.6 : 1,
+            })}
           >
-            <Text style={styles.company}>{company.name}</Text>
+            <Text numberOfLines={1} style={[t.type.label14, { color: t.colors.brand, flexShrink: 1 }]}>
+              {company.name}
+            </Text>
+            {/* Durum yalnız renkle verilmez: rozet ikon + metin (DESIGN.md §6). */}
+            {company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
           </Pressable>
         ) : null}
 
-        {profile.location?.trim() ? <Text style={styles.location}>{profile.location.trim()}</Text> : null}
+        {profile.location?.trim() ? (
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{profile.location.trim()}</Text>
+        ) : null}
 
         <Pressable
           onPress={onOpenConnections}
           disabled={!onOpenConnections}
           accessibilityRole={onOpenConnections ? 'button' : undefined}
           accessibilityLabel={`${profile.connectionCount ?? 0} bağlantı`}
-          hitSlop={6}
-          style={({ pressed }) => [styles.connectionsLink, pressed && onOpenConnections && styles.pressedFade]}
+          style={({ pressed }) => ({
+            alignSelf: 'flex-start',
+            minHeight: t.size.touchMin,
+            justifyContent: 'center',
+            opacity: pressed && onOpenConnections ? 0.6 : 1,
+          })}
         >
-          <Text style={styles.connections}>{profile.connectionCount ?? 0} bağlantı</Text>
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>
+            {profile.connectionCount ?? 0} bağlantı
+          </Text>
         </Pressable>
       </View>
 
-      {belowIdentity ? <View style={styles.below}>{belowIdentity}</View> : null}
+      {belowIdentity ? (
+        <View style={{ paddingHorizontal: t.space[4], paddingBottom: t.space[4] }}>{belowIdentity}</View>
+      ) : null}
 
       {about ? (
-        <View style={styles.aboutBlock}>
-          <Text style={styles.aboutTitle} accessibilityRole="header">
+        <View style={[divider, { padding: t.space[4], gap: t.space[2] }]}>
+          <Text accessibilityRole="header" style={[t.type.title18, { color: t.colors.ink }]}>
             Hakkında
           </Text>
-          <Text style={styles.aboutText}>{about}</Text>
+          <Text style={[t.type.body16, { color: t.colors.ink }]}>{about}</Text>
         </View>
       ) : isSelf && onEditProfile ? (
         <Pressable
           onPress={onEditProfile}
           accessibilityRole="button"
           accessibilityLabel="Hakkında ekle"
-          style={({ pressed }) => [styles.addAboutRow, pressed && styles.pressedRow]}
+          style={({ pressed }) => [
+            divider,
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              minHeight: t.size.touchMin,
+              paddingHorizontal: t.space[4],
+              backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+            },
+          ]}
         >
-          <Ionicons name="add" size={18} color={colors.accent} />
-          <Text style={styles.addAboutText}>Hakkında ekle</Text>
+          <Icon name="plus" size={t.size.iconSm} color="brand" />
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>Hakkında ekle</Text>
         </Pressable>
       ) : null}
 
-      <View style={styles.phoneRow}>
-        <Text style={styles.phoneLabel}>Telefon</Text>
+      <View
+        style={[
+          divider,
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: t.space[3],
+            minHeight: t.size.control,
+            paddingHorizontal: t.space[4],
+            minWidth: 0,
+          },
+        ]}
+      >
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Telefon</Text>
         {/* Sunucu, bağlantı yoksa telefon alanını hiç göndermiyor. */}
         {profile.phone ? (
-          <Text style={styles.phoneValue} selectable>
+          <Text selectable numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink, flexShrink: 1 }]}>
             {profile.phone}
           </Text>
         ) : (
-          <Text style={styles.phoneHidden}>Bağlantı kurunca görünür</Text>
+          <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flexShrink: 1 }]}>
+            Bağlantı kurunca görünür
+          </Text>
         )}
       </View>
     </View>
   );
 }
 
-// Kapak fotoğrafı: avatarla aynı önbellek deseni; yoksa düz lacivert zemin.
+// Kapak fotoğrafı: avatarla aynı önbellek deseni; yoksa düz tonlu zemin.
 function ProfileCover({ userId, coverUpdatedAt }: { userId: string; coverUpdatedAt?: string | null }) {
+  const t = useTheme();
   const key = coverUpdatedAt ? userCoverKey(userId, coverUpdatedAt) : null;
   const [photo, setPhoto] = useState<string | null>(() => (key ? getCachedUserCover(key) ?? null : null));
 
@@ -190,90 +289,25 @@ function ProfileCover({ userId, coverUpdatedAt }: { userId: string; coverUpdated
     };
   }, [key]);
 
-  if (photo) {
-    return <Image source={{ uri: photo }} style={styles.cover} resizeMode="cover" accessibilityLabel="Kapak fotoğrafı" />;
-  }
-  return <View style={[styles.cover, styles.coverEmpty]} />;
-}
-
-const styles = StyleSheet.create({
-  block: { backgroundColor: colors.surface },
   // 16:6 şerit, tam genişlik. Yükseklik oranla hesaplanır (web'de de çalışır).
-  cover: { width: '100%', aspectRatio: 16 / 6, backgroundColor: colors.primary },
-  // Boş kapak: üst bantla birleşmesin diye açık tonlu zemin.
-  coverEmpty: { backgroundColor: colors.surfaceTonal, borderBottomWidth: 1, borderBottomColor: colors.border },
-  coverEdit: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  body: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.gutter },
-  avatarWrap: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    borderWidth: 3,
-    borderColor: colors.surface,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-    marginBottom: spacing.sm,
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  name: { fontFamily: fonts.semibold, fontSize: 21, lineHeight: 27, color: colors.text, flex: 1, minWidth: 0 },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceTonal,
-  },
-  headline: { ...typography.body, color: colors.text, marginTop: 2 },
-  companyLink: { alignSelf: 'flex-start', marginTop: 2 },
-  company: { ...typography.label, color: colors.accent },
-  location: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  connectionsLink: { alignSelf: 'flex-start', marginTop: spacing.xs },
-  connections: { ...typography.label, color: colors.accent },
-  pressedFade: { opacity: 0.6 },
-  pressedRow: { backgroundColor: colors.pressed },
-  below: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.gutter },
-  aboutBlock: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.gutter,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    gap: spacing.xs,
-  },
-  aboutTitle: { ...typography.subtitle, color: colors.text },
-  aboutText: { ...typography.body, color: colors.text },
-  addAboutRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: spacing.gutter,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  addAboutText: { ...typography.label, color: colors.accent },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    minHeight: 48,
-    paddingHorizontal: spacing.gutter,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  phoneLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  phoneValue: { ...typography.mono, fontSize: 16, color: colors.text },
-  phoneHidden: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-});
+  const box = { width: '100%', aspectRatio: 16 / 6 } as const;
+
+  if (photo) {
+    return (
+      <Image
+        source={{ uri: photo }}
+        style={[box, { backgroundColor: t.colors.surface2 }]}
+        resizeMode="cover"
+        accessibilityLabel="Kapak fotoğrafı"
+      />
+    );
+  }
+  return (
+    <View
+      style={[
+        box,
+        { backgroundColor: t.colors.surface2, borderBottomWidth: 1, borderBottomColor: t.colors.line },
+      ]}
+    />
+  );
+}

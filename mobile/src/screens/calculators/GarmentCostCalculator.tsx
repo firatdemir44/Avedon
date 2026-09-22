@@ -1,7 +1,6 @@
-import React, { useEffect, useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChipSelect } from '../../components/ChipSelect';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcSectionRow,
@@ -20,7 +19,8 @@ import {
 } from '../../features/calculators/garmentItems';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen, SegmentControl } from '../../ui';
 
 type ItemFields = Record<GarmentItemKey, string>;
 
@@ -57,9 +57,13 @@ const CURRENCIES: { value: Currency; label: string }[] = [
 
 const SYMBOL: Record<Currency, string> = { TRY: '₺', USD: '$', EUR: '€' };
 
-export function GarmentCostCalculator() {
+export function GarmentCostCalculator({ navigation }: RootStackScreenProps<'GarmentCostCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('garment_cost', INITIAL);
   const symbol = SYMBOL[f.currency] ?? '₺';
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   // Eski kayıtlarda tek bir "İşçilik" alanı vardı; kalemler ayrılınca karşılığı
   // dikim oldu. Kullanıcının girdiği değer kaybolmasın diye bir kez taşınır.
@@ -87,11 +91,20 @@ export function GarmentCostCalculator() {
   }, [f]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>Para birimi</Text>
-        <ChipSelect options={CURRENCIES} value={f.currency} onChange={(currency) => update({ currency })} />
-        <Text style={styles.hint}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Konfeksiyon maliyeti" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Para birimi</Text>
+          <SegmentControl
+            stretch
+            accessibilityLabel="Para birimi"
+            options={CURRENCIES}
+            value={f.currency}
+            onChange={(currency) => update({ currency })}
+          />
+        </View>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Tüm tutarlar aynı para biriminde girilmelidir. Uygulama kur çevirmez, seçim yalnızca etiketi değiştirir.
           Bilmediğiniz kalemi boş bırakın, 0 sayılır.
         </Text>
@@ -182,14 +195,7 @@ export function GarmentCostCalculator() {
           <CalcFormulaRow text="Kumaş = tüketim × metre fiyatı × (1 + kesim firesi ÷ 100). Adet maliyeti bu kalemlerin toplamıdır; kâr ve vergi eklenmez. Sipariş toplamı = adet maliyeti × sipariş adedi." />
         </CalcTable>
         <CalcClearButton onClear={() => update({ ...INITIAL, currency: f.currency })} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-});

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 import { getCachedUserAvatar, loadUserAvatar, userAvatarKey } from '../features/users/userAvatarCache';
 
 interface Props {
@@ -18,7 +18,12 @@ interface Props {
 // KİŞİ avatarı — firma logosu (CompanyAvatar) ile aynı çalışır ama yuvarlaktır
 // ve kaynağı kişinin kendi fotoğrafıdır. Fotoğraf yüklenene kadar ve fotoğraf
 // yoksa baş harfler görünür; istek başarısız olursa sessizce baş harfe düşer.
-export function UserAvatar({ userId, firstName, lastName, avatarUpdatedAt, size = 36, variant = 'default' }: Props) {
+//
+// Yeni tasarım (4. adım): renkler `useTheme()` token'larından geliyor, ham hex yok.
+// Varsayılan zemin DESIGN.md §3 liste satırı kuralındaki `brandSoft`/`brand` çifti.
+export function UserAvatar({ userId, firstName, lastName, avatarUpdatedAt, size, variant = 'default' }: Props) {
+  const t = useTheme();
+  const box = size ?? t.size.avatar;
   const key = userId && avatarUpdatedAt ? userAvatarKey(userId, avatarUpdatedAt) : null;
   const [photo, setPhoto] = useState<string | null>(() => (key ? getCachedUserAvatar(key) ?? null : null));
 
@@ -56,7 +61,17 @@ export function UserAvatar({ userId, firstName, lastName, avatarUpdatedAt, size 
     return (
       <Image
         source={{ uri: photo }}
-        style={[styles.box, styles.photo, { width: size, height: size, borderRadius: size / 2 }]}
+        style={[
+          styles.box,
+          {
+            width: box,
+            height: box,
+            borderRadius: box / 2,
+            backgroundColor: t.colors.surface1,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: t.colors.line,
+          },
+        ]}
         resizeMode="cover"
         accessibilityLabel={name ? `${name} profil fotoğrafı` : 'Profil fotoğrafı'}
       />
@@ -67,26 +82,25 @@ export function UserAvatar({ userId, firstName, lastName, avatarUpdatedAt, size 
     <View
       style={[
         styles.box,
-        onPrimary ? styles.boxOnPrimary : styles.boxDefault,
-        { width: size, height: size, borderRadius: size / 2 },
+        {
+          width: box,
+          height: box,
+          borderRadius: box / 2,
+          backgroundColor: onPrimary ? t.colors.surface1 : t.colors.brandSoft,
+        },
       ]}
     >
       {initials ? (
         <Text
           style={[
-            styles.initials,
-            onPrimary ? styles.initialsOnPrimary : styles.initialsDefault,
-            { fontSize: Math.round(size * 0.4) },
+            t.type.body16Strong,
+            { color: t.colors.brand, fontSize: Math.round(box * 0.4), lineHeight: Math.round(box * 0.5) },
           ]}
         >
           {initials}
         </Text>
       ) : (
-        <Ionicons
-          name="person"
-          size={Math.round(size * 0.55)}
-          color={onPrimary ? colors.primary : colors.primaryText}
-        />
+        <Icon name="user" size={Math.round(box * 0.55)} color="brand" />
       )}
     </View>
   );
@@ -98,15 +112,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  boxDefault: { backgroundColor: colors.primary },
-  boxOnPrimary: { backgroundColor: colors.surface },
-  // Şeffaf/açık fotoğraflar zeminde kaybolmasın diye ince çerçeve.
-  photo: {
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  initials: { fontFamily: fonts.bold },
-  initialsDefault: { color: colors.primaryText },
-  initialsOnPrimary: { color: colors.primary },
 });

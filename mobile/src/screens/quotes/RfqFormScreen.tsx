@@ -1,19 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Çoklu teklif isteği formu (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri/işlev katmanı Faz 3, Adım 1'deki gibi: gövde, hata kodları ve
+// atlanan ürün akışı aynı. Ham hex / ham px yok.
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { ApiError, MAX_RFQ_COMPANIES, createRfq, type RfqSkipped } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { STOCK_UNITS, STOCK_UNIT_LABELS, isYarnType, type StockUnit } from '../../features/products/catalog';
 import { parseNumber } from '../../features/calculators/parse';
 import { DATE_PATTERN } from '../../features/quotes/format';
 import { companyCountOf, type RfqSelectionItem } from '../../features/quotes/rfqSelection';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Avatar, Button, Card, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
 
 type Props = RootStackScreenProps<'RfqForm'>;
 
@@ -29,7 +28,7 @@ const SKIP_REASONS: Record<string, string> = {
 // Faz 3, Adım 1: tek üründe kalan teklif isteğinin çoklu hali. Aynı ihtiyaç
 // birkaç firmaya birden sorulur; istek FİRMA başına tek gider.
 export function RfqFormScreen({ route, navigation }: Props) {
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   // Asistanın "teklif_topla" kartından gelindiyse kullanıcının söylediği
   // miktar/birim/termin/not forma ön dolu gelir; hepsi değiştirilebilir.
   const prefill = route.params.prefill;
@@ -52,6 +51,11 @@ export function RfqFormScreen({ route, navigation }: Props) {
   // Gönderildi ama bir kısmı atlandı: nedenleri gösterip kullanıcıyı
   // karşılaştırmaya kendisi geçirsin (sessizce atlamak yanıltıcı olurdu).
   const [result, setResult] = useState<{ rfqId: string; skipped: RfqSkipped[] } | null>(null);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const companyCount = companyCountOf(items);
   const quantityValue = parseNumber(quantity);
@@ -107,185 +111,167 @@ export function RfqFormScreen({ route, navigation }: Props) {
   };
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.block}>
-          <Text style={styles.lead}>
-            Aynı ihtiyacı {companyCount} firmaya birden soruyorsunuz. Her firmaya tek istek gider; gelen teklifleri
-            tek tabloda karşılaştırırsınız.
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Çoklu teklif iste" leading="back" onBack={() => navigation.goBack()} />
+      <Screen
+        sticky={
+          result ? (
+            <Button size="lg" label="Karşılaştırmayı aç" onPress={() => openCompare(result.rfqId)} />
+          ) : (
+            <Button
+              size="lg"
+              label={`Teklif iste (${companyCount} firma)`}
+              loading={submitting}
+              disabled={!canSubmit}
+              onPress={submit}
+            />
+          )
+        }
+      >
+        <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
+          Aynı ihtiyacı {companyCount} firmaya birden soruyorsunuz. Her firmaya tek istek gider; gelen teklifleri
+          tek tabloda karşılaştırırsınız.
+        </Text>
+
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title={`Seçilen ürünler (${items.length})`} />
+          <Card>
+            {items.map((item, index) => (
+              <View
+                key={item.id}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space[3],
+                  minHeight: t.size.touchMin,
+                  paddingVertical: t.space[1],
+                  borderBottomWidth: index < items.length - 1 ? 1 : 0,
+                  borderBottomColor: t.colors.line,
+                }}
+              >
+                <Avatar name={item.companyName} kind="company" />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[t.type.mono14, { color: t.colors.ink }]} numberOfLines={1}>
+                    {item.code}
+                  </Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]} numberOfLines={1}>
+                    {item.companyName}
+                  </Text>
+                </View>
+                {/* İkon-yalnız çıkarma düğmesi: 44px hedef, erişilebilirlik adı var. */}
+                <Pressable
+                  onPress={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.code} ürününü listeden çıkar`}
+                  style={({ pressed }) => ({
+                    width: t.size.touchMin,
+                    height: t.size.touchMin,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: t.radius.md,
+                    backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+                  })}
+                >
+                  <Icon name="x" size={t.size.iconSm} color="danger" />
+                </Pressable>
+              </View>
+            ))}
+            {companyCount < 2 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], paddingTop: t.space[2] }}>
+                <Icon name="warning" size={t.size.iconSm} color="danger" />
+                <Text style={[t.type.body14, { color: t.colors.danger, flexShrink: 1 }]}>
+                  En az 2 farklı firmadan ürün gerekiyor.
+                </Text>
+              </View>
+            ) : null}
+          </Card>
+        </View>
+
+        <View style={{ gap: t.space[4] }}>
+          <SectionTitle title="İstek bilgileri" />
+          <Input
+            label="Miktar"
+            value={quantity}
+            onChangeText={setQuantity}
+            inputMode="decimal"
+            keyboardType="decimal-pad"
+            placeholder="Örn. 1500"
+            unit={STOCK_UNIT_LABELS[unit].short}
+          />
+          <View style={{ gap: t.space[1] }}>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim</Text>
+            <SegmentControl<StockUnit> stretch accessibilityLabel="Birim" value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
+          </View>
+
+          <Input
+            label="İstenen termin tarihi (isteğe bağlı)"
+            value={targetDate}
+            onChangeText={setTargetDate}
+            placeholder="2026-11-15"
+            autoCapitalize="none"
+            helper="YYYY-AA-GG biçiminde yazın."
+            error={dateInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+          />
+
+          <Input
+            label="Not (isteğe bağlı)"
+            value={note}
+            onChangeText={setNote}
+            placeholder="Örn. Ekru, ilk parti 500 m olabilir"
+            multiline
+          />
+          <Input
+            label="Başlık (isteğe bağlı)"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Örn. Yazlık süprem alımı"
+          />
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+            Satıcılar başka kaç firmaya sorduğunuzu görmez; onlara normal bir teklif isteği olarak düşer.
           </Text>
         </View>
 
-        <View style={styles.block}>
-          <Text style={styles.sectionTitle}>Seçilen ürünler ({items.length})</Text>
-          {items.map((item, index) => (
-            <View key={item.id} style={[styles.itemRow, index < items.length - 1 && styles.itemDivider]}>
-              <View style={styles.itemTexts}>
-                <Text style={styles.itemCode} numberOfLines={1}>
-                  {item.code}
-                </Text>
-                <Text style={styles.itemCompany} numberOfLines={1}>
-                  {item.companyName}
-                </Text>
-              </View>
-              <Pressable
-                onPress={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.code} ürününü listeden çıkar`}
-                style={({ pressed }) => [styles.removeButton, pressed && styles.pressedFade]}
-              >
-                <Ionicons name="close" size={20} color={colors.danger} />
-              </Pressable>
-            </View>
-          ))}
-          {companyCount < 2 ? (
-            <Text style={styles.itemWarn}>En az 2 farklı firmadan ürün gerekiyor.</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.block}>
-          <View style={styles.formBody}>
-            <TextField
-              label="Miktar"
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="decimal-pad"
-              placeholder="Örn. 1500"
-            />
-            <Text style={styles.fieldLabel}>Birim</Text>
-            <ChipSelect options={UNIT_OPTIONS} value={unit} onChange={setUnit} />
-
-            <TextField
-              label="İstenen termin tarihi (YYYY-AA-GG, isteğe bağlı)"
-              value={targetDate}
-              onChangeText={setTargetDate}
-              placeholder="2026-11-15"
-              autoCapitalize="none"
-            />
-            {dateInvalid ? (
-              <Text style={styles.fieldError}>Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).</Text>
-            ) : null}
-
-            <TextField
-              label="Not (isteğe bağlı)"
-              value={note}
-              onChangeText={setNote}
-              placeholder="Örn. Ekru, ilk parti 500 m olabilir"
-              multiline
-            />
-            <TextField
-              label="Başlık (isteğe bağlı)"
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Örn. Yazlık süprem alımı"
-            />
-            <Text style={styles.privacyNote}>
-              Satıcılar başka kaç firmaya sorduğunuzu görmez; onlara normal bir teklif isteği olarak düşer.
-            </Text>
-          </View>
-        </View>
-
         {result ? (
-          <View style={styles.block}>
-            <View style={styles.skipBox} accessibilityRole="alert">
-              <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
-              <View style={styles.skipTexts}>
-                <Text style={styles.skipTitle}>Bazı ürünler için istek gönderilmedi:</Text>
-                {result.skipped.map((s) => (
-                  <Text key={s.productId} style={styles.skipText}>
-                    {codeOf(s.productId)} — {SKIP_REASONS[s.reason] ?? 'gönderilemedi'}
-                  </Text>
-                ))}
-              </View>
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.warningSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="warning" />
+            <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+              <Text style={[t.type.label14, { color: t.colors.warning }]}>Bazı ürünler için istek gönderilmedi:</Text>
+              {result.skipped.map((s) => (
+                <Text key={s.productId} style={[t.type.body14, { color: t.colors.warning }]}>
+                  {codeOf(s.productId)} — {SKIP_REASONS[s.reason] ?? 'gönderilemedi'}
+                </Text>
+              ))}
             </View>
           </View>
         ) : null}
 
         {error ? (
-          <View style={styles.bannerWrap}>
-            <InlineError message={error} />
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
           </View>
         ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        {result ? (
-          <PrimaryButton
-            label="Karşılaştırmayı aç"
-            size="lg"
-            onPress={() => openCompare(result.rfqId)}
-            style={styles.actionMain}
-          />
-        ) : (
-          <PrimaryButton
-            label={submitting ? 'Gönderiliyor...' : `Teklif iste (${companyCount} firma)`}
-            size="lg"
-            disabled={!canSubmit}
-            onPress={submit}
-            style={styles.actionMain}
-          />
-        )}
-      </View>
+      </Screen>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, paddingVertical: spacing.sm },
-  lead: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-  },
-  sectionTitle: {
-    ...typography.label,
-    fontFamily: fonts.semibold,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: 6,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: 48,
-    paddingHorizontal: spacing.gutter,
-  },
-  itemDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  itemTexts: { flex: 1, minWidth: 0 },
-  itemCode: { ...typography.mono, fontFamily: fonts.monoSemibold, color: colors.primary },
-  itemCompany: { ...typography.caption, color: colors.accent },
-  removeButton: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
-  pressedFade: { opacity: 0.6 },
-  itemWarn: { ...typography.caption, color: colors.danger, paddingHorizontal: spacing.gutter, paddingTop: 6 },
-  formBody: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm },
-  fieldLabel: { ...typography.label, color: colors.text, marginBottom: spacing.xs, marginLeft: spacing.sm },
-  fieldError: { ...typography.caption, color: colors.danger, marginTop: -spacing.sm, marginBottom: spacing.sm },
-  privacyNote: { ...typography.caption, color: colors.textMuted, paddingBottom: spacing.sm },
-  skipBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    marginHorizontal: spacing.gutter,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  skipTexts: { flex: 1, gap: 2 },
-  skipTitle: { ...typography.caption, fontFamily: fonts.semibold, color: colors.warning },
-  skipText: { ...typography.caption, color: colors.warning },
-  bannerWrap: { paddingHorizontal: spacing.gutter },
-  actionBar: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { width: '100%' },
-});

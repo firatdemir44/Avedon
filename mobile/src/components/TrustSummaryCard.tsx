@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable } from 'react-native';
 import type { CompanyTrust, CompanyTrustRatings } from '../api/client';
-import { SectionHeader } from './SectionHeader';
+import { Card, Icon, SectionTitle } from '../ui';
 import { formatMonthYear } from '../features/time';
-import { MIN_TOUCH, colors, fonts, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 // Faz 3, Adım 5: firma sayfasındaki "Güven özeti" kartı.
 // Ürün sahibinin kararları (değiştirilmez):
@@ -62,16 +61,36 @@ function ratingRows(ratings: CompanyTrustRatings | null, keys: { key: keyof Comp
 }
 
 function TrustRow({ label, value, muted, last }: { label: string; value: string; muted?: boolean; last?: boolean }) {
+  const t = useTheme();
   return (
-    <View style={[styles.row, !last && styles.rowDivider]}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      {/* Veri yoksa nötr gri: eksik veri bir kusur değil. */}
-      <Text style={[styles.rowValue, muted && styles.rowValueMuted]}>{value}</Text>
+    <View
+      style={{
+        paddingVertical: t.space[3],
+        gap: t.space[1] / 2,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: t.colors.line,
+      }}
+    >
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{label}</Text>
+      {/* Veri yoksa nötr ton: eksik veri bir kusur değil. */}
+      <Text style={[muted ? t.type.body16 : t.type.body16Strong, { color: muted ? t.colors.ink2 : t.colors.ink }]}>
+        {value}
+      </Text>
     </View>
   );
 }
 
+function GroupTitle({ children }: { children: string }) {
+  const t = useTheme();
+  return (
+    <Text style={[t.type.label14, { color: t.colors.ink2, paddingTop: t.space[4], paddingBottom: t.space[1] }]}>
+      {children}
+    </Text>
+  );
+}
+
 export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
+  const t = useTheme();
   const [methodOpen, setMethodOpen] = useState(false);
 
   const since = memberSinceText(trust.memberSince);
@@ -91,9 +110,9 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
   const responseTime = trust.quoteResponse ? responseTimeText(trust.quoteResponse.medianHours) : null;
 
   return (
-    <View>
-      <SectionHeader title="Güven özeti" />
-      <View style={styles.block}>
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title="Güven özeti" />
+      <Card>
         <TrustRow label="Doğrulama" value={verificationText(trust.verification)} />
         {since ? <TrustRow label="Platformda" value={since} /> : null}
         <TrustRow
@@ -103,7 +122,7 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
         />
 
         {/* --- Satıcı olarak --- */}
-        <Text style={styles.groupTitle}>Satıcı olarak</Text>
+        <GroupTitle>Satıcı olarak</GroupTitle>
         {seller.completedDeals === 0 ? (
           <TrustRow
             label="Tamamlanan iş"
@@ -149,7 +168,7 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
         {/* --- Alıcı olarak: yalnızca tamamlanmış işi varsa --- */}
         {buyer.completedDeals > 0 ? (
           <>
-            <Text style={styles.groupTitle}>Alıcı olarak</Text>
+            <GroupTitle>Alıcı olarak</GroupTitle>
             <TrustRow label="Tamamlanan iş" value={String(buyer.completedDeals)} />
             {buyerRatings.length ? (
               <>
@@ -181,51 +200,27 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
             last
           />
         ) : null}
-      </View>
+      </Card>
 
-      {/* Hesap yöntemi açık: küçük, açılır satır. */}
+      {/* Hesap yöntemi açık: küçük, açılır satır (44px dokunma hedefi). */}
       <Pressable
         onPress={() => setMethodOpen((open) => !open)}
         accessibilityRole="button"
         accessibilityState={{ expanded: methodOpen }}
         accessibilityLabel="Güven özeti nasıl hesaplanıyor"
-        style={({ pressed }) => [styles.methodToggle, pressed && styles.pressedFade]}
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[1],
+          minHeight: t.size.touchMin,
+          alignSelf: 'flex-start',
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
-        <Text style={styles.methodToggleText}>Nasıl hesaplanıyor?</Text>
-        <Ionicons name={methodOpen ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} />
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplanıyor?</Text>
+        <Icon name={methodOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
       </Pressable>
-      {methodOpen ? <Text style={styles.methodText}>{trust.method}</Text> : null}
+      {methodOpen ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{trust.method}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  block: { backgroundColor: colors.surface },
-  row: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    gap: 2,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  rowLabel: { ...typography.caption, color: colors.textMuted },
-  rowValue: { ...typography.label, color: colors.text },
-  rowValueMuted: { fontFamily: fonts.regular, color: colors.textMuted },
-  groupTitle: {
-    ...typography.caption,
-    fontFamily: fonts.semibold,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.xs,
-  },
-  methodToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minHeight: MIN_TOUCH,
-    paddingHorizontal: spacing.gutter,
-  },
-  methodToggleText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
-  methodText: { ...typography.caption, color: colors.textMuted, paddingHorizontal: spacing.gutter, paddingBottom: spacing.sm },
-  pressedFade: { opacity: 0.6 },
-});

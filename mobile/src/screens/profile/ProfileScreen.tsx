@@ -1,10 +1,12 @@
+// Başkasının profili (yeni tasarım, 4. adım): kimlik kartı (ProfileIdentity),
+// Deneyim ve bağlantı durumuna göre eylem bloğu. Eylem sonuçları titreşimle.
+// Ekranda en fazla 1 dolu (primary) düğme var.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { useSession } from '../../context/SessionContext';
 import {
   ApiError,
@@ -18,15 +20,15 @@ import { haptics } from '../../features/haptics';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { ExperienceSection } from './ExperienceSection';
-import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { InlineError } from '../../components/StateView';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, EmptyState, Icon, Screen, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
+import type { ColorTokens } from '../../theme/tokens';
 
 type Props = RootStackScreenProps<'Profile'>;
 
-// Başkasının profili: kimlik bloğu (ProfileIdentity) ve bağlantı durumuna göre
-// eylem bloğu. Eylem sonuçları titreşimle: kurma/kabul başarı, hata hata.
 export function ProfileScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { userId } = route.params;
   const { user: currentUser } = useSession();
   const isSelf = currentUser?.id === userId;
@@ -96,125 +98,110 @@ export function ProfileScreen({ navigation, route }: Props) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonDetail variant="profile" />
-      </SafeAreaView>
+      <Screen>
+        <View style={{ gap: t.space[4] }}>
+          <Skeleton height={t.size.toolBox + t.size.thumb} />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      </Screen>
     );
   }
 
   if (!profile) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <Screen>
         {loadError ? (
-          <ErrorState error={loadError} onRetry={refresh} />
+          <EmptyState
+            icon="cloud-offline-outline"
+            title="Profil yüklenemedi"
+            description={loadError}
+            actionLabel="Tekrar dene"
+            onAction={refresh}
+          />
         ) : (
-          <EmptyState icon="person-outline" title="Profil bulunamadı" />
+          <EmptyState icon="user" title="Profil bulunamadı" description="Bu kişi kaldırılmış olabilir." />
         )}
-      </SafeAreaView>
+      </Screen>
     );
   }
 
   const error = actionError ?? loadError;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <ProfileIdentity
-          profile={profile}
-          onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
-        />
+    <Screen>
+      <ProfileIdentity
+        profile={profile}
+        onOpenCompany={(companyId) => navigation.navigate('CompanyProfile', { companyId })}
+      />
 
-        <ExperienceSection experiences={profile.experiences ?? []} />
+      <ExperienceSection experiences={profile.experiences ?? []} />
 
-        {error ? (
-          <View style={styles.bannerWrap}>
-            <InlineError message={error} />
-          </View>
-        ) : null}
+      {error ? <InlineError message={error} /> : null}
 
-        {!isSelf && status ? (
-          <View style={styles.actions}>
-            {status.status === 'none' ? (
-              <PrimaryButton
-                label="Bağlantı Kur"
-                icon="person-add-outline"
-                size="lg"
-                onPress={handleConnect}
-                disabled={actionLoading}
-              />
-            ) : null}
+      {!isSelf && status ? (
+        <View style={{ gap: t.space[3], minWidth: 0 }}>
+          {status.status === 'none' ? (
+            <Button
+              size="lg"
+              icon="person-add-outline"
+              label="Bağlantı kur"
+              loading={actionLoading}
+              onPress={handleConnect}
+            />
+          ) : null}
 
-            {status.status === 'pending_sent' ? (
-              <StateLine icon="time-outline" color={colors.warning} text="Bağlantı isteği gönderildi, yanıt bekleniyor." />
-            ) : null}
+          {status.status === 'pending_sent' ? (
+            <StateLine icon="clock" color="warning" text="Bağlantı isteği gönderildi, yanıt bekleniyor." />
+          ) : null}
 
-            {status.status === 'pending_received' ? (
-              <>
-                <StateLine icon="person-add-outline" color={colors.primary} text="Size bağlantı isteği gönderdi." />
-                <View style={styles.actionRow}>
-                  <PrimaryButton
-                    label="Kabul Et"
-                    icon="checkmark"
-                    size="lg"
-                    onPress={() => handleRespond('accepted')}
-                    disabled={actionLoading}
-                    style={styles.actionButton}
-                  />
-                  <PrimaryButton
-                    label="Reddet"
-                    variant="outline"
-                    size="lg"
-                    onPress={() => handleRespond('rejected')}
-                    disabled={actionLoading}
-                    style={styles.actionButton}
-                  />
-                </View>
-              </>
-            ) : null}
-
-            {status.status === 'accepted' ? (
-              <>
-                <StateLine icon="checkmark-circle" color={colors.success} text="Bağlantıdasınız." />
-                <PrimaryButton
-                  label="Mesaj Gönder"
-                  icon="chatbubble-outline"
-                  size="lg"
-                  onPress={handleOpenChat}
-                  disabled={actionLoading}
+          {status.status === 'pending_received' ? (
+            <>
+              <StateLine icon="person-add-outline" color="brand" text="Size bağlantı isteği gönderdi." />
+              <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                <Button
+                  style={{ flex: 1, minWidth: 0 }}
+                  icon="check"
+                  label="Kabul et"
+                  loading={actionLoading}
+                  onPress={() => handleRespond('accepted')}
                 />
-              </>
-            ) : null}
-          </View>
-        ) : null}
-      </ScrollView>
-    </SafeAreaView>
+                <Button
+                  style={{ flex: 1, minWidth: 0 }}
+                  kind="secondary"
+                  label="Reddet"
+                  disabled={actionLoading}
+                  onPress={() => handleRespond('rejected')}
+                />
+              </View>
+            </>
+          ) : null}
+
+          {status.status === 'accepted' ? (
+            <>
+              <StateLine icon="check" color="success" text="Bağlantıdasınız." />
+              <Button
+                size="lg"
+                icon="message"
+                label="Mesaj gönder"
+                loading={actionLoading}
+                onPress={handleOpenChat}
+              />
+            </>
+          ) : null}
+        </View>
+      ) : null}
+    </Screen>
   );
 }
 
-function StateLine({
-  icon,
-  color,
-  text,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  text: string;
-}) {
+// Durum satırı: ikon + metin (durum yalnız renkle verilmez, DESIGN.md §6).
+function StateLine({ icon, color, text }: { icon: AnyIconName; color: keyof ColorTokens; text: string }) {
+  const t = useTheme();
   return (
-    <View style={styles.stateLine}>
-      <Ionicons name={icon} size={18} color={color} />
-      <Text style={styles.stateText}>{text}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+      <Icon name={icon} size={t.size.iconSm} color={color} />
+      <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>{text}</Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  bannerWrap: { paddingHorizontal: spacing.gutter },
-  actions: { backgroundColor: colors.surface, padding: spacing.gutter, gap: spacing.sm },
-  stateLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stateText: { ...typography.body, fontFamily: fonts.medium, color: colors.text, flex: 1 },
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
-  actionButton: { flex: 1 },
-});

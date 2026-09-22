@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import {
   addProductVideo,
   fetchProductVideos,
@@ -12,9 +12,8 @@ import { useVideoUpload, videoErrorMessage } from '../features/useVideoUpload';
 import { MAX_VIDEO_SECONDS } from '../features/videoUpload';
 import { InlineError } from './StateView';
 import { PostVideo } from './PostVideo';
-import { PrimaryButton } from './PrimaryButton';
-import { SectionHeader } from './SectionHeader';
-import { colors, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Button, Card, SectionTitle } from '../ui';
 
 interface Props {
   productId: string;
@@ -27,6 +26,7 @@ interface Props {
 // video yoksa bölüm başkasına hiç görünmez (benzer kumaşlar deseni). Sahibine
 // video olmasa da görünür, çünkü "Video ekle" düğmesi orada.
 export function ProductVideos({ productId, isOwner }: Props) {
+  const t = useTheme();
   const [videos, setVideos] = useState<VideoRef[] | null>(null);
   const [max, setMax] = useState(3);
   const [error, setError] = useState<string | null>(null);
@@ -105,45 +105,53 @@ export function ProductVideos({ productId, isOwner }: Props) {
   const uploading = videoUpload.video?.phase === 'uploading';
   const progress = videoUpload.video?.phase === 'uploading' ? videoUpload.video.progress : 0;
   const canAdd = isOwner && videos.length < max && !uploading && !attaching;
+  const fill = Math.round((attaching ? 1 : progress) * 100);
 
   return (
-    <View>
-      <SectionHeader title="Videolar" count={videos.length || undefined} style={styles.sectionHeader} />
-      <View style={styles.block}>
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title={videos.length ? `Videolar (${videos.length})` : 'Videolar'} />
+      <Card style={{ gap: t.space[3] }}>
         {videos.map((video) => (
-          <View key={video.id} style={styles.item}>
+          <View key={video.id} style={{ gap: t.space[2] }}>
             <PostVideo video={video} />
             {isOwner ? (
-              <PrimaryButton
+              <Button
+                kind="secondary"
                 label={busyId === video.id ? 'Kaldırılıyor...' : 'Kaldır'}
-                variant="outline"
-                size="sm"
                 disabled={busyId === video.id}
                 accessibilityLabel="Bu videoyu kaldır"
                 onPress={() => remove(video.id)}
-                style={styles.removeButton}
               />
             ) : null}
           </View>
         ))}
 
         {videos.length === 0 && isOwner && !uploading && !attaching ? (
-          <Text style={styles.hint}>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
             Bu ürüne en fazla {max} video ekleyebilirsiniz (her biri en çok {MAX_VIDEO_SECONDS} saniye).
           </Text>
         ) : null}
 
         {uploading || attaching ? (
-          <View style={styles.progressBox}>
-            <Text style={styles.progressText}>
+          <View style={{ gap: t.space[2] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink }]}>
               {attaching
                 ? 'Video ürüne ekleniyor...'
                 : progress >= 0.999
                   ? 'Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...'
                   : `Video yükleniyor %${Math.round(progress * 100)}`}
             </Text>
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${Math.round((attaching ? 1 : progress) * 100)}%` }]} />
+            <View
+              accessibilityRole="progressbar"
+              accessibilityValue={{ min: 0, max: 100, now: fill }}
+              style={{
+                height: t.space[1],
+                borderRadius: t.radius.full,
+                backgroundColor: t.colors.surface2,
+                overflow: 'hidden',
+              }}
+            >
+              <View style={{ height: t.space[1], backgroundColor: t.colors.brand, width: `${fill}%` }} />
             </View>
           </View>
         ) : null}
@@ -151,26 +159,9 @@ export function ProductVideos({ productId, isOwner }: Props) {
         {error ? <InlineError message={error} /> : null}
 
         {canAdd ? (
-          <PrimaryButton label="Video ekle" icon="videocam-outline" variant="outline" onPress={addVideo} />
+          <Button kind="secondary" label="Video ekle" icon="videocam-outline" onPress={addVideo} />
         ) : null}
-      </View>
+      </Card>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionHeader: { marginTop: spacing.sm },
-  block: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.gutter,
-    gap: spacing.sm,
-  },
-  item: { gap: spacing.xs },
-  removeButton: { alignSelf: 'flex-start' },
-  hint: { ...typography.caption, color: colors.textMuted },
-  progressBox: { gap: spacing.xs },
-  progressText: { ...typography.label, color: colors.text },
-  progressTrack: { height: 4, borderRadius: 2, backgroundColor: colors.chip, overflow: 'hidden' },
-  progressFill: { height: 4, backgroundColor: colors.primary },
-});

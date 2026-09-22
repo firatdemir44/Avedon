@@ -1,6 +1,13 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// Makine ekleme / düzenleme formu (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+//
+// Faz 2, Adım 5'teki mantık aynen duruyor: makine türü SERBEST METİN (öneriler
+// sunucudan gelir, çipe dokunmak alana yazar), teknik alanlar gruba göre
+// değişir (örmede pus/fayn, dokuma-boya-baskıda çalışma eni).
+//
+// Görünüm yeni: AppBar + Screen, alanlar ui/Input (birimli), grup seçimi
+// ui/Chip, kaydet tek dolu ui/Button yapışkan çubukta.
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -12,12 +19,7 @@ import {
   type MachineGroup,
   type MachineInput,
 } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
-import { TextField } from '../../components/TextField';
-import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
 import { toInputNumber } from '../../features/calculators/parse';
@@ -28,14 +30,22 @@ import {
   groupHasKnitFields,
   groupHasWidthField,
 } from '../../features/machines/catalog';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  SkeletonText,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'MachineForm'>;
-
-// Faz 2, Adım 5: tek makinenin ekleme/düzenleme formu. Makine türü SERBEST
-// METİN: öneriler sunucudan gelir, çipe dokunmak alana yazar, kullanıcı
-// istediğini yazabilir. Teknik alanlar gruba göre değişir (örmede pus/fayn,
-// dokuma-boya-baskıda çalışma eni), gereksiz alan sorulmaz.
 
 const NUMBER_PATTERN = /^\d+([.,]\d+)?$/;
 
@@ -63,9 +73,9 @@ function fold(value: string): string {
 
 export function MachineFormScreen({ navigation, route }: Props) {
   const machineId = route.params?.machineId;
+  const t = useTheme();
   const { user } = useSession();
   const companyId = user?.companyId ?? null;
-  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -88,9 +98,12 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: machineId ? 'Makineyi Düzenle' : 'Makine Ekle' });
-  }, [navigation, machineId]);
+  const title = machineId ? 'Makineyi düzenle' : 'Makine ekle';
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const fill = useCallback((machine: Machine) => {
     setGroup(machine.group);
@@ -210,22 +223,31 @@ export function MachineFormScreen({ navigation, route }: Props) {
     }
   };
 
+  const bar = <AppBar title={title} leading="back" onBack={() => navigation.goBack()} />;
+
   if (!companyId) {
     return (
-      <View style={styles.screen}>
-        <EmptyState
-          icon="business-outline"
-          title="Makine parkı firmaya bağlı"
-          message="Bir firmaya bağlandığınızda makine parkınızı girebilirsiniz."
-        />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <EmptyState
+            icon="machine"
+            title="Makine parkı firmaya bağlı"
+            description="Bir firmaya bağlandığında makine parkını girebilirsin."
+          />
+        </Screen>
       </View>
     );
   }
 
   if (loading) {
     return (
-      <View style={styles.screen}>
-        <SkeletonDetail variant="profile" />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <SkeletonText lines={3} />
+          <SkeletonText lines={3} />
+        </Screen>
       </View>
     );
   }
@@ -234,199 +256,242 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const width = groupHasWidthField(group);
   const featureSuggestions = FEATURE_SUGGESTIONS[group] ?? [];
 
+  const banner = (message: string) => (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.dangerSoft,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{message}</Text>
+    </View>
+  );
+
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {loadError ? <InlineError message={loadError} style={styles.banner} /> : null}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
 
-        <SectionHeader title="Grup" first />
-        <View style={styles.block}>
-          <ChipSelect
-            options={MACHINE_GROUP_ORDER.map((value) => ({ value, label: MACHINE_GROUP_LABELS[value] }))}
-            value={group}
-            onChange={(next) => {
-              haptics.selection();
-              setGroup(next);
-            }}
-            compact
-          />
+      <Screen
+        sticky={
+          <Button size="lg" label="Kaydet" loading={saving} disabled={saving} onPress={() => void save()} />
+        }
+      >
+        {loadError ? banner(loadError) : null}
+
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Grup" />
+          <ChipRow>
+            {MACHINE_GROUP_ORDER.map((value) => (
+              <Chip
+                key={value}
+                label={MACHINE_GROUP_LABELS[value]}
+                selected={value === group}
+                onPress={() => {
+                  haptics.selection();
+                  setGroup(value);
+                }}
+              />
+            ))}
+          </ChipRow>
         </View>
 
-        <SectionHeader title="Makine türü" />
-        <View style={styles.block}>
-          <TextField
-            label="Tür"
-            value={kind}
-            onChangeText={setKind}
-            placeholder="Örn. Yuvarlak örme (süprem)"
-            maxLength={80}
-            autoCapitalize="sentences"
-          />
-          {suggestions.length ? (
-            <>
-              <Text style={styles.hint}>Öneriler bağlayıcı değil, istediğinizi yazabilirsiniz.</Text>
-              <SuggestionChips items={suggestions} onPick={setKind} label="makine türü" />
-            </>
-          ) : null}
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Makine türü" />
+          <Card>
+            <View style={{ gap: t.space[3] }}>
+              <Input
+                label="Tür"
+                value={kind}
+                onChangeText={setKind}
+                placeholder="Örn. Yuvarlak örme (süprem)"
+                maxLength={80}
+                autoCapitalize="sentences"
+                helper={suggestions.length ? 'Öneriler bağlayıcı değil, istediğinizi yazabilirsiniz.' : undefined}
+              />
+              {suggestions.length ? (
+                <ChipRow>
+                  {suggestions.map((item) => (
+                    <Chip
+                      key={item}
+                      label={item}
+                      onPress={() => {
+                        haptics.selection();
+                        setKind(item);
+                      }}
+                    />
+                  ))}
+                </ChipRow>
+              ) : null}
+            </View>
+          </Card>
         </View>
 
-        <SectionHeader title="Makine bilgisi" />
-        <View style={styles.block}>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <TextField label="Marka" value={brand} onChangeText={setBrand} placeholder="Örn. Mayer" maxLength={60} />
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Makine bilgisi" />
+          <Card>
+            <View style={{ gap: t.space[3] }}>
+              <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Marka"
+                  value={brand}
+                  onChangeText={setBrand}
+                  placeholder="Örn. Mayer"
+                  maxLength={60}
+                />
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Model"
+                  value={model}
+                  onChangeText={setModel}
+                  placeholder="Örn. Relanit"
+                  maxLength={60}
+                />
+              </View>
+              <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Yıl"
+                  value={year}
+                  onChangeText={setYear}
+                  placeholder="Örn. 2019"
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  error={yearValue.invalid ? 'Yalnızca rakam' : null}
+                />
+                <Input
+                  containerStyle={{ flex: 1 }}
+                  label="Adet"
+                  unit="adet"
+                  value={count}
+                  onChangeText={setCount}
+                  placeholder="1"
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  error={countValue.invalid ? 'Yalnızca rakam' : null}
+                />
+              </View>
             </View>
-            <View style={styles.half}>
-              <TextField label="Model" value={model} onChangeText={setModel} placeholder="Örn. Relanit" maxLength={60} />
-            </View>
-          </View>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <TextField label="Yıl" value={year} onChangeText={setYear} placeholder="Örn. 2019" keyboardType="numeric" />
-            </View>
-            <View style={styles.half}>
-              <TextField label="Adet" value={count} onChangeText={setCount} placeholder="1" keyboardType="numeric" />
-            </View>
-          </View>
+          </Card>
         </View>
 
         {knit ? (
-          <>
-            <SectionHeader title="Teknik" />
-            <View style={styles.block}>
-              <View style={styles.row}>
-                <View style={styles.half}>
-                  <TextField
-                    label="Pus (inç)"
+          <View style={{ gap: t.space[2] }}>
+            <SectionTitle title="Teknik" />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                  <Input
+                    containerStyle={{ flex: 1 }}
+                    label="Pus"
+                    unit="inç"
                     value={diameterInch}
                     onChangeText={setDiameterInch}
                     placeholder="Örn. 30"
-                    keyboardType="numeric"
+                    inputMode="decimal"
+                    keyboardType="decimal-pad"
+                    error={diameterValue.invalid ? 'Yalnızca rakam' : null}
+                  />
+                  <Input
+                    containerStyle={{ flex: 1 }}
+                    label="Fayn"
+                    value={gauge}
+                    onChangeText={setGauge}
+                    placeholder="Örn. 28"
+                    inputMode="decimal"
+                    keyboardType="decimal-pad"
+                    error={gaugeValue.invalid ? 'Yalnızca rakam' : null}
                   />
                 </View>
-                <View style={styles.half}>
-                  <TextField label="Fayn" value={gauge} onChangeText={setGauge} placeholder="Örn. 28" keyboardType="numeric" />
-                </View>
-              </View>
-              <View style={styles.row}>
-                <View style={styles.half}>
-                  <TextField
+                <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                  <Input
+                    containerStyle={{ flex: 1 }}
                     label="Sistem sayısı"
                     value={feeders}
                     onChangeText={setFeeders}
                     placeholder="Örn. 96"
-                    keyboardType="numeric"
+                    inputMode="numeric"
+                    keyboardType="number-pad"
+                    error={feedersValue.invalid ? 'Yalnızca rakam' : null}
                   />
-                </View>
-                <View style={styles.half}>
-                  <TextField
+                  <Input
+                    containerStyle={{ flex: 1 }}
                     label="İğne sayısı"
                     value={needles}
                     onChangeText={setNeedles}
                     placeholder="Örn. 2640"
-                    keyboardType="numeric"
+                    inputMode="numeric"
+                    keyboardType="number-pad"
+                    error={needlesValue.invalid ? 'Yalnızca rakam' : null}
                   />
                 </View>
               </View>
-            </View>
-          </>
+            </Card>
+          </View>
         ) : null}
 
         {width ? (
-          <>
-            <SectionHeader title="Teknik" />
-            <View style={styles.block}>
-              <TextField
-                label="Çalışma eni (cm)"
+          <View style={{ gap: t.space[2] }}>
+            <SectionTitle title="Teknik" />
+            <Card>
+              <Input
+                label="Çalışma eni"
+                unit="cm"
                 value={workingWidthCm}
                 onChangeText={setWorkingWidthCm}
                 placeholder="Örn. 240"
-                keyboardType="numeric"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                error={widthValue.invalid ? 'Yalnızca rakam' : null}
               />
-            </View>
-          </>
+            </Card>
+          </View>
         ) : null}
 
-        <SectionHeader title="Özellik ve not" />
-        <View style={styles.block}>
-          <TextField
-            label="Özellik"
-            value={feature}
-            onChangeText={setFeature}
-            placeholder="Örn. tek plaka"
-            maxLength={120}
-          />
-          {featureSuggestions.length ? <SuggestionChips items={featureSuggestions} onPick={setFeature} label="özellik" /> : null}
-          <TextField label="Not" value={note} onChangeText={setNote} placeholder="İsteğe bağlı" maxLength={300} multiline />
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title="Özellik ve not" />
+          <Card>
+            <View style={{ gap: t.space[3] }}>
+              <Input
+                label="Özellik"
+                value={feature}
+                onChangeText={setFeature}
+                placeholder="Örn. tek plaka"
+                maxLength={120}
+              />
+              {featureSuggestions.length ? (
+                <ChipRow>
+                  {featureSuggestions.map((item) => (
+                    <Chip
+                      key={item}
+                      label={item}
+                      onPress={() => {
+                        haptics.selection();
+                        setFeature(item);
+                      }}
+                    />
+                  ))}
+                </ChipRow>
+              ) : null}
+              <Input
+                label="Not"
+                value={note}
+                onChangeText={setNote}
+                placeholder="İsteğe bağlı"
+                maxLength={300}
+                multiline
+              />
+            </View>
+          </Card>
         </View>
 
-        {formError ? <InlineError message={formError} style={styles.banner} /> : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        <PrimaryButton
-          label={saving ? 'Kaydediliyor...' : 'Kaydet'}
-          size="lg"
-          onPress={() => void save()}
-          disabled={saving}
-          style={styles.actionMain}
-        />
-      </View>
+        {formError ? banner(formError) : null}
+      </Screen>
     </View>
   );
 }
-
-// Alana yazan öneri çipleri (ChipSelect değil: değer listeyle sınırlı değil;
-// ürün formundaki test türü önerileriyle aynı desen).
-function SuggestionChips({ items, onPick, label }: { items: string[]; onPick: (value: string) => void; label: string }) {
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipStrip}>
-      {items.map((item) => (
-        <Pressable
-          key={item}
-          onPress={() => {
-            haptics.selection();
-            onPick(item);
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={`${item}, ${label} olarak yaz`}
-          style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-        >
-          <Text style={styles.chipText}>{item}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter },
-  banner: { marginHorizontal: spacing.gutter, marginTop: spacing.md },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  chipStrip: { gap: spacing.sm, paddingBottom: spacing.md },
-  chip: {
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  chipPressed: { backgroundColor: colors.pressed },
-  chipText: { ...typography.label, fontFamily: fonts.medium, color: colors.text },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { flex: 1 },
-});

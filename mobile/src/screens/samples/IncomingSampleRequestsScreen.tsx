@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, FlatList, Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+// Gelen numune talepleri (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı değişmedi: GET /sample-requests?as=company, PATCH .../status.
+// Kalıp `screens/requests/RequestsScreen.tsx` ile aynı: ListRow + Badge, bir
+// sonraki adım düğmesi satırın ALTINDA (iç içe düğme olmaz).
+import React, { useEffect, useState } from 'react';
+import { FlatList, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
@@ -8,21 +11,36 @@ import {
   updateSampleRequestStatus,
   type SampleRequestRow,
 } from '../../api/client';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SampleStatusBadge } from '../../components/SampleStatusBadge';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import type { SampleRequestStatus } from '../../types';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  EmptyState,
+  Icon,
+  ListRow,
+  Screen,
+  SkeletonRow,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
-// Yeni düzen (5. aşama): çizgili talep satırları. Satıra dokununca takip
-// ekranı; satır içinde talep edenin profili ve bir sonraki adım düğmesi.
+const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
+  talep_edildi: 'pending',
+  onaylandi: 'info',
+  hazirlandi: 'info',
+  teslim_edildi: 'delivered',
+};
+
 export function IncomingSampleRequestsScreen({ navigation }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
@@ -32,6 +50,10 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const requests = data ?? [];
+
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const handleAdvance = async (request: SampleRequestRow) => {
     // Hangi adımın kime açık olduğuna sunucu karar veriyor; nextStep yalnızca
@@ -52,122 +74,128 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
     }
   };
 
+  const bar = <AppBar title="Gelen talepler" leading="back" onBack={() => navigation.goBack()} />;
+
   if (!hasCompany) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <EmptyState
-          icon="business-outline"
-          title="Bir firmaya bağlı değilsiniz"
-          message="Gelen numune talepleri firma hesaplarında görünür."
-        />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <EmptyState
+            icon="business-outline"
+            title="Bir firmaya bağlı değilsin"
+            description="Gelen numune talepleri firma hesaplarında görünür."
+          />
+        </Screen>
+      </View>
     );
   }
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="request" />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen scroll={false}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Screen>
+      </View>
     );
   }
 
-  if (status === 'error') {
+  if (status === 'error' && requests.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="Talepler alınamadı" onRetry={reload} />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <EmptyState
+            icon="warning"
+            title="Talepler alınamadı"
+            description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
+            actionLabel="Yeniden dene"
+            onAction={reload}
+          />
+        </Screen>
+      </View>
     );
   }
 
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
+  const banner = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
+
+  const header = banner ? (
+    <View style={{ paddingBottom: t.space[3] }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          padding: t.space[3],
+          borderRadius: t.radius.md,
+          backgroundColor: t.colors.dangerSoft,
+        }}
+      >
+        <Icon name="warning" size={t.size.iconSm} color="danger" />
+        <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{banner}</Text>
+      </View>
+    </View>
+  ) : null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={refreshControl(refreshing, refresh)}
-        ListHeaderComponent={
-          bannerMessage ? (
-            <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
-          ) : null
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="file-tray-outline"
-            title="Henüz gelen talep yok"
-            message="Ürünlerinize numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsiniz."
-          />
-        }
-        renderItem={({ item, index }) => {
-          const requesterName = `${item.requester.firstName} ${item.requester.lastName}`;
-          return (
-            <Pressable
-              onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
-              // Satırın içinde düğmeler var: web'de rol verilirse iç içe
-              // <button> oluşur (bkz. ProductRow).
-              accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-              accessibilityLabel={`${item.product.code}, ${requesterName}, ${item.statusLabel}. Takibi aç`}
-              android_ripple={{ color: colors.pressed }}
-              style={({ pressed }) => [styles.row, index < requests.length - 1 && styles.rowDivider, pressed && styles.pressed]}
-            >
-              <View style={styles.topLine}>
-                <Text style={styles.code}>{item.product.code}</Text>
-                <SampleStatusBadge status={item.status} label={item.statusLabel} />
-              </View>
-              <View style={styles.requesterLine}>
-                <Text style={styles.meta}>Talep eden: </Text>
-                <Pressable
-                  onPress={() => navigation.navigate('Profile', { userId: item.requester.id })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${requesterName}, profili aç`}
-                  hitSlop={8}
-                  style={({ pressed }) => pressed && styles.pressedFade}
-                >
-                  <Text style={styles.requesterName}>{requesterName}</Text>
-                </Pressable>
-              </View>
-              <Text style={styles.meta} numberOfLines={1}>
-                {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
-              </Text>
-              {item.note ? <Text style={styles.note}>“{item.note}”</Text> : null}
-              {item.nextStep ? (
-                <PrimaryButton
-                  label={updatingId === item.id ? 'Güncelleniyor' : `${item.nextStep.label} olarak işaretle`}
-                  variant="outline"
-                  disabled={updatingId === item.id}
-                  onPress={() => handleAdvance(item)}
-                  style={styles.advanceButton}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
+      <Screen scroll={false} noPadding>
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          refreshControl={refreshControl(refreshing, refresh)}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            <EmptyState
+              icon="sample"
+              title="Henüz gelen talep yok"
+              description="Ürünlerine numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsin."
+            />
+          }
+          renderItem={({ item, index }) => {
+            const last = index === requests.length - 1;
+            const requesterName = `${item.requester.firstName} ${item.requester.lastName}`;
+            const parts = [requesterName, item.deliveryModeLabel, formatRelativeTime(item.createdAt)];
+            return (
+              <View>
+                <ListRow
+                  title={item.product.code}
+                  subtitle={parts.join(' · ')}
+                  avatarName={requesterName}
+                  avatarKind="person"
+                  right={<Badge kind={SAMPLE_BADGE[item.status]} label={item.statusLabel} />}
+                  divider={!last || !item.nextStep}
+                  onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
                 />
-              ) : null}
-            </Pressable>
-          );
-        }}
-      />
-    </SafeAreaView>
+                {item.note ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink2, paddingTop: t.space[2] }]}>
+                    “{item.note}”
+                  </Text>
+                ) : null}
+                {/* Bir sonraki adım: satırın İÇİNDE değil ALTINDA. */}
+                {item.nextStep ? (
+                  <View style={{ paddingTop: t.space[2], paddingBottom: t.space[3] }}>
+                    <Button
+                      kind="secondary"
+                      fullWidth
+                      loading={updatingId === item.id}
+                      label={`${item.nextStep.label} olarak işaretle`}
+                      onPress={() => handleAdvance(item)}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            );
+          }}
+        />
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  row: {
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-    gap: 2,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  pressedFade: { opacity: 0.6 },
-  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { ...typography.monoStrong, color: colors.primary },
-  requesterLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-  requesterName: { ...typography.label, color: colors.accent },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: 2 },
-  advanceButton: { marginTop: spacing.sm },
-});

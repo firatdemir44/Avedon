@@ -1,43 +1,59 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Numune takibi (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı değişmedi: GET /sample-requests/:id, PATCH .../status aynı
+// gövdeyle; rota adları ve parametreleri aynı. Yalnızca sunum yenilendi.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   fetchSampleRequestTimeline,
   updateSampleRequestStatus,
   type SampleTimelineStep,
 } from '../../api/client';
+import type { SampleRequestStatus } from '../../types';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
-import { SkeletonDetail } from '../../components/Skeleton';
-import {
-  EmptyState,
-  ErrorState,
-  InlineError,
-  friendlyMessage,
-  isNotFound,
-} from '../../components/StateView';
+import { friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SampleStatusBadge } from '../../components/SampleStatusBadge';
 import { formatDateTime } from '../../features/time';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SkeletonText,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
-// Taslak: docs/tasarim-yonleri/CTakip.dc.html. Özet bloğu (kod + durum, firma,
-// teslimat), adım çizelgesi bloğu; bir sonraki adımı işaretleme alanı ekranın
-// altına sabit.
+// Numune durumu → rozet türü (RequestsScreen ile aynı eşleme).
+const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
+  talep_edildi: 'pending',
+  onaylandi: 'info',
+  hazirlandi: 'info',
+  teslim_edildi: 'delivered',
+};
+
 export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   const { sampleRequestId } = route.params;
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchSampleRequestTimeline(sampleRequestId)
   );
   const [advancing, setAdvancing] = useState(false);
   const [note, setNote] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const handleAdvance = async () => {
     if (!data?.nextStep) return;
@@ -56,27 +72,50 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
     }
   };
 
+  const bar = <AppBar title="Numune takibi" leading="back" onBack={() => navigation.goBack()} />;
+
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonDetail variant="timeline" />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <Card>
+            <SkeletonText lines={3} />
+          </Card>
+          <Card>
+            <SkeletonText lines={4} />
+          </Card>
+        </Screen>
       </View>
     );
   }
 
   if (!data) {
     return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
-        {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Takip bilgisi alınamadı" onRetry={reload} />
-        ) : (
-          <EmptyState icon="flask-outline" title="Talep bulunamadı" message="Talep silinmiş ya da size ait olmayabilir." />
-        )}
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          {error && !isNotFound(error) ? (
+            <EmptyState
+              icon="warning"
+              title="Takip bilgisi alınamadı"
+              description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
+              actionLabel="Yeniden dene"
+              onAction={reload}
+            />
+          ) : (
+            <EmptyState
+              icon="sample"
+              title="Talep bulunamadı"
+              description="Talep silinmiş ya da sana ait olmayabilir."
+            />
+          )}
+        </Screen>
       </View>
     );
   }
 
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Takip bilgisi yenilenemedi') : null);
+  const banner = actionError ?? (error ? friendlyMessage(error, 'Takip bilgisi yenilenemedi') : null);
 
   const { sampleRequest, steps, nextStep } = data;
   const product = sampleRequest.product;
@@ -85,105 +124,117 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   const asksForNote = nextStep?.status === 'teslim_edildi';
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        <View style={[styles.block, styles.summary]}>
-          <View style={styles.summaryTop}>
-            <Pressable
-              onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`${product.code}, ürün sayfasını aç`}
-              hitSlop={6}
-              style={({ pressed }) => pressed && styles.pressedFade}
-            >
-              <Text style={styles.code}>{product.code}</Text>
-            </Pressable>
-            <SampleStatusBadge status={sampleRequest.status} label={sampleRequest.statusLabel} />
-          </View>
-          <Pressable
-            onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
-            accessibilityRole="button"
-            accessibilityLabel={`${product.company.name}, firma sayfasını aç`}
-            hitSlop={6}
-            style={({ pressed }) => [styles.companyLink, pressed && styles.pressedFade]}
-          >
-            <Text style={styles.company}>{product.company.name}</Text>
-          </Pressable>
-          <Text style={styles.summaryMeta}>Teslimat: {sampleRequest.deliveryModeLabel}</Text>
-          {sampleRequest.note ? <Text style={styles.requestNote}>“{sampleRequest.note}”</Text> : null}
-        </View>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
 
-        <View style={[styles.block, styles.timeline]}>
-          {steps.map((step, index) => (
-            <TimelineStep
-              key={step.status}
-              step={step}
-              isLast={index === steps.length - 1}
-              nextDone={steps[index + 1]?.state === 'done'}
-            />
-          ))}
-        </View>
-
-        {bannerMessage ? (
-          <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
-        ) : null}
-      </ScrollView>
-
-      {nextStep ? (
-        <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-          {asksForNote ? (
-            <>
-              <Text style={styles.noteLabel}>
-                Teslim notu <Text style={styles.noteOptional}>(isteğe bağlı)</Text>
-              </Text>
-              <TextInput
-                style={styles.noteInput}
-                value={note}
-                onChangeText={setNote}
-                placeholder="Örn. Giriş ofisinde teslim alındı"
-                placeholderTextColor={colors.textMuted}
-                accessibilityLabel="Teslim notu, isteğe bağlı"
+      <Screen
+        scroll={false}
+        sticky={
+          nextStep ? (
+            <View style={{ gap: t.space[3] }}>
+              {asksForNote ? (
+                <Input
+                  label="Teslim notu (isteğe bağlı)"
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Örn. Giriş ofisinde teslim alındı"
+                />
+              ) : null}
+              <Button
+                kind="secondary"
+                size="lg"
+                label={`${nextStep.label} olarak işaretle`}
+                loading={advancing}
+                onPress={handleAdvance}
               />
-            </>
-          ) : null}
-          <PrimaryButton
-            label={advancing ? 'Güncelleniyor' : `${nextStep.label} olarak işaretle`}
-            size="lg"
-            disabled={advancing}
-            onPress={handleAdvance}
+            </View>
+          ) : null
+        }
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ gap: t.space[6], paddingBottom: t.space[10] }}
+          refreshControl={refreshControl(refreshing, refresh)}
+        >
+          {/* Özet: ürün kodu + güncel durum rozeti, firma, teslim şekli, not. */}
+          <Card onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
+            accessibilityLabel={`${product.code}, ürün sayfasını aç`}>
+            <View style={{ gap: t.space[2] }}>
+              <Text style={[t.type.mono20, { color: t.colors.ink }]}>{product.code}</Text>
+              <Badge kind={SAMPLE_BADGE[sampleRequest.status]} label={sampleRequest.statusLabel} />
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{product.company.name}</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                Teslimat: {sampleRequest.deliveryModeLabel}
+              </Text>
+              {sampleRequest.note ? (
+                <Text style={[t.type.body14, { color: t.colors.ink }]}>“{sampleRequest.note}”</Text>
+              ) : null}
+            </View>
+          </Card>
+
+          <Button
+            kind="quiet"
+            label="Firma sayfasını aç"
+            icon="chevron"
+            onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
           />
-        </View>
-      ) : null}
+
+          {/* Adım çizelgesi: durum yalnız renkle değil, ikon + metinle verilir. */}
+          <Card>
+            <View style={{ gap: t.space[4] }}>
+              {steps.map((step) => (
+                <TimelineStep key={step.status} step={step} />
+              ))}
+            </View>
+          </Card>
+
+          {banner ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.dangerSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{banner}</Text>
+            </View>
+          ) : null}
+        </ScrollView>
+      </Screen>
     </View>
   );
 }
 
-function TimelineStep({ step, isLast, nextDone }: { step: SampleTimelineStep; isLast: boolean; nextDone: boolean }) {
+function TimelineStep({ step }: { step: SampleTimelineStep }) {
+  const t = useTheme();
   const done = step.state === 'done';
   const actor = step.actor;
   return (
-    <View style={styles.stepRow} accessible accessibilityLabel={`${step.label}, ${done ? 'tamamlandı' : 'bekleniyor'}`}>
-      {/* Sol sütun: tamamlanan adım lacivert dolu daire + onay ikonu, bekleyen
-          adım içi boş daire. İki tamamlanmış adım arası çizgi lacivert, bekleyen
-          adıma giden çizgi gri. (Eskiden onay işareti ✓ karakteriydi, FINDING-012.) */}
-      <View style={styles.rail}>
-        <View style={[styles.dot, done ? styles.dotDone : styles.dotPending]}>
-          {done ? <Ionicons name="checkmark" size={14} color={colors.primaryText} /> : null}
-        </View>
-        {!isLast ? <View style={[styles.line, done && nextDone && styles.lineDone]} /> : null}
-      </View>
-
-      <View style={[styles.stepBody, isLast && styles.stepBodyLast]}>
-        <Text style={[styles.stepLabel, !done && styles.stepLabelPending]}>{step.label}</Text>
+    <View
+      accessible
+      accessibilityLabel={`${step.label}, ${done ? 'tamamlandı' : 'bekleniyor'}`}
+      style={{ flexDirection: 'row', gap: t.space[3], minWidth: 0 }}
+    >
+      {/* Tamamlanan adım onay ikonu, bekleyen adım saat ikonu: durum yalnız
+          renkle değil ikonla da veriliyor (DESIGN.md §6). */}
+      <Icon name={done ? 'check' : 'clock'} size={t.size.iconSm} color={done ? 'success' : 'ink3'} />
+      <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
+        <Text style={[t.type.body16Strong, { color: done ? t.colors.ink : t.colors.ink2 }]}>{step.label}</Text>
         {step.occurredAt ? (
-          <Text style={styles.stepTime}>{formatDateTime(step.occurredAt)}</Text>
+          <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatDateTime(step.occurredAt)}</Text>
         ) : !done ? (
-          <Text style={styles.stepMuted}>Bekleniyor</Text>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bekleniyor</Text>
         ) : null}
-        {step.description ? <Text style={styles.stepMuted}>{step.description}</Text> : null}
-        {step.note ? <Text style={styles.stepText}>{step.note}</Text> : null}
+        {step.description ? (
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{step.description}</Text>
+        ) : null}
+        {step.note ? <Text style={[t.type.body14, { color: t.colors.ink }]}>{step.note}</Text> : null}
         {actor ? (
-          <Text style={styles.stepText}>
+          <Text style={[t.type.body14, { color: t.colors.ink }]}>
             {[`${actor.firstName} ${actor.lastName}`, actor.company?.name].filter(Boolean).join(' · ')}
           </Text>
         ) : null}
@@ -191,63 +242,3 @@ function TimelineStep({ step, isLast, nextDone }: { step: SampleTimelineStep; is
     </View>
   );
 }
-
-const DOT_SIZE = 22;
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.md },
-  block: { backgroundColor: colors.surface },
-  pressedFade: { opacity: 0.6 },
-  summary: { padding: spacing.gutter, gap: 3 },
-  summaryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 20, lineHeight: 26, color: colors.primary },
-  companyLink: { alignSelf: 'flex-start' },
-  company: { ...typography.label, color: colors.accent },
-  summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
-  timeline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md, paddingBottom: spacing.xs },
-  stepRow: { flexDirection: 'row', gap: 12 },
-  rail: { width: DOT_SIZE, alignItems: 'center' },
-  dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotDone: { backgroundColor: colors.primary },
-  dotPending: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.borderStrong },
-  // Çizgi bir sonraki adımın dairesine kadar uzasın diye esner.
-  line: { flex: 1, width: 2, backgroundColor: colors.borderStrong, marginVertical: 2 },
-  lineDone: { backgroundColor: colors.primary },
-  stepBody: { flex: 1, gap: 2, paddingBottom: 18 },
-  stepBodyLast: { paddingBottom: spacing.gutter },
-  stepLabel: { ...typography.subtitle, color: colors.text },
-  stepLabelPending: { color: colors.textMuted },
-  stepTime: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
-  stepMuted: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  stepText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  banner: { marginHorizontal: spacing.gutter },
-  actionBar: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-    gap: spacing.sm,
-  },
-  noteLabel: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  noteOptional: { fontFamily: fonts.regular, color: colors.textMuted },
-  noteInput: {
-    minHeight: MIN_TOUCH,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: 12,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-  },
-});

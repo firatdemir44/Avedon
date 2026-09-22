@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChipSelect } from '../../components/ChipSelect';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcSectionRow,
@@ -19,7 +18,8 @@ import {
 } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Chip, ChipRow, Screen, SegmentControl } from '../../ui';
 
 type Mode = 'convert' | 'sample';
 
@@ -54,8 +54,12 @@ function resultRows(r: YarnCountResult | null) {
   ];
 }
 
-export function YarnCountCalculator() {
+export function YarnCountCalculator({ navigation }: RootStackScreenProps<'YarnCountCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('yarn_count_v2', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const converted = useMemo(() => {
     const value = parseNumber(f.value);
@@ -71,9 +75,12 @@ export function YarnCountCalculator() {
   }, [f.lengthCm, f.weightGrams]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ChipSelect
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="İplik numarası" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <SegmentControl
+          stretch
+          accessibilityLabel="Hesap yöntemi"
           options={[
             { value: 'convert', label: 'Sistem çevir' },
             { value: 'sample', label: 'Numuneden hesapla' },
@@ -84,8 +91,20 @@ export function YarnCountCalculator() {
 
         {f.mode === 'convert' ? (
           <>
-            <Text style={styles.label}>Numaralandırma sistemi</Text>
-            <ChipSelect options={SYSTEMS} value={f.system} onChange={(system) => update({ system })} />
+            {/* Beş sistem 375 px'te tek satıra sığmaz; çip satırı yatay kaydırılır. */}
+            <View style={{ gap: t.space[2] }}>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Numaralandırma sistemi</Text>
+              <ChipRow>
+                {SYSTEMS.map((s) => (
+                  <Chip
+                    key={s.value}
+                    label={s.label}
+                    selected={s.value === f.system}
+                    onPress={() => update({ system: s.value })}
+                  />
+                ))}
+              </ChipRow>
+            </View>
             <CalcTable title="İplik numarası çevirisi">
               <CalcInputRow
                 label="İplik numarası"
@@ -113,7 +132,7 @@ export function YarnCountCalculator() {
           </>
         ) : (
           <>
-            <Text style={styles.hint}>
+            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
               İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha
               güvenilir yapar.
             </Text>
@@ -142,14 +161,7 @@ export function YarnCountCalculator() {
           </>
         )}
         <CalcClearButton onClear={() => update({ ...INITIAL, mode: f.mode })} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-});

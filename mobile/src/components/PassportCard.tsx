@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable, type StyleProp, type ViewStyle } from 'react-native';
 import { StockDot, formatStock } from './StockIndicator';
 import { formatMeasure } from '../features/calculators/parse';
 import { STOCK_UNIT_LABELS, isYarnType, subtypeLabel, typeLabel, type StockUnit } from '../features/products/catalog';
@@ -11,10 +10,12 @@ import {
   widthHintLabel,
 } from '../features/products/glossaryLabels';
 import type { CompositionItem } from '../types';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Badge } from '../ui';
 
 // Kumaş pasaportu kartı (Faz 1, Adım 6; taslak docs/tasarim-2027/Main.dc.html).
-// Akış kartında ürünün özeti: beyaz kutu, içinde kesik çizgili iç çerçeve.
+// Akış kartında ürünün özeti: ui/Card ölçülerinde kutu (surface-1, 1px line,
+// radius-lg), içinde kesik çizgili iç çerçeve; ölçüler mono-14.
 // Ayrı bileşen çünkü ileride ürün sayfası ve asistan sonuçları da aynı kartı
 // kullanacak; bu yüzden sunucu tipine değil bu sade arayüze bağlı.
 export interface PassportCardProduct {
@@ -130,6 +131,7 @@ export function PassportCard({
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useTheme();
   const structure = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
   // "tüp, tek yüz" / "tüp, açık en" / "tüp en" / "açık en"
   const widthHint = widthHintLabel(product.widthType, product.widthMeaning);
@@ -139,139 +141,113 @@ export function PassportCard({
   // çizilmez, kart kod + karışım + stok satırından ibaret kalır.
   const isYarn = isYarnType(product.type);
 
+  const frame: ViewStyle = {
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    borderRadius: t.radius.lg,
+    backgroundColor: t.colors.surface1,
+    padding: t.space[1],
+  };
+  const specLabel = [t.type.caption12, { color: t.colors.ink3 }];
+  const specValue = [t.type.mono14, { color: t.colors.ink }];
+
   const inner = (
-    <View style={styles.inner}>
-      <View style={styles.topRow}>
-        <Text style={styles.code} numberOfLines={1}>
+    <View
+      style={{
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: t.colors.lineStrong,
+        borderRadius: t.radius.md,
+        paddingVertical: t.space[2],
+        paddingHorizontal: t.space[3],
+        gap: t.space[2],
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[2] }}>
+        <Text style={[t.type.body16Strong, { color: t.colors.brand, flexShrink: 1 }]} numberOfLines={1}>
           {product.code}
         </Text>
-        <Text style={styles.kicker} numberOfLines={1}>
+        <Text style={[t.type.caption12, { color: t.colors.ink3 }]} numberOfLines={1}>
           {isYarn ? 'İPLİK' : 'KUMAŞ PASAPORTU'}
         </Text>
       </View>
 
       {isYarn && product.yarnSummary ? (
-        <Text style={styles.specValue} numberOfLines={2}>
+        <Text style={specValue} numberOfLines={2}>
           {product.yarnSummary}
         </Text>
       ) : null}
 
-      <View style={[styles.specRow, isYarn && styles.hidden]}>
-        <View style={styles.specCell}>
-          <Text style={styles.specLabel}>Gramaj</Text>
-          <Text style={styles.specValue} numberOfLines={1}>
-            {formatMeasure(product.weightGsm)} g/m²
-          </Text>
-        </View>
-        <View style={styles.specCell}>
-          <Text style={styles.specLabel}>En</Text>
-          <Text style={styles.specValue} numberOfLines={1}>
-            {formatMeasure(product.widthCm)} cm
-          </Text>
-          {widthHint ? (
-            <Text style={styles.specHint} numberOfLines={1}>
-              {widthHint}
+      {isYarn ? null : (
+        <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={specLabel}>Gramaj</Text>
+            <Text style={specValue} numberOfLines={1}>
+              {formatMeasure(product.weightGsm)} g/m²
             </Text>
-          ) : null}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={specLabel}>En</Text>
+            <Text style={specValue} numberOfLines={1}>
+              {formatMeasure(product.widthCm)} cm
+            </Text>
+            {widthHint ? (
+              <Text style={specLabel} numberOfLines={1}>
+                {widthHint}
+              </Text>
+            ) : null}
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={specLabel}>{structureLabel(product.type)}</Text>
+            <Text style={specValue} numberOfLines={1}>
+              {structure}
+            </Text>
+          </View>
         </View>
-        <View style={styles.specCell}>
-          <Text style={styles.specLabel}>{structureLabel(product.type)}</Text>
-          <Text style={styles.specValue} numberOfLines={1}>
-            {structure}
-          </Text>
-        </View>
-      </View>
+      )}
 
-      <View style={styles.bottomRow}>
-        <Text style={styles.composition} numberOfLines={1}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: t.space[2],
+          borderTopWidth: 1,
+          borderTopColor: t.colors.line,
+          paddingTop: t.space[2],
+        }}
+      >
+        <Text style={[t.type.mono14, { color: t.colors.ink, flexShrink: 1 }]} numberOfLines={1}>
           {composition}
         </Text>
-        <View style={styles.commercial}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], flexShrink: 0 }}>
           <StockDot stock={product.stock} unit={product.stockUnit} />
-          <Text style={styles.commercialText} numberOfLines={1}>
+          <Text style={[t.type.mono14, { color: t.colors.ink2 }]} numberOfLines={1}>
             {commercialSummary(product)}
           </Text>
         </View>
       </View>
 
       {certificates.length ? (
-        <View style={styles.certRow}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[1] }}>
           {certificates.map((name) => (
-            <View key={name} style={styles.certBadge}>
-              <Ionicons name="ribbon-outline" size={11} color={colors.success} />
-              <Text style={styles.certText} numberOfLines={1}>
-                {certificateLabel(name)}
-              </Text>
-            </View>
+            <Badge key={name} kind="verified" label={certificateLabel(name)} />
           ))}
         </View>
       ) : null}
     </View>
   );
 
-  if (!onPress) return <View style={[styles.frame, style]}>{inner}</View>;
+  if (!onPress) return <View style={[frame, style]}>{inner}</View>;
 
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${passportAccessibilityLabel(product)}. Ürün sayfasını aç`}
-      android_ripple={{ color: colors.pressed }}
-      style={({ pressed }) => [styles.frame, pressed && styles.pressed, style]}
+      style={({ pressed }) => [frame, pressed && { backgroundColor: t.colors.surface2 }, style]}
     >
       {inner}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  frame: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: 4,
-  },
-  pressed: { backgroundColor: colors.pressed },
-  inner: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 10,
-    gap: 6,
-  },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 15, lineHeight: 20, color: colors.primary, flexShrink: 1 },
-  kicker: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, letterSpacing: 0.5, color: colors.textMuted },
-  specRow: { flexDirection: 'row', gap: 6 },
-  hidden: { display: 'none' },
-  specCell: { flex: 1, minWidth: 0 },
-  specLabel: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  specValue: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.text },
-  specHint: { fontFamily: fonts.regular, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    paddingTop: 6,
-  },
-  composition: { ...typography.mono, fontSize: 13, lineHeight: 18, color: colors.text, flexShrink: 1 },
-  commercial: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 0 },
-  commercialText: { ...typography.mono, fontSize: 13, lineHeight: 18, color: colors.textMuted },
-  certRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  certBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    borderRadius: radius.sm,
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  certText: { fontFamily: fonts.semibold, fontSize: 11, lineHeight: 15, color: colors.success },
-});

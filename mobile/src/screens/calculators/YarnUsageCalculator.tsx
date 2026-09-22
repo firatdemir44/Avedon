@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcInputRow,
@@ -12,7 +12,8 @@ import {
 import { calculateYarnUsageKg } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, spacing } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen } from '../../ui';
 
 interface Fields {
   // Üretilecek miktar metre ya da kg olarak girilir.
@@ -25,8 +26,13 @@ interface Fields {
 
 const INITIAL: Fields = { unit: 'metre', length: '', weightGsm: '', widthCm: '', wastage: '0' };
 
-export function YarnUsageCalculator() {
+export function YarnUsageCalculator({ navigation }: RootStackScreenProps<'YarnUsageCalculator'>) {
+  const t = useTheme();
   const [fields, update] = usePersistedFields('yarn_usage', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
+
   const { unit, length, weightGsm, widthCm, wastage } = fields;
   const byKg = unit === 'kg';
 
@@ -50,8 +56,9 @@ export function YarnUsageCalculator() {
   const fabricMeters = byKg && length && metersPerKg ? parseNumber(length) * metersPerKg : null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="İplik ihtiyacı" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
         <CalcTable title="İplik ihtiyacı">
           <CalcInputRow
             label="Üretilecek kumaş miktarı"
@@ -106,12 +113,7 @@ export function YarnUsageCalculator() {
           />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-});

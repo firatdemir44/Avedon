@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import type { CompanyPhotoKind } from '../api/client';
 import { getCachedCompanyPhoto, loadCompanyPhoto } from '../features/companies/companyPhotoCache';
 import { ImageViewerModal } from './ImageViewerModal';
-import { colors, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+
+// Küçük görsel karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
+const THUMB_SIZE = 96;
 
 interface Props {
   companyId: string;
@@ -14,10 +17,12 @@ interface Props {
   thumbSize?: number;
 }
 
-// Firma sayfasındaki yatay galeri (orijinal tasarım: "Firmanın ofisinden
-// görseller", "Sertifikalar, başarılar"). Fotoğraflar firma yanıtında gelmiyor;
-// burada tek tek çekilip dokununca tam ekran açılıyor.
-export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSize = 96 }: Props) {
+// Firma sayfasındaki yatay galeri ("Firmanın ofisinden görseller",
+// "Sertifikalar, başarılar"). Fotoğraflar firma yanıtında gelmiyor; burada
+// tek tek çekilip dokununca tam ekran açılıyor. Görseller 1px line çerçeveli
+// (DESIGN.md §3 kumaş görseli).
+export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSize = THUMB_SIZE }: Props) {
+  const t = useTheme();
   const [urls, setUrls] = useState<(string | null)[]>([]);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
 
@@ -41,9 +46,24 @@ export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSi
 
   if (count === 0) return null;
 
+  const thumb = {
+    width: thumbSize,
+    height: thumbSize,
+    borderRadius: t.radius.sm,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface2,
+    overflow: 'hidden' as const,
+  };
+
   return (
-    <View style={styles.wrap}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.strip}>
+    <View style={{ gap: t.space[2] }}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ gap: t.space[2] }}
+      >
         {Array.from({ length: count }, (_, i) => {
           const url = urls[i];
           return (
@@ -54,35 +74,21 @@ export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSi
               accessibilityRole="imagebutton"
               accessibilityLabel={`${itemLabel} ${i + 1} / ${count}`}
               accessibilityHint="Tam ekran büyütür"
-              style={({ pressed }) => [{ width: thumbSize, height: thumbSize }, pressed && styles.pressed]}
+              style={({ pressed }) => [thumb, pressed && { opacity: 0.85 }]}
             >
               {url ? (
-                <Image source={{ uri: url }} style={[styles.thumb, { width: thumbSize, height: thumbSize }]} />
+                <Image source={{ uri: url }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
               ) : (
-                <View style={[styles.thumb, styles.placeholder, { width: thumbSize, height: thumbSize }]}>
-                  <ActivityIndicator color={colors.chevron} />
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                  <ActivityIndicator color={t.colors.ink3} />
                 </View>
               )}
             </Pressable>
           );
         })}
       </ScrollView>
-      <Text style={styles.hint}>Büyütmek için fotoğrafa dokunun.</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Büyütmek için fotoğrafa dokunun.</Text>
       <ImageViewerModal imageUrl={viewerUrl} visible={!!viewerUrl} onClose={() => setViewerUrl(null)} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { backgroundColor: colors.surface },
-  strip: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingTop: spacing.sm },
-  thumb: { borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  placeholder: { alignItems: 'center', justifyContent: 'center' },
-  pressed: { opacity: 0.85 },
-  hint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-});

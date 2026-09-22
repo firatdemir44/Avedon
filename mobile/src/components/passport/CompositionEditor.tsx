@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { TextField } from '../TextField';
+import { Icon, Input } from '../../ui';
 import { ChipSelect } from '../ChipSelect';
 import { FIBERS } from '../../features/products/glossaryLabels';
 import { MAX_COMPOSITION_ROWS } from '../../features/products/limits';
 import { haptics } from '../../features/haptics';
-import { colors } from '../../theme';
-import { rowStyles as styles } from './styles';
+import { useTheme } from '../../theme/ThemeContext';
+import { passportStyles } from './styles';
 import { compositionState, emptyCompositionRow, type CompositionRow } from './rows';
 
 const FIBER_OPTIONS = FIBERS.map((f) => ({ value: f.key, label: f.label }));
@@ -17,7 +16,7 @@ interface Props {
   onChange: (rows: CompositionRow[]) => void;
   // Satırların üstünde görünen açıklama (boşsa hiç çizilmez).
   hint?: string;
-  // Toplam satırının turuncuya dönmesi (kuralı ekran belirler: kumaşta
+  // Toplam satırının uyarı rengine dönmesi (kuralı ekran belirler: kumaşta
   // "100 değil", iplikte "100'den 0,5'ten fazla sapmış").
   totalWarning?: boolean;
   // Toplamın ardına eklenen açıklama (kumaş formundaki parantezli not).
@@ -37,6 +36,8 @@ export function CompositionEditor({
   percentPlaceholder = 'Örn. 100',
   disabled,
 }: Props) {
+  const t = useTheme();
+  const styles = passportStyles(t);
   const { valid, total } = compositionState(rows);
 
   const updateRow = (key: string, patch: Partial<CompositionRow>) =>
@@ -63,12 +64,11 @@ export function CompositionEditor({
             <Pressable
               onPress={() => removeRow(row.key)}
               disabled={disabled}
-              hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`${index + 1}. lif satırını kaldır`}
               style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
             >
-              <Ionicons name="close" size={18} color={colors.textMuted} />
+              <Icon name="x" color="ink2" />
             </Pressable>
           </View>
           <ChipSelect
@@ -77,13 +77,16 @@ export function CompositionEditor({
             onChange={(fiber) => updateRow(row.key, { fiber })}
             compact
           />
-          <TextField
-            label="Oran (%)"
+          <Input
+            label="Oran"
+            unit="%"
             value={row.percent}
             onChangeText={(percent) => updateRow(row.key, { percent })}
             placeholder={percentPlaceholder}
-            keyboardType="numeric"
+            inputMode="decimal"
+            keyboardType="decimal-pad"
             editable={!disabled}
+            containerStyle={{ marginBottom: t.space[4] }}
           />
         </View>
       ))}
@@ -95,7 +98,7 @@ export function CompositionEditor({
           accessibilityLabel="Lif satırı ekle"
           style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
         >
-          <Ionicons name="add" size={18} color={colors.accent} />
+          <Icon name="plus" size={t.size.iconSm} color="brand" />
           <Text style={styles.addRowText}>Lif ekle</Text>
         </Pressable>
       ) : null}

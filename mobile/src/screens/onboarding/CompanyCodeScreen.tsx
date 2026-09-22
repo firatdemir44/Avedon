@@ -1,10 +1,10 @@
+// Kayıt 6. adım: şirket / davet kodu (yeni tasarım, 4. adım).
+// Veri katmanı aynı: kayıt tamamlanır, davet kodu cihazdan silinir, oturum açılır.
 import React, { useEffect, useState } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { TextField } from '../../components/TextField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { registerUser } from '../../api/client';
@@ -13,11 +13,13 @@ import {
   normalizeInviteCode,
   readStoredInviteCode,
 } from '../../features/invites/storedCode';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Icon, Input } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyCode'>;
 
 export function CompanyCodeScreen({ navigation }: Props) {
+  const t = useTheme();
   const { draft, updateDraft } = useRegistration();
   const { login } = useSession();
   const [submitting, setSubmitting] = useState(false);
@@ -63,44 +65,46 @@ export function CompanyCodeScreen({ navigation }: Props) {
       totalSteps={6}
       title="Şirket kodu"
       subtitle="Firmanız zaten platformdaysa, mevcut çalışanlardan aldığınız kodu girin. Yeni firma kaydı yapıyorsanız boş bırakabilirsiniz."
+      footer={<Button size="lg" label="Kaydı Tamamla" loading={submitting} onPress={handleSubmit} />}
     >
-      <TextField
-        label="Şirket Kodu (opsiyonel)"
-        value={draft.companyCode}
-        onChangeText={(companyCode) => updateDraft({ companyCode })}
-        placeholder="Örn. AVD-4F82"
-        autoCapitalize="characters"
-      />
-      {/* Davet kodu (Faz 2, Adım 4): isteğe bağlı. Davet bağlantısıyla
-          gelindiyse dolu gelir; yanlış yazılsa da kayıt engellenmez. */}
-      <TextField
-        label="Davet Kodu (opsiyonel)"
-        value={draft.inviteCode}
-        onChangeText={(inviteCode) => updateDraft({ inviteCode: normalizeInviteCode(inviteCode) })}
-        placeholder="Örn. K7M2QP4R"
-        autoCapitalize="characters"
-      />
-      <Text style={styles.hint}>
-        Sizi davet eden kişinin kodu. Yazarsanız kayıt tamamlanınca o kişiyle bağlantınız kurulur.
-      </Text>
-      <Text style={styles.hint}>Kayıt tamamlandığında firmanız "{draft.companyName || '—'}" temel doğrulama incelemesine alınacak.</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <PrimaryButton label={submitting ? 'Kaydediliyor...' : 'Kaydı Tamamla'} disabled={submitting} onPress={handleSubmit} />
+      <View style={{ gap: t.space[4], minWidth: 0 }}>
+        <Input
+          label="Şirket kodu (opsiyonel)"
+          value={draft.companyCode}
+          onChangeText={(companyCode) => updateDraft({ companyCode })}
+          placeholder="Örn. AVD-4F82"
+          autoCapitalize="characters"
+        />
+        {/* Davet kodu (Faz 2, Adım 4): isteğe bağlı. Davet bağlantısıyla
+            gelindiyse dolu gelir; yanlış yazılsa da kayıt engellenmez. */}
+        <Input
+          label="Davet kodu (opsiyonel)"
+          value={draft.inviteCode}
+          onChangeText={(inviteCode) => updateDraft({ inviteCode: normalizeInviteCode(inviteCode) })}
+          placeholder="Örn. K7M2QP4R"
+          autoCapitalize="characters"
+          helper="Sizi davet eden kişinin kodu. Yazarsanız kayıt tamamlanınca o kişiyle bağlantınız kurulur."
+        />
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+          Kayıt tamamlandığında firmanız "{draft.companyName || '—'}" temel doğrulama incelemesine alınacak.
+        </Text>
+        {/* Hata: ikon + metin (DESIGN.md §6). */}
+        {error ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+          </View>
+        ) : null}
+      </View>
     </OnboardingLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  hint: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
-  },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    marginBottom: spacing.md,
-  },
-});

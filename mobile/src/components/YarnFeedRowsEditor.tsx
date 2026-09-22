@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Text, View } from 'react-native';
 import { TableInput } from './TableInput';
 import { UnitToggle } from './UnitToggle';
 import { CalcSubRow, CalcSubHeadCell, CalcAddRow, CalcRemoveCell, calcCells } from './CalcTable';
 import type { YarnCountSystem, YarnFeedRow } from '../features/calculators/formulas';
 import { parseNumber } from '../features/calculators/parse';
-import { colors, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 // Alanlar metin olarak tutuluyor (kullanıcı "15," yazarken silinmesin diye);
 // hesap anında sayıya çevriliyor.
@@ -46,24 +46,23 @@ interface Props {
 // tablosu kalıbına uyduruldu: KENDİ çerçevesi yok, bir `CalcTable` içinde
 // alt tablo olarak durur (aynı satır çizgileri, gri sütun başlıkları).
 export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
+  const t = useTheme();
   const updateRow = (index: number, patch: Partial<YarnFeedRowFields>) =>
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
 
   return (
     <>
       <CalcSubRow header>
-        <CalcSubHeadCell label="#" style={styles.colIndexHead} />
+        <CalcSubHeadCell label="#" style={calcCells.index} />
         <CalcSubHeadCell label="50 iğne cm" style={calcCells.flex11} />
         <CalcSubHeadCell label="Numara" style={calcCells.flex2} />
         <CalcSubHeadCell label="Sistem" style={calcCells.flex11} />
-        <View style={styles.colRemoveHead} />
+        <View style={{ width: t.size.icon }} />
       </CalcSubRow>
 
       {rows.map((row, index) => (
         <CalcSubRow key={index}>
-          <View style={styles.index}>
-            <CalcSubHeadCell label={String(index + 1)} style={styles.indexText} />
-          </View>
+          <Text style={[t.type.caption12, calcCells.index, { color: t.colors.brand }]}>{index + 1}</Text>
           <TableInput
             style={calcCells.flex11}
             value={row.length}
@@ -71,7 +70,7 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
             placeholder="15,5"
             accessibilityLabel={`${index + 1}. iplik, 50 iğne iplik uzunluğu, santimetre`}
           />
-          <View style={[calcCells.flex2, styles.countCell]}>
+          <View style={[calcCells.flex2, { flexDirection: 'row', alignItems: 'center', gap: t.space[1] }]}>
             <TableInput
               style={calcCells.flex1}
               value={row.count}
@@ -107,11 +106,3 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  colIndexHead: { width: 16 },
-  colRemoveHead: { width: 24 },
-  index: { width: 16 },
-  countCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  indexText: { ...typography.caption, fontSize: 13, color: colors.primary, textAlign: 'center' },
-});

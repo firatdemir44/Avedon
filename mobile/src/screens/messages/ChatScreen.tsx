@@ -1,3 +1,12 @@
+// Sohbet (yeni tasarım, 4. adım — DESIGN.md §3 "Paylaşım/balon" kuralları).
+//
+// Balonlar: asistan/karşı taraf SOLDA `surface1` + 1px `line`; kendi mesajın
+// SAĞDA `brand` / `onBrand`. Altta yapışkan yazma alanı: 48px giriş,
+// `surface1` zemin, üst kenarlık `line`, `shadowRaised`.
+//
+// Veri katmanı, yoklama (poll), iyimser gönderim ve video akışı DEĞİŞMEDİ;
+// yalnızca görünüm yeni. Ham hex / ham px yok: her değer `useTheme()` token'ı
+// ya da `src/ui` bileşeni.
 import React, { useCallback, useRef, useState } from 'react';
 import {
   View,
@@ -5,7 +14,6 @@ import {
   FlatList,
   TextInput,
   Pressable,
-  StyleSheet,
   KeyboardAvoidingView,
   AppState,
   Platform,
@@ -13,7 +21,6 @@ import {
   type NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
@@ -28,10 +35,10 @@ import { useVideoUpload } from '../../features/useVideoUpload';
 import { PostVideo } from '../../components/PostVideo';
 import { formatClockTime, formatDayLabel, isSameCalendarDay } from '../../features/time';
 import { haptics } from '../../features/haptics';
-import { SkeletonList } from '../../components/Skeleton';
 import { UserAvatar } from '../../components/UserAvatar';
-import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { friendlyMessage } from '../../components/StateView';
+import { useTheme } from '../../theme/ThemeContext';
+import { EmptyState, Icon, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -72,9 +79,8 @@ function newestServerTimestamp(messages: ChatMessage[]): string | null {
   return newest;
 }
 
-// Taslak: docs/tasarim-yonleri/CSohbet.dc.html. Gün ayraç çipi, gönderen tarafı
-// sivri köşeli baloncuklar, eşit aralıklı saat; altta yazma alanı + kare gönder.
 export function ChatScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { conversationId } = route.params;
   const { user } = useSession();
   const insets = useSafeAreaInsets();
@@ -242,26 +248,74 @@ export function ChatScreen({ navigation, route }: Props) {
       layoutMeasurement.height + contentOffset.y >= contentSize.height - NEAR_BOTTOM_THRESHOLD_PX;
   };
 
+  // ——— Stiller: renkler temadan geldiği için bileşen gövdesinde üretiliyor ———
+  const screenStyle = { flex: 1, backgroundColor: t.colors.surface0 } as const;
+
+  const bubbleBase = {
+    maxWidth: '80%' as const,
+    borderRadius: t.radius.lg,
+    paddingVertical: t.space[3],
+    paddingHorizontal: t.space[3],
+    marginBottom: t.space[2],
+    gap: t.space[1],
+  };
+  const myBubble = { ...bubbleBase, alignSelf: 'flex-end' as const, backgroundColor: t.colors.brand };
+  const otherBubble = {
+    ...bubbleBase,
+    alignSelf: 'flex-start' as const,
+    backgroundColor: t.colors.surface1,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+  };
+  const myText = [t.type.body16, { color: t.colors.onBrand }];
+  const otherText = [t.type.body16, { color: t.colors.ink }];
+  const metaStyle = (mine: boolean) => [
+    t.type.caption12,
+    { color: mine ? t.colors.onBrand : t.colors.ink3, alignSelf: 'flex-end' as const },
+  ];
+  const failedRow = {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: t.space[1],
+    alignSelf: 'flex-end' as const,
+    minHeight: t.size.touchMin,
+  };
+  const squareButton = {
+    width: t.size.control,
+    height: t.size.control,
+    borderRadius: t.radius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  };
+
   if (loading) {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="chat" />
+      <View style={[screenStyle, { paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[4] }]}>
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
       </View>
     );
   }
 
   if (loadError && messages.length === 0) {
     return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
-        <ErrorState error={loadError} fallback="Mesajlar alınamadı" onRetry={loadInitial} />
+      <View style={[screenStyle, { paddingHorizontal: t.space[4], paddingBottom: insets.bottom }]}>
+        <EmptyState
+          icon="warning"
+          title="Mesajlar alınamadı"
+          description={friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel="Tekrar dene"
+          onAction={loadInitial}
+        />
       </View>
     );
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={screenStyle}>
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={80}
       >
@@ -269,48 +323,72 @@ export function ChatScreen({ navigation, route }: Props) {
           ref={listRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={{
+            paddingHorizontal: t.space[4],
+            paddingTop: t.space[4],
+            paddingBottom: t.space[2],
+          }}
           onScroll={handleScroll}
           scrollEventThrottle={100}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            <EmptyState compact icon="chatbubbles-outline" title="Henüz mesaj yok" message="İlk mesajı siz yazın." />
+            <EmptyState
+              icon="messages"
+              title="İlk mesajı siz yazın"
+              description="Aşağıdaki alana yazıp gönderin."
+            />
           }
           renderItem={({ item, index }) => {
             const isMine = item.senderId === meId;
             const previous = messages[index - 1];
             const startsNewDay =
               !previous || !isSameCalendarDay(new Date(previous.createdAt), new Date(item.createdAt));
+            // Gün ayracı: ortada çip. Dokunulmaz, bu yüzden 44px kuralı geçerli değil.
             const dayChip = startsNewDay ? (
-              <View style={styles.dayChip}>
-                <Text style={styles.dayChipText}>{formatDayLabel(item.createdAt)}</Text>
+              <View
+                style={{
+                  alignSelf: 'center',
+                  backgroundColor: t.colors.surface2,
+                  borderRadius: t.radius.full,
+                  paddingHorizontal: t.space[3],
+                  paddingVertical: t.space[1],
+                  marginBottom: t.space[2],
+                }}
+              >
+                <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{formatDayLabel(item.createdAt)}</Text>
               </View>
             ) : null;
 
             // Teklif bağlantılı mesaj: balon yerine kart (Faz 2, Adım 2).
             // Dış kap Pressable DEĞİL: içindeki "Teklifi aç" düğmesiyle web'de
-            // iç içe <button> oluşmasın (MOBILE-DESIGN web kuralları).
+            // iç içe <button> oluşmasın.
             if (item.quoteRequestId) {
               const quoteRequestId = item.quoteRequestId;
               return (
                 <>
                   {dayChip}
-                  <View style={[styles.quoteCard, isMine ? styles.quoteCardMine : styles.quoteCardOther]}>
-                    <View style={styles.quoteHeader}>
-                      <Ionicons name="pricetag-outline" size={15} color={colors.primary} />
-                      <Text style={styles.quoteTitle}>Teklif</Text>
+                  <View style={[otherBubble, isMine && { alignSelf: 'flex-end' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
+                      <Icon name="quote" size={t.size.iconSm} color="brand" />
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Teklif</Text>
                     </View>
-                    <Text style={styles.quoteBody}>{item.body}</Text>
+                    <Text style={otherText}>{item.body}</Text>
                     <Pressable
                       onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: quoteRequestId })}
                       accessibilityRole="button"
                       accessibilityLabel="Teklifi aç"
-                      style={({ pressed }) => [styles.quoteAction, pressed && styles.pressedFade]}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: t.space[1],
+                        minHeight: t.size.touchMin,
+                        opacity: pressed ? 0.6 : 1,
+                      })}
                     >
-                      <Text style={styles.quoteActionText}>Teklifi aç</Text>
-                      <Ionicons name="chevron-forward" size={15} color={colors.primary} />
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Teklifi aç</Text>
+                      <Icon name="chevron" size={t.size.iconSm} color="brand" />
                     </Pressable>
-                    <Text style={[styles.time, styles.otherMeta]}>{formatClockTime(item.createdAt)}</Text>
+                    <Text style={metaStyle(false)}>{formatClockTime(item.createdAt)}</Text>
                   </View>
                 </>
               );
@@ -318,7 +396,8 @@ export function ChatScreen({ navigation, route }: Props) {
 
             // Videolu mesaj: balonun içinde akıştaki oynatıcı. Dış kap
             // Pressable DEĞİL — oynatıcının kendisi dokunulabilir, web'de iç
-            // içe düğme olmasın (MOBILE-DESIGN web kuralları).
+            // içe düğme olmasın. Balon yüzde genişlikte, çünkü oynatıcı 16:9
+            // oranını kendi genişliğinden hesaplıyor.
             if (item.video) {
               const video = item.video;
               return (
@@ -326,28 +405,33 @@ export function ChatScreen({ navigation, route }: Props) {
                   {dayChip}
                   <View
                     style={[
-                      styles.bubble,
-                      styles.videoBubble,
-                      isMine ? styles.myBubble : styles.otherBubble,
-                      item.failed && styles.failedBubble,
+                      isMine ? myBubble : otherBubble,
+                      { width: '80%' },
+                      item.failed ? { opacity: 0.75 } : null,
                     ]}
                   >
                     <PostVideo key={video.id} video={video} />
-                    {item.body ? <Text style={isMine ? styles.myText : styles.otherText}>{item.body}</Text> : null}
+                    {item.body ? <Text style={isMine ? myText : otherText}>{item.body}</Text> : null}
                     {item.failed ? (
                       <Pressable
                         onPress={() => handleRetry(item)}
                         accessibilityRole="button"
                         accessibilityLabel="Gönderilemedi. Tekrar denemek için dokunun."
-                        style={({ pressed }) => [styles.failedRow, pressed && styles.pressedFade]}
+                        style={({ pressed }) => [failedRow, pressed ? { opacity: 0.6 } : null]}
                       >
-                        <Ionicons name="alert-circle" size={13} color={isMine ? colors.primaryText : colors.danger} />
-                        <Text style={[styles.failedText, isMine ? styles.myMeta : styles.dangerText]}>
+                        <Icon
+                          name="warning"
+                          size={t.size.iconXs}
+                          colorValue={isMine ? t.colors.onBrand : t.colors.danger}
+                        />
+                        <Text
+                          style={[t.type.caption12, { color: isMine ? t.colors.onBrand : t.colors.danger }]}
+                        >
                           Gönderilemedi. Tekrar denemek için dokunun.
                         </Text>
                       </Pressable>
                     ) : (
-                      <Text style={[styles.time, isMine ? styles.myMeta : styles.otherMeta]}>
+                      <Text style={metaStyle(isMine)}>
                         {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
                       </Text>
                     )}
@@ -367,22 +451,25 @@ export function ChatScreen({ navigation, route }: Props) {
                     item.failed ? `Gönderilemedi: ${item.body}. Tekrar denemek için dokunun.` : undefined
                   }
                   style={({ pressed }) => [
-                    styles.bubble,
-                    isMine ? styles.myBubble : styles.otherBubble,
-                    item.failed && styles.failedBubble,
-                    pressed && item.failed && styles.pressedFade,
+                    isMine ? myBubble : otherBubble,
+                    item.failed ? { opacity: 0.75 } : null,
+                    pressed && item.failed ? { opacity: 0.6 } : null,
                   ]}
                 >
-                  <Text style={isMine ? styles.myText : styles.otherText}>{item.body}</Text>
+                  <Text style={isMine ? myText : otherText}>{item.body}</Text>
                   {item.failed ? (
-                    <View style={styles.failedRow}>
-                      <Ionicons name="alert-circle" size={13} color={isMine ? colors.primaryText : colors.danger} />
-                      <Text style={[styles.failedText, isMine ? styles.myMeta : styles.dangerText]}>
+                    <View style={failedRow}>
+                      <Icon
+                        name="warning"
+                        size={t.size.iconXs}
+                        colorValue={isMine ? t.colors.onBrand : t.colors.danger}
+                      />
+                      <Text style={[t.type.caption12, { color: isMine ? t.colors.onBrand : t.colors.danger }]}>
                         Gönderilemedi. Tekrar denemek için dokunun.
                       </Text>
                     </View>
                   ) : (
-                    <Text style={[styles.time, isMine ? styles.myMeta : styles.otherMeta]}>
+                    <Text style={metaStyle(isMine)}>
                       {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
                     </Text>
                   )}
@@ -391,14 +478,45 @@ export function ChatScreen({ navigation, route }: Props) {
             );
           }}
         />
-        {error ? <InlineError message={error} style={styles.banner} /> : null}
+
+        {error ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              marginHorizontal: t.space[4],
+              marginBottom: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+          </View>
+        ) : null}
 
         {/* Yükleme / gönderilmeyi bekleyen video şeridi (yazı kutusunun üstünde,
             composer satırı 375px'te taşmasın diye). */}
         {uploadingVideo || pendingVideo ? (
-          <View style={styles.videoStrip}>
-            <Ionicons name="videocam" size={16} color={colors.primary} />
-            <Text style={styles.videoStripText} numberOfLines={1}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              marginHorizontal: t.space[4],
+              marginBottom: t.space[2],
+              paddingHorizontal: t.space[3],
+              paddingVertical: t.space[2],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.surface1,
+              borderWidth: 1,
+              borderColor: t.colors.line,
+            }}
+          >
+            <Icon name="videocam-outline" size={t.size.iconSm} color="brand" />
+            <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]} numberOfLines={1}>
               {uploadingVideo
                 ? uploadProgress >= 0.999
                   ? 'Yükleme tamamlanıyor...'
@@ -411,15 +529,37 @@ export function ChatScreen({ navigation, route }: Props) {
                 accessibilityRole="button"
                 accessibilityLabel="Videoyu kaldır"
                 hitSlop={10}
-                style={({ pressed }) => [pressed && styles.pressedFade]}
+                style={({ pressed }) => ({
+                  width: t.size.touchMin,
+                  height: t.size.touchMin,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
               >
-                <Ionicons name="close" size={18} color={colors.textMuted} />
+                <Icon name="x" size={t.size.iconSm} color="ink2" />
               </Pressable>
             ) : null}
           </View>
         ) : null}
 
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
+        {/* Yapışkan yazma alanı (DESIGN.md §2 yapışkan alt çubuk kuralı). */}
+        <View
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              gap: t.space[2],
+              backgroundColor: t.colors.surface1,
+              borderTopWidth: 1,
+              borderTopColor: t.colors.line,
+              paddingHorizontal: t.space[4],
+              paddingTop: t.space[3],
+              paddingBottom: insets.bottom + t.space[3],
+            },
+            t.shadowRaised,
+          ]}
+        >
           <Pressable
             onPress={pickAndUploadVideo}
             disabled={uploadingVideo || !!pendingVideo || sending}
@@ -427,17 +567,37 @@ export function ChatScreen({ navigation, route }: Props) {
             accessibilityLabel="Video ekle"
             accessibilityState={{ disabled: uploadingVideo || !!pendingVideo || sending }}
             style={({ pressed }) => [
-              styles.videoButton,
-              (uploadingVideo || !!pendingVideo || sending) && styles.sendDisabled,
-              pressed && styles.pressedFade,
+              squareButton,
+              {
+                borderWidth: 1,
+                borderColor: t.colors.lineStrong,
+                backgroundColor: t.colors.surface1,
+                opacity: uploadingVideo || !!pendingVideo || sending ? 0.4 : pressed ? 0.6 : 1,
+              },
             ]}
           >
-            <Ionicons name="videocam-outline" size={20} color={colors.primary} />
+            <Icon name="videocam-outline" size={t.size.iconSm} color="brand" />
           </Pressable>
           <TextInput
-            style={styles.input}
+            style={[
+              t.type.body16,
+              {
+                flex: 1,
+                // RN web: flex öğesi içeriğinden daralmazsa uzun yazıda satır taşar.
+                minWidth: 0,
+                minHeight: t.size.control,
+                maxHeight: t.size.control * 2.5,
+                borderWidth: 1,
+                borderColor: t.colors.lineStrong,
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.surface1,
+                paddingHorizontal: t.space[3],
+                paddingVertical: t.space[3],
+                color: t.colors.ink,
+              },
+            ]}
             placeholder="Mesaj yazın"
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={t.colors.ink3}
             value={input}
             onChangeText={setInput}
             multiline
@@ -449,9 +609,15 @@ export function ChatScreen({ navigation, route }: Props) {
             accessibilityRole="button"
             accessibilityLabel="Mesajı gönder"
             accessibilityState={{ disabled: !canSend }}
-            style={({ pressed }) => [styles.sendButton, !canSend && styles.sendDisabled, pressed && canSend && styles.pressedFade]}
+            style={({ pressed }) => [
+              squareButton,
+              {
+                backgroundColor: pressed && canSend ? t.colors.brandStrong : t.colors.brand,
+                opacity: canSend ? 1 : 0.4,
+              },
+            ]}
           >
-            <Ionicons name="send" size={18} color={colors.primaryText} />
+            <Icon name="send" size={t.size.iconSm} colorValue={t.colors.onBrand} />
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -459,137 +625,8 @@ export function ChatScreen({ navigation, route }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  listContent: { paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter, paddingBottom: spacing.sm },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.sm },
-  dayChip: {
-    alignSelf: 'center',
-    backgroundColor: colors.chip,
-    borderRadius: radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: spacing.sm,
-  },
-  dayChipText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.textMuted },
-  // Gönderenin tarafındaki alt köşe sivri: konuşmanın yönü okunsun.
-  bubble: {
-    maxWidth: '78%',
-    borderRadius: radius.lg,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    marginBottom: spacing.sm,
-    gap: 4,
-  },
-  myBubble: { alignSelf: 'flex-end', backgroundColor: colors.primary, borderBottomRightRadius: 2 },
-  otherBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderBottomLeftRadius: 2,
-  },
-  failedBubble: { opacity: 0.75 },
-  // Teklif kartı: balonlarla aynı hizada ama beyaz blok, başlıklı.
-  quoteCard: {
-    maxWidth: '78%',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    marginBottom: spacing.sm,
-    gap: 4,
-  },
-  quoteCardMine: { alignSelf: 'flex-end', borderBottomRightRadius: 2 },
-  quoteCardOther: { alignSelf: 'flex-start', borderBottomLeftRadius: 2 },
-  quoteHeader: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  quoteTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  quoteBody: { ...typography.body, color: colors.text },
-  quoteAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minHeight: MIN_TOUCH,
-  },
-  quoteActionText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  pressedFade: { opacity: 0.6 },
-  myText: { ...typography.body, color: colors.primaryText },
-  otherText: { ...typography.body, color: colors.text },
-  time: { ...typography.mono, fontSize: 12, lineHeight: 16, alignSelf: 'flex-end' },
-  myMeta: { color: colors.onPrimaryMuted },
-  otherMeta: { color: colors.textMuted },
-  dangerText: { color: colors.danger },
-  failedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-end' },
-  failedText: { ...typography.caption, fontSize: 12, lineHeight: 16 },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  // Videolu balon: yüzde genişlik, çünkü içindeki oynatıcı 16:9 oranını
-  // kendi genişliğinden hesaplıyor (içeriğe göre daralan balonda 0 çıkardı).
-  videoBubble: { width: '78%' },
-  videoStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.gutter,
-    marginBottom: spacing.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  videoStripText: { ...typography.label, color: colors.text, flex: 1, minWidth: 0 },
-  videoButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    // RN web: flex öğesi içeriğinden daralmazsa uzun yazıda satır taşar.
-    minWidth: 0,
-    minHeight: MIN_TOUCH,
-    maxHeight: 120,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-  },
-  sendButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.4 },
-});
-
-// Sohbet başlığı: karşı tarafın fotoğrafı + adı. Stack başlığı lacivert
-// olduğu için avatar "onPrimary" görünümde ve yazı beyaz.
+// Sohbet başlığı: karşı tarafın fotoğrafı + adı. Stack başlığı marka renginde
+// olduğu için avatar "onPrimary" görünümde ve yazı `onBrand`.
 export function ChatHeaderTitle({
   title,
   userId,
@@ -599,25 +636,21 @@ export function ChatHeaderTitle({
   userId: string;
   avatarUpdatedAt?: string | null;
 }) {
+  const t = useTheme();
   const [firstName, ...rest] = title.split(' ');
   return (
-    <View style={headerStyles.row}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
       <UserAvatar
         userId={userId}
         firstName={firstName}
         lastName={rest.join(' ')}
         avatarUpdatedAt={avatarUpdatedAt}
-        size={30}
+        size={t.size.avatarSm}
         variant="onPrimary"
       />
-      <Text style={headerStyles.title} numberOfLines={1}>
+      <Text style={[t.type.title18, { color: t.colors.onBrand, flexShrink: 1 }]} numberOfLines={1}>
         {title}
       </Text>
     </View>
   );
 }
-
-const headerStyles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  title: { ...typography.heading, color: colors.primaryText, flexShrink: 1 },
-});

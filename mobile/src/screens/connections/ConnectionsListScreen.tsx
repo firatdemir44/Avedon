@@ -1,22 +1,25 @@
+// Bağlantılarım (yeni tasarım, 4. adım — DESIGN.md §3 liste satırı).
+//
+// Veri katmanı AYNI: uçlar, navigasyon hedefleri ve rota adları değişmedi.
+// Yalnızca görünüm yeni: `ui/Screen`, `ui/ListRow` (kişi avatarı), `ui/Button`,
+// `ui/EmptyState`. Üst bant stack navigator'dan geliyor.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, FlatList } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { fetchConnections } from '../../api/client';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { ListRow } from '../../components/ListRow';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, spacing } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Connections'>;
 
-// Yeni düzen (5. aşama): kabul edilmiş bağlantılar çizgili kişi satırları olarak.
 export function ConnectionsListScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
   );
@@ -24,51 +27,72 @@ export function ConnectionsListScreen({ navigation }: Props) {
 
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="person" />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <View style={{ gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      </Screen>
     );
   }
 
   if (status === 'error') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="Bağlantılar alınamadı" onRetry={reload} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <EmptyState
+          icon="warning"
+          title="Bağlantılar alınamadı"
+          description={friendlyMessage(error, 'Bağlantılar alınamadı')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <Screen scroll={false} noPadding>
       <FlatList
         data={connections}
         keyExtractor={(item) => item.connectionId}
-        contentContainerStyle={styles.listContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
-          <>
+          <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
             {error ? (
-              <View style={styles.bannerWrap}>
-                <InlineError message={friendlyMessage(error, 'Bağlantılar alınamadı')} onRetry={reload} />
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space[2],
+                  padding: t.space[3],
+                  borderRadius: t.radius.md,
+                  backgroundColor: t.colors.dangerSoft,
+                }}
+              >
+                <Icon name="warning" size={t.size.iconSm} color="danger" />
+                <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+                  {friendlyMessage(error, 'Bağlantılar alınamadı')}
+                </Text>
               </View>
             ) : null}
             {/* Faz 2, Adım 4: bağlantı listesi boş ya da dolu olsun, davet
                 buradan da başlatılabilsin. */}
-            <View style={styles.inviteWrap}>
-              <PrimaryButton
-                label="Davet et"
-                variant="outline"
-                icon="person-add-outline"
-                onPress={() => navigation.navigate('Invites')}
-              />
-            </View>
-          </>
+            <Button
+              kind="secondary"
+              icon="person-add-outline"
+              label="Davet et"
+              onPress={() => navigation.navigate('Invites')}
+            />
+          </View>
         }
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
             title="Henüz bağlantınız yok"
-            message="Akışta ya da firma sayfalarında bir kişinin adına dokunup profilinden bağlantı kurabilirsiniz."
+            description="Akışta bir kişinin adına dokunup profilinden bağlantı kurabilirsiniz."
             actionLabel="Akışa git"
             onAction={() => navigation.navigate('MainTabs', { screen: 'Feed' })}
           />
@@ -77,24 +101,13 @@ export function ConnectionsListScreen({ navigation }: Props) {
           <ListRow
             title={`${item.user.firstName} ${item.user.lastName}`}
             subtitle={item.user.position}
-            left={<CompanyAvatar name={item.user.firstName} size={36} />}
+            avatarName={`${item.user.firstName} ${item.user.lastName}`}
+            avatarKind="person"
             divider={index < connections.length - 1}
             onPress={() => navigation.navigate('Profile', { userId: item.user.id })}
           />
         )}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
-  inviteWrap: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.blockGap,
-  },
-});

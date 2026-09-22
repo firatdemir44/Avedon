@@ -3,8 +3,6 @@ import {
   View,
   Text,
   FlatList,
-  Pressable,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   TextInput,
@@ -12,7 +10,6 @@ import {
   type NativeSyntheticEvent,
   type NativeScrollEvent,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RootStackScreenProps } from '../../navigation/types';
@@ -29,16 +26,17 @@ import {
   AssistantBubble,
   AssistantComposer,
   ChatDayChip,
+  ExampleRow,
   ThinkingBubble,
   UserBubble,
-  chatStyles,
+  useChatStyles,
 } from '../../components/assistant/ChatParts';
-import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
-import { SkeletonList } from '../../components/Skeleton';
+import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import { isSameCalendarDay } from '../../features/time';
 import { toolResultView } from '../../features/assistant/toolResult';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 
 type Props = RootStackScreenProps<'SellerAssistant'>;
 
@@ -48,10 +46,11 @@ type Props = RootStackScreenProps<'SellerAssistant'>;
 //
 // Kendi firma asistanından farkları: kişilik seçimi, hafıza/izleme kartları ve
 // beceri çipleri BU EKRANDA YOK. Avatar asistan yüzü değil, firma logosudur;
-// yanında asistan rengiyle küçük kıvılcım rozeti (renk kuralı: kızıl yalnızca
-// asistanın olduğu yerde).
-
-const CHAT_AVATAR = 38;
+// yanında bakır (accent) küçük kıvılcım rozeti — bakır yalnızca asistanın
+// olduğu yerde.
+//
+// Yeni tasarım (DESIGN.md, 4. adım): ekran kendi `AppBar`ını çiziyor
+// (navigation başlığı gizlendi). Veri katmanı, yoklama ve akış değişmedi.
 
 // Satıcı cevabı ipliğe sunucuda ekleniyor; açık ekran kendi kendine tazelensin
 // (Mesajlar ekranındaki yoklama kalıbı).
@@ -65,19 +64,36 @@ const EXAMPLES = ['Elastanlı tülünüz var mı?', 'MOQ ve termin nedir?', 'OEK
 
 type ChatItem = AssistantMessage & { local?: boolean };
 
-// Firma logosu + asistan rengi küçük kıvılcım rozeti.
+// Firma logosu + bakır kıvılcım rozeti.
 function SellerAvatar({ companyId, companyName }: { companyId: string; companyName: string }) {
+  const t = useTheme();
+  const size = t.size.avatar;
+  const badge = t.size.iconXs;
   return (
-    <View style={styles.avatarWrap}>
-      <CompanyAvatar name={companyName} size={CHAT_AVATAR} companyId={companyId} />
-      <View style={styles.avatarBadge}>
-        <Ionicons name="sparkles" size={9} color={colors.primaryText} />
-      </View>
+    <View style={{ width: size, height: size }}>
+      <CompanyAvatar name={companyName} size={size} companyId={companyId} />
+      <View
+        style={{
+          position: 'absolute',
+          right: -t.space[1] / 2,
+          bottom: -t.space[1] / 2,
+          width: badge,
+          height: badge,
+          borderRadius: t.radius.full,
+          backgroundColor: t.colors.accent,
+          borderWidth: 1,
+          borderColor: t.colors.surface1,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      />
     </View>
   );
 }
 
 export function SellerAssistantScreen({ navigation, route }: Props) {
+  const t = useTheme();
+  const chat = useChatStyles();
   const { companyId, productCode } = route.params;
   const insets = useSafeAreaInsets();
 
@@ -102,10 +118,10 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
   // Kullanıcı yukarı kaydırdıysa yeni mesaj gelince liste zıplamasın.
   const isNearBottomRef = useRef(true);
 
+  // Yeni tasarım: başlık ekranın kendi bandında (firma adıyla).
   useLayoutEffect(() => {
-    // Firma adı bildirimden gelmemiş olabilir: iplik açılınca sunucudan gelir.
-    navigation.setOptions({ title: companyName ? `${companyName} asistanı` : 'Firma asistanı' });
-  }, [navigation, companyName]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -242,14 +258,14 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
       return (
         <>
           {dayChip}
-          <View style={chatStyles.assistantRow}>
+          <View style={chat.assistantRow}>
             <SellerAvatar companyId={companyId} companyName={companyName} />
-            <View style={chatStyles.assistantColumn}>
-              {item.text ? <AssistantBubble text={item.text} /> : null}
+            <View style={chat.assistantColumn}>
+              {item.text ? <AssistantBubble text={item.text} createdAt={item.createdAt} /> : null}
               {item.toolCalls.map((call, callIndex) => {
                 const view = toolResultView(call);
                 return (
-                  <View key={`${item.id}-tool-${callIndex}`}>
+                  <View key={`${item.id}-tool-${callIndex}`} style={{ gap: t.space[2], minWidth: 0 }}>
                     <AssistantResultCard
                       title={view.title}
                       unit={view.unit}
@@ -259,9 +275,19 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
                       onProductPress={call.name === 'katalog_ara' ? openProduct : undefined}
                     />
                     {call.name === 'soruyu_ilet' ? (
-                      <View style={styles.forwarded}>
-                        <Ionicons name="paper-plane-outline" size={16} color={colors.accent} />
-                        <Text style={styles.forwardedText}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'flex-start',
+                          gap: t.space[2],
+                          backgroundColor: t.colors.accentSoft,
+                          borderRadius: t.radius.lg,
+                          padding: t.space[3],
+                          minWidth: 0,
+                        }}
+                      >
+                        <Icon name="paper-plane-outline" size={t.size.iconSm} color="accent" />
+                        <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
                           Sorunuz firmaya iletildi. Cevap gelince bildirim alacaksınız.
                         </Text>
                       </View>
@@ -274,19 +300,32 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
         </>
       );
     },
-    [companyId, companyName, data, openProduct]
+    [chat, companyId, companyName, data, openProduct, t]
+  );
+
+  const bar = (
+    <AppBar
+      title={companyName ? `${companyName} asistanı` : 'Firma asistanı'}
+      leading="back"
+      onBack={() => navigation.goBack()}
+    />
   );
 
   if (status === 'loading') {
     return (
-      <View style={chatStyles.screen}>
-        <SkeletonList variant="chat" />
+      <View style={chat.screen}>
+        {bar}
+        <View style={{ padding: t.space[4], gap: t.space[4] }}>
+          <Skeleton width="70%" height={t.size.control} />
+          <SkeletonText lines={3} />
+        </View>
       </View>
     );
   }
 
   if (status === 'error') {
     const code = loadError instanceof ApiError ? loadError.code : null;
+    const known = code === 'own_company' || code === 'company_not_found';
     const fallback =
       code === 'own_company'
         ? 'Kendi firmanızın asistanı için Asistan sekmesini kullanın.'
@@ -294,33 +333,49 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
           ? 'Firma bulunamadı.'
           : 'Asistan açılamadı';
     return (
-      <View style={chatStyles.screen}>
-        <ErrorState
-          error={code === 'own_company' || code === 'company_not_found' ? null : loadError}
-          fallback={fallback}
-          onRetry={code === 'own_company' || code === 'company_not_found' ? undefined : () => void load()}
+      <View style={chat.screen}>
+        {bar}
+        <EmptyState
+          icon="warning"
+          title={known ? fallback : 'Asistan açılamadı'}
+          description={known ? undefined : friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel={known ? undefined : 'Tekrar dene'}
+          onAction={known ? undefined : () => void load()}
         />
       </View>
     );
   }
 
   return (
-    <View style={chatStyles.screen}>
-      <View style={styles.infoStrip}>
-        <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
-        <Text style={styles.infoText}>{INFO}</Text>
+    <View style={chat.screen}>
+      {bar}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: t.space[2],
+          backgroundColor: t.colors.surface1,
+          borderBottomWidth: 1,
+          borderBottomColor: t.colors.line,
+          paddingHorizontal: t.space[4],
+          paddingVertical: t.space[2],
+          minWidth: 0,
+        }}
+      >
+        <Icon name="info" size={t.size.iconSm} color="ink3" />
+        <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{INFO}</Text>
       </View>
       <KeyboardAvoidingView
-        style={chatStyles.flex}
+        style={chat.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={t.size.tabbar + t.space[4]}
       >
         <FlatList
           ref={listRef}
           data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={chatStyles.listContent}
+          contentContainerStyle={chat.listContent}
           keyboardShouldPersistTaps="handled"
           onScroll={handleScroll}
           scrollEventThrottle={100}
@@ -328,26 +383,18 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
             if (isNearBottomRef.current) listRef.current?.scrollToEnd({ animated: true });
           }}
           ListEmptyComponent={
-            <View>
-              <View style={chatStyles.assistantRow}>
+            <View style={{ gap: t.space[4] }}>
+              <View style={chat.assistantRow}>
                 <SellerAvatar companyId={companyId} companyName={companyName} />
-                <View style={chatStyles.assistantColumn}>
+                <View style={chat.assistantColumn}>
                   <AssistantBubble
                     text={`${companyName || 'Bu firma'} kataloğu hakkında sorularınızı yanıtlayayım. Cevabı katalogda bulamazsam sorunuzu firmaya iletirim.`}
                   />
                 </View>
               </View>
-              <View style={[chatStyles.examples, styles.examplesGap]}>
+              <View style={chat.examples}>
                 {examples.map((example) => (
-                  <Pressable
-                    key={example}
-                    onPress={() => void send(example)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Örnek soru: ${example}`}
-                    style={({ pressed }) => [chatStyles.example, pressed && chatStyles.examplePressed]}
-                  >
-                    <Text style={chatStyles.exampleText}>{example}</Text>
-                  </Pressable>
+                  <ExampleRow key={example} label={example} onPress={() => void send(example)} />
                 ))}
               </View>
             </View>
@@ -355,17 +402,30 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
           ListFooterComponent={
             <>
               {sending ? (
-                <View style={chatStyles.assistantRow}>
+                <View style={chat.assistantRow}>
                   <SellerAvatar companyId={companyId} companyName={companyName} />
                   <ThinkingBubble label="Katalogda bakıyor..." />
                 </View>
               ) : null}
               {sendError ? (
-                <InlineError
-                  message={sendError}
-                  onRetry={retryTextRef.current ? () => void send(retryTextRef.current) : undefined}
-                  style={styles.sendErrorBanner}
-                />
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space[2],
+                    padding: t.space[3],
+                    borderRadius: t.radius.md,
+                    backgroundColor: t.colors.dangerSoft,
+                    marginTop: t.space[2],
+                    minWidth: 0,
+                  }}
+                >
+                  <Icon name="warning" size={t.size.iconSm} color="danger" />
+                  <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{sendError}</Text>
+                  {retryTextRef.current ? (
+                    <Button kind="quiet" label="Tekrar dene" onPress={() => void send(retryTextRef.current)} />
+                  ) : null}
+                </View>
               ) : null}
             </>
           }
@@ -384,47 +444,3 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  infoStrip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    backgroundColor: colors.surfaceTonal,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  infoText: { ...typography.caption, color: colors.textMuted, flex: 1 },
-
-  avatarWrap: { width: CHAT_AVATAR, height: CHAT_AVATAR },
-  // Asistan kızılı: firma avatarının üstündeki kıvılcım rozeti.
-  avatarBadge: {
-    position: 'absolute',
-    right: -3,
-    bottom: -3,
-    width: 15,
-    height: 15,
-    borderRadius: radius.pill,
-    backgroundColor: colors.assistant,
-    borderWidth: 1,
-    borderColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  examplesGap: { marginTop: spacing.md },
-  forwarded: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    backgroundColor: colors.accentSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  forwardedText: { ...typography.caption, fontFamily: fonts.regular, color: colors.text, flex: 1 },
-  sendErrorBanner: { marginTop: spacing.sm },
-});

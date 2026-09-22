@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcSectionRow,
@@ -19,7 +19,8 @@ import {
 import { calculateKnitProduction } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen } from '../../ui';
 
 interface Fields {
   rows: YarnFeedRowFields[];
@@ -40,8 +41,12 @@ const INITIAL: Fields = {
 };
 
 // Eski "hız × saat" sürümünün kayıtlarıyla karışmasın diye yeni anahtar.
-export function ProductionCalculator() {
+export function ProductionCalculator({ navigation }: RootStackScreenProps<'ProductionCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('knit_production', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const result = useMemo(() => {
     const needles = parseNumber(f.needles);
@@ -61,9 +66,10 @@ export function ProductionCalculator() {
   const multiYarn = (result?.percents.filter((p) => p > 0).length ?? 0) > 1;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.hint}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Üretim hesaplama" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine
           bilgilerini doldurun.
         </Text>
@@ -142,13 +148,7 @@ export function ProductionCalculator() {
           <CalcFormulaRow text="Bir devirde örülen gram = Σ (sistem sayısı × iğne × ilmek boyu ÷ 1000 × Tex ÷ 1000). Saatlik = bu gram × devir × 60 × randıman ÷ 1000. Günlük = saatlik × çalışma saati." />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-});

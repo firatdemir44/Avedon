@@ -1,6 +1,14 @@
+// Yönetici tarafı: gelen doğrulama başvuruları ve karar (yeni tasarım, 4. adım).
+//
+// Veri katmanı DEĞİŞMEDİ: aynı uçlar, aynı süzgeç, aynı onay/ret akışı.
+// Karar verilince belge sunucuda silinir, firmaya bildirim gider; firmaya
+// yöneticinin kimliği GÖSTERİLMEZ (sunucu da döndürmüyor).
+//
+// Görünüm yeni: süzgeç `ui/SegmentControl`, başvurular `ui/Card`, karar
+// durumu `ui/Badge`, not alanı `ui/Input`, eylemler `ui/Button`.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, TextInput, FlatList, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable, FlatList } from 'react-native';
 import {
   ApiError,
   decideVerificationRequest,
@@ -10,9 +18,7 @@ import {
   type VerificationRequestStatus,
 } from '../../api/client';
 import { ImageViewerModal } from '../../components/ImageViewerModal';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { isPdfDataUrl } from '../../components/passport/rows';
 import { confirmAction } from '../../features/confirm';
@@ -20,11 +26,19 @@ import { openPdfDataUrl } from '../../features/docViewer';
 import { haptics } from '../../features/haptics';
 import { formatDateTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
-
-// Yönetici tarafı: gelen doğrulama başvuruları ve karar. Karar verilince belge
-// sunucuda silinir, firmaya bildirim gider; firmaya yöneticinin kimliği
-// GÖSTERİLMEZ (sunucu da döndürmüyor).
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  Badge,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  EmptyState,
+  Icon,
+  Input,
+  SegmentControl,
+  SkeletonRow,
+} from '../../ui';
 
 const FILTERS: { value: VerificationRequestStatus; label: string }[] = [
   { value: 'pending', label: 'Bekleyen' },
@@ -44,6 +58,7 @@ export function AdminVerificationRequests({
 }: {
   onPendingCount?: (count: number) => void;
 }) {
+  const t = useTheme();
   const [filter, setFilter] = useState<VerificationRequestStatus>('pending');
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
     () => fetchAdminVerificationRequests(filter).then(({ requests }) => requests),
@@ -139,37 +154,41 @@ export function AdminVerificationRequests({
   };
 
   const filterStrip = (
-    <View style={styles.filterStrip}>
-      {FILTERS.map((option) => {
-        const selected = filter === option.value;
-        return (
-          <Pressable
-            key={option.value}
-            onPress={() => setFilter(option.value)}
-            style={[styles.chip, selected && styles.chipActive]}
-            accessibilityState={{ selected }}
-          >
-            <Text style={[styles.chipText, selected && styles.chipTextActive]}>{option.label}</Text>
-          </Pressable>
-        );
-      })}
+    <View style={{ paddingHorizontal: t.space[4], paddingBottom: t.space[3] }}>
+      <SegmentControl<VerificationRequestStatus>
+        stretch
+        accessibilityLabel="Başvuru süzgeci"
+        value={filter}
+        onChange={setFilter}
+        options={FILTERS}
+      />
     </View>
   );
 
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
+      <View style={{ flex: 1 }}>
         {filterStrip}
-        <SkeletonList variant="request" />
+        <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
       </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
+      <View style={{ flex: 1 }}>
         {filterStrip}
-        <ErrorState error={error} fallback="Başvurular alınamadı" onRetry={reload} />
+        <EmptyState
+          icon="warning"
+          title="Başvurular alınamadı"
+          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
       </View>
     );
   }
@@ -177,24 +196,48 @@ export function AdminVerificationRequests({
   const requests = data ?? [];
 
   return (
-    <View style={styles.screen}>
+    <View style={{ flex: 1 }}>
       <ImageViewerModal imageUrl={photoUrl} visible={!!photoUrl} onClose={() => setPhotoUrl(null)} />
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: t.space[10], gap: t.space[4] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <>
             {filterStrip}
-            {actionError ? <InlineError message={actionError} style={styles.banner} /> : null}
+            {actionError ? (
+              <View style={{ paddingHorizontal: t.space[4] }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space[2],
+                    padding: t.space[3],
+                    borderRadius: t.radius.md,
+                    backgroundColor: t.colors.dangerSoft,
+                    minWidth: 0,
+                  }}
+                >
+                  <Icon name="warning" size={t.size.iconSm} color="danger" />
+                  <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+                    {actionError}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </>
         }
         ListEmptyComponent={
           <EmptyState
-            compact
             icon="shield-checkmark-outline"
             title={filter === 'pending' ? 'Bekleyen başvuru yok' : 'Kayıt yok'}
+            description={
+              filter === 'pending'
+                ? 'Firmalar doğrulama isteyince başvuruları burada görürsünüz.'
+                : 'Bu süzgeçte kayıt yok.'
+            }
           />
         }
         renderItem={({ item }) => {
@@ -204,102 +247,139 @@ export function AdminVerificationRequests({
             ? `${item.user.firstName} ${item.user.lastName}${item.user.position ? ` · ${item.user.position}` : ''}`
             : 'Başvuran bilinmiyor';
           return (
-            <View style={styles.card}>
-              <Pressable
-                onPress={() => openRow(item)}
-                style={({ pressed }) => [styles.cardHead, pressed && styles.cardHeadPressed]}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.company?.name ?? 'Firma'} doğrulama başvurusu`}
-              >
-                <View style={styles.cardTexts}>
-                  <Text style={styles.name} numberOfLines={2}>
-                    {item.company?.name ?? 'Firma bulunamadı'}
-                  </Text>
-                  <Text style={styles.meta}>Vergi No: {item.company?.taxId ?? '—'}</Text>
-                  <Text style={styles.meta}>{applicant}</Text>
-                  <Text style={styles.meta}>{formatDateTime(item.createdAt)}</Text>
-                  {item.note ? <Text style={styles.note}>“{item.note}”</Text> : null}
-                  {item.status !== 'pending' ? (
-                    <Text style={[styles.decision, item.status === 'approved' ? styles.ok : styles.no]}>
-                      {item.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
-                      {item.decidedAt ? ` · ${formatDateTime(item.decidedAt)}` : ''}
-                      {item.adminNote ? ` · ${item.adminNote}` : ''}
+            <View style={{ paddingHorizontal: t.space[4], minWidth: 0 }}>
+              <Card noPadding>
+                {/* Kart başlığı: tamamı açılıp kapanan bir düğme. Karar
+                    düğmeleri bunun İÇİNDE değil, altındaki bölümde. */}
+                <Pressable
+                  onPress={() => openRow(item)}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${item.company?.name ?? 'Firma'} doğrulama başvurusu`}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space[3],
+                    padding: t.space[4],
+                    minHeight: t.size.touchMin,
+                    borderRadius: t.radius.lg,
+                    backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+                    minWidth: 0,
+                  })}
+                >
+                  <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+                      <Text
+                        numberOfLines={2}
+                        style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}
+                      >
+                        {item.company?.name ?? 'Firma bulunamadı'}
+                      </Text>
+                      {item.status !== 'pending' ? (
+                        <Badge
+                          kind={item.status === 'approved' ? 'verified' : 'cancelled'}
+                          label={item.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                        />
+                      ) : (
+                        <Badge kind="pending" label="Bekliyor" />
+                      )}
+                    </View>
+                    <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
+                      Vergi No: {item.company?.taxId ?? '—'}
                     </Text>
-                  ) : null}
-                </View>
-                <Ionicons
-                  name={expanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.chevron}
-                />
-              </Pressable>
+                    <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
+                      {applicant}
+                    </Text>
+                    <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
+                      {formatDateTime(item.createdAt)}
+                    </Text>
+                    {item.note ? (
+                      <Text style={[t.type.body14, { color: t.colors.ink }]}>“{item.note}”</Text>
+                    ) : null}
+                    {item.status !== 'pending' ? (
+                      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                        {item.decidedAt ? formatDateTime(item.decidedAt) : ''}
+                        {item.adminNote ? `${item.decidedAt ? ' · ' : ''}${item.adminNote}` : ''}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Icon name={expanded ? 'chevron-up-outline' : 'chevron-down-outline'} color="ink3" />
+                </Pressable>
 
-              {expanded ? (
-                <View style={styles.detail}>
-                  <PrimaryButton
-                    label={busy ? 'Açılıyor...' : 'Belgeyi aç'}
-                    variant="outline"
-                    icon="document-text-outline"
-                    onPress={() => openDocument(item.id)}
-                    disabled={busy}
-                  />
-                  {item.status === 'pending' ? (
-                    <>
-                      <Text style={styles.fieldLabel}>Doğrulama düzeyi</Text>
-                      <View style={styles.filterStripInline}>
-                        {LEVELS.map((option) => {
-                          const selected = level === option.value;
-                          return (
-                            <Pressable
-                              key={option.value}
-                              onPress={() => setLevel(option.value)}
-                              style={[styles.chip, selected && styles.chipActive]}
-                              accessibilityState={{ selected }}
-                            >
-                              <Text style={[styles.chipText, selected && styles.chipTextActive]}>
-                                {option.label}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                      <Text style={styles.fieldLabel}>Not (firmaya gösterilir)</Text>
-                      <TextInput
-                        style={styles.noteInput}
-                        value={note}
-                        onChangeText={(t) => setNote(t.slice(0, NOTE_LIMIT))}
-                        placeholder="Redde gerekçe ya da kısa açıklama"
-                        placeholderTextColor={colors.textMuted}
-                        multiline
-                        maxLength={NOTE_LIMIT}
-                        editable={!busy}
-                        accessibilityLabel="Karar notu"
-                      />
-                      <View style={styles.actionRow}>
-                        <PrimaryButton
-                          label="Reddet"
-                          variant="outline"
-                          size="sm"
-                          onPress={() => decide(item, 'reject')}
-                          disabled={busy}
-                          style={styles.actionButton}
+                {expanded ? (
+                  <View
+                    style={{
+                      borderTopWidth: 1,
+                      borderTopColor: t.colors.line,
+                      padding: t.space[4],
+                      gap: t.space[4],
+                      minWidth: 0,
+                    }}
+                  >
+                    <Button
+                      kind="secondary"
+                      fullWidth
+                      icon="document-text-outline"
+                      label="Belgeyi aç"
+                      loading={busy}
+                      disabled={busy}
+                      onPress={() => openDocument(item.id)}
+                    />
+                    {item.status === 'pending' ? (
+                      <>
+                        <View style={{ gap: t.space[2], minWidth: 0 }}>
+                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Doğrulama düzeyi</Text>
+                          <ChipRow>
+                            {LEVELS.map((option) => (
+                              <Chip
+                                key={option.value}
+                                label={option.label}
+                                selected={level === option.value}
+                                disabled={busy}
+                                onPress={() => setLevel(option.value)}
+                              />
+                            ))}
+                          </ChipRow>
+                        </View>
+
+                        <Input
+                          label="Not (firmaya gösterilir)"
+                          value={note}
+                          onChangeText={(value) => setNote(value.slice(0, NOTE_LIMIT))}
+                          placeholder="Redde gerekçe ya da kısa açıklama"
+                          multiline
+                          maxLength={NOTE_LIMIT}
+                          editable={!busy}
+                          accessibilityLabel="Karar notu"
                         />
-                        <PrimaryButton
-                          label="Onayla"
-                          size="sm"
-                          onPress={() => decide(item, 'approve')}
-                          disabled={busy}
-                          style={styles.actionButton}
-                        />
-                      </View>
-                    </>
-                  ) : (
-                    <Text style={styles.meta}>
-                      Karar verildiği için belge silinmiştir; yeniden başvuru gerekir.
-                    </Text>
-                  )}
-                </View>
-              ) : null}
+
+                        {/* Onay/ret çifti: onay dolu, ret kenarlıklı tehlikeli. */}
+                        <View style={{ gap: t.space[2], minWidth: 0 }}>
+                          <Button
+                            fullWidth
+                            icon="check"
+                            label="Onayla"
+                            disabled={busy}
+                            onPress={() => decide(item, 'approve')}
+                          />
+                          <Button
+                            kind="danger"
+                            fullWidth
+                            icon="x"
+                            label="Reddet"
+                            disabled={busy}
+                            onPress={() => decide(item, 'reject')}
+                          />
+                        </View>
+                      </>
+                    ) : (
+                      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                        Karar verildiği için belge silinmiştir; yeniden başvuru gerekir.
+                      </Text>
+                    )}
+                  </View>
+                ) : null}
+              </Card>
             </View>
           );
         }}
@@ -307,77 +387,3 @@ export function AdminVerificationRequests({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.sm },
-  filterStrip: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  filterStripInline: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
-  chip: {
-    minHeight: 40,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { ...typography.label, color: colors.text },
-  chipTextActive: { color: colors.primaryText },
-  card: {
-    backgroundColor: colors.surface,
-    marginHorizontal: spacing.gutter,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-  },
-  cardHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-    minHeight: MIN_TOUCH,
-  },
-  cardHeadPressed: { backgroundColor: colors.pressed },
-  cardTexts: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...typography.subtitle, fontFamily: fonts.semibold, color: colors.text },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  note: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: 2 },
-  decision: { ...typography.caption, marginTop: spacing.xs },
-  ok: { color: colors.success },
-  no: { color: colors.danger },
-  detail: {
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  fieldLabel: { ...typography.label, color: colors.text, marginTop: spacing.sm, marginBottom: spacing.xs },
-  noteInput: {
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    minWidth: 0,
-    minHeight: MIN_TOUCH + 16,
-    color: colors.text,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.sm,
-    textAlignVertical: 'top',
-  },
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
-  actionButton: { flex: 1, minWidth: 0 },
-});

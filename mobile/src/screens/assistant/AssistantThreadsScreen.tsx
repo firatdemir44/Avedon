@@ -1,24 +1,25 @@
 import React, { useCallback, useLayoutEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, FlatList, Pressable } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { deleteAssistantThread, fetchAssistantThreads, type AssistantThread } from '../../api/client';
-import { HeaderButton } from '../../components/HeaderButton';
-import { ListRow } from '../../components/ListRow';
-import { EmptyState, ErrorState, InlineError } from '../../components/StateView';
-import { SkeletonList } from '../../components/Skeleton';
+import { friendlyMessage } from '../../components/StateView';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { formatListTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { writeAssistantThreadId } from '../../features/assistant/threadStore';
-import { MIN_TOUCH, colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'AssistantThreads'>;
 
 // Asistan sohbetleri sunucuda saklanır; bu ekran hangisine dönüleceğini seçer.
 // Seçim cihaza yazılır (threadStore), asistan ekranı odaklanınca onu okur.
+//
+// Yeni tasarım (DESIGN.md, 4. adım): ekran kendi `AppBar`ını çiziyor
+// (navigation başlığı gizlendi), satırlar `ListRow`.
 export function AssistantThreadsScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, reload } = useFocusLoad(fetchAssistantThreads);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -31,12 +32,8 @@ export function AssistantThreadsScreen({ navigation }: Props) {
   );
 
   useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <HeaderButton icon="add" label="Yeni" showLabel onPress={() => void openThread(null)} />
-      ),
-    });
-  }, [navigation, openThread]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const removeThread = useCallback(
     async (thread: AssistantThread) => {
@@ -60,18 +57,41 @@ export function AssistantThreadsScreen({ navigation }: Props) {
     [reload]
   );
 
+  const bar = (
+    <AppBar
+      title="Sohbetler"
+      leading="back"
+      onBack={() => navigation.goBack()}
+      actions={[{ icon: 'plus', label: 'Yeni sohbet', onPress: () => void openThread(null) }]}
+    />
+  );
+
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="conversation" />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Screen>
       </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
-        <ErrorState error={error} fallback="Sohbetler alınamadı" onRetry={reload} />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <EmptyState
+            icon="warning"
+            title="Sohbetler alınamadı"
+            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+            actionLabel="Tekrar dene"
+            onAction={reload}
+          />
+        </Screen>
       </View>
     );
   }
@@ -79,81 +99,83 @@ export function AssistantThreadsScreen({ navigation }: Props) {
   const threads = data?.threads ?? [];
 
   return (
-    <View style={styles.screen}>
-      {removeError ? <InlineError message={removeError} style={styles.banner} /> : null}
-      <FlatList
-        data={threads}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.content}
-        ListHeaderComponent={
-          <View style={styles.block}>
-            <ListRow
-              title="Yeni sohbet"
-              subtitle="Boş bir sohbetle başla"
-              left={<Ionicons name="add-circle-outline" size={22} color={colors.primary} />}
-              divider={false}
-              onPress={() => void openThread(null)}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
+      <Screen scroll={false} noPadding>
+        <FlatList
+          data={threads}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          ListHeaderComponent={
+            <View style={{ gap: t.space[3] }}>
+              {removeError ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space[2],
+                    padding: t.space[3],
+                    borderRadius: t.radius.md,
+                    backgroundColor: t.colors.dangerSoft,
+                    minWidth: 0,
+                  }}
+                >
+                  <Icon name="warning" size={t.size.iconSm} color="danger" />
+                  <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{removeError}</Text>
+                </View>
+              ) : null}
+              <ListRow
+                title="Yeni sohbet"
+                subtitle="Boş bir sohbetle başla"
+                left={<Icon name="plus" color="brand" />}
+                onPress={() => void openThread(null)}
+              />
+            </View>
+          }
+          ListEmptyComponent={
+            <EmptyState
+              icon="clock"
+              title="Henüz sohbet yok"
+              description="Asistana ilk sorunuzu sorduğunuzda sohbet burada listelenir."
             />
-          </View>
-        }
-        ListEmptyComponent={
-          <EmptyState
-            compact
-            icon="time-outline"
-            title="Henüz sohbet yok"
-            message="Asistana ilk sorunuzu sorduğunuzda sohbet burada listelenir."
-          />
-        }
-        renderItem={({ item, index }) => (
-          // Silme düğmesi satırın İÇİNDE değil YANINDA: web'de iç içe <button>
-          // oluşmasın (MOBILE-DESIGN web kuralları).
-          <View style={[styles.threadRow, index < threads.length - 1 && styles.divider]}>
-            <ListRow
-              style={styles.rowFlex}
-              title={item.title || 'Yeni sohbet'}
-              subtitle={formatListTime(item.updatedAt)}
-              divider={false}
-              chevron={false}
-              onPress={() => void openThread(item.id)}
-            />
-            <Pressable
-              onPress={() => void removeThread(item)}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.title || 'Yeni sohbet'} sohbetini sil`}
-              style={({ pressed }) => [styles.trash, pressed && styles.pressedFade]}
-            >
-              <Ionicons name="trash-outline" size={20} color={colors.danger} />
-            </Pressable>
-          </View>
-        )}
-        ListFooterComponent={
-          threads.length ? <Text style={styles.footerNote}>Sohbetler sunucuda saklanır, cihaz değişince de gelir.</Text> : null
-        }
-      />
+          }
+          renderItem={({ item, index }) => (
+            // Silme düğmesi satırın İÇİNDE değil YANINDA: web'de iç içe <button>
+            // oluşmasın.
+            <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
+              <ListRow
+                style={{ flex: 1, minWidth: 0 }}
+                title={item.title || 'Yeni sohbet'}
+                subtitle={formatListTime(item.updatedAt)}
+                divider={index < threads.length - 1}
+                onPress={() => void openThread(item.id)}
+              />
+              <Pressable
+                onPress={() => void removeThread(item)}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.title || 'Yeni sohbet'} sohbetini sil`}
+                style={({ pressed }) => ({
+                  width: t.size.touchMin,
+                  height: t.size.touchMin,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Icon name="trash-outline" size={t.size.iconSm} color="danger" />
+              </Pressable>
+            </View>
+          )}
+          ListFooterComponent={
+            threads.length ? (
+              <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[4] }]}>
+                Sohbetler sunucuda saklanır, cihaz değişince de gelir.
+              </Text>
+            ) : null
+          }
+        />
+      </Screen>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, marginBottom: spacing.blockGap },
-  threadRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface },
-  rowFlex: { flex: 1 },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  trash: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.xs,
-  },
-  pressedFade: { opacity: 0.6 },
-  banner: { margin: spacing.gutter },
-  footerNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-});

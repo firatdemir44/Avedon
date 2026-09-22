@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { TableInput } from '../../components/TableInput';
 import { UnitToggle } from '../../components/UnitToggle';
 import {
@@ -20,7 +20,8 @@ import {
 import { calculateFabricPricing, type Currency, type MoneyTriple } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen } from '../../ui';
 
 interface YarnFields {
   price: string;
@@ -75,8 +76,12 @@ function fxNote(m: MoneyTriple): string | undefined {
 }
 
 // Eski tek iplikli "₺/metre" sürümünün kayıtlarıyla karışmasın diye yeni anahtar.
-export function FabricCostCalculator() {
+export function FabricCostCalculator({ navigation }: RootStackScreenProps<'FabricCostCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('fabric_pricing', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const updateYarn = (index: number, patch: Partial<YarnFields>) =>
     update({ yarns: f.yarns.map((y, i) => (i === index ? { ...y, ...patch } : y)) });
@@ -110,9 +115,10 @@ export function FabricCostCalculator() {
   const value = (m: MoneyTriple | undefined) => (m ? formatNumber(m.TRY) : '—');
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.hint}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Maliyet ve satış fiyatı" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Kumaşa giren her ipliğin kilo fiyatını, kumaştaki oranını ve firesini girin. Oranların toplamı 100 olmalı.
           Uygulama internetten kur çekmez; güncel kuru siz girin.
         </Text>
@@ -128,8 +134,8 @@ export function FabricCostCalculator() {
           </CalcSubRow>
           {f.yarns.map((yarn, index) => (
             <CalcSubRow key={index}>
-              <Text style={styles.index}>{index + 1}</Text>
-              <View style={[calcCells.flex2, styles.priceCell]}>
+              <Text style={[t.type.caption12, calcCells.index, { color: t.colors.brand }]}>{index + 1}</Text>
+              <View style={[calcCells.flex2, styles.priceCell, { gap: t.space[1] }]}>
                 <TableInput
                   style={calcCells.flex1}
                   value={yarn.price}
@@ -303,17 +309,14 @@ export function FabricCostCalculator() {
           <CalcFormulaRow text="Ham maliyet: iplik (fire dahil) + örme fason, üzerine genel gider. Boyalı maliyet: boya ücreti ham kilo üzerinden ödenir, toplam maliyet firesi düşülmüş boyalı kiloya bölünür (100 kg ham kumaş %8 fireyle 92 kg boyalı çıkar). Satış fiyatları maliyete kâr oranı eklenerek bulunur. 1 kg kumaş = 100.000 ÷ (gramaj × en)." />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
 
+// Yalnızca sütun yerleşimi (renk/yazı yok).
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
   colIndexHead: { width: 16 },
   colRemoveHead: { width: 24 },
-  index: { width: 16, ...typography.caption, fontSize: 13, color: colors.primary, textAlign: 'center' },
-  priceCell: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  priceCell: { flexDirection: 'row', alignItems: 'center', minWidth: 0 },
 });

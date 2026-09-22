@@ -1,13 +1,12 @@
+// Süzgeç ekranı — yeni tasarım (DESIGN.md §2/§3). Süzgeç parametreleri,
+// doğrulama, "Uygula" (ProductList'e geri) ve izleme kipi (createWatchRule)
+// AYNEN korunur; yalnızca görünüm: SectionTitle + Chip/ChipRow, ui/Input
+// (birim sağda), yapışkan alt çubukta tek dolu "Uygula" + kenarlıklı "Temizle".
+// Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
 import React, { useLayoutEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { Text, View } from 'react-native';
 import { ApiError, createWatchRule } from '../../api/client';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { ChipSelect } from '../../components/ChipSelect';
-import { MultiChipSelect } from '../../components/MultiChipSelect';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
-import { TextField } from '../../components/TextField';
 import {
   PRODUCT_TYPES,
   STOCK_UNIT_LABELS,
@@ -25,10 +24,11 @@ import {
   type WidthType,
 } from '../../features/products/glossaryLabels';
 import { watchQueryFromFilters, type ProductFilters } from '../../features/products/filters';
-import { InlineError } from '../../components/StateView';
 import { toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, Chip, ChipRow, Input, Screen, SectionTitle } from '../../ui';
+import { ErrorBanner } from './FavoriteProductsScreen';
 
 type Props = RootStackScreenProps<'ProductFilters'>;
 
@@ -58,16 +58,77 @@ function readNumber(text: string): { value?: number; invalid: boolean } {
 
 const toText = (value?: number) => (value === undefined ? '' : toInputNumber(value));
 
+// Sayısal alan: ondalık klavye + birim sağda (DESIGN.md §3 giriş alanı).
+const numericProps = { inputMode: 'decimal', keyboardType: 'decimal-pad' } as const;
+
+/** Tek seçimli çip satırı ("Tümü" seçeneği listede). */
+function SingleChips<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: readonly { value: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+}) {
+  return (
+    <ChipRow>
+      {options.map((o) => (
+        <Chip
+          key={o.value || '__all'}
+          label={o.label}
+          selected={o.value === value}
+          onPress={() => {
+            haptics.selection();
+            onChange(o.value);
+          }}
+        />
+      ))}
+    </ChipRow>
+  );
+}
+
+/** Çok seçimli çip satırı (seçilenler işaretli). */
+function MultiChips({
+  options,
+  values,
+  onChange,
+}: {
+  options: readonly { key: string; label: string }[];
+  values: string[];
+  onChange: (values: string[]) => void;
+}) {
+  return (
+    <ChipRow>
+      {options.map((o) => {
+        const selected = values.includes(o.key);
+        return (
+          <Chip
+            key={o.key}
+            label={o.label}
+            icon={selected ? 'check' : undefined}
+            selected={selected}
+            onPress={() => {
+              haptics.selection();
+              onChange(selected ? values.filter((v) => v !== o.key) : [...values, o.key]);
+            }}
+          />
+        );
+      })}
+    </ChipRow>
+  );
+}
+
 // Orijinal tasarımdaki "Filtreleme Seçenekleri": çeşit, alt çeşit, kullanım
 // amacı, stok, gramaj, en, içerik. "Uygula" filtreleri Ürünler sekmesine geri
 // gönderir; ürün kodu ve firma araması Ürünler'deki arama çubuğunda.
 export function ProductFiltersScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const initial = route.params.filters;
   // İzleme kipi (Faz 2, Adım 1): aynı ekran, farklı çıkış. Sunucudaki izleme
   // süzgeci ürün süzgecinin alt kümesi olduğu için desteklenmeyen bölümler
   // (Stok, İçerik, En tipi) bu kipte hiç gösterilmiyor: sessizce düşmesin.
   const watchMode = route.params.mode === 'watch';
-  const insets = useSafeAreaInsets();
   const [saving, setSaving] = useState(false);
   const [watchError, setWatchError] = useState<string | null>(null);
   const [type, setType] = useState<ProductType | ''>(initial.type ?? '');
@@ -87,9 +148,10 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
   const [leadTimeMax, setLeadTimeMax] = useState(toText(initial.leadTimeMax));
   const [widthType, setWidthType] = useState<WidthType | ''>(initial.widthType ?? '');
 
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
   useLayoutEffect(() => {
-    if (watchMode) navigation.setOptions({ title: 'Yeni İzleme' });
-  }, [navigation, watchMode]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const stock = readNumber(stockMin);
   const gsmLow = readNumber(gsmMin);
@@ -113,6 +175,16 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
   if (widthLow.value !== undefined && widthHigh.value !== undefined && widthLow.value > widthHigh.value) {
     errors.push('Ende en az değer en çok değerden büyük olamaz.');
   }
+
+  // Alan altı hata metinleri (aynı kurallar, alanın altında da görünsün).
+  const invalidText = 'Yalnızca rakam girin.';
+  const gsmRangeText = gsmLow.value !== undefined && gsmHigh.value !== undefined && gsmLow.value > gsmHigh.value
+    ? 'En az, en çoktan büyük olamaz.'
+    : null;
+  const widthRangeText =
+    widthLow.value !== undefined && widthHigh.value !== undefined && widthLow.value > widthHigh.value
+      ? 'En az, en çoktan büyük olamaz.'
+      : null;
 
   const changeType = (next: ProductType | '') => {
     setType(next);
@@ -207,184 +279,199 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
     ? [{ value: '', label: 'Tümü' }, ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label }))]
     : [];
 
+  const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
+  const subLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
+  const half = { flex: 1, minWidth: 0 } as const;
+
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <SectionHeader title="Çeşit" first />
-        <View style={styles.block}>
-          <ChipSelect options={TYPE_OPTIONS} value={type} onChange={changeType} compact />
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title={watchMode ? 'Yeni izleme' : 'Süzgeçler'} leading="back" onBack={() => navigation.goBack()} />
+      <Screen
+        sticky={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+            <Button kind="secondary" label="Temizle" onPress={clearAll} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Button
+                size="lg"
+                label={watchMode ? 'Bu süzgeci izle' : 'Uygula'}
+                onPress={watchMode ? () => void saveWatch() : apply}
+                disabled={errors.length > 0}
+                loading={saving}
+              />
+            </View>
+          </View>
+        }
+      >
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Çeşit" />
+          <SingleChips options={TYPE_OPTIONS} value={type} onChange={changeType} />
           {type && SUBTYPES[type].length > 0 ? (
             <>
-              <Text style={styles.label}>Alt çeşit</Text>
-              <ChipSelect options={subtypeOptions} value={subtype} onChange={setSubtype} compact />
+              {subLabel('Alt çeşit')}
+              <SingleChips options={subtypeOptions} value={subtype} onChange={setSubtype} />
             </>
           ) : null}
         </View>
 
-        <SectionHeader title="Kullanım amacı" />
-        <View style={styles.block}>
-          <Text style={styles.hint}>Seçtiklerinizden herhangi birine uyan kumaşlar gelir.</Text>
-          <MultiChipSelect options={USAGES} values={usages} onChange={setUsages} />
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Kullanım amacı" />
+          {hint('Seçtiklerinden herhangi birine uyan kumaşlar gelir.')}
+          <MultiChips options={USAGES} values={usages} onChange={setUsages} />
         </View>
 
         {watchMode ? null : (
-          <>
-        <SectionHeader title="Stok" />
-        <View style={styles.block}>
-          <ChipSelect options={UNIT_OPTIONS} value={stockUnit} onChange={setStockUnit} compact />
-          <TextField
-            label={`En az stok${stockUnit ? ` (${STOCK_UNIT_LABELS[stockUnit].short})` : ''}`}
-            value={stockMin}
-            onChangeText={setStockMin}
-            placeholder="Örn. 500"
-            keyboardType="numeric"
-          />
-          {stock.value !== undefined && !stockUnit ? (
-            <Text style={styles.hint}>
-              Birim seçilmezse metre ve kilogramla satılan kumaşlar aynı sayıyla karşılaştırılır.
-            </Text>
-          ) : null}
-        </View>
-          </>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Stok" />
+            <SingleChips options={UNIT_OPTIONS} value={stockUnit} onChange={setStockUnit} />
+            <Input
+              label="En az stok"
+              unit={stockUnit ? STOCK_UNIT_LABELS[stockUnit].short : undefined}
+              value={stockMin}
+              onChangeText={setStockMin}
+              placeholder="Örn. 500"
+              error={stock.invalid ? invalidText : null}
+              helper={
+                stock.value !== undefined && !stockUnit
+                  ? 'Birim seçilmezse metre ve kilogramla satılan kumaşlar aynı sayıyla karşılaştırılır.'
+                  : undefined
+              }
+              {...numericProps}
+            />
+          </View>
         )}
 
-        <SectionHeader title="Ölçüler" />
-        <View style={styles.block}>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <TextField label="Gramaj en az" value={gsmMin} onChangeText={setGsmMin} placeholder="gr/m²" keyboardType="numeric" />
-            </View>
-            <View style={styles.half}>
-              <TextField label="Gramaj en çok" value={gsmMax} onChangeText={setGsmMax} placeholder="gr/m²" keyboardType="numeric" />
-            </View>
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Ölçüler" />
+          <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Input
+              containerStyle={half}
+              label="Gramaj en az"
+              unit="gr/m²"
+              value={gsmMin}
+              onChangeText={setGsmMin}
+              placeholder="0"
+              error={gsmLow.invalid ? invalidText : gsmRangeText}
+              {...numericProps}
+            />
+            <Input
+              containerStyle={half}
+              label="Gramaj en çok"
+              unit="gr/m²"
+              value={gsmMax}
+              onChangeText={setGsmMax}
+              placeholder="0"
+              error={gsmHigh.invalid ? invalidText : null}
+              {...numericProps}
+            />
           </View>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <TextField label="En en az" value={widthMin} onChangeText={setWidthMin} placeholder="cm" keyboardType="numeric" />
-            </View>
-            <View style={styles.half}>
-              <TextField label="En en çok" value={widthMax} onChangeText={setWidthMax} placeholder="cm" keyboardType="numeric" />
-            </View>
+          <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Input
+              containerStyle={half}
+              label="En en az"
+              unit="cm"
+              value={widthMin}
+              onChangeText={setWidthMin}
+              placeholder="0"
+              error={widthLow.invalid ? invalidText : widthRangeText}
+              {...numericProps}
+            />
+            <Input
+              containerStyle={half}
+              label="En en çok"
+              unit="cm"
+              value={widthMax}
+              onChangeText={setWidthMax}
+              placeholder="0"
+              error={widthHigh.invalid ? invalidText : null}
+              {...numericProps}
+            />
           </View>
           {watchMode ? null : (
             <>
-              <Text style={styles.label}>En tipi</Text>
-              <ChipSelect options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} compact />
+              {subLabel('En tipi')}
+              <SingleChips options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} />
             </>
           )}
         </View>
 
-        <SectionHeader title="Lif" />
-        <View style={styles.block}>
-          <Text style={styles.hint}>Seçtiklerinizden herhangi birini içeren kumaşlar gelir.</Text>
-          <MultiChipSelect options={FIBERS} values={fibers} onChange={setFibers} />
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Lif" />
+          {hint('Seçtiklerinden herhangi birini içeren kumaşlar gelir.')}
+          <MultiChips options={FIBERS} values={fibers} onChange={setFibers} />
           {fibers.length ? (
-            <TextField
-              label="Seçilen lif en az (%)"
+            <Input
+              label="Seçilen lif en az"
+              unit="%"
               value={fiberMinPercent}
               onChangeText={setFiberMinPercent}
               placeholder="Örn. 5"
-              keyboardType="numeric"
+              error={
+                fiberPercent.invalid
+                  ? invalidText
+                  : fiberPercent.value !== undefined && fiberPercent.value > 100
+                    ? 'En fazla 100 olabilir.'
+                    : null
+              }
+              {...numericProps}
             />
           ) : null}
         </View>
 
-        <SectionHeader title="Sertifika" />
-        <View style={styles.block}>
-          <Text style={styles.hint}>Seçtiklerinizden herhangi birine sahip kumaşlar gelir.</Text>
-          <MultiChipSelect options={CERTIFICATES} values={certificates} onChange={setCertificates} />
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Sertifika" />
+          {hint('Seçtiklerinden herhangi birine sahip kumaşlar gelir.')}
+          <MultiChips options={CERTIFICATES} values={certificates} onChange={setCertificates} />
         </View>
 
-        <SectionHeader title="Ticari" />
-        <View style={styles.block}>
-          <View style={styles.row}>
-            <View style={styles.half}>
-              <TextField
-                label="MOQ en çok"
-                value={moqMax}
-                onChangeText={setMoqMax}
-                placeholder="Örn. 500"
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.half}>
-              <TextField
-                label="Termin en çok (gün)"
-                value={leadTimeMax}
-                onChangeText={setLeadTimeMax}
-                placeholder="Örn. 15"
-                keyboardType="numeric"
-              />
-            </View>
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Ticari" />
+          <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Input
+              containerStyle={half}
+              label="MOQ en çok"
+              value={moqMax}
+              onChangeText={setMoqMax}
+              placeholder="Örn. 500"
+              error={moq.invalid ? invalidText : null}
+              {...numericProps}
+            />
+            <Input
+              containerStyle={half}
+              label="Termin en çok"
+              unit="gün"
+              value={leadTimeMax}
+              onChangeText={setLeadTimeMax}
+              placeholder="Örn. 15"
+              error={leadTime.invalid ? invalidText : null}
+              {...numericProps}
+            />
           </View>
         </View>
 
         {watchMode ? null : (
-          <>
-            <SectionHeader title="İçerik" />
-            <View style={styles.block}>
-              <TextField label="İçerikte geçen" value={content} onChangeText={setContent} placeholder="Örn. Pamuk, Elastan" />
-            </View>
-          </>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="İçerik" />
+            <Input
+              label="İçerikte geçen"
+              value={content}
+              onChangeText={setContent}
+              placeholder="Örn. Pamuk, Elastan"
+            />
+          </View>
         )}
 
-        {errors.map((message) => (
-          <Text key={message} style={styles.error}>
-            {message}
-          </Text>
-        ))}
-        {watchError ? <InlineError message={watchError} style={styles.watchError} /> : null}
-        {watchMode ? (
-          <Text style={styles.watchNote}>
-            Bu süzgece uyan yeni bir ürün eklendiğinde bildirim alırsınız. Kendi firmanızın ürünleri sayılmaz.
-          </Text>
+        {errors.length || watchError || watchMode ? (
+          <View style={{ gap: t.space[2] }}>
+            {errors.map((message) => (
+              <ErrorBanner key={message} message={message} />
+            ))}
+            {watchError ? <ErrorBanner message={watchError} /> : null}
+            {watchMode
+              ? hint('Bu süzgece uyan yeni bir ürün eklendiğinde bildirim alırsın. Kendi firmanın ürünleri sayılmaz.')
+              : null}
+          </View>
         ) : null}
-      </ScrollView>
-
-      <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-        <PrimaryButton label="Temizle" variant="outline" size="lg" onPress={clearAll} />
-        <PrimaryButton
-          label={watchMode ? (saving ? 'Kuruluyor...' : 'Bu süzgeci izle') : 'Filtreyi Uygula'}
-          size="lg"
-          onPress={watchMode ? () => void saveWatch() : apply}
-          disabled={errors.length > 0 || saving}
-          style={styles.actionMain}
-        />
-      </View>
+      </Screen>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingTop: spacing.gutter },
-  label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.sm,
-  },
-  watchError: { marginHorizontal: spacing.gutter, marginTop: spacing.sm },
-  watchNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.sm,
-  },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  actionMain: { flex: 1 },
-});

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { fetchVideo, fetchVideoPlayback, type VideoRef } from '../api/client';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
 const POLL_MS = 5000;
 const POLL_LIMIT_MS = 5 * 60 * 1000;
@@ -32,7 +32,11 @@ interface Props {
 // Durum yalnızca ilk değerden başlıyor; çağıran taraf `key={video.id}` vermeli.
 // Akış yeniden yüklenince eski "processing" nesnesi, yoklamayla öğrenilmiş
 // "ready" durumunun üzerine yazılmasın diye props ile senkronize edilmiyor.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı. Oynatıcı çerçevesi
+// her iki temada da koyu (`surfaceBrand`) — video kendi renginde okunsun.
 export function PostVideo({ video }: Props) {
+  const t = useTheme();
   const [current, setCurrent] = useState(video);
   const [playback, setPlayback] = useState(() => cachedPlayback(video.id));
   const [playbackFailed, setPlaybackFailed] = useState(false);
@@ -78,11 +82,28 @@ export function PostVideo({ video }: Props) {
     };
   }, [current.id, current.status, playback, playbackFailed]);
 
+  const frame = {
+    width: '100%' as const,
+    aspectRatio: 16 / 9,
+    borderRadius: t.radius.md,
+    // Üst boşluk yok: kart öğeleri arasındaki boşluğu PostCard `gap` ile veriyor.
+    overflow: 'hidden' as const,
+    backgroundColor: t.colors.surfaceBrand,
+  };
+  const centered = {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: t.space[2],
+    padding: t.space[4],
+  };
+  const stateText = [t.type.body14, { color: t.colors.onBrand, textAlign: 'center' as const }];
+
   if (current.status === 'error') {
     return (
-      <View style={[styles.frame, styles.centered]}>
-        <Ionicons name="alert-circle-outline" size={28} color={colors.surface} />
-        <Text style={styles.stateText}>
+      <View style={[frame, centered]}>
+        <Icon name="warning" size={t.size.icon} colorValue={t.colors.onBrand} />
+        <Text style={stateText}>
           {current.errorReason === 'too_long'
             ? 'Video 60 saniyeden uzun olduğu için yayınlanamadı.'
             : 'Video işlenemedi.'}
@@ -93,9 +114,9 @@ export function PostVideo({ video }: Props) {
 
   if (current.status !== 'ready') {
     return (
-      <View style={[styles.frame, styles.centered]}>
-        <ActivityIndicator color={colors.surface} />
-        <Text style={styles.stateText}>Video işleniyor, birazdan izlenebilir.</Text>
+      <View style={[frame, centered]}>
+        <ActivityIndicator color={t.colors.onBrand} />
+        <Text style={stateText}>Video işleniyor, birazdan izlenebilir.</Text>
       </View>
     );
   }
@@ -107,7 +128,7 @@ export function PostVideo({ video }: Props) {
   const duration = formatDuration(current.durationSeconds);
   return (
     <Pressable
-      style={styles.frame}
+      style={frame}
       onPress={() => {
         if (playbackFailed) {
           setPlaybackFailed(false);
@@ -118,26 +139,52 @@ export function PostVideo({ video }: Props) {
       accessibilityRole="button"
       accessibilityLabel={duration ? `Videoyu oynat, ${duration}` : 'Videoyu oynat'}
     >
-      {playback ? <Image source={{ uri: playback.thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-      <View style={styles.centered}>
+      {playback ? (
+        <Image source={{ uri: playback.thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      ) : null}
+      <View style={centered}>
         {playbackFailed ? (
           <>
-            <Ionicons name="refresh" size={26} color={colors.surface} />
-            <Text style={styles.stateText}>Video yüklenemedi, tekrar denemek için dokunun.</Text>
+            <Icon name="refresh-outline" size={t.size.icon} colorValue={t.colors.onBrand} />
+            <Text style={stateText}>Video yüklenemedi, tekrar denemek için dokunun.</Text>
           </>
         ) : (
-          <View style={styles.playButton}>
+          <View
+            style={{
+              // Dokunma hedefi: çerçevenin tamamı basılabilir, düğme görseli 52px.
+              width: t.size.controlLg,
+              height: t.size.controlLg,
+              borderRadius: t.radius.full,
+              backgroundColor: t.colors.surface1,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
             {playback ? (
-              <Ionicons name="play" size={30} color={colors.primary} style={styles.playIcon} />
+              // Üçgen simge görsel olarak sola kaymış durur; optik ortalama.
+              // (`Icon`in `style` prop'u yok, bu yüzden saran View ile kaydırıldı.)
+              <View style={{ marginLeft: t.space[1] }}>
+                <Icon name="play" size={t.size.icon} color="brand" />
+              </View>
             ) : (
-              <ActivityIndicator color={colors.primary} />
+              <ActivityIndicator color={t.colors.brand} />
             )}
           </View>
         )}
       </View>
       {duration ? (
-        <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>{duration}</Text>
+        <View
+          style={{
+            position: 'absolute',
+            right: t.space[2],
+            bottom: t.space[2],
+            backgroundColor: t.colors.overlay,
+            borderRadius: t.radius.sm,
+            paddingHorizontal: t.space[2],
+            paddingVertical: t.space[1],
+          }}
+        >
+          <Text style={[t.type.caption12, { color: t.colors.onBrand }]}>{duration}</Text>
         </View>
       ) : null}
     </Pressable>
@@ -147,52 +194,22 @@ export function PostVideo({ video }: Props) {
 // Oynatıcı yalnızca kullanıcı oynat'a basınca oluşuyor: akışta her video kartı
 // için ayrı oynatıcı açmak hem pil hem veri harcardı.
 function InlinePlayer({ uri }: { uri: string }) {
+  const t = useTheme();
   const player = useVideoPlayer(uri, (p) => {
     p.play();
   });
-  return <VideoView player={player} style={styles.frame} nativeControls contentFit="contain" />;
+  return (
+    <VideoView
+      player={player}
+      style={{
+        width: '100%',
+        aspectRatio: 16 / 9,
+        borderRadius: t.radius.md,
+        overflow: 'hidden',
+        backgroundColor: t.colors.surfaceBrand,
+      }}
+      nativeControls
+      contentFit="contain"
+    />
+  );
 }
-
-const styles = StyleSheet.create({
-  frame: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: radius.md,
-    // Üst boşluk yok: kart öğeleri arasındaki boşluğu PostCard `gap` ile veriyor.
-    overflow: 'hidden',
-    backgroundColor: colors.text,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  stateText: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.surface,
-    textAlign: 'center',
-  },
-  playButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Üçgen simge görsel olarak sola kaymış durur; optik ortalama.
-  playIcon: { marginLeft: 4 },
-  durationBadge: {
-    position: 'absolute',
-    right: spacing.sm,
-    bottom: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  durationText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.surface },
-});

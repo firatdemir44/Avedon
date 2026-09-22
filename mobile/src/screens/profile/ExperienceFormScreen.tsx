@@ -1,5 +1,10 @@
+// Deneyim ekle/düzenle/sil (yeni tasarım, 4. adım). Devam eden görevde bitiş
+// ay/yıl sunucuya HİÇ gönderilmez (sunucu ikisini birlikte bekliyor).
+// Kaydet, ekranın tek dolu düğmesi olarak yapışkan alt çubukta; Sil `danger`.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useLayoutEffect, useState } from 'react';
-import { View, Text, ScrollView, Switch, StyleSheet } from 'react-native';
+import { View, Text, Switch } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -8,21 +13,18 @@ import {
   updateMyExperience,
   type UserExperienceInput,
 } from '../../api/client';
-import { ChipSelect } from '../../components/ChipSelect';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { TextField } from '../../components/TextField';
 import { InlineError } from '../../components/StateView';
 import { confirmAction } from '../../features/confirm';
 import { MONTH_NAMES_SHORT } from '../../features/users/experienceDates';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Chip, ChipRow, Input, Screen, SectionTitle } from '../../ui';
 
 type Props = RootStackScreenProps<'ExperienceForm'>;
 
 const MONTH_OPTIONS = MONTH_NAMES_SHORT.map((label, index) => ({ value: String(index + 1), label }));
 
-// Deneyim ekle/düzenle/sil (Fırat, 2026-09-22). Devam eden görevde bitiş
-// ay/yıl sunucuya HİÇ gönderilmez (sunucu ikisini birlikte bekliyor).
 export function ExperienceFormScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const existing = route.params?.experience;
   const [title, setTitle] = useState(existing?.title ?? '');
   const [company, setCompany] = useState(existing?.company ?? '');
@@ -115,73 +117,96 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.block}>
-        <TextField label="Görev" value={title} onChangeText={setTitle} placeholder="Genel Müdür" maxLength={80} />
-        <TextField label="Firma" value={company} onChangeText={setCompany} placeholder="Melide Tekstil" maxLength={120} />
+    <Screen
+      contentStyle={{ gap: t.space[4] }}
+      sticky={<Button size="lg" label="Kaydet" loading={saving} onPress={save} />}
+    >
+      <Input label="Görev" value={title} onChangeText={setTitle} placeholder="Genel Müdür" maxLength={80} />
+      <Input label="Firma" value={company} onChangeText={setCompany} placeholder="Melide Tekstil" maxLength={120} />
 
-        <Text style={styles.groupLabel}>Başlangıç</Text>
-        <ChipSelect options={MONTH_OPTIONS} value={startMonth} onChange={setStartMonth} compact />
-        <TextField
+      <View style={{ gap: t.space[2], minWidth: 0 }}>
+        <SectionTitle title="Başlangıç" />
+        {/* Ay seçimi: çip satırı (yatay kaydırılır, satır kırmaz). */}
+        <ChipRow>
+          {MONTH_OPTIONS.map((option) => (
+            <Chip
+              key={option.value}
+              label={option.label}
+              selected={option.value === startMonth}
+              onPress={() => setStartMonth(option.value)}
+            />
+          ))}
+        </ChipRow>
+        <Input
           label="Başlangıç yılı"
           value={startYear}
           onChangeText={(text) => setStartYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
           keyboardType="number-pad"
+          inputMode="numeric"
           placeholder="2001"
         />
-
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Devam ediyor</Text>
-          <Switch value={ongoing} onValueChange={setOngoing} />
-        </View>
-
-        {!ongoing ? (
-          <>
-            <Text style={styles.groupLabel}>Bitiş</Text>
-            <ChipSelect options={MONTH_OPTIONS} value={endMonth} onChange={setEndMonth} compact />
-            <TextField
-              label="Bitiş yılı"
-              value={endYear}
-              onChangeText={(text) => setEndYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
-              keyboardType="number-pad"
-              placeholder="2010"
-            />
-          </>
-        ) : null}
-
-        <TextField label="Konum" value={location} onChangeText={setLocation} placeholder="Bursa" maxLength={80} />
-        <TextField
-          label="Açıklama"
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Bu görevde neler yaptınız?"
-          multiline
-          maxLength={600}
-        />
-
-        {error ? <InlineError message={error} /> : null}
-
-        <PrimaryButton label={saving ? 'Kaydediliyor...' : 'Kaydet'} size="lg" disabled={saving} onPress={save} />
-        {existing ? (
-          <PrimaryButton label="Sil" variant="outline" size="lg" disabled={saving} onPress={remove} />
-        ) : null}
       </View>
-    </ScrollView>
+
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: t.space[3],
+          minHeight: t.size.touchMin,
+          minWidth: 0,
+        }}
+      >
+        <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>Devam ediyor</Text>
+        <Switch
+          value={ongoing}
+          onValueChange={setOngoing}
+          accessibilityLabel="Görev devam ediyor"
+          trackColor={{ false: t.colors.lineStrong, true: t.colors.brand }}
+          thumbColor={t.colors.surface1}
+        />
+      </View>
+
+      {!ongoing ? (
+        <View style={{ gap: t.space[2], minWidth: 0 }}>
+          <SectionTitle title="Bitiş" />
+          <ChipRow>
+            {MONTH_OPTIONS.map((option) => (
+              <Chip
+                key={option.value}
+                label={option.label}
+                selected={option.value === endMonth}
+                onPress={() => setEndMonth(option.value)}
+              />
+            ))}
+          </ChipRow>
+          <Input
+            label="Bitiş yılı"
+            value={endYear}
+            onChangeText={(text) => setEndYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            placeholder="2010"
+          />
+        </View>
+      ) : null}
+
+      <Input label="Konum" value={location} onChangeText={setLocation} placeholder="Bursa" maxLength={80} />
+      <Input
+        label="Açıklama"
+        value={description}
+        onChangeText={setDescription}
+        placeholder="Bu görevde neler yaptınız?"
+        multiline
+        numberOfLines={4}
+        maxLength={600}
+      />
+
+      {error ? <InlineError message={error} /> : null}
+
+      {existing ? (
+        <Button kind="danger" fullWidth label="Deneyimi sil" disabled={saving} onPress={remove} />
+      ) : null}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, padding: spacing.gutter, gap: spacing.xs },
-  groupLabel: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    minHeight: 48,
-    marginBottom: spacing.sm,
-  },
-  switchLabel: { ...typography.body, color: colors.text, flex: 1, minWidth: 0 },
-});

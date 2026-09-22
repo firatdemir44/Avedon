@@ -1,12 +1,15 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, Image, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { TextField } from '../../components/TextField';
+// Görselden maliyet tablosu (yeni tasarım, 4. adım — DESIGN.md).
+// İşlev aynı: fotoğraflar seçilir, backend bileşenleri tespit eder, miktar ve
+// birim fiyatı kullanıcı girer, toplam hesaplanır. Yalnızca renk/yazı/köşe/boşluk
+// token'lara bağlandı; ham hex ve ham px yok.
+import React, { useLayoutEffect, useMemo, useState } from 'react';
+import { View, Text, Image, Pressable, ActivityIndicator } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { detectGarmentComponents, type DetectedComponent, type GarmentImageInput } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, Card, Icon, Input, Screen, SectionTitle } from '../../ui';
 
 interface PickedImage extends GarmentImageInput {
   uri: string;
@@ -19,13 +22,17 @@ interface CostRow extends DetectedComponent {
 
 const MAX_IMAGES = 4;
 
-export function GarmentVisualCostScreen() {
+export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'GarmentVisualCost'>) {
+  const t = useTheme();
   const [images, setImages] = useState<PickedImage[]>([]);
   const [rows, setRows] = useState<CostRow[]>([]);
   const [addingImage, setAddingImage] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const total = useMemo(
     () => rows.reduce((sum, row) => sum + parseNumber(row.quantity) * parseNumber(row.unitPrice), 0),
@@ -84,156 +91,156 @@ export function GarmentVisualCostScreen() {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
   };
 
+  const notice = notConfigured
+    ? "Görsel analiz henüz etkinleştirilmedi. Backend'de ANTHROPIC_API_KEY tanımlanmalı."
+    : error;
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.hint}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Görselden maliyet" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Bir kıyafetin ön, arka gibi farklı açılardan fotoğraflarını ekleyin — AI hepsini birlikte değerlendirip
           görünen bileşenleri (yaka, kol, fermuar, cep, ön/arka baskı vb.) tek listede tespit eder, tekrar etmez.
           Miktar ve birim fiyatı siz girersiniz, sistem tahmin üretmez.
         </Text>
 
         {images.length > 0 ? (
-          <View style={styles.imageRow}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
             {images.map((img, index) => (
-              <View key={img.uri} style={styles.imageWrapper}>
-                <Image source={{ uri: img.uri }} style={styles.thumbnail} />
-                <Pressable style={styles.removeBadge} onPress={() => removeImage(index)}>
-                  <Text style={styles.removeBadgeText}>×</Text>
+              <View key={img.uri} style={{ width: t.size.thumb, height: t.size.thumb }}>
+                <Image
+                  source={{ uri: img.uri }}
+                  accessibilityLabel={`${index + 1}. fotoğraf`}
+                  style={{
+                    width: t.size.thumb,
+                    height: t.size.thumb,
+                    borderRadius: t.radius.sm,
+                    borderWidth: 1,
+                    borderColor: t.colors.line,
+                    backgroundColor: t.colors.surface2,
+                  }}
+                />
+                <Pressable
+                  onPress={() => removeImage(index)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${index + 1}. fotoğrafı kaldır`}
+                  hitSlop={8}
+                  style={{
+                    position: 'absolute',
+                    top: -t.space[1],
+                    right: -t.space[1],
+                    width: t.size.badge,
+                    height: t.size.badge,
+                    borderRadius: t.radius.full,
+                    backgroundColor: t.colors.danger,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Icon name="x" size={t.size.iconXs} colorValue={t.colors.onBrand} />
                 </Pressable>
               </View>
             ))}
           </View>
         ) : null}
 
-        {images.length < MAX_IMAGES ? (
-          <PrimaryButton
-            label={
-              addingImage
-                ? 'İşleniyor...'
-                : images.length === 0
-                  ? 'Fotoğraf Seç'
-                  : `Fotoğraf Ekle (${images.length}/${MAX_IMAGES})`
-            }
-            onPress={addImage}
-            disabled={addingImage}
-            variant="secondary"
-          />
-        ) : null}
+        <View style={{ gap: t.space[3] }}>
+          {images.length < MAX_IMAGES ? (
+            <Button
+              kind="secondary"
+              icon="camera"
+              label={
+                addingImage
+                  ? 'İşleniyor…'
+                  : images.length === 0
+                    ? 'Fotoğraf seç'
+                    : `Fotoğraf ekle (${images.length}/${MAX_IMAGES})`
+              }
+              onPress={addImage}
+              loading={addingImage}
+              fullWidth
+            />
+          ) : null}
 
-        {images.length > 0 ? (
-          <PrimaryButton
-            label={analyzing ? 'Analiz ediliyor...' : 'Bileşenleri Tespit Et'}
-            onPress={analyze}
-            disabled={analyzing}
-            style={{ marginTop: spacing.sm }}
-          />
-        ) : null}
+          {images.length > 0 ? (
+            <Button
+              label={analyzing ? 'Analiz ediliyor…' : 'Bileşenleri tespit et'}
+              onPress={analyze}
+              loading={analyzing}
+              fullWidth
+            />
+          ) : null}
+        </View>
 
-        {notConfigured ? (
-          <Text style={styles.notice}>Görsel analiz henüz etkinleştirilmedi. Backend'de ANTHROPIC_API_KEY tanımlanmalı.</Text>
+        {notice ? (
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{notice}</Text>
+          </View>
         ) : null}
-        {error ? <Text style={styles.notice}>{error}</Text> : null}
-        {analyzing ? <ActivityIndicator style={{ marginTop: spacing.md }} color={colors.primary} /> : null}
+        {analyzing ? <ActivityIndicator color={t.colors.brand} /> : null}
 
         {rows.length > 0 ? (
-          <View style={styles.table}>
-            <Text style={styles.sectionTitle}>Maliyet Kalemleri</Text>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Maliyet kalemleri" />
             {rows.map((row, index) => (
-              <View key={`${row.component}-${index}`} style={styles.row}>
-                <Text style={styles.rowTitle}>{row.component}</Text>
-                <Text style={styles.rowDetail}>{row.detail}</Text>
-                <View style={styles.rowInputs}>
-                  <View style={{ flex: 1 }}>
-                    <TextField
+              <Card key={`${row.component}-${index}`}>
+                <View style={{ gap: t.space[3] }}>
+                  <View style={{ gap: t.space[1] }}>
+                    <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{row.component}</Text>
+                    <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{row.detail}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+                    <Input
+                      containerStyle={{ flex: 1, minWidth: 0 }}
                       label="Miktar"
-                      keyboardType="numeric"
+                      inputMode="decimal"
+                      keyboardType="decimal-pad"
                       value={row.quantity}
                       onChangeText={(v) => updateRow(index, { quantity: v })}
                     />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <TextField
-                      label="Birim Fiyat (₺)"
-                      keyboardType="numeric"
+                    <Input
+                      containerStyle={{ flex: 1, minWidth: 0 }}
+                      label="Birim fiyat"
+                      unit="₺"
+                      inputMode="decimal"
+                      keyboardType="decimal-pad"
                       value={row.unitPrice}
                       onChangeText={(v) => updateRow(index, { unitPrice: v })}
                       placeholder="0"
                     />
                   </View>
                 </View>
-              </View>
+              </Card>
             ))}
-            <View style={styles.totalCard}>
-              <Text style={styles.totalLabel}>Toplam Maliyet</Text>
-              <Text style={styles.totalValue}>{formatNumber(total)} ₺</Text>
+
+            {/* Tek büyük sonuç (DESIGN.md §5): vurgulu satır, display-28. */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                minHeight: t.size.touchMin,
+                paddingHorizontal: t.space[4],
+                paddingVertical: t.space[3],
+                borderRadius: t.radius.lg,
+                backgroundColor: t.colors.surfaceBrand,
+              }}
+              accessibilityLabel={`Toplam maliyet: ${formatNumber(total)} lira`}
+            >
+              <Text style={[t.type.label14, { color: t.colors.onBrand, flex: 1, minWidth: 0 }]}>Toplam maliyet</Text>
+              <Text
+                numberOfLines={1}
+                style={[t.type.display28, { color: t.colors.onBrand, textAlign: 'right', flexShrink: 1 }]}
+              >
+                {formatNumber(total)}
+              </Text>
+              <Text style={[t.type.mono14, { color: t.colors.onBrand }]}>₺</Text>
             </View>
           </View>
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  hint: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.md },
-  imageRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  imageWrapper: {
-    width: 100,
-    height: 100,
-  },
-  thumbnail: {
-    width: 100,
-    height: 100,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  removeBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeBadgeText: {
-    color: '#fff',
-    fontSize: 16,
-    fontFamily: fonts.bold,
-    lineHeight: 16,
-  },
-  notice: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-  table: { marginTop: spacing.lg },
-  sectionTitle: { ...typography.heading, color: colors.primary, marginBottom: spacing.sm },
-  row: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadow.card,
-  },
-  rowTitle: { ...typography.bodyStrong, fontFamily: fonts.bold, color: colors.text },
-  rowDetail: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-  rowInputs: { flexDirection: 'row', gap: spacing.sm },
-  totalCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.sm,
-    ...shadow.card,
-  },
-  totalLabel: { ...typography.body, color: colors.textMuted },
-  totalValue: { ...typography.heading, color: colors.primary },
-});

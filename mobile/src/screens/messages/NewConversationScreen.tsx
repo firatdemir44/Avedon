@@ -1,23 +1,25 @@
+// Yeni sohbet (yeni tasarım, 4. adım — DESIGN.md §3 "Liste satırı").
+//
+// Bağlantılar `src/ui`'nin `ListRow` bileşeniyle çiziliyor; dokununca sohbet
+// açılır (varsa mevcut sohbet). Veri katmanı ve işlev DEĞİŞMEDİ.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useState } from 'react';
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { fetchConnections, startConversation, type ConnectionSummary } from '../../api/client';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { ListRow } from '../../components/ListRow';
-import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
-import { colors, spacing } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { EmptyState, Icon, ListRow, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewConversation'>;
 
-// Yeni düzen (5. aşama): bağlantılar çizgili kişi satırları olarak; dokununca
-// sohbet açılır (varsa mevcut sohbet).
 export function NewConversationScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
   );
@@ -45,18 +47,32 @@ export function NewConversationScreen({ navigation }: Props) {
     }
   };
 
+  const safeArea = { flex: 1, backgroundColor: t.colors.surface0 } as const;
+
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="person" />
+      <SafeAreaView style={safeArea} edges={['bottom']}>
+        <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
       </SafeAreaView>
     );
   }
 
   if (status === 'error') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="Bağlantılar alınamadı" onRetry={reload} />
+      <SafeAreaView style={safeArea} edges={['bottom']}>
+        <View style={{ paddingHorizontal: t.space[4] }}>
+          <EmptyState
+            icon="warning"
+            title="Bağlantılar alınamadı"
+            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+            actionLabel="Tekrar dene"
+            onAction={reload}
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -64,31 +80,49 @@ export function NewConversationScreen({ navigation }: Props) {
   const bannerMessage = startError ?? (error ? friendlyMessage(error, 'Bağlantılar alınamadı') : null);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <SafeAreaView style={safeArea} edges={['bottom']}>
       <FlatList
         data={connections}
         keyExtractor={(item) => item.connectionId}
-        contentContainerStyle={styles.listContent}
-        refreshControl={refreshControl(refreshing, refresh)}
+        contentContainerStyle={{
+          paddingHorizontal: t.space[4],
+          paddingTop: t.space[3],
+          paddingBottom: t.space[10],
+        }}
+        refreshControl={refreshControl(refreshing, refresh, t)}
         ListHeaderComponent={
           bannerMessage ? (
-            <View style={styles.bannerWrap}>
-              <InlineError message={bannerMessage} onRetry={startError ? undefined : reload} />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                marginBottom: t.space[3],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.dangerSoft,
+              }}
+            >
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+                {bannerMessage}
+              </Text>
             </View>
           ) : null
         }
         ListEmptyComponent={
           <EmptyState
-            icon="people-outline"
+            icon="user"
             title="Önce bağlantı kurun"
-            message="Mesaj göndermek için kişiyle bağlantıda olmanız gerekir. Profiline girip bağlantı isteği gönderebilirsiniz."
+            description="Mesaj göndermek için kişiyle bağlantıda olmanız gerekir."
           />
         }
         renderItem={({ item, index }) => (
           <ListRow
             title={`${item.user.firstName} ${item.user.lastName}`}
             subtitle={startingId === item.user.id ? 'Sohbet açılıyor' : item.user.position}
-            left={<CompanyAvatar name={item.user.firstName} size={36} />}
+            avatarName={`${item.user.firstName} ${item.user.lastName}`}
+            avatarKind="person"
             divider={index < connections.length - 1}
             onPress={() => handleStart(item)}
           />
@@ -97,9 +131,3 @@ export function NewConversationScreen({ navigation }: Props) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  bannerWrap: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.blockGap },
-});

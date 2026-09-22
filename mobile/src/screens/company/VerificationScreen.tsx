@@ -1,6 +1,16 @@
+// Firma doğrulama başvurusu (yeni tasarım, 4. adım — DESIGN.md §2, §3).
+//
+// Veri katmanı DEĞİŞMEDİ: aynı uçlar (fetchVerificationState /
+// applyForVerification), aynı hata kodları, aynı belge bileşeni (DocField).
+// Görünüm yeni: durum kartı `ui/Card` + `ui/Badge` (kartın sol kenarında
+// renkli şerit YOK, DESIGN.md §7), not `ui/Input`, gönder `ui/Button`.
+//
+// GİZLİLİK: kararı kimin verdiği hiçbir yerde yazmaz; metinlerde yalnızca
+// "Avedon ekibi" geçer (sunucu da yönetici kimliğini döndürmüyor).
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TextInput, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -10,21 +20,25 @@ import {
 } from '../../api/client';
 import { DocField } from '../../components/passport/DocField';
 import type { DocImage } from '../../components/passport/rows';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { SectionHeader } from '../../components/SectionHeader';
-import { SkeletonDetail } from '../../components/Skeleton';
-import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { formatMonthYear } from '../../features/time';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  SkeletonText,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'Verification'>;
-
-// Firma doğrulama başvurusu (2026-09-22). GİZLİLİK: kararı kimin verdiği hiçbir
-// yerde yazmaz; metinlerde yalnızca "Avedon ekibi" geçer (sunucu da yönetici
-// kimliğini döndürmüyor).
 
 const NOTE_LIMIT = 300;
 
@@ -35,6 +49,7 @@ function levelText(level: string): string {
 }
 
 export function VerificationScreen(_props: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchVerificationState);
   const [doc, setDoc] = useState<DocImage>({ kind: 'none' });
   const [note, setNote] = useState('');
@@ -74,9 +89,10 @@ export function VerificationScreen(_props: Props) {
 
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonDetail variant="timeline" />
-      </View>
+      <Screen>
+        <SkeletonText lines={4} />
+        <SkeletonText lines={3} />
+      </Screen>
     );
   }
 
@@ -84,19 +100,25 @@ export function VerificationScreen(_props: Props) {
     const code = error instanceof ApiError ? error.code : undefined;
     if (code === 'no_company') {
       return (
-        <View style={styles.screen}>
-          <View style={styles.block}>
-            <Text style={styles.paragraph}>
-              Doğrulama başvurusu için önce bir firmaya bağlı olmanız gerekiyor.
-            </Text>
-          </View>
-        </View>
+        <Screen>
+          <EmptyState
+            icon="business-outline"
+            title="Önce bir firmaya bağlanın"
+            description="Doğrulama başvurusu için önce bir firmaya bağlı olmanız gerekiyor."
+          />
+        </Screen>
       );
     }
     return (
-      <View style={styles.screen}>
-        <ErrorState error={error} fallback="Doğrulama durumu alınamadı" onRetry={reload} />
-      </View>
+      <Screen>
+        <EmptyState
+          icon="warning"
+          title="Doğrulama durumu alınamadı"
+          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
     );
   }
 
@@ -107,150 +129,122 @@ export function VerificationScreen(_props: Props) {
 
   return (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
+      style={{ flex: 1, backgroundColor: t.colors.surface0 }}
+      contentContainerStyle={{ paddingVertical: t.space[4], alignItems: 'center' }}
       refreshControl={refreshControl(refreshing, refresh)}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Durum kartı */}
       <View
-        style={[
-          styles.statusCard,
-          verified ? styles.statusCardOk : pending ? styles.statusCardPending : styles.statusCardNone,
-        ]}
+        style={{
+          width: '100%',
+          maxWidth: t.size.maxContentWidth,
+          paddingHorizontal: t.space[4],
+          gap: t.space[6],
+          minWidth: 0,
+        }}
       >
-        <Ionicons
-          name={verified ? 'shield-checkmark' : pending ? 'time-outline' : 'shield-outline'}
-          size={26}
-          color={verified ? colors.success : pending ? colors.warning : colors.chevron}
-        />
-        <View style={styles.statusTexts}>
-          <Text style={styles.statusTitle}>
-            {verified ? 'Doğrulandı' : pending ? 'İnceleniyor' : 'Doğrulanmamış'}
-          </Text>
-          <Text style={styles.statusBody}>
-            {verified
-              ? `${levelText(state.level)}${state.verifiedAt ? ` · ${formatMonthYear(state.verifiedAt)}` : ''}`
-              : pending
-                ? 'Avedon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.'
-                : 'Firma sayfanızda doğrulanmış rozeti yok.'}
-          </Text>
-        </View>
-      </View>
-
-      {rejected && state.request ? (
-        <>
-          <SectionHeader title="Önceki başvuru" />
-          <View style={styles.block}>
-            <Text style={styles.rejectTitle}>Başvurunuz kabul edilmedi.</Text>
-            {state.request.adminNote ? (
-              <Text style={styles.paragraph}>{state.request.adminNote}</Text>
-            ) : (
-              <Text style={styles.paragraph}>Belgeyi kontrol edip yeniden başvurabilirsiniz.</Text>
-            )}
-          </View>
-        </>
-      ) : null}
-
-      {!verified && !pending ? (
-        <>
-          <SectionHeader title="Doğrulama iste" />
-          <View style={styles.block}>
-            <Text style={styles.paragraph}>
-              Vergi levhası ya da faaliyet belgesi yeterlidir. Belge yalnızca inceleme için kullanılır,
-              karar sonrası silinir.
+        {/* Durum kartı: rozet ikon + metin taşır, durum yalnız renkle verilmez. */}
+        <Card>
+          <View style={{ gap: t.space[2], minWidth: 0 }}>
+            <Badge
+              kind={verified ? 'verified' : pending ? 'pending' : 'cancelled'}
+              label={verified ? 'Doğrulandı' : pending ? 'İnceleniyor' : 'Doğrulanmamış'}
+            />
+            <Text style={[t.type.body16, { color: t.colors.ink }]}>
+              {verified
+                ? `${levelText(state.level)}${state.verifiedAt ? ` · ${formatMonthYear(state.verifiedAt)}` : ''}`
+                : pending
+                  ? 'Avedon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.'
+                  : 'Firma sayfanızda doğrulanmış rozeti yok.'}
             </Text>
-            <View style={styles.docWrap}>
-              <DocField
-                image={doc}
-                onChange={(next) => {
-                  setFormError(null);
-                  setDoc(next);
-                }}
-                busy={picking}
-                onBusyChange={setPicking}
-                onError={setFormError}
-                disabled={sending}
-                labelPrefix="Doğrulama"
-              />
-            </View>
-            <Text style={styles.fieldLabel}>Not (isteğe bağlı)</Text>
-            <TextInput
-              style={styles.noteInput}
-              value={note}
-              onChangeText={(t) => setNote(t.slice(0, NOTE_LIMIT))}
-              placeholder="Eklemek istediğiniz kısa bir not"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              editable={!sending}
-              maxLength={NOTE_LIMIT}
-              accessibilityLabel="Başvuru notu"
-            />
-            {formError ? <InlineError message={formError} style={styles.formError} /> : null}
-            <PrimaryButton
-              label={sending ? 'Gönderiliyor...' : 'Doğrulama iste'}
-              size="lg"
-              onPress={submit}
-              disabled={sending || picking || doc.kind !== 'new'}
-            />
           </View>
-        </>
-      ) : null}
+        </Card>
 
-      <Text style={styles.footNote}>
-        Doğrulamayı Avedon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.
-      </Text>
+        {rejected && state.request ? (
+          <View style={{ gap: t.space[3], minWidth: 0 }}>
+            <SectionTitle title="Önceki başvuru" />
+            <Card>
+              <View style={{ gap: t.space[2], minWidth: 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+                  <Icon name="warning" size={t.size.iconSm} color="danger" />
+                  <Text style={[t.type.body16Strong, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+                    Başvurunuz kabul edilmedi.
+                  </Text>
+                </View>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  {state.request.adminNote || 'Belgeyi kontrol edip yeniden başvurabilirsiniz.'}
+                </Text>
+              </View>
+            </Card>
+          </View>
+        ) : null}
+
+        {!verified && !pending ? (
+          <View style={{ gap: t.space[3], minWidth: 0 }}>
+            <SectionTitle title="Doğrulama iste" />
+            <Card>
+              <View style={{ gap: t.space[4], minWidth: 0 }}>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  Vergi levhası ya da faaliyet belgesi yeterlidir. Belge yalnızca inceleme için kullanılır,
+                  karar sonrası silinir.
+                </Text>
+                <DocField
+                  image={doc}
+                  onChange={(next) => {
+                    setFormError(null);
+                    setDoc(next);
+                  }}
+                  busy={picking}
+                  onBusyChange={setPicking}
+                  onError={setFormError}
+                  disabled={sending}
+                  labelPrefix="Doğrulama"
+                />
+                <Input
+                  label="Not (isteğe bağlı)"
+                  value={note}
+                  onChangeText={(value) => setNote(value.slice(0, NOTE_LIMIT))}
+                  placeholder="Eklemek istediğiniz kısa bir not"
+                  multiline
+                  editable={!sending}
+                  maxLength={NOTE_LIMIT}
+                  accessibilityLabel="Başvuru notu"
+                />
+                {formError ? (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: t.space[2],
+                      padding: t.space[3],
+                      borderRadius: t.radius.md,
+                      backgroundColor: t.colors.dangerSoft,
+                      minWidth: 0,
+                    }}
+                  >
+                    <Icon name="warning" size={t.size.iconSm} color="danger" />
+                    <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+                      {formError}
+                    </Text>
+                  </View>
+                ) : null}
+                {/* Ekranın tek dolu düğmesi. */}
+                <Button
+                  size="lg"
+                  label="Doğrulama iste"
+                  loading={sending}
+                  disabled={sending || picking || doc.kind !== 'new'}
+                  onPress={submit}
+                />
+              </View>
+            </Card>
+          </View>
+        ) : null}
+
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+          Doğrulamayı Avedon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.
+        </Text>
+      </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, paddingHorizontal: spacing.gutter, paddingVertical: spacing.md },
-  statusCard: {
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.md,
-    borderLeftWidth: 4,
-  },
-  statusCardOk: { borderLeftColor: colors.success },
-  statusCardPending: { borderLeftColor: colors.warning },
-  statusCardNone: { borderLeftColor: colors.borderStrong },
-  statusTexts: { flex: 1, minWidth: 0, gap: 2 },
-  statusTitle: { ...typography.subtitle, fontFamily: fonts.semibold, color: colors.text },
-  statusBody: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  rejectTitle: {
-    ...typography.label,
-    fontFamily: fonts.semibold,
-    color: colors.danger,
-    marginBottom: spacing.xs,
-  },
-  paragraph: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  docWrap: { marginTop: spacing.md },
-  fieldLabel: { ...typography.label, color: colors.text, marginTop: spacing.sm, marginBottom: spacing.xs },
-  noteInput: {
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    minHeight: MIN_TOUCH + 20,
-    color: colors.text,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginBottom: spacing.md,
-    textAlignVertical: 'top',
-  },
-  formError: { marginBottom: spacing.md },
-  footNote: {
-    ...typography.caption,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-  },
-});

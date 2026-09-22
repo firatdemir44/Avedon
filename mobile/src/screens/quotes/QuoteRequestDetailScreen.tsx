@@ -1,7 +1,9 @@
+// Teklif isteği detayı (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri/işlev katmanı Faz 2, Adım 2 / Faz 3, Adım 4–6'daki gibi: uçlar,
+// gövdeler, doğrulama ve durum mantığı aynı; yalnızca sunum yeni.
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, ScrollView } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -20,12 +22,8 @@ import {
 } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage, isNotFound } from '../../components/StateView';
+import { friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { ChipSelect } from '../../components/ChipSelect';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { QuoteStatusBadge } from '../../components/QuoteStatusBadge';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { PRICE_CURRENCIES, STOCK_UNITS, STOCK_UNIT_LABELS, type StockUnit } from '../../features/products/catalog';
 import { formatMeasure, parseNumber, toInputNumber } from '../../features/calculators/parse';
@@ -41,12 +39,34 @@ import {
 } from '../../features/quotes/format';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  SegmentControl,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'QuoteRequestDetail'>;
 
 const UNIT_OPTIONS = STOCK_UNITS.map((unit) => ({ value: unit, label: STOCK_UNIT_LABELS[unit].short }));
 const CURRENCY_OPTIONS = PRICE_CURRENCIES.map((currency) => ({ value: currency, label: currency }));
+
+// Teklif isteği durumu → rozet (components/QuoteStatusBadge ile aynı eşleme).
+const STATUS_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> = {
+  open: { kind: 'pending', label: 'Teklif bekleniyor' },
+  quoted: { kind: 'info', label: 'Teklif verildi' },
+  accepted: { kind: 'delivered', label: 'Kabul edildi' },
+  declined: { kind: 'cancelled', label: 'Reddedildi' },
+  cancelled: { kind: 'cancelled', label: 'Geri çekildi' },
+};
 
 // Satıcının teklif formunun alanları (hepsi metin: kullanıcı ne yazdıysa o).
 interface QuoteForm {
@@ -110,12 +130,79 @@ function payloadFromForm(form: QuoteForm): QuoteFieldsInput {
   };
 }
 
+function dateInvalid(value: string) {
+  return !!value.trim() && !DATE_PATTERN.test(value.trim());
+}
+
+// --- Ekrana özel küçük bileşenler (src/ui'ye girmeyecek kadar yerel) ---
+
+// Etiket solda, değer sağda; ölçü/fiyat eşit aralıklı yazıyla.
+function SpecRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: t.space[4],
+        minHeight: t.size.touchMin,
+        paddingVertical: t.space[2],
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: t.colors.line,
+      }}
+    >
+      <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>{label}</Text>
+      <Text style={[t.type.mono14, { color: t.colors.ink, flexShrink: 1, textAlign: 'right' }]}>{value}</Text>
+    </View>
+  );
+}
+
+// Uyarı / hata / bilgi şeridi (RequestsScreen'deki banner kalıbı).
+function Notice({
+  tone,
+  children,
+}: {
+  tone: 'danger' | 'warning' | 'success' | 'info';
+  children: React.ReactNode;
+}) {
+  const t = useTheme();
+  const bg =
+    tone === 'danger'
+      ? t.colors.dangerSoft
+      : tone === 'warning'
+        ? t.colors.warningSoft
+        : tone === 'success'
+          ? t.colors.successSoft
+          : t.colors.surface1;
+  const fg = tone === 'info' ? 'ink2' : tone;
+  const icon = tone === 'danger' || tone === 'warning' ? 'warning' : tone === 'success' ? 'check' : 'info';
+  return (
+    <View
+      accessibilityRole={tone === 'info' ? undefined : 'alert'}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: bg,
+        borderWidth: tone === 'info' ? 1 : 0,
+        borderColor: t.colors.line,
+      }}
+    >
+      <Icon name={icon} size={t.size.iconSm} color={fg} />
+      <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>{children}</View>
+    </View>
+  );
+}
+
 // Faz 2, Adım 2. Aynı ekran iki rolü de çiziyor: alıcı teklifi görür ve
 // yanıtlar, satıcı teklifi hazırlar ve gönderir. Rol sunucudan geliyor
 // (`request.role`), istemci karar vermiyor.
 export function QuoteRequestDetailScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { requestId } = route.params;
-  const insets = useSafeAreaInsets();
   const { data: request, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchQuoteRequest(requestId).then((res) => res.request)
   );
@@ -131,6 +218,11 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   // yok" demektir, o zaman düğme hiç çıkmaz.
   const [dealId, setDealId] = useState<string | null>(null);
   const [justAccepted, setJustAccepted] = useState(false);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     if (request?.status !== 'accepted' || dealId) return;
@@ -156,27 +248,36 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
     setForm(source ? formFromQuote(request, source) : emptyForm(request));
   }, [request]);
 
+  const shell = (children: React.ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Teklif" leading="back" onBack={() => navigation.goBack()} />
+      {children}
+    </View>
+  );
+
   if (status === 'loading') {
-    return (
-      <View style={styles.screen}>
-        <SkeletonDetail variant="product" />
-      </View>
-    );
+    return shell(<SkeletonDetail variant="product" />);
   }
 
   if (!request) {
-    return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
+    return shell(
+      <Screen>
         {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Teklif isteği alınamadı" onRetry={reload} />
+          <EmptyState
+            icon="warning"
+            title="Yüklenemedi"
+            description={friendlyMessage(error, 'Teklif isteği alınamadı')}
+            actionLabel="Tekrar dene"
+            onAction={reload}
+          />
         ) : (
           <EmptyState
-            icon="pricetag-outline"
+            icon="quote"
             title="Teklif isteği bulunamadı"
-            message="İstek kaldırılmış ya da size ait olmayabilir."
+            description="İstek kaldırılmış ya da size ait olmayabilir."
           />
         )}
-      </View>
+      </Screen>
     );
   }
 
@@ -316,63 +417,120 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const counterparty = isSeller
     ? [request.buyer.name, request.buyer.company?.name].filter(Boolean).join(' · ')
     : request.sellerCompany.name;
+  const badge = STATUS_BADGE[request.status] ?? STATUS_BADGE.open;
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} refreshControl={refreshControl(refreshing, refresh)}>
-        <View style={[styles.block, styles.summary]}>
-          <View style={styles.summaryTop}>
-            <Pressable
-              onPress={() => navigation.navigate('ProductDetail', { productId: request.product.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`${request.product.code}, ürün sayfasını aç`}
-              hitSlop={6}
-              style={({ pressed }) => pressed && styles.pressedFade}
-            >
-              <Text style={styles.code}>{request.product.code}</Text>
-            </Pressable>
-            <QuoteStatusBadge status={request.status} />
-          </View>
-          <Text style={styles.counterparty}>{isSeller ? `İsteyen: ${counterparty}` : counterparty}</Text>
-          <Text style={styles.summaryMeta}>
-            İstenen miktar: <Text style={styles.summaryValue}>{formatQuantity(request.quantity, request.unit)}</Text>
-          </Text>
-          {request.targetDate ? (
-            <Text style={styles.summaryMeta}>
-              İstenen termin: <Text style={styles.summaryValue}>{formatQuoteDate(request.targetDate)}</Text>
-            </Text>
-          ) : null}
-          <Text style={styles.summaryMeta}>{formatRelativeTime(request.createdAt)}</Text>
-          {request.note ? <Text style={styles.requestNote}>“{request.note}”</Text> : null}
-          {/* Faz 3, Adım 1: bu istek çoklu bir isteğin parçasıysa alıcı
-              tablonun tamamına buradan geçer. */}
-          {!isSeller && request.rfqId ? (
-            <Pressable
-              onPress={() => navigation.navigate('RfqCompare', { rfqId: request.rfqId! })}
-              accessibilityRole="button"
-              accessibilityLabel="Bu isteğin karşılaştırma tablosunu aç"
-              hitSlop={6}
-              style={({ pressed }) => [styles.compareLink, pressed && styles.pressedFade]}
-            >
-              <Ionicons name="git-compare-outline" size={16} color={colors.accent} />
-              <Text style={styles.compareLinkText}>Karşılaştırmayı aç</Text>
-            </Pressable>
-          ) : null}
+  // Yapışkan alt çubuk: ekranda en fazla 1 dolu düğme.
+  let sticky: React.ReactNode = null;
+  if (isSeller && isOpen && form) {
+    sticky = (
+      <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+        <View style={{ flex: 1 }}>
+          <Button kind="secondary" size="lg" label="Kaydet" loading={busy === 'save'} disabled={!!busy} onPress={save} />
         </View>
+        <View style={{ flex: 1 }}>
+          <Button
+            size="lg"
+            label={lastSent ? 'Revize teklifi gönder' : 'Teklifi gönder'}
+            loading={busy === 'send'}
+            disabled={!!busy}
+            onPress={send}
+          />
+        </View>
+      </View>
+    );
+  } else if (!isSeller && isOpen) {
+    // Süresi dolmuş teklifte de aynı düğmeler çizilir ama kapalı
+    // (yukarıda uyarı var); "geri çek" yalnızca teklif yokken.
+    sticky =
+      activeQuote && (activeQuote.status === 'sent' || expired) ? (
+        <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+          <View style={{ flex: 1 }}>
+            <Button
+              kind="danger"
+              size="lg"
+              label="Reddet"
+              loading={busy === 'decline'}
+              disabled={!!busy || expired}
+              onPress={() => respond('decline')}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button
+              size="lg"
+              label="Teklifi kabul et"
+              loading={busy === 'accept'}
+              disabled={!!busy || expired}
+              onPress={() => respond('accept')}
+            />
+          </View>
+        </View>
+      ) : (
+        <Button kind="danger" size="lg" label="İsteği geri çek" loading={busy === 'cancel'} disabled={!!busy} onPress={cancel} />
+      );
+  }
+
+  return shell(
+    <Screen scroll={false} noPadding sticky={sticky}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={refreshControl(refreshing, refresh)}
+      >
+        {/* Özet kartı: ürün kodu + durum rozeti + istek bilgileri. */}
+        <Card>
+          <View style={{ gap: t.space[2] }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[3] }}>
+              <Text style={[t.type.mono20, { color: t.colors.ink, flexShrink: 1 }]} numberOfLines={1}>
+                {request.product.code}
+              </Text>
+              <Badge kind={badge.kind} label={badge.label} />
+            </View>
+            <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
+              {isSeller ? `İsteyen: ${counterparty}` : counterparty}
+            </Text>
+            <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatRelativeTime(request.createdAt)}</Text>
+            <View>
+              <SpecRow label="İstenen miktar" value={formatQuantity(request.quantity, request.unit)} last={!request.targetDate} />
+              {request.targetDate ? (
+                <SpecRow label="İstenen termin" value={formatQuoteDate(request.targetDate)} last />
+              ) : null}
+            </View>
+            {request.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>“{request.note}”</Text> : null}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+              <Button
+                kind="quiet"
+                label="Ürün sayfasını aç"
+                icon="fabric"
+                onPress={() => navigation.navigate('ProductDetail', { productId: request.product.id })}
+              />
+              {/* Faz 3, Adım 1: bu istek çoklu bir isteğin parçasıysa alıcı
+                  tablonun tamamına buradan geçer. */}
+              {!isSeller && request.rfqId ? (
+                <Button
+                  kind="quiet"
+                  label="Karşılaştırmayı aç"
+                  icon="git-compare-outline"
+                  onPress={() => navigation.navigate('RfqCompare', { rfqId: request.rfqId! })}
+                />
+              ) : null}
+            </View>
+          </View>
+        </Card>
 
         {/* Faz 3, Adım 4: kabul edilen teklifin sipariş kaydına geçiş. */}
         {dealId ? (
-          <View style={styles.dealWrap}>
+          <View style={{ gap: t.space[3] }}>
             {justAccepted ? (
-              <View style={styles.okBox}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
-                <Text style={styles.okText}>Teklifi kabul ettiniz. Sipariş kaydı açıldı.</Text>
-              </View>
+              <Notice tone="success">
+                <Text style={[t.type.body14, { color: t.colors.success }]}>Teklifi kabul ettiniz. Sipariş kaydı açıldı.</Text>
+              </Notice>
             ) : null}
-            <PrimaryButton
+            <Button
+              kind="secondary"
+              fullWidth
               label="Siparişi aç"
-              variant="outline"
-              icon="cube-outline"
+              icon="sample"
               onPress={() => navigation.navigate('DealDetail', { dealId })}
             />
           </View>
@@ -395,68 +553,16 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
         )}
 
         {bannerMessage ? (
-          <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
+          <View style={{ gap: t.space[2] }}>
+            <Notice tone="danger">
+              <Text style={[t.type.body14, { color: t.colors.danger }]}>{bannerMessage}</Text>
+            </Notice>
+            {actionError ? null : <Button kind="secondary" label="Tekrar dene" onPress={reload} />}
+          </View>
         ) : null}
       </ScrollView>
-
-      {isSeller && isOpen && form ? (
-        <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-          <PrimaryButton
-            label={busy === 'save' ? 'Kaydediliyor...' : 'Kaydet'}
-            variant="outline"
-            size="lg"
-            disabled={!!busy}
-            onPress={save}
-          />
-          <PrimaryButton
-            label={busy === 'send' ? 'Gönderiliyor...' : lastSent ? 'Revize teklifi gönder' : 'Teklifi gönder'}
-            size="lg"
-            disabled={!!busy}
-            onPress={send}
-            style={styles.actionMain}
-          />
-        </View>
-      ) : null}
-
-      {!isSeller && isOpen ? (
-        <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-          {/* Süresi dolmuş teklifte de aynı düğmeler çizilir ama kapalı
-              (yukarıda sarı uyarı var); "geri çek" yalnızca teklif yokken. */}
-          {activeQuote && (activeQuote.status === 'sent' || expired) ? (
-            <>
-              <PrimaryButton
-                label={busy === 'decline' ? 'Gönderiliyor...' : 'Reddet'}
-                variant="outline"
-                size="lg"
-                disabled={!!busy || expired}
-                onPress={() => respond('decline')}
-              />
-              <PrimaryButton
-                label={busy === 'accept' ? 'Gönderiliyor...' : 'Kabul et'}
-                size="lg"
-                disabled={!!busy || expired}
-                onPress={() => respond('accept')}
-                style={styles.actionMain}
-              />
-            </>
-          ) : (
-            <PrimaryButton
-              label={busy === 'cancel' ? 'Geri çekiliyor...' : 'İsteği geri çek'}
-              variant="outline"
-              size="lg"
-              disabled={!!busy}
-              onPress={cancel}
-              style={styles.actionMain}
-            />
-          )}
-        </View>
-      ) : null}
-    </View>
+    </Screen>
   );
-}
-
-function dateInvalid(value: string) {
-  return !!value.trim() && !DATE_PATTERN.test(value.trim());
 }
 
 // --- Alıcı görünümü ---------------------------------------------------------
@@ -470,28 +576,30 @@ function BuyerSection({
   activeQuote: Quote | null;
   expired: boolean;
 }) {
+  const t = useTheme();
   if (!activeQuote) {
     return (
-      <View style={[styles.block, styles.infoBlock]}>
-        <Ionicons name="time-outline" size={20} color={colors.textMuted} />
-        <Text style={styles.infoText}>
+      <Notice tone="info">
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
           {request.status === 'cancelled'
             ? 'Bu isteği geri çektiniz.'
             : 'Satıcı teklif hazırlıyor. Teklif gelince bildirim alacaksınız.'}
         </Text>
-      </View>
+      </Notice>
     );
   }
 
   return (
     <>
-      <View style={styles.quoteWrap}>
+      <View style={{ gap: t.space[3] }}>
+        <SectionTitle title="Gelen teklif" />
         <QuoteCard quote={activeQuote} request={request} />
         {expired ? (
-          <View style={styles.warnBox} accessibilityRole="alert">
-            <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
-            <Text style={styles.warnText}>Bu teklifin geçerlilik süresi doldu; kabul edilemez.</Text>
-          </View>
+          <Notice tone="warning">
+            <Text style={[t.type.body14, { color: t.colors.warning }]}>
+              Bu teklifin geçerlilik süresi doldu; kabul edilemez.
+            </Text>
+          </Notice>
         ) : null}
       </View>
       {/* Faz 3, Adım 6: gelen teklifin altında piyasa aralığı. Alıcıda veri
@@ -501,8 +609,9 @@ function BuyerSection({
   );
 }
 
-// Kesik çizgili teklif kartı (PassportCard / AssistantResultCard görsel dili).
-function QuoteCard({ quote, request, compact }: { quote: Quote; request: QuoteRequestRow; compact?: boolean }) {
+// Teklif kartı: fiyat büyük, altında etiket/değer satırları.
+function QuoteCard({ quote, request }: { quote: Quote; request: QuoteRequestRow }) {
+  const t = useTheme();
   const total = quoteTotal(quote, request);
   const rows: { label: string; value: string }[] = [
     ...(total ? [{ label: 'Toplam', value: total }] : []),
@@ -515,22 +624,27 @@ function QuoteCard({ quote, request, compact }: { quote: Quote; request: QuoteRe
   ];
 
   return (
-    <View style={[styles.quoteFrame, compact && styles.quoteFrameCompact]}>
-      <View style={styles.quoteInner}>
-        <View style={styles.quoteTop}>
-          <Text style={styles.quoteKicker}>TEKLİF</Text>
-          {quote.sentAt ? <Text style={styles.quoteSent}>{formatRelativeTime(quote.sentAt)}</Text> : null}
+    <Card>
+      <View style={{ gap: t.space[2] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[3] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim fiyat</Text>
+          {quote.sentAt ? (
+            <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatRelativeTime(quote.sentAt)}</Text>
+          ) : null}
         </View>
-        <Text style={styles.quotePrice}>{quote.price ? formatUnitPrice(quote.price) : 'Fiyat girilmedi'}</Text>
-        {rows.map((row, index) => (
-          <View key={row.label} style={[styles.quoteRow, index < rows.length - 1 && styles.quoteRowDivider]}>
-            <Text style={styles.quoteLabel}>{row.label}</Text>
-            <Text style={styles.quoteValue}>{row.value}</Text>
+        <Text style={[t.type.mono20, { color: t.colors.ink }]}>
+          {quote.price ? formatUnitPrice(quote.price) : 'Fiyat girilmedi'}
+        </Text>
+        {rows.length ? (
+          <View>
+            {rows.map((row, index) => (
+              <SpecRow key={row.label} label={row.label} value={row.value} last={index === rows.length - 1} />
+            ))}
           </View>
-        ))}
-        {quote.note ? <Text style={styles.quoteNote}>{quote.note}</Text> : null}
+        ) : null}
+        {quote.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>{quote.note}</Text> : null}
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -557,20 +671,25 @@ function SellerSection({
   onChange: (patch: Partial<QuoteForm>) => void;
   onFill: () => void;
 }) {
+  const t = useTheme();
   if (!isOpen) {
     return (
-      <View style={styles.quoteWrap}>
-        {lastSent ? <QuoteCard quote={lastSent} request={request} /> : null}
-        <View style={[styles.block, styles.infoBlock]}>
-          <Ionicons name="lock-closed-outline" size={20} color={colors.textMuted} />
-          <Text style={styles.infoText}>
+      <View style={{ gap: t.space[3] }}>
+        {lastSent ? (
+          <>
+            <SectionTitle title="Gönderilen teklif" />
+            <QuoteCard quote={lastSent} request={request} />
+          </>
+        ) : null}
+        <Notice tone="info">
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
             {request.status === 'accepted'
               ? 'Alıcı teklifi kabul etti.'
               : request.status === 'declined'
                 ? 'Alıcı teklifi reddetti.'
                 : 'Alıcı isteği geri çekti.'}
           </Text>
-        </View>
+        </Notice>
       </View>
     );
   }
@@ -595,9 +714,9 @@ function SellerSection({
   return (
     <>
       {lastSent ? (
-        <View style={styles.quoteWrap}>
-          <Text style={styles.sectionNote}>Gönderilen son teklif</Text>
-          <QuoteCard quote={lastSent} request={request} compact />
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Gönderilen son teklif" />
+          <QuoteCard quote={lastSent} request={request} />
         </View>
       ) : null}
 
@@ -606,192 +725,112 @@ function SellerSection({
           görsün (alıcı tarafında kart veri yoksa hiç çizilmiyor). */}
       <PriceIndexCard productId={request.product.id} />
 
-      <View style={styles.block}>
-        <View style={styles.fillWrap}>
-          <PrimaryButton
-            label={busy === 'draft' ? 'Dolduruluyor...' : 'Ürün kaydından doldur'}
-            icon="sparkles-outline"
-            variant="outline"
-            disabled={!!busy}
-            onPress={onFill}
-          />
-        </View>
+      <View style={{ gap: t.space[4] }}>
+        <SectionTitle title={lastSent ? 'Revize teklif' : 'Teklifiniz'} />
+        <Button
+          kind="secondary"
+          fullWidth
+          label="Ürün kaydından doldur"
+          icon="sparkles-outline"
+          loading={busy === 'draft'}
+          disabled={!!busy}
+          onPress={onFill}
+        />
 
         {notices.length ? (
-          <View style={styles.noticeWrap}>
-            <View style={styles.warnBox} accessibilityRole="alert">
-              <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
-              <View style={styles.warnTexts}>
-                {notices.map((notice) => (
-                  <Text key={notice} style={styles.warnText}>
-                    {notice}
-                  </Text>
-                ))}
-              </View>
-            </View>
-          </View>
+          <Notice tone="warning">
+            {notices.map((notice) => (
+              <Text key={notice} style={[t.type.body14, { color: t.colors.warning }]}>
+                {notice}
+              </Text>
+            ))}
+          </Notice>
         ) : null}
 
-        <View style={styles.formBody}>
-          <TextField
-            label="Birim fiyat"
-            value={form.priceValue}
-            onChangeText={(priceValue) => onChange({ priceValue })}
-            keyboardType="decimal-pad"
-            placeholder="Örn. 4,50"
-          />
-          {priceError ? <Text style={styles.fieldError}>{priceError}</Text> : null}
-          <Text style={styles.fieldLabel}>Para birimi</Text>
-          <ChipSelect
+        <Input
+          label="Birim fiyat"
+          value={form.priceValue}
+          onChangeText={(priceValue) => onChange({ priceValue })}
+          inputMode="decimal"
+          keyboardType="decimal-pad"
+          placeholder="Örn. 4,50"
+          unit={`${form.priceCurrency}/${unitShort(form.priceUnit)}`}
+          error={priceError}
+        />
+        <View style={{ gap: t.space[1] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Para birimi</Text>
+          <SegmentControl<PriceCurrency>
+            stretch
+            accessibilityLabel="Para birimi"
             options={CURRENCY_OPTIONS}
             value={form.priceCurrency}
             onChange={(priceCurrency) => onChange({ priceCurrency })}
-            compact
           />
-          <Text style={styles.fieldLabel}>Fiyat birimi</Text>
-          <ChipSelect
+        </View>
+        <View style={{ gap: t.space[1] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Fiyat birimi</Text>
+          <SegmentControl<StockUnit>
+            stretch
+            accessibilityLabel="Fiyat birimi"
             options={UNIT_OPTIONS}
             value={form.priceUnit}
             onChange={(priceUnit) => onChange({ priceUnit })}
-            compact
           />
-
-          <TextField
-            label="En az sipariş (isteğe bağlı)"
-            value={form.moq}
-            onChangeText={(moq) => onChange({ moq })}
-            keyboardType="decimal-pad"
-            placeholder="Örn. 300"
-          />
-          <Text style={styles.fieldLabel}>En az sipariş birimi</Text>
-          <ChipSelect options={UNIT_OPTIONS} value={form.moqUnit} onChange={(moqUnit) => onChange({ moqUnit })} compact />
-
-          <TextField
-            label="Termin (gün, isteğe bağlı)"
-            value={form.leadTimeDays}
-            onChangeText={(leadTimeDays) => onChange({ leadTimeDays })}
-            keyboardType="number-pad"
-            placeholder="Örn. 12"
-          />
-          <TextField
-            label="Geçerlilik tarihi (YYYY-AA-GG, isteğe bağlı)"
-            value={form.validUntil}
-            onChangeText={(validUntil) => onChange({ validUntil })}
-            placeholder="2026-11-15"
-            autoCapitalize="none"
-          />
-          {dateInvalid(form.validUntil) ? (
-            <Text style={styles.fieldError}>Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).</Text>
-          ) : null}
-          <TextField
-            label="Ödeme koşulu (isteğe bağlı)"
-            value={form.paymentTerms}
-            onChangeText={(paymentTerms) => onChange({ paymentTerms })}
-            placeholder="Örn. %50 peşin, kalanı teslimatta"
-          />
-          <TextField
-            label="Not (isteğe bağlı)"
-            value={form.note}
-            onChangeText={(note) => onChange({ note })}
-            placeholder="Örn. Fiyat ekru içindir, boya ayrıca hesaplanır"
-            multiline
-          />
-          <Text style={styles.privacyNote}>Fiyatı yalnızca siz ve isteği açan taraf görüyor.</Text>
         </View>
+
+        <Input
+          label="En az sipariş (isteğe bağlı)"
+          value={form.moq}
+          onChangeText={(moq) => onChange({ moq })}
+          inputMode="decimal"
+          keyboardType="decimal-pad"
+          placeholder="Örn. 300"
+          unit={unitShort(form.moqUnit)}
+        />
+        <View style={{ gap: t.space[1] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>En az sipariş birimi</Text>
+          <SegmentControl<StockUnit>
+            stretch
+            accessibilityLabel="En az sipariş birimi"
+            options={UNIT_OPTIONS}
+            value={form.moqUnit}
+            onChange={(moqUnit) => onChange({ moqUnit })}
+          />
+        </View>
+
+        <Input
+          label="Termin (isteğe bağlı)"
+          value={form.leadTimeDays}
+          onChangeText={(leadTimeDays) => onChange({ leadTimeDays })}
+          inputMode="numeric"
+          keyboardType="number-pad"
+          placeholder="Örn. 12"
+          unit="gün"
+        />
+        <Input
+          label="Geçerlilik tarihi (isteğe bağlı)"
+          value={form.validUntil}
+          onChangeText={(validUntil) => onChange({ validUntil })}
+          placeholder="2026-11-15"
+          autoCapitalize="none"
+          helper="YYYY-AA-GG biçiminde yazın."
+          error={dateInvalid(form.validUntil) ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+        />
+        <Input
+          label="Ödeme koşulu (isteğe bağlı)"
+          value={form.paymentTerms}
+          onChangeText={(paymentTerms) => onChange({ paymentTerms })}
+          placeholder="Örn. %50 peşin, kalanı teslimatta"
+        />
+        <Input
+          label="Not (isteğe bağlı)"
+          value={form.note}
+          onChangeText={(note) => onChange({ note })}
+          placeholder="Örn. Fiyat ekru içindir, boya ayrıca hesaplanır"
+          multiline
+        />
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Fiyatı yalnızca siz ve isteği açan taraf görüyor.</Text>
       </View>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap, paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface },
-  pressedFade: { opacity: 0.6 },
-  summary: { padding: spacing.gutter, gap: 3 },
-  summaryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 20, lineHeight: 26, color: colors.primary },
-  counterparty: { ...typography.label, color: colors.accent },
-  summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  summaryValue: { ...typography.mono, fontSize: 15, color: colors.text },
-  requestNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, marginTop: spacing.xs },
-  compareLink: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH },
-  compareLinkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent },
-  infoBlock: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.gutter },
-  infoText: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, flex: 1 },
-  quoteWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
-  dealWrap: { paddingHorizontal: spacing.gutter, gap: spacing.sm },
-  okBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.successSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  okText: { ...typography.caption, color: colors.success, flexShrink: 1 },
-  sectionNote: { ...typography.caption, color: colors.textMuted },
-  // Kesik çizgili teklif kartı: akıştaki pasaport kartıyla aynı görsel dil.
-  quoteFrame: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: 4,
-  },
-  quoteFrameCompact: { opacity: 0.9 },
-  quoteInner: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 10,
-    gap: 4,
-  },
-  quoteTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  quoteKicker: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, letterSpacing: 0.5, color: colors.textMuted },
-  quoteSent: { ...typography.mono, fontSize: 13, lineHeight: 18, color: colors.textMuted },
-  quotePrice: { fontFamily: fonts.monoSemibold, fontSize: 22, lineHeight: 30, color: colors.primary },
-  quoteRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    paddingVertical: 6,
-  },
-  quoteRowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  quoteLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  quoteValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text, flexShrink: 1, textAlign: 'right' },
-  quoteNote: { ...typography.label, fontFamily: fonts.regular, color: colors.text, paddingTop: spacing.xs },
-  fillWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
-  formBody: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md },
-  fieldLabel: { ...typography.label, color: colors.text, marginBottom: spacing.xs, marginLeft: spacing.sm },
-  fieldError: { ...typography.caption, color: colors.danger, marginTop: -spacing.sm, marginBottom: spacing.sm },
-  privacyNote: { ...typography.caption, color: colors.textMuted, paddingBottom: spacing.md },
-  warnBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  noticeWrap: { paddingHorizontal: spacing.gutter, paddingTop: spacing.sm },
-  warnTexts: { flex: 1, gap: 2 },
-  warnText: { ...typography.caption, color: colors.warning, flexShrink: 1 },
-  banner: { marginHorizontal: spacing.gutter },
-  actionBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-    minHeight: MIN_TOUCH,
-  },
-  actionMain: { flex: 1 },
-});

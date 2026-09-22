@@ -1,49 +1,25 @@
 import React from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps } from 'react-native';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import type { TextInputProps } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Input } from '../ui';
 
 interface Props extends TextInputProps {
   label: string;
 }
 
-export function TextField({ label, style, multiline, ...inputProps }: Props) {
+// Geriye dönük sarmalayıcı: içi ui/Input (etiket üstte, 48px alan, odak
+// çerçevesi). Yeni kodda doğrudan `ui/Input` (unit / error / helper ile).
+// Eski alanın altındaki boşluk (formlar buna güveniyor) korunuyor.
+export function TextField({ label, style: _style, multiline, ...inputProps }: Props) {
+  const t = useTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        // Tasarımda form alanları tam yuvarlak ve açık mavi dolgulu. Çok satırlı
-        // alanda tam yuvarlak köşe metni kenardan kırptığı için orada yumuşak
-        // köşe kullanılıyor.
-        style={[styles.input, multiline ? styles.multiline : styles.single, style]}
-        placeholderTextColor={colors.textMuted}
-        multiline={multiline}
-        {...inputProps}
-      />
-    </View>
+    <Input
+      label={label}
+      multiline={multiline}
+      numberOfLines={multiline ? 4 : undefined}
+      textAlignVertical={multiline ? 'top' : undefined}
+      containerStyle={{ marginBottom: t.space[4] }}
+      {...inputProps}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: spacing.md,
-  },
-  label: {
-    ...typography.label,
-    color: colors.text,
-    marginBottom: spacing.xs,
-    marginLeft: spacing.sm,
-  },
-  input: {
-    fontFamily: fonts.regular,
-    minHeight: MIN_TOUCH,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 4,
-    fontSize: 17,
-    color: colors.text,
-    backgroundColor: colors.surfaceTonal,
-  },
-  single: { borderRadius: radius.md },
-  multiline: { borderRadius: radius.md, minHeight: 96, textAlignVertical: 'top' },
-});

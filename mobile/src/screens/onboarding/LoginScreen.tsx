@@ -1,22 +1,29 @@
+// Giriş ekranı (yeni tasarım, 4. adım).
+// Üstte kenardan kenara marka bloğu (`surfaceBrand`), altında `surface0`
+// zeminde başlık, telefon / kod alanı ve düğmeler. Veri katmanı aynı: kod
+// isteme, doğrulama, oturum açma. Ham hex / ham px yok; ölçüler token'dan.
 import React, { useState } from 'react';
-import { View, Text, TextInput, Image, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { OtpCodeField } from '../../components/OtpCodeField';
 import { InviteBanner } from '../../components/InviteBanner';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, requestOtp, verifyOtp } from '../../api/client';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Icon, Input } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-// Taslak: docs/tasarim-yonleri/CGiris.dc.html. Üstte lacivert marka bloğu,
-// altında beyaz zeminde başlık, eşit aralıklı telefon alanı ve 48px düğmeler.
+// Logo dosyası 900×145; yüksekliği token'dan alıp genişliği orandan
+// hesaplıyoruz (web'de aspectRatio uygulanmıyordu).
+const LOGO_RATIO = 900 / 145;
+
 export function LoginScreen({ navigation }: Props) {
+  const t = useTheme();
   const { login } = useSession();
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
@@ -96,61 +103,82 @@ export function LoginScreen({ navigation }: Props) {
     }
   };
 
+  const logoHeight = t.size.touchMin;
+
   return (
-    <View style={styles.screen}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       {/* Lacivert bloğun üstünde saat ve pil beyaz görünsün. */}
       <StatusBar style="light" />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.lg }]}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + t.space[10] }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.brand, { paddingTop: insets.top }]}>
-            {/* Orijinal Avedon logosu; lacivert zemin için harfleri beyaz sürüm
-                (assets/brand, kaynak docs/orijinal-tasarim/logo). */}
-            <Image
-              source={require('../../../assets/brand/avedon-logo-light.png')}
-              style={styles.brandLogo}
-              resizeMode="contain"
-              accessible
-              accessibilityRole="header"
-              accessibilityLabel="Avedon"
-            />
-            <Text style={styles.brandTagline}>Kaliteli kumaş aramanın yenilikçi yolu</Text>
+          {/* Marka bloğu kenardan kenara; içerideki metin yine 480'e ortalanır. */}
+          <View
+            style={{
+              backgroundColor: t.colors.surfaceBrand,
+              paddingTop: insets.top + t.space[10],
+              paddingBottom: t.space[8],
+              paddingHorizontal: t.space[4],
+            }}
+          >
+            <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, alignSelf: 'center' }}>
+              {/* Orijinal Avedon logosu; lacivert zemin için harfleri beyaz sürüm
+                  (assets/brand, kaynak docs/orijinal-tasarim/logo). */}
+              <Image
+                source={require('../../../assets/brand/avedon-logo-light.png')}
+                style={{ height: logoHeight, width: Math.round(logoHeight * LOGO_RATIO), maxWidth: '100%' }}
+                resizeMode="contain"
+                accessible
+                accessibilityRole="header"
+                accessibilityLabel="Avedon"
+              />
+              <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>
+                Kaliteli kumaş aramanın yenilikçi yolu
+              </Text>
+            </View>
           </View>
 
           {/* Davet bağlantısıyla gelindiyse kim davet etti (Faz 2, Adım 4). */}
           <InviteBanner />
 
-          <View style={styles.content}>
-            <Text style={styles.title}>Giriş Yap</Text>
-            <Text style={styles.subtitle}>
-              {step === 'phone'
-                ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
-                : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
-            </Text>
+          <View
+            style={{
+              width: '100%',
+              maxWidth: t.size.maxContentWidth,
+              alignSelf: 'center',
+              minWidth: 0,
+              paddingHorizontal: t.space[4],
+              paddingTop: t.space[6],
+              gap: t.space[4],
+            }}
+          >
+            <View style={{ gap: t.space[2], minWidth: 0 }}>
+              <Text style={[t.type.title22, { color: t.colors.ink }]}>Giriş yap</Text>
+              <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
+                {step === 'phone'
+                  ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
+                  : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
+              </Text>
+            </View>
 
             {step === 'phone' ? (
-              <>
-                <Text style={styles.label} nativeID="phoneLabel">
-                  Telefon
-                </Text>
-                <TextInput
-                  style={styles.phoneInput}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="05XX XXX XX XX"
-                  placeholderTextColor={colors.chevron}
-                  keyboardType="phone-pad"
-                  // Telefonun otomatik doldurması (denetim FINDING-014).
-                  autoComplete="tel"
-                  textContentType="telephoneNumber"
-                  returnKeyType="send"
-                  onSubmitEditing={() => phone.trim().length >= 10 && !submitting && sendCode()}
-                  accessibilityLabel="Telefon"
-                  accessibilityLabelledBy="phoneLabel"
-                />
-              </>
+              <Input
+                label="Telefon"
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="05XX XXX XX XX"
+                keyboardType="phone-pad"
+                // Telefonun otomatik doldurması (denetim FINDING-014).
+                autoComplete="tel"
+                textContentType="telephoneNumber"
+                returnKeyType="send"
+                onSubmitEditing={() => phone.trim().length >= 10 && !submitting && sendCode()}
+              />
             ) : (
               <OtpCodeField
                 code={code}
@@ -161,32 +189,47 @@ export function LoginScreen({ navigation }: Props) {
               />
             )}
 
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+            {/* Hata: ikon + metin (DESIGN.md §6). */}
+            {error ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space[2],
+                  padding: t.space[3],
+                  borderRadius: t.radius.md,
+                  backgroundColor: t.colors.dangerSoft,
+                }}
+              >
+                <Icon name="warning" size={t.size.iconSm} color="danger" />
+                <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+              </View>
+            ) : null}
 
+            {/* Ekrandaki tek dolu düğme. */}
             {step === 'phone' ? (
-              <PrimaryButton
-                label={submitting ? 'Gönderiliyor' : 'Kod Gönder'}
+              <Button
                 size="lg"
-                disabled={submitting || phone.trim().length < 10}
+                label="Kod gönder"
+                loading={submitting}
+                disabled={phone.trim().length < 10}
                 onPress={sendCode}
-                style={styles.primaryAction}
               />
             ) : (
-              <PrimaryButton
-                label={submitting ? 'Doğrulanıyor' : 'Giriş Yap'}
+              <Button
                 size="lg"
-                disabled={submitting || code.trim().length !== 6}
+                label="Giriş yap"
+                loading={submitting}
+                disabled={code.trim().length !== 6}
                 onPress={handleVerify}
-                style={styles.primaryAction}
               />
             )}
 
-            <PrimaryButton
-              label="Hesabım Yok, Kayıt Ol"
-              variant="outline"
+            <Button
+              kind="secondary"
               size="lg"
+              label="Hesabım yok, kayıt ol"
               onPress={() => navigation.replace('RoleSelection')}
-              style={styles.secondaryAction}
             />
           </View>
         </ScrollView>
@@ -194,38 +237,3 @@ export function LoginScreen({ navigation }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
-  flex: { flex: 1 },
-  scroll: { flexGrow: 1 },
-  brand: {
-    minHeight: 280,
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 28,
-    justifyContent: 'flex-end',
-  },
-  // Logo dosyası 900x145 → 280x45. Yüzde genişlik + aspectRatio web'de
-  // uygulanmadı (tarayıcıda kutu 280x145 ölçüldü, logonun üstü/altı boştu).
-  brandLogo: { width: 280, height: 45, maxWidth: '100%' },
-  brandTagline: { ...typography.body, color: colors.onPrimaryMuted, marginTop: spacing.sm },
-  content: { paddingHorizontal: spacing.lg, paddingTop: 28 },
-  title: { ...typography.title, color: colors.text },
-  subtitle: { ...typography.body, color: colors.textMuted, marginTop: 6 },
-  label: { ...typography.label, fontFamily: fonts.semibold, color: colors.text, marginTop: spacing.lg, marginBottom: 6 },
-  phoneInput: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.gutter,
-    fontFamily: fonts.mono,
-    fontSize: 17,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-  primaryAction: { marginTop: spacing.md },
-  secondaryAction: { marginTop: spacing.sm },
-});

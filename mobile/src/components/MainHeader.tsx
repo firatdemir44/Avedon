@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,39 +7,52 @@ import type { RootStackParamList } from '../navigation/types';
 import { useSession } from '../context/SessionContext';
 import { NotificationBell } from './NotificationBell';
 import { UserAvatar } from './UserAvatar';
-import { MIN_TOUCH, colors, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
-// Dört ana sekmenin (Akış, Ürünler, Asistan, Mesajlar) ortak üst başlığı
-// (Fırat 2026-09-21, referans LinkedIn üst çubuğu): solda yuvarlak profil
-// düğmesi, ortada "Arama Yap" kutusu görünümünde düğme, sağda bildirim zili.
-// Lacivert bant korunur; React Navigation'ın kendi başlığı yerine `header`
-// seçeneğiyle çiziliyor ki ortadaki kutu tüm boş genişliği alsın (headerTitle
-// kabı sağ/sol eylemlere göre daraltılıyor ve web'de de taşıyordu).
+// Dört ana sekmenin ortak üst başlığı: solda yuvarlak profil düğmesi, ortada
+// arama kutusu görünümünde düğme, sağda bildirim zili. AppBar ile aynı bant
+// (surfaceBrand, 56px, güvenli alan), ama başlık yerine arama kutusu var.
 //
-// Güvenli alan: özel başlık kendi üst boşluğunu `useSafeAreaInsets` ile ekler.
+// Yeni tasarım (4. adım): tüm renk/ölçü `useTheme()` token'larından.
 export function MainHeader({ right }: { right?: React.ReactNode }) {
+  const t = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useSession();
 
   return (
-    <View style={[styles.bar, { paddingTop: insets.top }]}>
-      <View style={styles.row}>
-        {/* Kişi profili: firma logosu DEĞİL, kullanıcının kendi fotoğrafı
-            (yoksa baş harfleri) — LinkedIn üst çubuğundaki gibi. */}
+    <View style={{ paddingTop: insets.top, backgroundColor: t.colors.surfaceBrand }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          paddingHorizontal: t.space[2],
+          minHeight: t.size.appbar,
+          minWidth: 0,
+        }}
+      >
+        {/* Kişi profili: firma logosu DEĞİL, kullanıcının kendi fotoğrafı. */}
         <Pressable
           onPress={() => navigation.navigate('MyProfile')}
           accessibilityRole="button"
           accessibilityLabel="Profilim"
-          hitSlop={6}
-          style={({ pressed }) => [styles.avatarWrap, pressed && styles.pressed]}
+          style={({ pressed }) => ({
+            width: t.size.touchMin,
+            height: t.size.touchMin,
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: t.radius.full,
+            backgroundColor: pressed ? t.colors.brandStrong : 'transparent',
+          })}
         >
           <UserAvatar
             userId={user?.id}
             firstName={user?.firstName}
             lastName={user?.lastName}
             avatarUpdatedAt={user?.avatarUpdatedAt}
-            size={AVATAR}
+            size={t.size.avatar}
             variant="onPrimary"
           />
         </Pressable>
@@ -49,15 +61,27 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
           onPress={() => navigation.navigate('GlobalSearch')}
           accessibilityRole="search"
           accessibilityLabel="Arama yap"
-          style={({ pressed }) => [styles.searchBox, pressed && styles.searchPressed]}
+          style={({ pressed }) => ({
+            flex: 1,
+            minWidth: 0,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[2],
+            height: t.size.avatar,
+            paddingHorizontal: t.space[3],
+            borderRadius: t.radius.md,
+            backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+            borderWidth: 1,
+            borderColor: t.colors.lineStrong,
+          })}
         >
-          <Ionicons name="search" size={18} color={colors.textMuted} />
-          <Text style={styles.searchText} numberOfLines={1}>
+          <Icon name="search" size={t.size.iconSm} color="ink3" />
+          <Text style={[t.type.body16, { color: t.colors.ink3, flexShrink: 1 }]} numberOfLines={1}>
             Arama Yap
           </Text>
         </Pressable>
 
-        <View style={styles.actions}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <NotificationBell />
           {right}
         </View>
@@ -65,42 +89,3 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
     </View>
   );
 }
-
-const AVATAR = 38;
-
-const styles = StyleSheet.create({
-  bar: { backgroundColor: colors.primary },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    minHeight: 52,
-    paddingVertical: 6,
-  },
-  avatarWrap: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.pill,
-  },
-  pressed: { backgroundColor: 'rgba(255,255,255,0.14)' },
-  // Lacivert bant üzerinde okunaklı olsun diye beyaza yakın zemin; köşeler
-  // tam yuvarlak (bu kutu "hap biçimli düğme yok" kuralının istisnası,
-  // referans görseldeki arama kutusu).
-  searchBox: {
-    flex: 1,
-    minWidth: 90,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 38,
-    paddingHorizontal: 12,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
-  },
-  searchPressed: { backgroundColor: colors.pressed },
-  searchText: { ...typography.body, color: colors.textMuted, flexShrink: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center' },
-});

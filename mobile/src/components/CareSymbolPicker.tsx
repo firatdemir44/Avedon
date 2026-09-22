@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { CareSymbolIcon } from './CareSymbolIcon';
 import {
   CARE_GROUPS,
@@ -8,7 +8,12 @@ import {
   type CareSymbol,
 } from '../features/care/symbols';
 import { haptics } from '../features/haptics';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+
+// Sembol kutucuğu genişliği (DESIGN.md'de adı olmayan ekran-içi ölçü): 375
+// px'te dört kutucuk + aralıklar yan yana sığar.
+const CELL_WIDTH = 78;
+const SYMBOL_SIZE = 30;
 
 // Etiketteki bakım sembolleri: beş grup alt alta, her grupta kutucuklar
 // sarılarak dizilir. Bir gruptan en çok BİR sembol seçilir; seçili kutucuğa
@@ -20,18 +25,21 @@ export function CareSymbolPicker({
   value: string[];
   onChange: (next: string[]) => void;
 }) {
+  const t = useTheme();
   const press = (symbol: CareSymbol) => {
     haptics.selection();
     onChange(toggleCareSymbol(value, symbol.key));
   };
 
   return (
-    <View>
-      <Text style={styles.hint}>Etiketteki bakım sembollerini seçin. Her gruptan bir tane.</Text>
+    <View style={{ gap: t.space[3] }}>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+        Etiketteki bakım sembollerini seçin. Her gruptan bir tane.
+      </Text>
       {CARE_GROUPS.map((group) => (
-        <View key={group.key} style={styles.group}>
-          <Text style={styles.groupTitle}>{group.label}</Text>
-          <View style={styles.grid}>
+        <View key={group.key} style={{ gap: t.space[2] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{group.label}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
             {careSymbolsOfGroup(group.key).map((symbol) => {
               const selected = value.includes(symbol.key);
               return (
@@ -42,19 +50,33 @@ export function CareSymbolPicker({
                   accessibilityState={{ selected, checked: selected }}
                   accessibilityLabel={symbol.label}
                   accessibilityHint={selected ? 'Seçimi kaldırmak için dokunun' : undefined}
-                  style={({ pressed }) => [
-                    styles.cell,
-                    selected && styles.cellSelected,
-                    pressed && styles.cellPressed,
-                  ]}
+                  style={({ pressed }) => ({
+                    width: CELL_WIDTH,
+                    minHeight: t.size.control + t.space[2],
+                    alignItems: 'center',
+                    gap: t.space[1] / 2,
+                    paddingVertical: t.space[2],
+                    paddingHorizontal: t.space[1],
+                    borderRadius: t.radius.md,
+                    borderWidth: selected ? 2 : 1,
+                    borderColor: selected ? t.colors.brand : t.colors.lineStrong,
+                    backgroundColor: selected
+                      ? t.colors.brandSoft
+                      : pressed
+                        ? t.colors.surface2
+                        : t.colors.surface1,
+                  })}
                 >
                   <CareSymbolIcon
                     shape={symbol.shape}
-                    size={30}
-                    color={selected ? colors.primary : colors.text}
+                    size={SYMBOL_SIZE}
+                    color={selected ? t.colors.brand : t.colors.ink}
                   />
                   <Text
-                    style={[styles.cellLabel, selected && styles.cellLabelSelected]}
+                    style={[
+                      t.type.caption12,
+                      { color: selected ? t.colors.brand : t.colors.ink2, textAlign: 'center' },
+                    ]}
                     numberOfLines={2}
                   >
                     {symbol.label}
@@ -68,26 +90,3 @@ export function CareSymbolPicker({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  hint: { ...typography.caption, color: colors.textMuted, paddingBottom: spacing.sm },
-  group: { paddingTop: spacing.sm },
-  groupTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted, paddingBottom: 6 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  cell: {
-    width: 84,
-    minHeight: MIN_TOUCH + 12,
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  cellSelected: { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.accentSoft },
-  cellPressed: { backgroundColor: colors.pressed },
-  cellLabel: { ...typography.caption, fontSize: 11, lineHeight: 14, color: colors.textMuted, textAlign: 'center' },
-  cellLabelSelected: { color: colors.primary, fontFamily: fonts.semibold },
-});

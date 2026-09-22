@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
-import { PrimaryButton } from './PrimaryButton';
+import { View, Text, Image } from 'react-native';
 import { pickCompressedImage } from '../features/imagePicker';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Button } from '../ui';
 
+// Logo karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
 const LOGO_SIZE = 96;
 
 const DEFAULT_HINT =
@@ -14,7 +15,7 @@ interface Props {
   companyName: string;
   // Ekranda görünen logo (mevcut logo ya da yeni seçilenin data URL'i).
   preview: string | null;
-  // Yeni logo seçildiğinde data URL, "Logoyu Kaldır"da null.
+  // Yeni logo seçildiğinde data URL, "Logoyu kaldır"da null.
   onChange: (dataUrl: string | null) => void;
   // Seçim sırasında oluşan hata; seçim başlarken null ile temizlenir.
   onError: (message: string | null) => void;
@@ -22,10 +23,12 @@ interface Props {
   hint?: string | null;
 }
 
-// Logo seçme/kaldırma bloğu: hem "Firmayı Düzenle" formunda hem adım adım
+// Logo seçme/kaldırma bloğu: hem "Firmayı düzenle" formunda hem adım adım
 // kurulumun logo adımında aynı görünüm ve aynı sıkıştırma ayarları kullanılsın
-// diye ortak bileşen.
+// diye ortak bileşen. Logo karesi firma avatarı dilinde (brand-soft / brand,
+// radius-sm); görsel varsa 1px line çerçeve.
 export function CompanyLogoPicker({ companyName, preview, onChange, onError, hint = DEFAULT_HINT }: Props) {
+  const t = useTheme();
   const [picking, setPicking] = useState(false);
 
   const pick = async () => {
@@ -51,43 +54,47 @@ export function CompanyLogoPicker({ companyName, preview, onChange, onError, hin
   const initial = companyName.trim().charAt(0).toLocaleUpperCase('tr-TR') || '?';
 
   return (
-    <View>
-      <View style={styles.logoRow}>
+    <View style={{ gap: t.space[2] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[4] }}>
         {preview ? (
-          <Image source={{ uri: preview }} style={[styles.logo, styles.logoImage]} resizeMode="contain" />
+          <Image
+            source={{ uri: preview }}
+            resizeMode="contain"
+            accessibilityLabel={`${companyName} logosu`}
+            style={{
+              width: LOGO_SIZE,
+              height: LOGO_SIZE,
+              borderRadius: t.radius.sm,
+              backgroundColor: t.colors.surface1,
+              borderWidth: 1,
+              borderColor: t.colors.line,
+            }}
+          />
         ) : (
-          <View style={styles.logo}>
-            <Text style={styles.logoInitial}>{initial}</Text>
+          <View
+            style={{
+              width: LOGO_SIZE,
+              height: LOGO_SIZE,
+              borderRadius: t.radius.sm,
+              backgroundColor: t.colors.brandSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[t.type.display28, { color: t.colors.brand }]}>{initial}</Text>
           </View>
         )}
-        <View style={styles.logoActions}>
-          <PrimaryButton
-            label={picking ? 'İşleniyor...' : preview ? 'Logoyu Değiştir' : 'Logo Seç'}
-            variant="secondary"
-            disabled={picking}
+        <View style={{ flex: 1, gap: t.space[2] }}>
+          <Button
+            kind="secondary"
+            label={picking ? 'İşleniyor...' : preview ? 'Logoyu değiştir' : 'Logo seç'}
+            loading={picking}
             onPress={pick}
           />
-          {preview ? <PrimaryButton label="Logoyu Kaldır" variant="secondary" onPress={() => onChange(null)} /> : null}
+          {preview ? <Button kind="quiet" label="Logoyu kaldır" onPress={() => onChange(null)} /> : null}
         </View>
       </View>
-      {hint ? <Text style={styles.hint}>{hint}</Text> : null}
+      {hint ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{hint}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.sm },
-  logo: {
-    width: LOGO_SIZE,
-    height: LOGO_SIZE,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  logoImage: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  logoInitial: { fontSize: 40, fontFamily: fonts.bold, color: colors.primaryText },
-  logoActions: { flex: 1, gap: spacing.sm },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-});

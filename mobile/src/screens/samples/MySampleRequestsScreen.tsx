@@ -1,110 +1,132 @@
-import React from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Gönderdiğim numune talepleri (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı değişmedi: GET /sample-requests?as=requester; satıra dokununca
+// aynı takip rotası. Kalıp `screens/requests/RequestsScreen.tsx` ile aynı.
+import React, { useEffect } from 'react';
+import { FlatList, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchMySampleRequests } from '../../api/client';
-import { SampleStatusBadge } from '../../components/SampleStatusBadge';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import type { SampleRequestStatus } from '../../types';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  EmptyState,
+  Icon,
+  ListRow,
+  Screen,
+  SkeletonRow,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
-// Yeni düzen (5. aşama): çizgili talep satırları; dokununca takip ekranı.
-// Eskiden kart içinde "Takibi görüntüle →" metni vardı; satırın kendisi
-// dokunulabilir ve sonunda ok ikonu var.
+const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
+  talep_edildi: 'pending',
+  onaylandi: 'info',
+  hazirlandi: 'info',
+  teslim_edildi: 'delivered',
+};
+
 export function MySampleRequestsScreen({ navigation }: Props) {
+  const t = useTheme();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchMySampleRequests().then(({ sampleRequests }) => sampleRequests)
   );
   const requests = data ?? [];
 
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const banner = error ? friendlyMessage(error, 'Talepler alınamadı') : null;
+
+  const header = banner ? (
+    <View style={{ paddingBottom: t.space[3] }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          padding: t.space[3],
+          borderRadius: t.radius.md,
+          backgroundColor: t.colors.dangerSoft,
+        }}
+      >
+        <Icon name="warning" size={t.size.iconSm} color="danger" />
+        <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{banner}</Text>
+      </View>
+    </View>
+  ) : null;
+
+  const bar = <AppBar title="Taleplerim" leading="back" onBack={() => navigation.goBack()} />;
+
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="request" />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen scroll={false}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Screen>
+      </View>
     );
   }
 
-  if (status === 'error') {
+  if (status === 'error' && requests.length === 0) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="Talepler alınamadı" onRetry={reload} />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
+        <Screen>
+          <EmptyState
+            icon="warning"
+            title="Talepler alınamadı"
+            description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
+            actionLabel="Yeniden dene"
+            onAction={reload}
+          />
+        </Screen>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={refreshControl(refreshing, refresh)}
-        ListHeaderComponent={
-          error ? (
-            <InlineError message={friendlyMessage(error, 'Talepler alınamadı')} onRetry={reload} style={styles.banner} />
-          ) : null
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="flask-outline"
-            title="Henüz numune talebiniz yok"
-            message="Beğendiğiniz ürünün sayfasından numune isteyebilir, süreci buradan adım adım takip edebilirsiniz."
-            actionLabel="Ürünlere göz at"
-            onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
-          />
-        }
-        renderItem={({ item, index }) => (
-          <Pressable
-            onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
-            accessibilityRole="button"
-            accessibilityLabel={`${item.product.code}, ${item.product.company.name}, ${item.statusLabel}. Takibi aç`}
-            android_ripple={{ color: colors.pressed }}
-            style={({ pressed }) => [styles.row, index < requests.length - 1 && styles.rowDivider, pressed && styles.pressed]}
-          >
-            <View style={styles.texts}>
-              <View style={styles.topLine}>
-                <Text style={styles.code}>{item.product.code}</Text>
-                <SampleStatusBadge status={item.status} label={item.statusLabel} />
-              </View>
-              <Text style={styles.company} numberOfLines={1}>
-                {item.product.company.name}
-              </Text>
-              <Text style={styles.meta} numberOfLines={1}>
-                {item.deliveryModeLabel} · {formatRelativeTime(item.createdAt)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-          </Pressable>
-        )}
-      />
-    </SafeAreaView>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
+      <Screen scroll={false} noPadding>
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item.id}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          refreshControl={refreshControl(refreshing, refresh)}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            <EmptyState
+              icon="sample"
+              title="İlk numune talebini gönder"
+              description="Beğendiğin ürünün sayfasından numune isteyebilir, süreci buradan adım adım takip edebilirsin."
+              actionLabel="Kataloğa git"
+              onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
+            />
+          }
+          renderItem={({ item, index }) => (
+            <ListRow
+              title={item.product.code}
+              subtitle={`${item.product.company.name} · ${item.deliveryModeLabel} · ${formatRelativeTime(item.createdAt)}`}
+              avatarName={item.product.company.name}
+              avatarKind="company"
+              right={<Badge kind={SAMPLE_BADGE[item.status]} label={item.statusLabel} />}
+              divider={index < requests.length - 1}
+              onPress={() => navigation.navigate('SampleRequestTracking', { sampleRequestId: item.id })}
+            />
+          )}
+        />
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  texts: { flex: 1, gap: 2 },
-  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { ...typography.monoStrong, color: colors.primary },
-  company: { ...typography.label, color: colors.accent },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-});

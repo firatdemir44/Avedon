@@ -1,11 +1,12 @@
+// Gönderi paylaşma / düzenleme ekranı (yeni tasarım, 4. adım — DESIGN.md §2–3).
+// Veri katmanı değişmedi: aynı uçlar, aynı gövdeler, aynı rotalar. Yalnızca
+// sunum yenilendi: AppBar + Screen(sticky) + ui/Input + ui/Card + ui/Button.
+// Ham hex / ham px yok; her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Image, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { useSession } from '../../context/SessionContext';
 import {
   createPost,
@@ -18,16 +19,32 @@ import {
 import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { markFeedStale } from '../../features/feed/feedRefresh';
 import { pickCompressedImage } from '../../features/imagePicker';
-import { loadProductImage } from '../../features/products/productImageCache';
+import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { categoryLabel } from '../../features/products/catalog';
 import { haptics } from '../../features/haptics';
 import { MAX_VIDEO_SECONDS } from '../../features/videoUpload';
 import { formatVideoDuration, useVideoUpload } from '../../features/useVideoUpload';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Button,
+  Card,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  SegmentControl,
+  SkeletonText,
+} from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePost'>;
 
 const MAX_BODY = 3000;
+
+// DESIGN.md'de adı olmayan, yalnızca bu ekranda geçen ölçüler.
+const BODY_MIN_HEIGHT = 120;
+const PREVIEW_RATIO = 4 / 3;
+const PROGRESS_HEIGHT = 6;
 
 // Seçili ürünün ekranda gösterilen özeti.
 interface SelectedProduct {
@@ -43,8 +60,9 @@ interface SelectedProduct {
 //
 // Ürün seçimi ayrı ekranda (SelectProduct): firmaların yüzlerce kumaşı olacağı
 // için ürünleri burada listelemek ekranı kullanılmaz hale getiriyordu (kullanıcı
-// geri bildirimi 2026-09-16). Burada yalnızca seçilen ürünün tek satırı duruyor.
+// geri bildirimi 2026-09-16). Burada yalnızca seçilen ürünün tek çipi duruyor.
 export function CreatePostScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const editingPostId = route.params?.postId ?? null;
   const isEditing = !!editingPostId;
@@ -69,9 +87,13 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const videoUpload = useVideoUpload({ onError: setError });
   const video = videoUpload.video;
 
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   useEffect(() => {
     if (!editingPostId) return;
-    navigation.setOptions({ title: 'Gönderiyi Düzenle' });
     let cancelled = false;
     fetchPost(editingPostId)
       .then(({ post }) => {
@@ -90,7 +112,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [editingPostId, navigation]);
+  }, [editingPostId]);
 
   // Seçim ekranından (ya da ürün sayfasındaki "Paylaş"tan) dönüş. pickedAt
   // olmadan aynı ürün ikinci kez seçilince parametre değişmezdi.
@@ -133,7 +155,32 @@ export function CreatePostScreen({ navigation, route }: Props) {
     };
   }, [productId, selectedProduct?.id]);
 
-  // "Ürün Seç" mi yoksa "önce ürün ekleyin" mi gösterileceğini belirler.
+  // Ürün çipindeki 32px görsel (liste yanıtında gelmiyor, tek tek çekiliyor).
+  const [chipImage, setChipImage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedProduct?.hasImage) {
+      setChipImage(null);
+      return;
+    }
+    const cached = getCachedProductImage(selectedProduct.id);
+    if (cached) {
+      setChipImage(cached);
+      return;
+    }
+    let cancelled = false;
+    loadProductImage(selectedProduct.id)
+      .then((url) => {
+        if (!cancelled) setChipImage(url);
+      })
+      .catch(() => {
+        // Görsel gelmezse yer tutucu kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProduct?.id, selectedProduct?.hasImage]);
+
+  // "Ürün seç" mi yoksa "önce ürün ekleyin" mi gösterileceğini belirler.
   useFocusEffect(
     useCallback(() => {
       if (!user?.companyId) return;
@@ -244,287 +291,291 @@ export function CreatePostScreen({ navigation, route }: Props) {
     }
   };
 
+  const title = isEditing ? 'Gönderiyi düzenle' : 'Gönderi paylaş';
+  const appBar = <AppBar title={title} leading="back" onBack={() => navigation.goBack()} />;
+
   if (loadingPost) {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </SafeAreaView>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {appBar}
+        <Screen>
+          <SkeletonText lines={4} />
+        </Screen>
+      </View>
     );
   }
 
-  // Firması olmayan (bireysel/alıcı) hesaplarda ürün bölümü hiç yok.
-  const productSection = user?.companyId ? (
-    <>
-      <Text style={styles.label}>Ürün ekle (isteğe bağlı)</Text>
-      <Text style={styles.hint}>
-        Ürün eklerseniz gönderinizde ürünün ölçüleri ve "Talep Et" düğmesi çıkar; alıcılar doğrudan numune isteyebilir.
-      </Text>
-      {selectedProduct ? (
-        <View style={styles.selectedBox}>
-          <View style={styles.selectedRow}>
-            <ProductThumbnail productId={selectedProduct.id} hasImage={selectedProduct.hasImage} size={44} />
-            <View style={styles.selectedTexts}>
-              <Text style={styles.selectedCode}>{selectedProduct.code}</Text>
-              <Text style={styles.selectedMeta}>{categoryLabel(selectedProduct.type, selectedProduct.subtype)}</Text>
-            </View>
-          </View>
-          <View style={styles.selectedActions}>
-            <PrimaryButton
-              label="Değiştir"
-              variant="outline"
-              onPress={openProductPicker}
-              style={styles.flexButton}
-              accessibilityLabel="Başka ürün seç"
-            />
-            <PrimaryButton label="Kaldır" variant="secondary" onPress={clearProduct} style={styles.flexButton} />
-          </View>
-        </View>
-      ) : productTotal === 0 ? (
-        <View style={styles.emptyProducts}>
-          <Text style={styles.emptyProductsText}>Firmanızın henüz ürünü yok.</Text>
-          <PrimaryButton label="Ürün Ekle" icon="add" variant="outline" onPress={() => navigation.navigate('AddProduct')} />
-        </View>
-      ) : (
-        <PrimaryButton label="Ürün Seç" icon="cube-outline" variant="outline" onPress={openProductPicker} />
-      )}
-      {!isEditing && selectedProduct?.hasImage && !hasMedia ? (
-        <PrimaryButton
-          label={usingProductPhoto ? 'Fotoğraf alınıyor...' : 'Ürün fotoğrafını gönderiye ekle'}
-          icon="image-outline"
-          variant="secondary"
-          disabled={usingProductPhoto}
-          onPress={useProductPhoto}
-          style={styles.productPhotoButton}
-        />
-      ) : null}
-    </>
+  // Ürün çipi (DESIGN.md §3 "Paylaşım kartı"): 32px görsel + ad + mono-14 kod.
+  const productChip = selectedProduct ? (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3], minHeight: t.size.touchMin }}>
+      <View
+        style={{
+          width: t.size.avatarSm,
+          height: t.size.avatarSm,
+          borderRadius: t.radius.sm,
+          borderWidth: 1,
+          borderColor: t.colors.line,
+          backgroundColor: t.colors.surface2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        {chipImage ? (
+          <Image source={{ uri: chipImage }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+        ) : (
+          <Icon name="fabric" size={t.size.iconSm} color="ink3" />
+        )}
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text numberOfLines={1} style={[t.type.body16Strong, { color: t.colors.ink }]}>
+          {categoryLabel(selectedProduct.type, selectedProduct.subtype)}
+        </Text>
+        <Text numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+          {selectedProduct.code}
+        </Text>
+      </View>
+    </View>
   ) : null;
 
+  // Firması olmayan (bireysel/alıcı) hesaplarda ürün bölümü hiç yok.
+  const productSection = user?.companyId ? (
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title="Ürün ekle (isteğe bağlı)" />
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+        Ürün eklerseniz gönderinizde ürünün ölçüleri ve "Talep et" düğmesi çıkar; alıcılar doğrudan numune
+        isteyebilir.
+      </Text>
+      {selectedProduct ? (
+        <Card>
+          <View style={{ gap: t.space[3] }}>
+            {productChip}
+            <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+              <Button
+                kind="secondary"
+                label="Değiştir"
+                accessibilityLabel="Başka ürün seç"
+                onPress={openProductPicker}
+                style={{ flex: 1 }}
+              />
+              <Button kind="secondary" label="Kaldır" onPress={clearProduct} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </Card>
+      ) : productTotal === 0 ? (
+        <Card>
+          <View style={{ gap: t.space[3] }}>
+            <Text style={[t.type.body16, { color: t.colors.ink2 }]}>Firmanızın henüz ürünü yok.</Text>
+            <Button
+              kind="secondary"
+              label="Ürün ekle"
+              icon="plus"
+              fullWidth
+              onPress={() => navigation.navigate('AddProduct')}
+            />
+          </View>
+        </Card>
+      ) : (
+        <Button kind="secondary" label="Ürün seç" icon="fabric" fullWidth onPress={openProductPicker} />
+      )}
+      {!isEditing && selectedProduct?.hasImage && !hasMedia ? (
+        <Button
+          kind="secondary"
+          label={usingProductPhoto ? 'Fotoğraf alınıyor…' : 'Ürün fotoğrafını gönderiye ekle'}
+          icon="image-outline"
+          fullWidth
+          disabled={usingProductPhoto}
+          onPress={useProductPhoto}
+        />
+      ) : null}
+    </View>
+  ) : null;
+
+  const mediaSection = isEditing ? (
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title="Fotoğraf veya video" />
+      <Card>
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
+            {existingMedia === 'video'
+              ? 'Gönderide video var'
+              : existingMedia === 'image'
+                ? 'Gönderide fotoğraf var'
+                : 'Gönderide fotoğraf veya video yok'}
+          </Text>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+            Düzenlemede yazı, görünürlük ve ürün değiştirilebilir. Fotoğrafı ya da videoyu değiştirmek için
+            gönderiyi silip yeniden paylaşın.
+          </Text>
+        </View>
+      </Card>
+    </View>
+  ) : (
+    <View style={{ gap: t.space[3] }}>
+      <SectionTitle title="Fotoğraf veya video" />
+      <Card>
+        <View style={{ gap: t.space[3] }}>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+            Bir gönderiye bir fotoğraf ya da en fazla {MAX_VIDEO_SECONDS} saniyelik bir video eklenebilir.
+          </Text>
+
+          {imageUri ? (
+            <Image
+              source={{ uri: imageUri }}
+              resizeMode="cover"
+              style={{
+                width: '100%',
+                aspectRatio: PREVIEW_RATIO,
+                borderRadius: t.radius.md,
+                borderWidth: 1,
+                borderColor: t.colors.line,
+                backgroundColor: t.colors.surface2,
+              }}
+            />
+          ) : null}
+
+          {video ? (
+            <View style={{ gap: t.space[2] }}>
+              <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
+                {video.phase === 'uploading'
+                  ? video.progress >= 0.999
+                    ? 'Yükleme tamamlanıyor, onay bekleniyor…'
+                    : `Video yükleniyor %${Math.round(video.progress * 100)}`
+                  : `Video yüklendi${video.durationSeconds != null ? ` · ${formatVideoDuration(video.durationSeconds)}` : ''}`}
+              </Text>
+              <View
+                style={{
+                  height: PROGRESS_HEIGHT,
+                  borderRadius: t.radius.sm,
+                  backgroundColor: t.colors.surface2,
+                  overflow: 'hidden',
+                }}
+              >
+                <View
+                  style={{
+                    height: PROGRESS_HEIGHT,
+                    backgroundColor: t.colors.accent,
+                    width: `${Math.round((video.phase === 'uploading' ? video.progress : 1) * 100)}%`,
+                  }}
+                />
+              </View>
+              {video.phase === 'uploaded' ? (
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  Paylaştıktan sonra kısa bir süre işlenir, sonra akışta izlenebilir.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+
+          <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+            {!video ? (
+              <Button
+                kind="secondary"
+                label={pickingImage ? 'İşleniyor…' : imageUri ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
+                icon="camera"
+                disabled={pickingImage}
+                onPress={pickImage}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            {!imageUri && !video ? (
+              <Button
+                kind="secondary"
+                label="Video ekle"
+                icon="videocam-outline"
+                onPress={pickAndUploadVideo}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            {hasMedia && !uploadingVideo ? (
+              <Button
+                kind="secondary"
+                label="Kaldır"
+                onPress={() => {
+                  if (video) {
+                    videoUpload.remove();
+                  } else {
+                    setImageUri(null);
+                    setImageDataUrl(null);
+                  }
+                }}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+          </View>
+        </View>
+      </Card>
+    </View>
+  );
+
+  const submitLabel = submitting
+    ? isEditing
+      ? 'Kaydediliyor…'
+      : 'Paylaşılıyor…'
+    : uploadingVideo
+      ? 'Video yükleniyor…'
+      : isEditing
+        ? 'Kaydet'
+        : 'Paylaş';
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <TextInput
-          style={styles.bodyInput}
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {appBar}
+      <Screen
+        sticky={
+          <Button
+            size="lg"
+            label={submitLabel}
+            loading={submitting}
+            disabled={!canSubmit}
+            onPress={handleSubmit}
+          />
+        }
+      >
+        <Input
+          label="Gönderi metni"
           placeholder="Ne paylaşmak istersiniz?"
-          placeholderTextColor={colors.textMuted}
           value={body}
           onChangeText={(text) => setBody(text.slice(0, MAX_BODY))}
           multiline
+          textAlignVertical="top"
+          helper={`${body.length} / ${MAX_BODY}`}
+          containerStyle={{ minHeight: BODY_MIN_HEIGHT }}
         />
-        <Text style={styles.counter}>
-          {body.length} / {MAX_BODY}
-        </Text>
 
         {productSection}
+        {mediaSection}
 
-        {isEditing ? (
-          <View style={styles.videoBox}>
-            <Text style={styles.videoTitle}>
-              {existingMedia === 'video'
-                ? 'Gönderide video var'
-                : existingMedia === 'image'
-                  ? 'Gönderide fotoğraf var'
-                  : 'Gönderide fotoğraf veya video yok'}
-            </Text>
-            <Text style={styles.hint}>
-              Düzenlemede yazı, görünürlük ve ürün değiştirilebilir. Fotoğrafı ya da videoyu değiştirmek için gönderiyi silip yeniden paylaşın.
-            </Text>
-          </View>
-        ) : (
-          <>
-            <Text style={styles.label}>Fotoğraf veya video</Text>
-            <Text style={styles.hint}>
-              Bir gönderiye bir fotoğraf ya da en fazla {MAX_VIDEO_SECONDS} saniyelik bir video eklenebilir.
-            </Text>
-
-            {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} /> : null}
-
-            {video ? (
-              <View style={styles.videoBox}>
-                <Text style={styles.videoTitle}>
-                  {video.phase === 'uploading'
-                    ? video.progress >= 0.999
-                      ? 'Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...'
-                      : `Video yükleniyor %${Math.round(video.progress * 100)}`
-                    : `Video yüklendi${video.durationSeconds != null ? ` · ${formatVideoDuration(video.durationSeconds)}` : ''}`}
-                </Text>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { width: `${Math.round((video.phase === 'uploading' ? video.progress : 1) * 100)}%` },
-                    ]}
-                  />
-                </View>
-                {video.phase === 'uploaded' ? (
-                  <Text style={styles.hint}>Paylaştıktan sonra kısa bir süre işlenir, sonra akışta izlenebilir.</Text>
-                ) : null}
-              </View>
-            ) : null}
-
-            <View style={styles.imageActions}>
-              {!video ? (
-                <PrimaryButton
-                  label={pickingImage ? 'İşleniyor...' : imageUri ? 'Fotoğrafı Değiştir' : 'Fotoğraf Ekle'}
-                  variant="secondary"
-                  disabled={pickingImage}
-                  onPress={pickImage}
-                  style={styles.flexButton}
-                />
-              ) : null}
-              {!imageUri && !video ? (
-                <PrimaryButton label="Video Ekle" variant="secondary" onPress={pickAndUploadVideo} style={styles.flexButton} />
-              ) : null}
-              {hasMedia && !uploadingVideo ? (
-                <PrimaryButton
-                  label="Kaldır"
-                  variant="secondary"
-                  onPress={() => {
-                    if (video) {
-                      videoUpload.remove();
-                    } else {
-                      setImageUri(null);
-                      setImageDataUrl(null);
-                    }
-                  }}
-                  style={styles.flexButton}
-                />
-              ) : null}
-            </View>
-          </>
-        )}
-
-        <Text style={styles.label}>Kimler görebilir?</Text>
-        <View style={styles.chipRow}>
-          {(
-            [
-              { value: 'public', label: 'Herkese Açık' },
-              { value: 'connections', label: 'Sadece Bağlantılarım' },
-            ] as { value: PostVisibility; label: string }[]
-          ).map((option) => (
-            <Pressable
-              key={option.value}
-              onPress={() => setVisibility(option.value)}
-              style={[styles.chip, visibility === option.value && styles.chipSelected]}
-            >
-              <Text style={[styles.chipText, visibility === option.value && styles.chipTextSelected]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={{ gap: t.space[3] }}>
+          <SectionTitle title="Kimler görebilir?" />
+          <SegmentControl<PostVisibility>
+            stretch
+            accessibilityLabel="Görünürlük"
+            value={visibility}
+            onChange={setVisibility}
+            options={[
+              { value: 'public', label: 'Herkese açık' },
+              { value: 'connections', label: 'Bağlantılarım' },
+            ]}
+          />
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton
-          label={
-            submitting
-              ? isEditing
-                ? 'Kaydediliyor...'
-                : 'Paylaşılıyor...'
-              : uploadingVideo
-                ? 'Video yükleniyor...'
-                : isEditing
-                  ? 'Kaydet'
-                  : 'Paylaş'
-          }
-          disabled={!canSubmit}
-          onPress={handleSubmit}
-          style={{ marginTop: spacing.md }}
-        />
-      </ScrollView>
-    </SafeAreaView>
+        {error ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+          </View>
+        ) : null}
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  bodyInput: {
-    fontFamily: fonts.regular,
-    minHeight: 120,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: 17,
-    backgroundColor: colors.surfaceTonal,
-    color: colors.text,
-    textAlignVertical: 'top',
-  },
-  counter: { ...typography.caption, color: colors.textMuted, alignSelf: 'flex-end', marginTop: spacing.xs },
-  label: {
-    ...typography.label,
-    color: colors.text,
-    marginTop: spacing.lg,
-    marginBottom: spacing.xs,
-  },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.sm },
-  selectedBox: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    overflow: 'hidden',
-  },
-  selectedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  selectedTexts: { flex: 1, gap: 1 },
-  selectedCode: { ...typography.monoStrong, color: colors.primary },
-  selectedMeta: { ...typography.caption, color: colors.textMuted },
-  selectedActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.gutter,
-    paddingBottom: spacing.sm,
-  },
-  productPhotoButton: { marginTop: spacing.sm },
-  emptyProducts: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  emptyProductsText: { ...typography.body, color: colors.textMuted },
-  preview: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    borderRadius: radius.md,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surfaceTonal,
-  },
-  videoBox: {
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  videoTitle: { ...typography.bodyStrong, color: colors.text },
-  progressTrack: { height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden' },
-  progressFill: { height: 6, backgroundColor: colors.accent },
-  imageActions: { flexDirection: 'row', gap: spacing.sm },
-  flexButton: { flex: 1 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: {
-    minHeight: MIN_TOUCH - 8,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  chipSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-  chipText: { ...typography.label, color: colors.text },
-  chipTextSelected: { color: colors.primaryText },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginTop: spacing.md },
-});

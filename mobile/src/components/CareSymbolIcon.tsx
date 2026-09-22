@@ -1,6 +1,7 @@
 import React from 'react';
 import Svg, { Circle, Path, Text as SvgText } from 'react-native-svg';
 import type { CareShape } from '../features/care/symbols';
+import { useTheme } from '../theme/ThemeContext';
 
 // Bakım sembolü çizimi. Yol verileri ve koordinatlar herkese açık pasaport
 // sayfasındaki `drawCare` ile BİREBİR aynıdır (mobile/public/pasaport.html):
@@ -20,31 +21,36 @@ const INNER: Record<NonNullable<Exclude<CareShape['inner'], 'circle'>>, string> 
   hand: 'M11 21 V14 M14 21 V12 M17 21 V13 M20 21 V15 M11 21 H20',
 };
 
+// `color` verilmezse temanın metin rengi (`ink`) kullanılır; böylece koyu temada
+// sembol de okunur kalır. Ham hex yok.
 export function CareSymbolIcon({
   shape,
-  size = 32,
-  color = '#111A22',
+  size,
+  color,
 }: {
   shape: CareShape;
   size?: number;
   color?: string;
 }) {
+  const t = useTheme();
+  const drawColor = color ?? t.colors.ink;
+  const drawSize = size ?? t.size.avatarSm;
   const dots: React.ReactNode[] = [];
   if (shape.dots) {
     const cy = shape.base === 'iron' ? 19.5 : 16;
     const start = 16 - (shape.dots - 1) * 2.5;
     for (let i = 0; i < shape.dots; i += 1) {
-      dots.push(<Circle key={i} cx={start + i * 5} cy={cy} r={1.3} fill={color} stroke="none" />);
+      dots.push(<Circle key={i} cx={start + i * 5} cy={cy} r={1.3} fill={drawColor} stroke="none" />);
     }
   }
 
   return (
     <Svg
-      width={size}
-      height={size}
+      width={drawSize}
+      height={drawSize}
       viewBox="0 0 32 32"
       fill="none"
-      stroke={color}
+      stroke={drawColor}
       strokeWidth={1.6}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -59,7 +65,7 @@ export function CareSymbolIcon({
           textAnchor="middle"
           fontSize={shape.base === 'tub' ? 9 : 11}
           fontWeight="700"
-          fill={color}
+          fill={drawColor}
           stroke="none"
         >
           {shape.text}

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect } from 'react-native-svg';
 import type { AssistantPersonaKey } from '../api/client';
 import { useReduceMotion } from '../features/useReduceMotion';
-import { colors, radius } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
 
 // Asistan avatarı (Faz 1, Adım 9; karar: docs/yol-haritasi.md §5).
 // Düz (flat) geometrik çizim büst, iki karakter: İpek ve Mert. Video ve ses YOK.
@@ -48,12 +48,13 @@ export function AssistantAvatar({
   persona: AssistantPersonaKey;
   size?: number;
   state?: AssistantAvatarState;
-  // Yuvarlak köşeli açık kızıl çerçeve (assistantSoft). Seçim kartında ve
+  // Yuvarlak köşeli açık bakır çerçeve (accentSoft). Seçim kartında ve
   // sohbette açık; başka bir zeminde kapatılabilir.
   frame?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }) {
+  const t = useTheme();
   const reduceMotion = useReduceMotion();
   const isIpek = persona !== 'mert';
   const hair = isIpek ? HAIR_IPEK : HAIR_MERT;
@@ -150,20 +151,26 @@ export function AssistantAvatar({
       accessibilityLabel={label}
       style={[
         { width: size, height: size, transform: [{ translateY }] },
-        frame ? [styles.frame, { borderRadius: size <= 48 ? radius.md : radius.lg }] : null,
+        frame
+          ? {
+              backgroundColor: t.colors.accentSoft,
+              overflow: 'hidden',
+              borderRadius: size <= t.size.control ? t.radius.md : t.radius.lg,
+            }
+          : null,
         style,
       ]}
     >
       <Svg width={size} height={size} viewBox="0 0 100 100">
-        {/* Omuzlar ve yaka: asistan kızılı yalnızca yakada/aksesuarda. */}
-        <Path d={SHOULDERS} fill={colors.primary} />
+        {/* Omuzlar ve yaka: asistan bakırı (accent) yalnızca yakada/aksesuarda. */}
+        <Path d={SHOULDERS} fill={t.colors.brand} />
         {isIpek ? (
-          <Path d="M38 73 L50 86 L62 73 L66 76 L50 92 L34 76 Z" fill={colors.assistant} />
+          <Path d="M38 73 L50 86 L62 73 L66 76 L50 92 L34 76 Z" fill={t.colors.accent} />
         ) : (
           <G>
-            <Path d="M42 72 L50 84 L36 79 Z" fill={colors.assistant} />
-            <Path d="M58 72 L50 84 L64 79 Z" fill={colors.assistant} />
-            <Line x1="50" y1="84" x2="50" y2="100" stroke={colors.assistant} strokeWidth="2" />
+            <Path d="M42 72 L50 84 L36 79 Z" fill={t.colors.accent} />
+            <Path d="M58 72 L50 84 L64 79 Z" fill={t.colors.accent} />
+            <Line x1="50" y1="84" x2="50" y2="100" stroke={t.colors.accent} strokeWidth="2" />
           </G>
         )}
 
@@ -258,24 +265,21 @@ function Mouth({ state, talkOpen }: { state: AssistantAvatarState; talkOpen: boo
 
 // dot: etkin nokta sırası; -1 ise (hareketi azalt) hepsi eşit koyulukta.
 function ThinkingBubble({ dot }: { dot: number }) {
+  const t = useTheme();
   return (
     <G>
-      <Circle cx="70" cy="27" r="2.6" fill={colors.surface} stroke={colors.border} strokeWidth="1.2" />
-      <Ellipse cx="82" cy="16" rx="14" ry="9" fill={colors.surface} stroke={colors.border} strokeWidth="1.5" />
+      <Circle cx="70" cy="27" r="2.6" fill={t.colors.surface1} stroke={t.colors.line} strokeWidth="1.2" />
+      <Ellipse cx="82" cy="16" rx="14" ry="9" fill={t.colors.surface1} stroke={t.colors.line} strokeWidth="1.5" />
       {[0, 1, 2].map((index) => (
         <Circle
           key={index}
           cx={76 + index * 6}
           cy="16"
           r="2.1"
-          fill={colors.assistant}
+          fill={t.colors.accent}
           opacity={dot === -1 || dot === index ? 1 : 0.32}
         />
       ))}
     </G>
   );
 }
-
-const styles = StyleSheet.create({
-  frame: { backgroundColor: colors.assistantSoft, overflow: 'hidden' },
-});

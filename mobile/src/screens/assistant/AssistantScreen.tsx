@@ -4,13 +4,10 @@ import {
   Text,
   FlatList,
   TextInput,
-  Pressable,
   ScrollView,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { MainTabScreenProps } from '../../navigation/types';
@@ -40,36 +37,37 @@ import {
   AssistantBubble,
   AssistantComposer,
   ChatDayChip,
+  ExampleRow,
   ThinkingBubble,
   UserBubble,
-  chatStyles,
+  useChatStyles,
   type ComposerChip,
 } from '../../components/assistant/ChatParts';
 import { RfqCandidatesCard, RfqSummaryCard } from '../../components/assistant/RfqAssistantCards';
-import { HeaderButton } from '../../components/HeaderButton';
-import { ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
-import { SkeletonList } from '../../components/Skeleton';
+import { friendlyMessage } from '../../components/StateView';
 import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
 import { isSameCalendarDay } from '../../features/time';
 import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
 
-// Sekme ekranı: firma asistanı (Faz 1, Adım 5; taslak docs/tasarim-2027/Asistan.dc.html).
+// Sekme ekranı: firma asistanı (Faz 1, Adım 5).
 // Sohbet kaydı sunucuda; cihazda yalnızca son sohbetin kimliği durur.
-// Asistan kızılı (colors.assistant) yalnızca burada: avatar, gönder düğmesi.
 //
 // Adım 9: asistanın adı ve yüzü var (İpek / Mert). Seçilmemişse sohbet yerine
 // seçim görünümü çıkar; karşılama sunucudan modelsiz gelir ve sohbete YAZILMAZ.
+//
+// Yeni tasarım (DESIGN.md, 4. adım): ekran kendi `AppBar`ını çiziyor
+// (navigation başlığı gizlendi), balonlar marka/yüzey tonlarında, bakır
+// (`accent`) yalnızca asistan avatarında. Veri katmanı ve akış değişmedi.
 
 // Beceri sayısı sunucudan gelene kadar gösterilecek değer (bugün 10 beceri).
 const FALLBACK_SKILL_COUNT = 10;
 
-// Sohbet balonlarının yanındaki avatar.
-const CHAT_AVATAR = 38;
 // Yanıt geldikten sonra "anlatıyor"/"sonuç" hali ne kadar kalır.
 const AVATAR_FLASH_MS = 2600;
 
@@ -119,6 +117,8 @@ function personaLabel(key: AssistantPersonaKey, state: AssistantPersonaState | n
 type ChatItem = AssistantMessage & { local?: boolean };
 
 export function AssistantScreen({ navigation }: Props) {
+  const t = useTheme();
+  const chat = useChatStyles();
   const { user } = useSession();
   const insets = useSafeAreaInsets();
 
@@ -154,28 +154,18 @@ export function AssistantScreen({ navigation }: Props) {
   const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messageCountRef = useRef(0);
 
+  // Sohbet balonlarının yanındaki avatar (satır yüksekliğiyle uyumlu).
+  const chatAvatarSize = t.size.avatar;
+
   const chosenPersona = persona?.persona ?? null;
   const effectivePersona: AssistantPersonaKey = chosenPersona ?? persona?.effective ?? 'ipek';
   const personaName = personaLabel(effectivePersona, persona);
   const subtitle = companyName ? `${companyName} · ${personaName}` : personaName;
 
+  // Yeni tasarım: ekran kendi bandını çiziyor, react-navigation başlığı gizli.
   useLayoutEffect(() => {
-    // 2026-09-21: başlık ortak bileşene geçti (profil · "Arama Yap" · zil);
-    // "Firma asistanı" başlığı ve altındaki "firma · karakter" satırı oradan
-    // kalktı, karşılamada zaten yazıyor. Ekrana özel iki eylem kalıyor.
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={styles.headerActions}>
-          <HeaderButton
-            icon="settings-outline"
-            label="Firma hafızası"
-            onPress={() => navigation.navigate('AssistantMemory')}
-          />
-          <HeaderButton icon="time-outline" label="Sohbetler" onPress={() => navigation.navigate('AssistantThreads')} />
-        </View>
-      ),
-    });
-  }, [navigation, subtitle]);
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   // Beceri sayısı ve firma adı: ekran başına bir kez, hata sessiz (kozmetik).
   useEffect(() => {
@@ -460,15 +450,15 @@ export function AssistantScreen({ navigation }: Props) {
       return (
         <>
           {dayChip}
-          <View style={chatStyles.assistantRow}>
+          <View style={chat.assistantRow}>
             <AssistantAvatar
               persona={effectivePersona}
-              size={CHAT_AVATAR}
+              size={chatAvatarSize}
               state={isLast ? avatarState : 'idle'}
               accessibilityLabel={`${personaName}, asistan`}
             />
-            <View style={chatStyles.assistantColumn}>
-              {item.text ? <AssistantBubble text={item.text} /> : null}
+            <View style={chat.assistantColumn}>
+              {item.text ? <AssistantBubble text={item.text} createdAt={item.createdAt} /> : null}
               {item.toolCalls.map((call, callIndex) => {
                 // Faz 3, Adım 2: teklif araçları satır listesi değil, kendi
                 // kartlarını çiziyor (seçim + düğme). Aday yoksa kart çizilmez,
@@ -560,6 +550,8 @@ export function AssistantScreen({ navigation }: Props) {
     },
     [
       avatarState,
+      chat,
+      chatAvatarSize,
       data,
       dismissSuggestion,
       dismissWatchSuggestion,
@@ -581,7 +573,7 @@ export function AssistantScreen({ navigation }: Props) {
     })),
     {
       label: 'Tüm hesaplayıcılar',
-      icon: 'calculator-outline' as const,
+      icon: 'calculator' as const,
       // Hesaplayıcılar artık alt çubuktaki beşinci sekmede (2026-09-21).
       onPress: () => navigation.navigate('Calculators'),
     },
@@ -599,10 +591,27 @@ export function AssistantScreen({ navigation }: Props) {
     />
   );
 
+  const bar = (
+    <AppBar
+      title={subtitle}
+      leading="back"
+      onBack={() => navigation.goBack()}
+      actions={[
+        { icon: 'settings-outline', label: 'Firma hafızası', onPress: () => navigation.navigate('AssistantMemory') },
+        { icon: 'clock', label: 'Sohbetler', onPress: () => navigation.navigate('AssistantThreads') },
+      ]}
+    />
+  );
+
   if (status === 'loading' || !personaReady) {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="chat" />
+      <View style={chat.screen}>
+        {bar}
+        <View style={{ padding: t.space[4], gap: t.space[4] }}>
+          <Skeleton width="60%" height={t.size.control} />
+          <SkeletonText lines={3} />
+          <Skeleton width="80%" height={t.size.control} />
+        </View>
       </View>
     );
   }
@@ -610,35 +619,54 @@ export function AssistantScreen({ navigation }: Props) {
   // Kişilik seçilmeden sohbet açılmaz: uygulama cinsiyet sormaz, yüz seçtirir.
   if (chosenPersona === null) {
     return (
-      <ScrollView
-        style={styles.screen}
-        contentContainerStyle={styles.chooserContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.chooserTitle} accessibilityRole="header">
-          Kim yardımcı olsun?
-        </Text>
-        <Text style={styles.chooserIntro}>
-          Asistanınızın bir adı ve yüzü olsun. İkisi de aynı hesapları yapar, aynı kataloğu bilir; sonra
-          değiştirebilirsiniz.
-        </Text>
-        <PersonaPicker
-          options={persona?.options?.length ? persona.options : FALLBACK_PERSONA_OPTIONS}
-          value={null}
-          onSelect={(key) => void choosePersona(key)}
-          busyKey={savingPersona}
-          disabled={savingPersona !== null}
-          avatarSize={96}
-        />
-        {personaError ? <InlineError message={personaError} style={styles.chooserError} /> : null}
-      </ScrollView>
+      <View style={chat.screen}>
+        {bar}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            padding: t.space[4],
+            gap: t.space[4],
+            alignItems: 'center',
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, gap: t.space[3], minWidth: 0 }}>
+            <Text
+              accessibilityRole="header"
+              style={[t.type.title22, { color: t.colors.ink, textAlign: 'center' }]}
+            >
+              Kim yardımcı olsun?
+            </Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center' }]}>
+              Asistanınızın bir adı ve yüzü olsun. İkisi de aynı hesapları yapar, aynı kataloğu bilir; sonra
+              değiştirebilirsiniz.
+            </Text>
+            <PersonaPicker
+              options={persona?.options?.length ? persona.options : FALLBACK_PERSONA_OPTIONS}
+              value={null}
+              onSelect={(key) => void choosePersona(key)}
+              busyKey={savingPersona}
+              disabled={savingPersona !== null}
+              avatarSize={t.size.toolBox}
+            />
+            {personaError ? <ErrorBanner message={personaError} /> : null}
+          </View>
+        </ScrollView>
+      </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.screen}>
-        <ErrorState error={loadError} fallback="Sohbet alınamadı" onRetry={() => loadThread(threadIdRef.current)} />
+      <View style={chat.screen}>
+        {bar}
+        <EmptyState
+          icon="warning"
+          title="Sohbet alınamadı"
+          description={friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
+          actionLabel="Tekrar dene"
+          onAction={() => void loadThread(threadIdRef.current)}
+        />
       </View>
     );
   }
@@ -646,47 +674,50 @@ export function AssistantScreen({ navigation }: Props) {
   const greetingLine = greeting?.text ?? `Merhaba, ben ${personaName}. Ne hesaplayalım?`;
 
   return (
-    <View style={styles.screen}>
+    <View style={chat.screen}>
+      {bar}
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={chat.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={t.size.tabbar + t.space[4]}
       >
         <FlatList
           ref={listRef}
           data={data}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={chatStyles.listContent}
+          contentContainerStyle={chat.listContent}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={scrollToEnd}
           ListEmptyComponent={
-            <View>
-              <View style={styles.greeting}>
+            <View style={{ gap: t.space[4] }}>
+              <View style={{ alignItems: 'center', gap: t.space[3] }}>
                 <AssistantAvatar
                   persona={effectivePersona}
-                  size={112}
+                  size={t.size.thumb + t.space[10]}
                   state={avatarState}
                   accessibilityLabel={`${personaName}, asistan`}
                 />
-                <View style={styles.greetingBubble}>
-                  <Text style={styles.assistantText}>{greetingLine}</Text>
+                <View
+                  style={{
+                    alignSelf: 'stretch',
+                    backgroundColor: t.colors.surface1,
+                    borderWidth: 1,
+                    borderColor: t.colors.line,
+                    borderRadius: t.radius.lg,
+                    padding: t.space[3],
+                    minWidth: 0,
+                  }}
+                >
+                  <Text style={[t.type.body16, { color: t.colors.ink }]}>{greetingLine}</Text>
                 </View>
-                <Text style={styles.greetingHint}>
+                <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center' }]}>
                   {WELCOME} {skillCount} beceri hazır.
                 </Text>
               </View>
-              <View style={chatStyles.examples}>
+              <View style={chat.examples}>
                 {EXAMPLES.map((example) => (
-                  <Pressable
-                    key={example}
-                    onPress={() => send(example)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Örnek soru: ${example}`}
-                    style={({ pressed }) => [chatStyles.example, pressed && chatStyles.examplePressed]}
-                  >
-                    <Text style={chatStyles.exampleText}>{example}</Text>
-                  </Pressable>
+                  <ExampleRow key={example} label={example} onPress={() => send(example)} />
                 ))}
               </View>
             </View>
@@ -694,10 +725,10 @@ export function AssistantScreen({ navigation }: Props) {
           ListFooterComponent={
             <>
               {sending ? (
-                <View style={chatStyles.assistantRow}>
+                <View style={chat.assistantRow}>
                   <AssistantAvatar
                     persona={effectivePersona}
-                    size={CHAT_AVATAR}
+                    size={chatAvatarSize}
                     state="thinking"
                     accessibilityLabel={`${personaName} düşünüyor`}
                   />
@@ -705,10 +736,9 @@ export function AssistantScreen({ navigation }: Props) {
                 </View>
               ) : null}
               {sendError ? (
-                <InlineError
+                <ErrorBanner
                   message={sendError}
                   onRetry={retryTextRef.current ? () => send(retryTextRef.current) : undefined}
-                  style={styles.sendErrorBanner}
                 />
               ) : null}
             </>
@@ -716,6 +746,29 @@ export function AssistantScreen({ navigation }: Props) {
         />
         {composer}
       </KeyboardAvoidingView>
+    </View>
+  );
+}
+
+// Sohbet içi hata şeridi (eski InlineError'ın token'lı karşılığı).
+function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.dangerSoft,
+        marginTop: t.space[2],
+        minWidth: 0,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{message}</Text>
+      {onRetry ? <Button kind="quiet" label="Tekrar dene" onPress={onRetry} /> : null}
     </View>
   );
 }
@@ -732,48 +785,36 @@ function MemorySuggestionCard({
   onSave: () => void;
   onDismiss: () => void;
 }) {
+  const t = useTheme();
   if (state === 'dismissed') return null;
 
   const value = typeof suggestion.value === 'number' ? suggestion.value.toLocaleString('tr-TR') : suggestion.value;
 
   if (state === 'saved') {
-    return (
-      <View style={[styles.memoryCard, styles.memorySaved]}>
-        <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-        <Text style={styles.memorySavedText}>
-          Kaydedildi: {suggestion.label} {value}
-        </Text>
-      </View>
-    );
+    return <SavedCard text={`Kaydedildi: ${suggestion.label} ${value}`} />;
   }
 
   return (
-    <View style={styles.memoryCard}>
-      <Text style={styles.memoryTitle}>Hafızaya kaydedilsin mi?</Text>
-      <Text style={styles.memoryValue}>
-        {suggestion.label}: <Text style={styles.memoryValueMono}>{value}</Text>
+    <Card style={{ gap: t.space[2] }}>
+      <Text style={[t.type.title18, { color: t.colors.ink }]}>Hafızaya kaydedilsin mi?</Text>
+      <Text style={[t.type.body16, { color: t.colors.ink }]}>
+        {suggestion.label}: <Text style={t.type.mono14}>{value}</Text>
       </Text>
-      <Text style={styles.memoryReason}>{suggestion.reason}</Text>
-      {state === 'error' ? <Text style={styles.memoryError}>Kaydedilemedi, tekrar deneyin.</Text> : null}
-      <View style={styles.memoryActions}>
-        <Pressable
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{suggestion.reason}</Text>
+      {state === 'error' ? (
+        <Text style={[t.type.body14, { color: t.colors.danger }]}>Kaydedilemedi, tekrar deneyin.</Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
+        <Button
+          kind="secondary"
+          label="Kaydet"
           onPress={onSave}
-          accessibilityRole="button"
           accessibilityLabel={`Kaydet: ${suggestion.label} ${value}`}
-          style={({ pressed }) => [styles.memoryButton, styles.memorySave, pressed && styles.pressedFade]}
-        >
-          <Text style={styles.memorySaveText}>Kaydet</Text>
-        </Pressable>
-        <Pressable
-          onPress={onDismiss}
-          accessibilityRole="button"
-          accessibilityLabel="Şimdi değil"
-          style={({ pressed }) => [styles.memoryButton, styles.memoryDismiss, pressed && styles.chipPressed]}
-        >
-          <Text style={styles.memoryDismissText}>Şimdi değil</Text>
-        </Pressable>
+          style={{ flex: 1 }}
+        />
+        <Button kind="quiet" label="Şimdi değil" onPress={onDismiss} style={{ flex: 1 }} />
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -790,106 +831,57 @@ function WatchSuggestionCard({
   onSave: () => void;
   onDismiss: () => void;
 }) {
+  const t = useTheme();
   if (state === 'dismissed') return null;
 
   if (state === 'saved') {
-    return (
-      <View style={[styles.memoryCard, styles.memorySaved]}>
-        <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-        <Text style={styles.memorySavedText}>İzlemeye alındı: {suggestion.name}</Text>
-      </View>
-    );
+    return <SavedCard text={`İzlemeye alındı: ${suggestion.name}`} />;
   }
 
   return (
-    <View style={styles.memoryCard}>
-      <Text style={styles.memoryTitle}>İzleme kurulsun mu?</Text>
-      <Text style={styles.memoryValue}>{suggestion.name}</Text>
-      <Text style={styles.memoryReason}>{suggestion.reason}</Text>
+    <Card style={{ gap: t.space[2] }}>
+      <Text style={[t.type.title18, { color: t.colors.ink }]}>İzleme kurulsun mu?</Text>
+      <Text style={[t.type.body16, { color: t.colors.ink }]}>{suggestion.name}</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{suggestion.reason}</Text>
       {state === 'limit' ? (
-        <Text style={styles.memoryError}>İzleme sınırına ulaştınız. Profil {'>'} İzlediklerim listesinden birini silin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.danger }]}>
+          İzleme sınırına ulaştınız. Profil {'>'} İzlediklerim listesinden birini silin.
+        </Text>
       ) : null}
-      {state === 'error' ? <Text style={styles.memoryError}>İzleme kurulamadı, tekrar deneyin.</Text> : null}
-      <View style={styles.memoryActions}>
-        <Pressable
+      {state === 'error' ? (
+        <Text style={[t.type.body14, { color: t.colors.danger }]}>İzleme kurulamadı, tekrar deneyin.</Text>
+      ) : null}
+      <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
+        <Button
+          kind="secondary"
+          label="İzlemeye al"
           onPress={onSave}
-          accessibilityRole="button"
           accessibilityLabel={`İzlemeye al: ${suggestion.name}`}
-          style={({ pressed }) => [styles.memoryButton, styles.memorySave, pressed && styles.pressedFade]}
-        >
-          <Text style={styles.memorySaveText}>İzlemeye al</Text>
-        </Pressable>
-        <Pressable
-          onPress={onDismiss}
-          accessibilityRole="button"
-          accessibilityLabel="Şimdi değil"
-          style={({ pressed }) => [styles.memoryButton, styles.memoryDismiss, pressed && styles.chipPressed]}
-        >
-          <Text style={styles.memoryDismissText}>Şimdi değil</Text>
-        </Pressable>
+          style={{ flex: 1 }}
+        />
+        <Button kind="quiet" label="Şimdi değil" onPress={onDismiss} style={{ flex: 1 }} />
       </View>
-    </View>
+    </Card>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  headerActions: { flexDirection: 'row', alignItems: 'center' },
-
-  chooserContent: { padding: spacing.gutter, paddingTop: spacing.lg, gap: spacing.sm },
-  chooserTitle: { ...typography.heading, color: colors.text, textAlign: 'center' },
-  chooserIntro: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  chooserError: { marginTop: spacing.sm },
-
-  greeting: { alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.md },
-  greetingBubble: {
-    alignSelf: 'stretch',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  greetingHint: { ...typography.caption, color: colors.textMuted, textAlign: 'center' },
-
-  assistantText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  sendErrorBanner: { marginTop: spacing.sm },
-  chipPressed: { backgroundColor: colors.pressed },
-  pressedFade: { opacity: 0.85 },
-
-  memoryCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 12,
-    gap: 4,
-  },
-  memorySaved: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.successSoft, borderColor: colors.successSoft },
-  memorySavedText: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.success, flex: 1 },
-  memoryTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
-  memoryValue: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.text },
-  memoryValueMono: { fontFamily: fonts.monoSemibold },
-  memoryReason: { ...typography.caption, color: colors.textMuted },
-  memoryError: { ...typography.caption, color: colors.danger },
-  memoryActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  memoryButton: {
-    minHeight: 36,
-    paddingHorizontal: 14,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memorySave: { backgroundColor: colors.assistant },
-  memorySaveText: { ...typography.caption, fontFamily: fonts.semibold, fontSize: 14, color: colors.primaryText },
-  memoryDismiss: { borderWidth: 1, borderColor: colors.borderStrong },
-  memoryDismissText: { ...typography.caption, fontFamily: fonts.semibold, fontSize: 14, color: colors.primary },
-});
+// Onaylanmış öneri: yeşil zeminli tek satır (ikon + metin).
+function SavedCard({ text }: { text: string }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.lg,
+        backgroundColor: t.colors.successSoft,
+        minWidth: 0,
+      }}
+    >
+      <Icon name="check" size={t.size.iconSm} color="success" />
+      <Text style={[t.type.body14, { color: t.colors.success, flex: 1, minWidth: 0 }]}>{text}</Text>
+    </View>
+  );
+}

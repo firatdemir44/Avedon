@@ -1,7 +1,6 @@
-import React, { useMemo } from 'react';
-import { Text, ScrollView, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChipSelect } from '../../components/ChipSelect';
+import React, { useLayoutEffect, useMemo } from 'react';
+import { Text, View } from 'react-native';
+import type { RootStackScreenProps } from '../../navigation/types';
 import {
   CalcTable,
   CalcInputRow,
@@ -20,7 +19,8 @@ import {
 } from '../../features/calculators/formulas';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Screen, SegmentControl } from '../../ui';
 
 type Mode = 'sample' | 'structure';
 
@@ -53,8 +53,12 @@ const INITIAL: Fields = {
 const positive = (v: string) => parseNumber(v) > 0;
 
 // Eski K faktörlü sürümün kayıtlarıyla karışmasın diye yeni saklama anahtarı.
-export function FabricWeightCalculator() {
+export function FabricWeightCalculator({ navigation }: RootStackScreenProps<'FabricWeightCalculator'>) {
+  const t = useTheme();
   const [f, update] = usePersistedFields('fabric_weight_v2', INITIAL);
+
+  // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
+  useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
 
   const sampleGsm = useMemo(() => {
     if (!positive(f.widthMm) || !positive(f.lengthMm) || !positive(f.weightGrams)) return null;
@@ -76,9 +80,12 @@ export function FabricWeightCalculator() {
   }, [f.coursesPerCm, f.walesPerCm, f.length50, f.count, f.system, f.plate]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <ChipSelect
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Kumaş gramajı" leading="back" onBack={() => navigation.goBack()} />
+      <Screen>
+        <SegmentControl
+          stretch
+          accessibilityLabel="Hesap yöntemi"
           options={[
             { value: 'sample', label: 'Numuneden' },
             { value: 'structure', label: 'Örgüden tahmin' },
@@ -89,7 +96,7 @@ export function FabricWeightCalculator() {
 
         {f.mode === 'sample' ? (
           <>
-            <Text style={styles.hint}>
+            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
               Kumaştan bir parça kesin; enini, boyunu milimetre olarak ölçüp tartın. Kesin sonuç bu yöntemle alınır.
             </Text>
             <CalcTable title="Numuneden gramaj">
@@ -126,19 +133,23 @@ export function FabricWeightCalculator() {
           </>
         ) : (
           <>
-            <Text style={styles.hint}>
+            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
               Kumaşta 1 cm'deki sıra ve çubuk sayısını sayın, 50 iğnedeki iplik uzunluğunu makineden alın. Sonuç
               tahminidir; kesin değer için numuneden ölçün.
             </Text>
-            <Text style={styles.label}>Örgü</Text>
-            <ChipSelect
-              options={[
-                { value: 'single', label: 'Tek plaka' },
-                { value: 'double', label: 'Çift plaka' },
-              ]}
-              value={f.plate}
-              onChange={(plate) => update({ plate })}
-            />
+            <View style={{ gap: t.space[2] }}>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Örgü</Text>
+              <SegmentControl
+                stretch
+                accessibilityLabel="Örgü"
+                options={[
+                  { value: 'single', label: 'Tek plaka' },
+                  { value: 'double', label: 'Çift plaka' },
+                ]}
+                value={f.plate}
+                onChange={(plate) => update({ plate })}
+              />
+            </View>
             <CalcTable title="Örgüden tahmini gramaj">
               <CalcInputRow
                 label="Sıra sayısı"
@@ -188,14 +199,7 @@ export function FabricWeightCalculator() {
           </>
         )}
         <CalcClearButton onClear={() => update({ ...INITIAL, mode: f.mode })} />
-      </ScrollView>
-    </SafeAreaView>
+      </Screen>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.md },
-  hint: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, marginBottom: spacing.sm },
-  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-});

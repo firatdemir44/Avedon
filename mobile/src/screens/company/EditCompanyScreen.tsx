@@ -1,11 +1,13 @@
+// Firma bilgilerini düzenleme (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Veri katmanı eskisiyle aynı (fetchCompany / updateCompany, aynı gövde);
+// yalnızca görünüm: AppBar + Screen, alanlar `ui/Input`, bölümler `Card`,
+// tek dolu "Kaydet" düğmesi yapışkan alt çubukta.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { TextField } from '../../components/TextField';
-import { ChipSelect } from '../../components/ChipSelect';
 import { PhotoGridEditor } from '../../components/PhotoGridEditor';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { CompanyLogoPicker } from '../../components/CompanyLogoPicker';
 import { ApiError, fetchCompany, updateCompany } from '../../api/client';
 import { confirmAction } from '../../features/confirm';
@@ -15,8 +17,21 @@ import { useCompanyGalleries } from '../../features/companies/useCompanyGallerie
 import { MAX_COMPANY_PHOTOS } from '../../features/companies/limits';
 import { MIN_COMPANY_NAME_LENGTH, foundedYearError, foundedYearPayload } from '../../features/companies/validation';
 import { COMPANY_TYPES } from '../../features/products/catalog';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 import type { VerificationStatus } from '../../types';
+import {
+  AppBar,
+  Button,
+  Card,
+  Chip,
+  ChipRow,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  Skeleton,
+  SkeletonText,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'EditCompany'>;
 
@@ -24,6 +39,7 @@ type Props = RootStackScreenProps<'EditCompany'>;
 const TYPE_OPTIONS = [{ value: '', label: 'Belirtilmemiş' }, ...COMPANY_TYPES.map((t) => ({ value: t.key, label: t.label }))];
 
 export function EditCompanyScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { companyId } = route.params;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,6 +65,11 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   // undefined: logoya dokunulmadı · string: yeni logo · null: logo kaldırıldı
   const [logoChange, setLogoChange] = useState<string | null | undefined>(undefined);
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -161,133 +182,214 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     save();
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />
-      </SafeAreaView>
-    );
-  }
+  const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
+  const fieldLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
+
+  const banner = error ? (
+    <View
+      accessibilityRole="alert"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: t.colors.dangerSoft,
+      }}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+    </View>
+  ) : null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>Logo</Text>
-        <CompanyLogoPicker
-          companyName={name}
-          preview={logoPreview}
-          onError={setError}
-          onChange={(dataUrl) => {
-            setLogoPreview(dataUrl);
-            setLogoChange(dataUrl);
-          }}
-        />
-
-        <TextField label="Firma adı" value={name} onChangeText={setName} autoCapitalize="words" autoComplete="organization" textContentType="organizationName" />
-        <TextField label="Hakkında" value={about} onChangeText={setAbout} multiline placeholder="Ürettiğiniz kumaşlar, makine parkınız, çalıştığınız pazarlar..." />
-        <TextField
-          label="İletişim e-postası"
-          value={contactEmail}
-          onChangeText={setContactEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          textContentType="emailAddress"
-          placeholder="ornek@firma.com"
-        />
-        <TextField
-          label="İletişim telefonu"
-          value={contactPhone}
-          onChangeText={setContactPhone}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-          textContentType="telephoneNumber"
-          placeholder="0212 000 00 00"
-        />
-        <TextField
-          label="Web sitesi"
-          value={website}
-          onChangeText={setWebsite}
-          autoCapitalize="none"
-          keyboardType="url"
-          placeholder="www.firmaniz.com"
-        />
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <TextField label="Şehir" value={city} onChangeText={setCity} placeholder="İstanbul" autoCapitalize="words" />
-          </View>
-          <View style={styles.half}>
-            <TextField label="İlçe / Bölge" value={district} onChangeText={setDistrict} placeholder="Bağcılar" autoCapitalize="words" />
-          </View>
-        </View>
-        <TextField label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
-        <Text style={styles.hint}>Bu iletişim bilgileri firma sayfanızda herkese görünür. Vergi numarası ve şirket kodu değiştirilemez.</Text>
-
-        <Text style={styles.label}>Şirket tipi</Text>
-        <ChipSelect options={TYPE_OPTIONS} value={companyType} onChange={setCompanyType} compact />
-        <View style={styles.row}>
-          <View style={styles.half}>
-            <TextField
-              label="Kuruluş yılı"
-              value={foundedYear}
-              onChangeText={setFoundedYear}
-              keyboardType="number-pad"
-              maxLength={4}
-              placeholder="2002"
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Firmayı düzenle" leading="back" onBack={() => navigation.goBack()} />
+      {loading ? (
+        <Screen>
+          <Skeleton height={t.size.thumb} width={t.size.thumb} />
+          <SkeletonText lines={4} />
+          <SkeletonText lines={3} />
+        </Screen>
+      ) : (
+        <Screen
+          sticky={
+            <Button
+              size="lg"
+              label="Kaydet"
+              loading={saving}
+              disabled={name.trim().length < MIN_COMPANY_NAME_LENGTH || !!yearError}
+              onPress={handleSave}
             />
+          }
+        >
+          {banner}
+
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Logo" />
+            <Card>
+              <CompanyLogoPicker
+                companyName={name}
+                preview={logoPreview}
+                onError={setError}
+                onChange={(dataUrl) => {
+                  setLogoPreview(dataUrl);
+                  setLogoChange(dataUrl);
+                }}
+              />
+            </Card>
           </View>
-          <View style={styles.half}>
-            <TextField label="Ana pazarlar" value={mainMarkets} onChangeText={setMainMarkets} placeholder="Avrupa, Türkiye" />
+
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="Firma" />
+            <Input
+              label="Firma adı"
+              value={name}
+              onChangeText={setName}
+              autoCapitalize="words"
+              autoComplete="organization"
+              textContentType="organizationName"
+            />
+            <Input
+              label="Hakkında"
+              value={about}
+              onChangeText={setAbout}
+              multiline
+              placeholder="Ürettiğiniz kumaşlar, makine parkınız, çalıştığınız pazarlar..."
+            />
+            <View style={{ gap: t.space[1] }}>
+              {fieldLabel('Şirket tipi')}
+              <ChipRow>
+                {TYPE_OPTIONS.map((o) => (
+                  <Chip
+                    key={o.value || 'bos'}
+                    label={o.label}
+                    selected={o.value === companyType}
+                    onPress={() => setCompanyType(o.value)}
+                  />
+                ))}
+              </ChipRow>
+            </View>
+            <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+              <Input
+                containerStyle={{ flex: 1 }}
+                label="Kuruluş yılı"
+                value={foundedYear}
+                onChangeText={setFoundedYear}
+                keyboardType="number-pad"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="2002"
+                error={yearError}
+              />
+              <Input
+                containerStyle={{ flex: 1 }}
+                label="Ana pazarlar"
+                value={mainMarkets}
+                onChangeText={setMainMarkets}
+                placeholder="Avrupa, Türkiye"
+              />
+            </View>
+            {hint(
+              'Bu bilgiler firma sayfanızdaki "Şirket genel bakışı" bölümünde görünür. Ürün gruplarınız eklediğiniz ürünlerden otomatik çıkar.'
+            )}
           </View>
-        </View>
-        <Text style={styles.hint}>
-          Bu bilgiler firma sayfanızdaki "Şirket genel bakışı" bölümünde görünür. Ürün gruplarınız eklediğiniz ürünlerden
-          otomatik çıkar.
-        </Text>
 
-        <Text style={styles.label}>Firmadan görseller ({gallery.photos.office.length}/{MAX_COMPANY_PHOTOS})</Text>
-        <Text style={styles.hint}>Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.</Text>
-        <PhotoGridEditor
-          photos={gallery.photos.office}
-          max={MAX_COMPANY_PHOTOS}
-          busy={gallery.picking === 'office'}
-          onAdd={() => addPhoto('office')}
-          onRemove={(key) => gallery.remove('office', key)}
-          onMoveFirst={(key) => gallery.moveFirst('office', key)}
-          firstBadge="İlk"
-        />
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title="İletişim" />
+            <Input
+              label="İletişim e-postası"
+              value={contactEmail}
+              onChangeText={setContactEmail}
+              keyboardType="email-address"
+              inputMode="email"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              placeholder="ornek@firma.com"
+            />
+            <Input
+              label="İletişim telefonu"
+              value={contactPhone}
+              onChangeText={setContactPhone}
+              keyboardType="phone-pad"
+              inputMode="tel"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              placeholder="0212 000 00 00"
+            />
+            <Input
+              label="Web sitesi"
+              value={website}
+              onChangeText={setWebsite}
+              autoCapitalize="none"
+              keyboardType="url"
+              inputMode="url"
+              placeholder="www.firmaniz.com"
+            />
+            <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+              <Input
+                containerStyle={{ flex: 1 }}
+                label="Şehir"
+                value={city}
+                onChangeText={setCity}
+                placeholder="İstanbul"
+                autoCapitalize="words"
+              />
+              <Input
+                containerStyle={{ flex: 1 }}
+                label="İlçe / bölge"
+                value={district}
+                onChangeText={setDistrict}
+                placeholder="Bağcılar"
+                autoCapitalize="words"
+              />
+            </View>
+            <Input label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
+            {hint(
+              'Bu iletişim bilgileri firma sayfanızda herkese görünür. Vergi numarası ve şirket kodu değiştirilemez.'
+            )}
+          </View>
 
-        <Text style={[styles.label, styles.sectionGap]}>Sertifikalar ve başarılar ({gallery.photos.certificate.length}/{MAX_COMPANY_PHOTOS})</Text>
-        <Text style={styles.hint}>Kalite belgeleri ve ödüller; alıcıların güveni için önemli.</Text>
-        <PhotoGridEditor
-          photos={gallery.photos.certificate}
-          max={MAX_COMPANY_PHOTOS}
-          busy={gallery.picking === 'certificate'}
-          onAdd={() => addPhoto('certificate')}
-          onRemove={(key) => gallery.remove('certificate', key)}
-          onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
-          firstBadge="İlk"
-        />
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle title={`Firmadan görseller (${gallery.photos.office.length}/${MAX_COMPANY_PHOTOS})`} />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                {hint('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.')}
+                <PhotoGridEditor
+                  photos={gallery.photos.office}
+                  max={MAX_COMPANY_PHOTOS}
+                  busy={gallery.picking === 'office'}
+                  onAdd={() => addPhoto('office')}
+                  onRemove={(key) => gallery.remove('office', key)}
+                  onMoveFirst={(key) => gallery.moveFirst('office', key)}
+                  firstBadge="İlk"
+                />
+              </View>
+            </Card>
+          </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <PrimaryButton
-          label={saving ? 'Kaydediliyor...' : 'Kaydet'}
-          disabled={saving || name.trim().length < MIN_COMPANY_NAME_LENGTH || !!yearError}
-          onPress={handleSave}
-          style={{ marginTop: spacing.md }}
-        />
-      </ScrollView>
-    </SafeAreaView>
+          <View style={{ gap: t.space[3] }}>
+            <SectionTitle
+              title={`Sertifikalar ve başarılar (${gallery.photos.certificate.length}/${MAX_COMPANY_PHOTOS})`}
+            />
+            <Card>
+              <View style={{ gap: t.space[3] }}>
+                {hint('Kalite belgeleri ve ödüller; alıcıların güveni için önemli.')}
+                <PhotoGridEditor
+                  photos={gallery.photos.certificate}
+                  max={MAX_COMPANY_PHOTOS}
+                  busy={gallery.picking === 'certificate'}
+                  onAdd={() => addPhoto('certificate')}
+                  onRemove={(key) => gallery.remove('certificate', key)}
+                  onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
+                  firstBadge="İlk"
+                />
+              </View>
+            </Card>
+          </View>
+        </Screen>
+      )}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  content: { padding: spacing.lg },
-  label: { ...typography.label, color: colors.text, marginBottom: spacing.xs },
-  hint: { ...typography.caption, color: colors.textMuted, marginBottom: spacing.md },
-  row: { flexDirection: 'row', gap: spacing.sm },
-  half: { flex: 1 },
-  sectionGap: { marginTop: spacing.lg },
-  error: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, marginBottom: spacing.sm },
-});

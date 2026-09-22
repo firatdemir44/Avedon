@@ -18,7 +18,7 @@ export function NotificationBell() {
   if (!user) return null;
   return (
     <HeaderButton
-      icon="notifications-outline"
+      icon="bell"
       label="Bildirimler"
       badge={unread}
       onPress={() => navigation.navigate('Notifications')}

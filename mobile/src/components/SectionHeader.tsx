@@ -1,9 +1,13 @@
 import React from 'react';
-import { Text, StyleSheet, type StyleProp, type TextStyle } from 'react-native';
-import { colors, fonts, spacing, typography } from '../theme';
+import { Text, type StyleProp, type TextStyle } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
-// Beyaz blokların üstündeki küçük gri bölüm başlığı ("Çalışanlar", "Maliyet").
+// Blokların üstündeki bölüm başlığı ("Çalışanlar", "Maliyet").
 // `count` verilirse eşit aralıklı yazıyla parantez içinde: "Ürünler (12)".
+//
+// Yeni tasarım (4. adım): `title18` + `ink` (DESIGN.md §5 bölüm başlığı),
+// sayı `mono14`. Yeni ekranlar `ui/SectionTitle` kullanır; bu bileşen
+// taşınmamış ekranlar için token'a bağlandı.
 export function SectionHeader({
   title,
   count,
@@ -16,23 +20,25 @@ export function SectionHeader({
   first?: boolean;
   style?: StyleProp<TextStyle>;
 }) {
+  const t = useTheme();
   return (
-    <Text style={[styles.header, first && styles.first, style]} accessibilityRole="header">
+    <Text
+      accessibilityRole="header"
+      style={[
+        t.type.title18,
+        {
+          color: t.colors.ink,
+          paddingHorizontal: t.space[4],
+          paddingTop: first ? t.space[3] : t.space[4],
+          paddingBottom: t.space[2],
+        },
+        style,
+      ]}
+    >
       {title}
-      {count !== undefined ? <Text style={styles.count}> ({count})</Text> : null}
+      {count !== undefined ? (
+        <Text style={[t.type.mono14, { color: t.colors.ink2 }]}> ({count})</Text>
+      ) : null}
     </Text>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    ...typography.label,
-    fontFamily: fonts.semibold,
-    color: colors.textMuted,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: spacing.md,
-    paddingBottom: 6,
-  },
-  first: { paddingTop: 12 },
-  count: { fontFamily: fonts.monoMedium },
-});

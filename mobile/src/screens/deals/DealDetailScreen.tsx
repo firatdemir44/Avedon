@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Sipariş kaydı detayı (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+//
+// Faz 3, Adım 4'teki veri katmanı aynen duruyor: sipariş kabul edilen
+// tekliften doğar, platform ödeme almaz ve sevkiyat izlemez; burada görünen
+// her şey iki tarafın BEYANIDIR. Ödeme konusuna hiçbir metinde girilmez.
+//
+// Görünüm yeni: AppBar + Screen, bölümler SectionTitle + Card, durum ui/Badge,
+// miktar/fiyat mono14, ekranda tek dolu düğme (duruma göre yalnızca biri
+// görünür), diğer eylemler kenarlıklı.
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -15,32 +22,128 @@ import {
   DEAL_REVIEW_REVEAL_DAYS,
   type DealReview,
   type DealReviewInput,
+  type DealStatus,
   type DealView,
 } from '../../api/client';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { SkeletonDetail } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage, isNotFound } from '../../components/StateView';
+import { ErrorState, friendlyMessage, isNotFound } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { TextField } from '../../components/TextField';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { DealStatusBadge } from '../../components/DealStatusBadge';
+import { dealStatusLabel } from '../../components/DealStatusBadge';
 import { DATE_PATTERN, formatQuantity, formatQuoteDate } from '../../features/quotes/format';
 import { dealTimeline, reviewCriteria, type DealCriterion, type DealStep } from '../../features/deals/timeline';
 import { formatDateTime } from '../../features/time';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Icon,
+  Input,
+  Screen,
+  SectionTitle,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'DealDetail'>;
 
 type Busy = null | 'deliver' | 'confirm' | 'dispute' | 'cancel' | 'review';
 
-// Faz 3, Adım 4. Sipariş kaydı kabul edilen tekliften doğuyor. Platform ödeme
-// almaz, sevkiyat izlemez: burada görünen her şey iki tarafın BEYANIDIR.
-// Ödeme konusuna hiçbir metinde girilmiyor (ürün sahibinin kararı).
+// Durum → rozet türü; metin `dealStatusLabel` ile aynı kaynaktan.
+const DEAL_BADGE: Record<DealStatus, BadgeKind> = {
+  acik: 'info',
+  teslim_bildirildi: 'pending',
+  teslim_edildi: 'delivered',
+  itiraz: 'cancelled',
+  iptal: 'cancelled',
+};
+
+// Zaman çizelgesindeki nokta (DESIGN.md'de adı olmayan ekran-içi ölçü).
+const DOT_SIZE = 22;
+
+// Bölüm: başlık + kart (ürün detayındaki kalıp).
+function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ gap: t.space[2] }}>
+      {title ? <SectionTitle title={title} /> : null}
+      <Card>{children}</Card>
+    </View>
+  );
+}
+
+// Etiket solda, değer sağda; ölçü/sayı mono14.
+function SpecRow({ label, value, sans, last }: { label: string; value: string; sans?: boolean; last?: boolean }) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: t.space[4],
+        minHeight: t.size.touchMin,
+        paddingVertical: t.space[2],
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: t.colors.line,
+      }}
+    >
+      <Text style={[t.type.body16, { color: t.colors.ink2, flexShrink: 1 }]}>{label}</Text>
+      <Text style={[sans ? t.type.body16 : t.type.mono14, { color: t.colors.ink, flexShrink: 1, textAlign: 'right' }]}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+// Bilgi / uyarı şeridi (RequestsScreen'deki banner kalıbı).
+function Notice({
+  tone,
+  icon,
+  children,
+}: {
+  tone: 'danger' | 'warning' | 'success' | 'neutral';
+  icon: 'warning' | 'check' | 'info' | 'clock' | 'x';
+  children: React.ReactNode;
+}) {
+  const t = useTheme();
+  const map = {
+    danger: { bg: t.colors.dangerSoft, fg: t.colors.danger, color: 'danger' as const },
+    warning: { bg: t.colors.warningSoft, fg: t.colors.warning, color: 'warning' as const },
+    success: { bg: t.colors.successSoft, fg: t.colors.success, color: 'success' as const },
+    neutral: { bg: t.colors.surface2, fg: t.colors.ink2, color: 'ink2' as const },
+  }[tone];
+  return (
+    <View
+      accessibilityRole="alert"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        backgroundColor: map.bg,
+      }}
+    >
+      <Icon name={icon} size={t.size.iconSm} color={map.color} />
+      <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+        {typeof children === 'string' ? (
+          <Text style={[t.type.body14, { color: map.fg }]}>{children}</Text>
+        ) : (
+          children
+        )}
+      </View>
+    </View>
+  );
+}
+
 export function DealDetailScreen({ route, navigation }: Props) {
   const { dealId } = route.params;
-  const insets = useSafeAreaInsets();
+  const t = useTheme();
   const { data: deal, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchDeal(dealId).then((res) => res.deal)
   );
@@ -53,9 +156,17 @@ export function DealDetailScreen({ route, navigation }: Props) {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
 
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
+  const bar = <AppBar title="Sipariş" leading="back" onBack={() => navigation.goBack()} />;
+
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
         <SkeletonDetail variant="timeline" />
       </View>
     );
@@ -63,15 +174,18 @@ export function DealDetailScreen({ route, navigation }: Props) {
 
   if (!deal) {
     return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {bar}
         {error && !isNotFound(error) ? (
           <ErrorState error={error} fallback="Sipariş alınamadı" onRetry={reload} />
         ) : (
-          <EmptyState
-            icon="cube-outline"
-            title="Sipariş bulunamadı"
-            message="Kayıt kaldırılmış ya da size ait olmayabilir."
-          />
+          <Screen>
+            <EmptyState
+              icon="cube-outline"
+              title="Sipariş bulunamadı"
+              description="Kayıt kaldırılmış ya da size ait olmayabilir."
+            />
+          </Screen>
         )}
       </View>
     );
@@ -160,250 +274,297 @@ export function DealDetailScreen({ route, navigation }: Props) {
   const steps = dealTimeline(deal);
 
   return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]} refreshControl={refreshControl(refreshing, refresh)}>
-        <View style={[styles.block, styles.summary]}>
-          <View style={styles.summaryTop}>
-            <Pressable
-              onPress={() => navigation.navigate('ProductDetail', { productId: deal.product.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`${deal.product.code}, ürün sayfasını aç`}
-              hitSlop={6}
-              style={({ pressed }) => pressed && styles.pressedFade}
-            >
-              <Text style={styles.code}>{deal.product.code}</Text>
-            </Pressable>
-            <DealStatusBadge status={deal.status} />
-          </View>
-          <Text style={styles.counterparty}>{isSeller ? `Alıcı: ${counterparty}` : counterparty}</Text>
-          <Text style={styles.summaryMeta}>
-            Miktar: <Text style={styles.summaryValue}>{formatQuantity(deal.quantity, deal.unit)}</Text>
-          </Text>
-          <Text style={styles.summaryMeta}>
-            Anlaşılan teslim tarihi:{' '}
-            <Text style={styles.summaryValue}>
-              {deal.agreedDeliveryDate ? formatQuoteDate(deal.agreedDeliveryDate) : 'Belirtilmedi'}
-            </Text>
-          </Text>
-          <Text style={styles.hint}>Satıcının teklifindeki termine göre</Text>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {bar}
 
-          <Pressable
-            onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: deal.quoteRequestId })}
-            accessibilityRole="button"
-            accessibilityLabel="Bu siparişin teklifini aç"
-            hitSlop={6}
-            style={({ pressed }) => [styles.link, pressed && styles.pressedFade]}
-          >
-            <Ionicons name="pricetag-outline" size={16} color={colors.accent} />
-            <Text style={styles.linkText}>Teklifi aç</Text>
-          </Pressable>
-        </View>
-
-        {/* Gecikme/zamanında bilgisi yalnızca teslim beyanı ve anlaşılan tarih
-            birlikte varsa anlamlı (sunucu lateDays'i o zaman dolduruyor). */}
-        {deal.lateDays != null ? (
-          <View style={styles.padded}>
-            {deal.lateDays > 0 ? (
-              <View style={styles.warnBox} accessibilityRole="alert">
-                <Ionicons name="alert-circle-outline" size={16} color={colors.warning} />
-                <Text style={styles.warnText}>{deal.lateDays} gün geç teslim</Text>
+      <Screen scroll={false} noPadding contentStyle={{ paddingTop: 0, gap: 0 }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: t.space[10] }}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={refreshControl(refreshing, refresh)}
+        >
+          <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[6] }}>
+            {/* Özet */}
+            <View style={{ gap: t.space[2] }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+                <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{deal.product.code}</Text>
+                <Badge kind={DEAL_BADGE[deal.status]} label={dealStatusLabel(deal.status)} />
               </View>
-            ) : (
-              <View style={styles.okBox}>
-                <Ionicons name="checkmark-circle-outline" size={16} color={colors.success} />
-                <Text style={styles.okText}>Zamanında teslim</Text>
-              </View>
-            )}
-          </View>
-        ) : null}
-
-        <View style={[styles.block, styles.timeline]}>
-          {steps.map((step, index) => (
-            <TimelineStep key={step.key} step={step} isLast={index === steps.length - 1} nextDone={!!steps[index + 1]?.done} />
-          ))}
-        </View>
-
-        {/* İtiraz notu artık zaman çizelgesindeki teslim adımının altında
-            (ayrı kutu tekrar oluyordu). */}
-
-        {deal.status === 'iptal' ? (
-          <View style={styles.padded}>
-            <View style={styles.grayBox}>
-              <Ionicons name="close-circle-outline" size={16} color={colors.textMuted} />
-              <View style={styles.boxTexts}>
-                <Text style={styles.grayTitle}>
-                  {deal.cancelledByRole === 'buyer'
-                    ? 'Alıcı siparişi iptal olarak işaretledi.'
-                    : deal.cancelledByRole === 'seller'
-                      ? 'Satıcı siparişi iptal olarak işaretledi.'
-                      : 'Sipariş iptal olarak işaretlendi.'}
-                </Text>
-                {deal.cancelReason ? <Text style={styles.grayText}>{deal.cancelReason}</Text> : null}
-              </View>
+              <Text accessibilityRole="header" style={[t.type.title22, { color: t.colors.ink }]}>
+                {isSeller ? `Alıcı: ${counterparty}` : counterparty}
+              </Text>
             </View>
-          </View>
-        ) : null}
 
-        {/* --- Satıcı eylemi: teslim beyanı --- */}
-        {isSeller && (deal.status === 'acik' || deal.status === 'itiraz') ? (
-          <View style={[styles.block, styles.actionBlock]}>
-            <Text style={styles.blockTitle}>
-              {deal.status === 'itiraz' ? 'Teslimi yeniden bildirin' : 'Teslim beyanı'}
-            </Text>
-            <TextField
-              label="Teslim tarihi (YYYY-AA-GG, isteğe bağlı)"
-              value={deliveredAt}
-              onChangeText={setDeliveredAt}
-              placeholder="Boş bırakırsanız bugün yazılır"
-              autoCapitalize="none"
-            />
-            <PrimaryButton
-              label={busy === 'deliver' ? 'Bildiriliyor...' : 'Teslim ettim'}
-              size="lg"
-              disabled={!!busy}
-              onPress={deliver}
-            />
-          </View>
-        ) : null}
-
-        {/* --- Alıcı eylemi: onay ya da itiraz --- */}
-        {!isSeller && deal.status === 'teslim_bildirildi' ? (
-          <View style={[styles.block, styles.actionBlock]}>
-            <Text style={styles.blockTitle}>Satıcı teslim ettiğini bildirdi</Text>
-            <Text style={styles.blockNote}>
-              {DEAL_AUTO_CONFIRM_DAYS} gün içinde yanıt vermezseniz teslim onaylanmış sayılır.
-            </Text>
-            <PrimaryButton
-              label={busy === 'confirm' ? 'Onaylanıyor...' : 'Teslimi onayla'}
-              size="lg"
-              disabled={!!busy}
-              onPress={confirmDelivery}
-            />
-            {disputeOpen ? (
-              <View style={styles.inlineForm}>
-                <TextField
-                  label="İtiraz notu"
-                  value={disputeNote}
-                  onChangeText={setDisputeNote}
-                  placeholder="Örn. Mal henüz elimize ulaşmadı"
-                  multiline
-                />
-                <View style={styles.rowButtons}>
-                  <PrimaryButton
-                    label="Vazgeç"
-                    variant="outline"
-                    disabled={!!busy}
-                    onPress={() => {
-                      setDisputeOpen(false);
-                      setDisputeNote('');
-                    }}
-                  />
-                  <PrimaryButton
-                    label={busy === 'dispute' ? 'Gönderiliyor...' : 'İtirazı gönder'}
-                    disabled={!!busy}
-                    onPress={sendDispute}
-                    style={styles.rowMain}
-                  />
-                </View>
-              </View>
-            ) : (
-              <PrimaryButton label="İtiraz et" variant="outline" size="lg" disabled={!!busy} onPress={() => setDisputeOpen(true)} />
-            )}
-          </View>
-        ) : null}
-
-        {/* --- İki taraf: teslim tamamlanmadan iptal işareti --- */}
-        {deal.status !== 'teslim_edildi' && deal.status !== 'iptal' ? (
-          <View style={styles.padded}>
-            {cancelOpen ? (
-              <View style={styles.inlineForm}>
-                <Text style={styles.blockNote}>
-                  Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.
-                </Text>
-                <TextField
-                  label="Neden (isteğe bağlı)"
-                  value={cancelReason}
-                  onChangeText={(text) => setCancelReason(text.slice(0, 300))}
-                  placeholder="Örn. Karşılıklı anlaşarak vazgeçtik"
-                  multiline
-                />
-                <View style={styles.rowButtons}>
-                  <PrimaryButton
-                    label="Vazgeç"
-                    variant="outline"
-                    disabled={!!busy}
-                    onPress={() => {
-                      setCancelOpen(false);
-                      setCancelReason('');
-                    }}
-                  />
-                  <PrimaryButton
-                    label={busy === 'cancel' ? 'İşaretleniyor...' : 'İptal olarak işaretle'}
-                    disabled={!!busy}
-                    onPress={cancel}
-                    style={styles.rowMain}
-                  />
-                </View>
-              </View>
-            ) : (
-              <PrimaryButton
-                label="Siparişi iptal olarak işaretle"
-                variant="outline"
-                disabled={!!busy}
-                onPress={() => setCancelOpen(true)}
+            <Card>
+              <SpecRow label="Miktar" value={formatQuantity(deal.quantity, deal.unit)} />
+              <SpecRow
+                label="Anlaşılan teslim tarihi"
+                value={deal.agreedDeliveryDate ? formatQuoteDate(deal.agreedDeliveryDate) : 'Belirtilmedi'}
+                sans={!deal.agreedDeliveryDate}
+                last
               />
-            )}
+              <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
+                Satıcının teklifindeki termine göre
+              </Text>
+            </Card>
+
+            <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+              <Button
+                kind="secondary"
+                label="Ürünü aç"
+                icon="fabric"
+                accessibilityLabel={`${deal.product.code}, ürün sayfasını aç`}
+                onPress={() => navigation.navigate('ProductDetail', { productId: deal.product.id })}
+                style={{ flex: 1 }}
+              />
+              <Button
+                kind="secondary"
+                label="Teklifi aç"
+                icon="quote"
+                accessibilityLabel="Bu siparişin teklifini aç"
+                onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: deal.quoteRequestId })}
+                style={{ flex: 1 }}
+              />
+            </View>
+
+            {/* Gecikme/zamanında bilgisi yalnızca teslim beyanı ve anlaşılan tarih
+                birlikte varsa anlamlı (sunucu lateDays'i o zaman dolduruyor). */}
+            {deal.lateDays != null ? (
+              deal.lateDays > 0 ? (
+                <Notice tone="warning" icon="warning">{`${deal.lateDays} gün geç teslim`}</Notice>
+              ) : (
+                <Notice tone="success" icon="check">
+                  Zamanında teslim
+                </Notice>
+              )
+            ) : null}
+
+            {/* Zaman çizelgesi */}
+            <View style={{ gap: t.space[2] }}>
+              <SectionTitle title="Durum" />
+              <Card>
+                {steps.map((step, index) => (
+                  <TimelineStep
+                    key={step.key}
+                    step={step}
+                    isLast={index === steps.length - 1}
+                    nextDone={!!steps[index + 1]?.done}
+                  />
+                ))}
+              </Card>
+            </View>
+
+            {deal.status === 'iptal' ? (
+              <Notice tone="neutral" icon="x">
+                <>
+                  <Text style={[t.type.label14, { color: t.colors.ink2 }]}>
+                    {deal.cancelledByRole === 'buyer'
+                      ? 'Alıcı siparişi iptal olarak işaretledi.'
+                      : deal.cancelledByRole === 'seller'
+                        ? 'Satıcı siparişi iptal olarak işaretledi.'
+                        : 'Sipariş iptal olarak işaretlendi.'}
+                  </Text>
+                  {deal.cancelReason ? (
+                    <Text style={[t.type.body14, { color: t.colors.ink }]}>{deal.cancelReason}</Text>
+                  ) : null}
+                </>
+              </Notice>
+            ) : null}
+
+            {/* --- Satıcı eylemi: teslim beyanı (ekranın tek dolu düğmesi) --- */}
+            {isSeller && (deal.status === 'acik' || deal.status === 'itiraz') ? (
+              <Section title={deal.status === 'itiraz' ? 'Teslimi yeniden bildirin' : 'Teslim beyanı'}>
+                <View style={{ gap: t.space[3] }}>
+                  <Input
+                    label="Teslim tarihi (YYYY-AA-GG, isteğe bağlı)"
+                    value={deliveredAt}
+                    onChangeText={setDeliveredAt}
+                    placeholder="Boş bırakırsanız bugün yazılır"
+                    autoCapitalize="none"
+                    inputMode="numeric"
+                  />
+                  <Button
+                    size="lg"
+                    label="Teslim ettim"
+                    loading={busy === 'deliver'}
+                    disabled={!!busy}
+                    onPress={() => void deliver()}
+                  />
+                </View>
+              </Section>
+            ) : null}
+
+            {/* --- Alıcı eylemi: onay ya da itiraz --- */}
+            {!isSeller && deal.status === 'teslim_bildirildi' ? (
+              <Section title="Satıcı teslim ettiğini bildirdi">
+                <View style={{ gap: t.space[3] }}>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                    {DEAL_AUTO_CONFIRM_DAYS} gün içinde yanıt vermezseniz teslim onaylanmış sayılır.
+                  </Text>
+                  <Button
+                    size="lg"
+                    label="Teslimi onayla"
+                    loading={busy === 'confirm'}
+                    disabled={!!busy}
+                    onPress={() => void confirmDelivery()}
+                  />
+                  {disputeOpen ? (
+                    <View style={{ gap: t.space[3] }}>
+                      <Input
+                        label="İtiraz notu"
+                        value={disputeNote}
+                        onChangeText={setDisputeNote}
+                        placeholder="Örn. Mal henüz elimize ulaşmadı"
+                        multiline
+                      />
+                      <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                        <Button
+                          kind="secondary"
+                          label="Vazgeç"
+                          disabled={!!busy}
+                          onPress={() => {
+                            setDisputeOpen(false);
+                            setDisputeNote('');
+                          }}
+                          style={{ flex: 1 }}
+                        />
+                        <Button
+                          kind="secondary"
+                          label="İtirazı gönder"
+                          loading={busy === 'dispute'}
+                          disabled={!!busy}
+                          onPress={() => void sendDispute()}
+                          style={{ flex: 1 }}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <Button
+                      kind="secondary"
+                      fullWidth
+                      label="İtiraz et"
+                      disabled={!!busy}
+                      onPress={() => setDisputeOpen(true)}
+                    />
+                  )}
+                </View>
+              </Section>
+            ) : null}
+
+            {/* --- İki taraf: teslim tamamlanmadan iptal işareti --- */}
+            {deal.status !== 'teslim_edildi' && deal.status !== 'iptal' ? (
+              cancelOpen ? (
+                <Card>
+                  <View style={{ gap: t.space[3] }}>
+                    <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                      Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.
+                    </Text>
+                    <Input
+                      label="Neden (isteğe bağlı)"
+                      value={cancelReason}
+                      onChangeText={(text) => setCancelReason(text.slice(0, 300))}
+                      placeholder="Örn. Karşılıklı anlaşarak vazgeçtik"
+                      multiline
+                    />
+                    <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                      <Button
+                        kind="secondary"
+                        label="Vazgeç"
+                        disabled={!!busy}
+                        onPress={() => {
+                          setCancelOpen(false);
+                          setCancelReason('');
+                        }}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        kind="danger"
+                        label="İptal olarak işaretle"
+                        loading={busy === 'cancel'}
+                        disabled={!!busy}
+                        onPress={() => void cancel()}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                  </View>
+                </Card>
+              ) : (
+                <Button
+                  kind="secondary"
+                  fullWidth
+                  label="Siparişi iptal olarak işaretle"
+                  disabled={!!busy}
+                  onPress={() => setCancelOpen(true)}
+                />
+              )
+            ) : null}
+
+            {/* --- Değerlendirme --- */}
+            {deal.status === 'teslim_edildi' ? (
+              <ReviewSection deal={deal} busy={busy === 'review'} disabled={!!busy} onSubmit={sendReview} />
+            ) : null}
+
+            {bannerMessage ? <Notice tone="danger" icon="warning">{bannerMessage}</Notice> : null}
           </View>
-        ) : null}
-
-        {/* --- Değerlendirme --- */}
-        {deal.status === 'teslim_edildi' ? (
-          <ReviewSection deal={deal} busy={busy === 'review'} disabled={!!busy} onSubmit={sendReview} />
-        ) : null}
-
-        {bannerMessage ? (
-          <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
-        ) : null}
-      </ScrollView>
+        </ScrollView>
+      </Screen>
     </View>
   );
 }
 
 // --- Zaman çizelgesi (numune takibindeki adım görünümünün aynısı) -----------
 
-function TimelineStep({
-  step,
-  isLast,
-  nextDone,
-}: {
-  step: DealStep;
-  isLast: boolean;
-  nextDone: boolean;
-}) {
+function TimelineStep({ step, isLast, nextDone }: { step: DealStep; isLast: boolean; nextDone: boolean }) {
+  const t = useTheme();
   return (
-    <View style={styles.stepRow} accessible accessibilityLabel={`${step.label}, ${step.done ? 'tamamlandı' : 'bekleniyor'}`}>
-      <View style={styles.rail}>
-        <View style={[styles.dot, step.done ? styles.dotDone : styles.dotPending]}>
-          {step.done ? <Ionicons name="checkmark" size={14} color={colors.primaryText} /> : null}
+    <View
+      style={{ flexDirection: 'row', gap: t.space[3] }}
+      accessible
+      accessibilityLabel={`${step.label}, ${step.done ? 'tamamlandı' : 'bekleniyor'}`}
+    >
+      <View style={{ width: DOT_SIZE, alignItems: 'center' }}>
+        <View
+          style={{
+            width: DOT_SIZE,
+            height: DOT_SIZE,
+            borderRadius: t.radius.full,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: step.done ? t.colors.brand : t.colors.surface1,
+            borderWidth: step.done ? 0 : 2,
+            borderColor: t.colors.lineStrong,
+          }}
+        >
+          {step.done ? <Icon name="check" size={t.size.iconXs} colorValue={t.colors.onBrand} /> : null}
         </View>
-        {!isLast ? <View style={[styles.line, step.done && nextDone && styles.lineDone]} /> : null}
-      </View>
-      <View style={[styles.stepBody, isLast && styles.stepBodyLast]}>
-        <Text style={[styles.stepLabel, !step.done && styles.stepLabelPending]}>{step.label}</Text>
-        {step.occurredAt ? (
-          <Text style={styles.stepTime}>{formatDateTime(step.occurredAt)}</Text>
-        ) : !step.done ? (
-          <Text style={styles.stepMuted}>Bekleniyor</Text>
+        {!isLast ? (
+          <View
+            style={{
+              flex: 1,
+              width: 2,
+              marginVertical: t.space[1] / 2,
+              backgroundColor: step.done && nextDone ? t.colors.brand : t.colors.lineStrong,
+            }}
+          />
         ) : null}
-        {step.description ? <Text style={styles.stepMuted}>{step.description}</Text> : null}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: t.space[1], paddingBottom: isLast ? 0 : t.space[5] }}>
+        <Text style={[t.type.body16Strong, { color: step.done ? t.colors.ink : t.colors.ink2 }]}>{step.label}</Text>
+        {step.occurredAt ? (
+          <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatDateTime(step.occurredAt)}</Text>
+        ) : !step.done ? (
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bekleniyor</Text>
+        ) : null}
+        {step.description ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{step.description}</Text> : null}
         {/* İtiraz: beyan silinmiyor, altına uyarı satırı olarak ekleniyor. */}
         {step.warning ? (
-          <View style={styles.stepWarnRow} accessibilityRole="alert">
-            <Ionicons name="alert-circle-outline" size={15} color={colors.warning} />
-            <Text style={styles.stepWarnText}>{step.warning}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[1] }} accessibilityRole="alert">
+            <Icon name="warning" size={t.size.iconXs} color="warning" />
+            <Text style={[t.type.body14, { color: t.colors.warning, flex: 1, minWidth: 0 }]}>{step.warning}</Text>
           </View>
         ) : null}
-        {step.hint ? <Text style={styles.stepMuted}>{step.hint}</Text> : null}
+        {step.hint ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{step.hint}</Text> : null}
       </View>
     </View>
   );
@@ -422,6 +583,7 @@ function ReviewSection({
   disabled: boolean;
   onSubmit: (input: DealReviewInput) => Promise<DealView | null>;
 }) {
+  const t = useTheme();
   const criteria = reviewCriteria(deal.role);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [comment, setComment] = useState('');
@@ -444,55 +606,52 @@ function ReviewSection({
   };
 
   return (
-    <View style={styles.reviewWrap}>
+    <View style={{ gap: t.space[6] }}>
       {deal.canReview ? (
-        <View style={[styles.block, styles.actionBlock]}>
-          <Text style={styles.blockTitle}>İşi değerlendirin</Text>
-          <Text style={styles.blockNote}>
-            Değerlendirmeniz, karşı taraf da yazınca ya da {DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur. Böylece iki
-            taraf birbirinden etkilenmeden yazar.
-          </Text>
-          {criteria.map((criterion) => (
-            <ScoreRow
-              key={criterion.key}
-              criterion={criterion}
-              value={scores[criterion.key] ?? 0}
-              onChange={(value) => setScores((prev) => ({ ...prev, [criterion.key]: value }))}
+        <Section title="İşi değerlendirin">
+          <View style={{ gap: t.space[3] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              Değerlendirmeniz, karşı taraf da yazınca ya da {DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur. Böylece iki
+              taraf birbirinden etkilenmeden yazar.
+            </Text>
+            {criteria.map((criterion) => (
+              <ScoreRow
+                key={criterion.key}
+                criterion={criterion}
+                value={scores[criterion.key] ?? 0}
+                onChange={(value) => setScores((prev) => ({ ...prev, [criterion.key]: value }))}
+              />
+            ))}
+            <Input
+              label="Yorum (isteğe bağlı)"
+              value={comment}
+              onChangeText={(text) => setComment(text.slice(0, 500))}
+              placeholder="Örn. Kumaş numuneyle birebir aynıydı."
+              multiline
+              error={formError}
             />
-          ))}
-          <TextField
-            label="Yorum (isteğe bağlı)"
-            value={comment}
-            onChangeText={(text) => setComment(text.slice(0, 500))}
-            placeholder="Örn. Kumaş numuneyle birebir aynıydı."
-            multiline
-          />
-          {formError ? <Text style={styles.fieldError}>{formError}</Text> : null}
-          <PrimaryButton
-            label={busy ? 'Gönderiliyor...' : 'Değerlendirmeyi gönder'}
-            size="lg"
-            disabled={disabled}
-            onPress={submit}
-          />
-        </View>
+            <Button
+              size="lg"
+              label="Değerlendirmeyi gönder"
+              loading={busy}
+              disabled={disabled}
+              onPress={() => void submit()}
+            />
+          </View>
+        </Section>
       ) : null}
 
       {deal.myReview ? <ReviewCard title="Sizin değerlendirmeniz" review={deal.myReview} /> : null}
       {deal.theirReview ? <ReviewCard title="Karşı tarafın değerlendirmesi" review={deal.theirReview} /> : null}
 
       {!deal.theirReview ? (
-        <View style={styles.padded}>
-          <View style={styles.infoBox}>
-            <Ionicons name="time-outline" size={16} color={colors.textMuted} />
-            <Text style={styles.infoText}>
-              {deal.theirReviewPending
-                ? 'Karşı taraf değerlendirmesini yazdı; siz de yazınca ikisi birlikte görünür olur.'
-                : deal.myReview
-                  ? `Karşı taraf da yazınca ikisi birlikte görünür olur; yazmazsa teslim onayından ${DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur.`
-                  : 'Karşı taraf henüz değerlendirmedi.'}
-            </Text>
-          </View>
-        </View>
+        <Notice tone="neutral" icon="clock">
+          {deal.theirReviewPending
+            ? 'Karşı taraf değerlendirmesini yazdı; siz de yazınca ikisi birlikte görünür olur.'
+            : deal.myReview
+              ? `Karşı taraf da yazınca ikisi birlikte görünür olur; yazmazsa teslim onayından ${DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur.`
+              : 'Karşı taraf henüz değerlendirmedi.'}
+        </Notice>
       ) : null}
     </View>
   );
@@ -507,10 +666,11 @@ function ScoreRow({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const t = useTheme();
   return (
-    <View style={styles.scoreRow}>
-      <Text style={styles.scoreLabel}>{criterion.label}</Text>
-      <View style={styles.stars}>
+    <View style={{ gap: t.space[1] }}>
+      <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{criterion.label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <Pressable
             key={n}
@@ -521,37 +681,49 @@ function ScoreRow({
             accessibilityRole="button"
             accessibilityState={{ selected: value === n }}
             accessibilityLabel={`${criterion.label}: ${n} puan`}
-            style={({ pressed }) => [styles.star, pressed && styles.pressedFade]}
+            style={({ pressed }) => [
+              {
+                minWidth: t.size.touchMin,
+                minHeight: t.size.touchMin,
+                alignItems: 'center',
+                justifyContent: 'center',
+              },
+              pressed ? { opacity: 0.6 } : null,
+            ]}
           >
-            <Ionicons name={n <= value ? 'star' : 'star-outline'} size={26} color={n <= value ? colors.warning : colors.borderStrong} />
+            <Icon
+              name={n <= value ? 'star' : 'star-outline'}
+              size={t.size.icon}
+              colorValue={n <= value ? t.colors.accent : t.colors.lineStrong}
+            />
           </Pressable>
         ))}
-        <Text style={styles.scoreValue}>{value ? `${value}/5` : ''}</Text>
+        <Text style={[t.type.mono14, { color: t.colors.ink2, marginLeft: t.space[1] }]}>{value ? `${value}/5` : ''}</Text>
       </View>
     </View>
   );
 }
 
 function ReviewCard({ title, review }: { title: string; review: DealReview }) {
+  const t = useTheme();
   const rows = reviewCriteria(review.authorRole).map((criterion) => ({
     label: criterion.label,
     value: scoreOf(review, criterion.key),
   }));
   return (
-    <View style={styles.padded}>
-      <View style={styles.reviewFrame}>
-        <View style={styles.reviewInner}>
-          <Text style={styles.reviewKicker}>{title.toLocaleUpperCase('tr-TR')}</Text>
-          {rows.map((row, index) => (
-            <View key={row.label} style={[styles.reviewRow, index < rows.length - 1 && styles.reviewRowDivider]}>
-              <Text style={styles.reviewLabel}>{row.label}</Text>
-              <Text style={styles.reviewValue}>{row.value != null ? `${row.value}/5` : ''}</Text>
-            </View>
-          ))}
-          {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
-        </View>
-      </View>
-    </View>
+    <Section title={title}>
+      {rows.map((row, index) => (
+        <SpecRow
+          key={row.label}
+          label={row.label}
+          value={row.value != null ? `${row.value}/5` : ''}
+          last={index === rows.length - 1}
+        />
+      ))}
+      {review.comment ? (
+        <Text style={[t.type.body14, { color: t.colors.ink, paddingTop: t.space[2] }]}>{review.comment}</Text>
+      ) : null}
+    </Section>
   );
 }
 
@@ -561,115 +733,3 @@ function scoreOf(review: DealReview, key: DealCriterion['key']): number | null {
   if (key === 'seriousness') return review.seriousness;
   return review.communication;
 }
-
-const DOT_SIZE = 22;
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { gap: spacing.blockGap },
-  block: { backgroundColor: colors.surface },
-  padded: { paddingHorizontal: spacing.gutter },
-  pressedFade: { opacity: 0.6 },
-  summary: { padding: spacing.gutter, gap: 3 },
-  summaryTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  code: { fontFamily: fonts.monoSemibold, fontSize: 20, lineHeight: 26, color: colors.primary },
-  counterparty: { ...typography.label, color: colors.accent },
-  summaryMeta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  summaryValue: { ...typography.mono, fontSize: 15, color: colors.text },
-  hint: { ...typography.caption, color: colors.textMuted },
-  link: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: MIN_TOUCH },
-  linkText: { ...typography.label, fontFamily: fonts.semibold, color: colors.accent },
-
-  timeline: { paddingHorizontal: spacing.gutter, paddingTop: spacing.md, paddingBottom: spacing.xs },
-  stepRow: { flexDirection: 'row', gap: 12 },
-  rail: { width: DOT_SIZE, alignItems: 'center' },
-  dot: { width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, alignItems: 'center', justifyContent: 'center' },
-  dotDone: { backgroundColor: colors.primary },
-  dotPending: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.borderStrong },
-  line: { flex: 1, width: 2, backgroundColor: colors.borderStrong, marginVertical: 2 },
-  lineDone: { backgroundColor: colors.primary },
-  stepBody: { flex: 1, gap: 2, paddingBottom: 18 },
-  stepBodyLast: { paddingBottom: spacing.gutter },
-  stepLabel: { ...typography.subtitle, color: colors.text },
-  stepLabelPending: { color: colors.textMuted },
-  stepTime: { ...typography.mono, fontSize: 14, lineHeight: 19, color: colors.textMuted },
-  stepMuted: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  stepWarnRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5, paddingTop: 2 },
-  stepWarnText: { ...typography.label, fontFamily: fonts.regular, color: colors.warning, flexShrink: 1 },
-
-  actionBlock: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.md, gap: spacing.sm },
-  blockTitle: { ...typography.subtitle, color: colors.text },
-  blockNote: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-  inlineForm: { gap: spacing.sm },
-  rowButtons: { flexDirection: 'row', gap: spacing.sm },
-  rowMain: { flex: 1 },
-  fieldError: { ...typography.caption, color: colors.danger },
-
-  warnBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.warningSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  warnText: { ...typography.label, fontFamily: fonts.semibold, color: colors.warning, flexShrink: 1 },
-  okBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.successSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  okText: { ...typography.label, fontFamily: fonts.semibold, color: colors.success, flexShrink: 1 },
-  grayBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.chip,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  grayTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.textMuted },
-  grayText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 6,
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  infoText: { ...typography.caption, color: colors.textMuted, flexShrink: 1 },
-  boxTexts: { flex: 1, gap: 2 },
-
-  reviewWrap: { gap: spacing.blockGap },
-  scoreRow: { gap: 4 },
-  scoreLabel: { ...typography.label, color: colors.text },
-  stars: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  star: { minWidth: MIN_TOUCH, minHeight: MIN_TOUCH, alignItems: 'center', justifyContent: 'center' },
-  scoreValue: { ...typography.mono, fontSize: 14, color: colors.textMuted, marginLeft: spacing.xs },
-  // Kesik çizgili kart: teklif kartı ve pasaport kartıyla aynı görsel dil.
-  reviewFrame: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, backgroundColor: colors.surface, padding: 4 },
-  reviewInner: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    borderRadius: radius.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 10,
-    gap: 2,
-  },
-  reviewKicker: { fontFamily: fonts.medium, fontSize: 11, lineHeight: 15, letterSpacing: 0.5, color: colors.textMuted },
-  reviewRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md, paddingVertical: 6 },
-  reviewRowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  reviewLabel: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted, flexShrink: 1 },
-  reviewValue: { ...typography.mono, fontFamily: fonts.monoMedium, fontSize: 16, color: colors.text },
-  reviewComment: { ...typography.label, fontFamily: fonts.regular, color: colors.text, paddingTop: spacing.xs },
-  banner: { marginHorizontal: spacing.gutter },
-});

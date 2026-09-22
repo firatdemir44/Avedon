@@ -1,8 +1,12 @@
 import React from 'react';
-import { View, Text, Image, Pressable, ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Image, Pressable, ActivityIndicator, Platform } from 'react-native';
 import { haptics } from '../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
+
+// Izgara karesi (DESIGN.md'de adı olmayan ekran-içi ölçü): 375 px'te üç kare
+// + iki aralık yan yana sığar.
+const TILE_SIZE = 96;
 
 // Düzenleme ekranlarındaki fotoğraf ızgarası: ekle, kaldır, başa al.
 // existing: sunucudaki fotoğrafın eski sırası (kaydederken yeniden yüklenmez),
@@ -34,10 +38,21 @@ export function PhotoGridEditor({
   onRemove,
   onMoveFirst,
   firstBadge,
-  size = 96,
+  size = TILE_SIZE,
 }: Props) {
+  const t = useTheme();
+  const tile = {
+    width: size,
+    height: size,
+    borderRadius: t.radius.sm,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    backgroundColor: t.colors.surface2,
+    overflow: 'hidden' as const,
+  };
+
   return (
-    <View style={styles.grid}>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
       {photos.map((photo, index) => (
         <View key={photo.key} style={{ width: size, height: size }}>
           <Pressable
@@ -54,19 +69,33 @@ export function PhotoGridEditor({
                 ? `Fotoğraf ${index + 1}${firstBadge ? `, ${firstBadge.toLocaleLowerCase('tr-TR')}` : ''}`
                 : `Fotoğraf ${index + 1}, başa al`
             }
-            style={({ pressed }) => [styles.press, pressed && styles.pressed]}
+            style={({ pressed }) => [tile, pressed && { opacity: 0.8 }]}
           >
             {photo.uri ? (
-              <Image source={{ uri: photo.uri }} style={[styles.photo, { width: size, height: size }]} />
+              <Image source={{ uri: photo.uri }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
             ) : (
-              <View style={[styles.photo, styles.loading, { width: size, height: size }]}>
-                <ActivityIndicator color={colors.chevron} />
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <ActivityIndicator color={t.colors.ink3} />
               </View>
             )}
           </Pressable>
           {index === 0 && firstBadge ? (
-            <View style={styles.badge} pointerEvents="none">
-              <Text style={styles.badgeText}>{firstBadge}</Text>
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: t.space[1],
+                bottom: t.space[1],
+                backgroundColor: t.colors.brand,
+                borderRadius: t.radius.sm,
+                paddingHorizontal: t.space[2],
+                minHeight: t.size.badge,
+                justifyContent: 'center',
+              }}
+            >
+              <Text style={[t.type.caption12, { color: t.colors.onBrand }]}>
+                {firstBadge.toLocaleUpperCase('tr-TR')}
+              </Text>
             </View>
           ) : null}
           <Pressable
@@ -74,12 +103,22 @@ export function PhotoGridEditor({
               haptics.selection();
               onRemove(photo.key);
             }}
-            hitSlop={8}
+            hitSlop={t.space[2]}
             accessibilityRole="button"
             accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
-            style={({ pressed }) => [styles.remove, pressed && styles.removePressed]}
+            style={({ pressed }) => ({
+              position: 'absolute',
+              top: t.space[1],
+              right: t.space[1],
+              width: t.size.avatarSm,
+              height: t.size.avatarSm,
+              borderRadius: t.radius.full,
+              backgroundColor: pressed ? t.colors.danger : t.colors.overlay,
+              alignItems: 'center',
+              justifyContent: 'center',
+            })}
           >
-            <Ionicons name="close" size={16} color={colors.primaryText} />
+            <Icon name="x" size={t.size.iconSm} color="onBrand" />
           </Pressable>
         </View>
       ))}
@@ -89,14 +128,26 @@ export function PhotoGridEditor({
           disabled={busy}
           accessibilityRole="button"
           accessibilityLabel="Fotoğraf ekle"
-          style={({ pressed }) => [styles.addTile, { width: size, height: size }, pressed && styles.pressed]}
+          style={({ pressed }) => ({
+            width: size,
+            height: size,
+            borderRadius: t.radius.sm,
+            borderWidth: 1,
+            borderStyle: 'dashed',
+            borderColor: t.colors.lineStrong,
+            backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: t.space[1],
+            opacity: busy ? 0.4 : 1,
+          })}
         >
           {busy ? (
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={t.colors.brand} />
           ) : (
             <>
-              <Ionicons name="add" size={26} color={colors.primary} />
-              <Text style={styles.addText}>Fotoğraf</Text>
+              <Icon name="plus" color="brand" />
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>Fotoğraf</Text>
             </>
           )}
         </Pressable>
@@ -104,43 +155,3 @@ export function PhotoGridEditor({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  press: { borderRadius: radius.md, overflow: 'hidden' },
-  pressed: { opacity: 0.8 },
-  photo: { borderRadius: radius.md, backgroundColor: colors.surfaceTonal },
-  loading: { alignItems: 'center', justifyContent: 'center' },
-  badge: {
-    position: 'absolute',
-    left: 4,
-    bottom: 4,
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-  },
-  badgeText: { fontFamily: fonts.semibold, fontSize: 12, lineHeight: 16, color: colors.primaryText },
-  remove: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 26,
-    height: 26,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(17,26,34,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removePressed: { backgroundColor: colors.danger },
-  addTile: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
-  },
-  addText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-});

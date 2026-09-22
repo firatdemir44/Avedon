@@ -1,15 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, spacing, typography } from '../theme';
+import { View, Text, Pressable, type StyleProp, type ViewStyle } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
-// Yeni düzenin temel satırı (tasarım 5. aşama): beyaz blok içinde, alttan ince
-// çizgiyle ayrılan, dokunulabiliyorsa sonunda ok olan satır. Kutu yığını
-// (FINDING-006) yerine Profil menüsü, Firma çalışanları, Hesaplamalar ve
-// benzeri listeler bununla çiziliyor.
-//
-// 4. aşama: basılıyken zemin bir ton koyulaşır (colors.pressed). Android'de
-// ayrıca sistem dalgası (ripple) var; iOS ve web'de yalnızca zemin.
+// ESKİ liste satırı. Yeni ekranlar `ui/ListRow` kullanır; bu bileşen henüz
+// taşınmamış ekranlar için duruyor ve yalnızca token'a bağlandı (ham hex/px yok,
+// açık/koyu tema çalışır). Yeni kodda kullanılmaz.
 export function ListRow({
   title,
   subtitle,
@@ -19,7 +15,7 @@ export function ListRow({
   chevron,
   divider = true,
   tone = 'default',
-  minHeight = 52,
+  minHeight,
   style,
   accessibilityLabel,
 }: {
@@ -37,25 +33,40 @@ export function ListRow({
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
 }) {
+  const t = useTheme();
   const showChevron = chevron ?? !!onPress;
+  const danger = tone === 'danger';
+
   const content = (
     <>
       {left}
-      <View style={styles.texts}>
+      <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
         <Text
-          style={[styles.title, subtitle ? styles.titleStrong : null, tone === 'danger' && styles.titleDanger]}
           numberOfLines={2}
+          style={[t.type.body16Strong, { color: danger ? t.colors.danger : t.colors.ink }]}
         >
           {title}
         </Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{subtitle}</Text> : null}
       </View>
       {right}
-      {showChevron ? <Ionicons name="chevron-forward" size={18} color={colors.chevron} /> : null}
+      {showChevron ? <Icon name="chevron" size={t.size.iconSm} color="ink3" /> : null}
     </>
   );
 
-  const rowStyle = [styles.row, { minHeight }, divider && styles.divider, style];
+  const rowStyle: StyleProp<ViewStyle> = [
+    {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: t.space[3],
+      paddingHorizontal: t.space[4],
+      paddingVertical: t.space[2],
+      minHeight: minHeight ?? t.size.touchMin + t.space[2],
+      backgroundColor: t.colors.surface1,
+    },
+    divider ? { borderBottomWidth: 1, borderBottomColor: t.colors.line } : null,
+    style,
+  ];
 
   if (!onPress) {
     return <View style={rowStyle}>{content}</View>;
@@ -66,28 +77,10 @@ export function ListRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? (subtitle ? `${title}, ${subtitle}` : title)}
-      android_ripple={{ color: colors.pressed }}
-      style={({ pressed }) => [...rowStyle, pressed && styles.pressed]}
+      android_ripple={{ color: t.colors.surface2 }}
+      style={({ pressed }) => [rowStyle, pressed ? { backgroundColor: t.colors.surface2 } : null]}
     >
       {content}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-  },
-  divider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  texts: { flex: 1, gap: 1 },
-  title: { ...typography.subtitle, fontFamily: fonts.medium, color: colors.text },
-  titleStrong: { fontFamily: fonts.semibold },
-  titleDanger: { fontFamily: fonts.semibold, color: colors.danger },
-  subtitle: { ...typography.label, fontFamily: fonts.regular, lineHeight: 17, color: colors.textMuted },
-});

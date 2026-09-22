@@ -1,16 +1,9 @@
-import React, { useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Gönderi yorumları (yeni tasarım, 4. adım — DESIGN.md §2–3).
+// Veri katmanı değişmedi (aynı uçlar, aynı gövdeler, aynı rotalar); yalnızca
+// sunum yenilendi: AppBar + Screen + ui/ListRow + yapışkan yazma alanı.
+// Ham hex / ham px yok; her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -24,20 +17,20 @@ import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
-import { SkeletonList } from '../../components/Skeleton';
-import { UserAvatar } from '../../components/UserAvatar';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { AppBar, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
 
-// Yeni düzen (5. aşama): tek beyaz blokta çizgili yorum satırları; altta
-// sohbet taslağındaki (CSohbet.dc.html) gibi yazma alanı + kare gönder düğmesi.
+// Klavye açılınca yazma alanının üstte kalması için gezinti bandı payı.
+const KEYBOARD_OFFSET = 80;
+
 export function PostCommentsScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { postId } = route.params;
   const { user } = useSession();
-  const insets = useSafeAreaInsets();
   // Bir yorumcunun profiline gidip geri dönünce liste artık yükleniyor
   // çemberine dönmüyor (bkz. useFocusLoad).
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -49,6 +42,11 @@ export function PostCommentsScreen({ route, navigation }: Props) {
   const [actionError, setActionError] = useState<string | null>(null);
   const listRef = useRef<FlatList<FeedPostComment>>(null);
   const canSend = !sending && input.trim().length > 0;
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const handleSend = async () => {
     const body = input.trim();
@@ -69,7 +67,8 @@ export function PostCommentsScreen({ route, navigation }: Props) {
   };
 
   // Eskiden yalnızca uzun basınca siliniyordu: kimsenin bulamayacağı bir hareket.
-  // Artık kendi yorumunda görünür bir sil düğmesi var.
+  // Artık kendi yorumunda görünür bir sil düğmesi var (satırın ALTINDA: iç içe
+  // düğme olmaz, DESIGN.md §3).
   const handleDelete = async (comment: FeedPostComment) => {
     const confirmed = await confirmAction({
       title: 'Yorumu sil',
@@ -88,178 +87,142 @@ export function PostCommentsScreen({ route, navigation }: Props) {
     }
   };
 
+  const appBar = <AppBar title="Yorumlar" leading="back" onBack={() => navigation.goBack()} />;
+
+  const banner = actionError ?? (error ? friendlyMessage(error, 'Yorumlar alınamadı') : null);
+
   if (status === 'loading') {
     return (
-      <View style={styles.screen}>
-        <SkeletonList variant="comment" />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {appBar}
+        <Screen>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </Screen>
       </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={[styles.screen, { paddingBottom: insets.bottom }]}>
-        <ErrorState error={error} fallback="Yorumlar alınamadı" onRetry={reload} />
+      <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+        {appBar}
+        <Screen>
+          <EmptyState
+            icon="warning"
+            title="Yorumlar alınamadı"
+            description={friendlyMessage(error, 'Bağlantınızı kontrol edip tekrar deneyin.')}
+            actionLabel="Tekrar dene"
+            onAction={reload}
+          />
+        </Screen>
       </View>
     );
   }
 
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Yorumlar alınamadı') : null);
+  const composer = (
+    <View style={{ gap: t.space[2] }}>
+      {/* Gönderme hatası yazma alanının hemen üstünde: gözün olduğu yer. */}
+      {banner ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[2],
+            padding: t.space[3],
+            borderRadius: t.radius.md,
+            backgroundColor: t.colors.dangerSoft,
+          }}
+        >
+          <Icon name="warning" size={t.size.iconSm} color="danger" />
+          <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{banner}</Text>
+        </View>
+      ) : null}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: t.space[2] }}>
+        <Input
+          placeholder="Yorum yazın"
+          accessibilityLabel="Yorum"
+          value={input}
+          onChangeText={setInput}
+          multiline
+          textAlignVertical="top"
+          containerStyle={{ flex: 1, minWidth: 0 }}
+        />
+        <Button
+          label="Gönder"
+          icon="send"
+          accessibilityLabel="Yorumu gönder"
+          loading={sending}
+          disabled={!canSend}
+          onPress={handleSend}
+        />
+      </View>
+    </View>
+  );
 
   return (
-    <View style={styles.screen}>
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      {appBar}
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={KEYBOARD_OFFSET}
       >
-        <FlatList
-          ref={listRef}
-          data={comments}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={refreshControl(refreshing, refresh)}
-          ListEmptyComponent={
-            <EmptyState compact icon="chatbubble-outline" title="Henüz yorum yok" message="İlk yorumu siz yazın." />
-          }
-          renderItem={({ item, index }) => {
-            const mine = item.author.id === user?.id;
-            const authorName = `${item.author.firstName} ${item.author.lastName}`;
-            return (
-              <Pressable
-                onPress={() => navigation.navigate('Profile', { userId: item.author.id })}
-                // Web'de rol verilirse satır <button> olur ve içindeki sil
-                // düğmesi geçersiz iç içe düğme olurdu (bkz. ProductRow).
-                accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-                accessibilityLabel={`${authorName}: ${item.body}`}
-                android_ripple={{ color: colors.pressed }}
-                style={({ pressed }) => [
-                  styles.row,
-                  index < comments.length - 1 && styles.rowDivider,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.rowHeader}>
-                  {/* Yorum kişiseldir: yazarın fotoğrafı (yoksa baş harfleri). */}
-                  <UserAvatar
-                    userId={item.author.id}
-                    firstName={item.author.firstName}
-                    lastName={item.author.lastName}
-                    avatarUpdatedAt={item.author.avatarUpdatedAt}
-                    size={28}
+        <Screen scroll={false} noPadding sticky={composer}>
+          <FlatList
+            ref={listRef}
+            data={comments}
+            keyExtractor={(item) => item.id}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={refreshControl(refreshing, refresh)}
+            ListEmptyComponent={
+              <EmptyState
+                icon="message"
+                title="Henüz yorum yok"
+                description="İlk yorumu siz yazın; gönderi sahibi bildirim alır."
+              />
+            }
+            renderItem={({ item, index }) => {
+              const mine = item.author.id === user?.id;
+              const authorName = `${item.author.firstName} ${item.author.lastName}`;
+              const last = index === comments.length - 1;
+              return (
+                <View>
+                  <ListRow
+                    title={authorName}
+                    subtitle={item.author.company?.name}
+                    avatarName={authorName}
+                    avatarKind="person"
+                    time={formatRelativeTime(item.createdAt)}
+                    divider={false}
+                    onPress={() => navigation.navigate('Profile', { userId: item.author.id })}
                   />
-                  <Text style={styles.authorLine} numberOfLines={1}>
-                    <Text style={styles.authorName}>{authorName}</Text>
-                    {item.author.company ? <Text style={styles.authorCompany}> · {item.author.company.name}</Text> : null}
+                  {/* Yorum metni satırın altında: uzun yorumlar kırpılmasın. */}
+                  <Text
+                    style={[
+                      t.type.body16,
+                      { color: t.colors.ink, marginLeft: t.size.avatar + t.space[3], paddingBottom: t.space[3] },
+                    ]}
+                  >
+                    {item.body}
                   </Text>
-                  <Text style={styles.time}>{formatRelativeTime(item.createdAt)}</Text>
                   {mine ? (
-                    <Pressable
-                      onPress={() => handleDelete(item)}
-                      hitSlop={10}
-                      accessibilityRole="button"
-                      accessibilityLabel="Yorumu sil"
-                      style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
-                    >
-                      <Ionicons name="trash-outline" size={16} color={colors.danger} />
-                    </Pressable>
+                    <View style={{ paddingBottom: t.space[3] }}>
+                      <Button kind="danger" fullWidth label="Yorumu sil" onPress={() => handleDelete(item)} />
+                    </View>
+                  ) : null}
+                  {!last ? (
+                    <View style={{ height: 1, backgroundColor: t.colors.line, marginBottom: t.space[3] }} />
                   ) : null}
                 </View>
-                <Text style={styles.body}>{item.body}</Text>
-              </Pressable>
-            );
-          }}
-        />
-        {/* Gönderme hatası yazma alanının hemen üstünde: gözün olduğu yer. */}
-        {bannerMessage ? (
-          <InlineError message={bannerMessage} onRetry={actionError ? undefined : reload} style={styles.banner} />
-        ) : null}
-        <View style={[styles.composer, { paddingBottom: insets.bottom + 10 }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Yorum yazın"
-            placeholderTextColor={colors.textMuted}
-            value={input}
-            onChangeText={setInput}
-            multiline
-            accessibilityLabel="Yorum"
+              );
+            }}
           />
-          <Pressable
-            onPress={handleSend}
-            disabled={!canSend}
-            accessibilityRole="button"
-            accessibilityLabel="Yorumu gönder"
-            accessibilityState={{ disabled: !canSend }}
-            style={({ pressed }) => [styles.sendButton, !canSend && styles.sendDisabled, pressed && canSend && styles.sendPressed]}
-          >
-            <Ionicons name="send" size={18} color={colors.primaryText} />
-          </Pressable>
-        </View>
+        </Screen>
       </KeyboardAvoidingView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.md },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.sm },
-  row: {
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 10,
-    gap: 2,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  rowHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 24 },
-  authorLine: { ...typography.bodyStrong, color: colors.text, flex: 1 },
-  authorName: { fontFamily: fonts.semibold },
-  authorCompany: { fontFamily: fonts.regular, color: colors.textMuted },
-  time: { ...typography.caption, color: colors.textMuted },
-  deleteButton: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.sm,
-  },
-  // Yazı, başlıktaki 28 px avatarın sağ kenarına hizalansın.
-  body: { ...typography.body, color: colors.text, marginLeft: 28 + spacing.sm },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  input: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    maxHeight: 120,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-  },
-  sendButton: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.4 },
-  sendPressed: { opacity: 0.85 },
-});

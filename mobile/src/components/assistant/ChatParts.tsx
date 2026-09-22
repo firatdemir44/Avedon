@@ -1,60 +1,110 @@
-import React from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { formatClockTime, formatDayLabel } from '../../features/time';
-import { MIN_TOUCH, colors, fonts, radius, spacing, typography } from '../../theme';
-
 // Asistan sohbetlerinin ortak parçaları: gün ayracı, balonlar, yazma çubuğu.
 // İki ekran kullanır: kendi firma asistanı (AssistantScreen) ve başka firmanın
-// satıcı asistanı (SellerAssistantScreen, Faz 2 Adım 3). Kopyalanmasın diye
-// burada; asistan kızılı yalnızca gönder düğmesinde (renk kuralı).
+// satıcı asistanı (SellerAssistantScreen, Faz 2 Adım 3).
+//
+// Yeni tasarım (DESIGN.md, 4. adım): asistan balonu SOLDA `surface1` + 1px
+// `line`; kullanıcı balonu SAĞDA `brand` zemin + `onBrand` metin. Bakır
+// (`accent`) burada KULLANILMAZ — o yalnızca asistan avatarı ve rozeti içindir;
+// gönder düğmesi marka rengindedir.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
+import React from 'react';
+import { View, Text, TextInput, Pressable, ActivityIndicator, type ViewStyle } from 'react-native';
+import { formatClockTime, formatDayLabel } from '../../features/time';
+import { useTheme } from '../../theme/ThemeContext';
+import { Chip, ChipRow, Icon, type AnyIconName } from '../../ui';
 
 export function ChatDayChip({ createdAt }: { createdAt: string }) {
+  const t = useTheme();
   return (
-    <View style={styles.dayChip}>
-      <Text style={styles.dayChipText}>{formatDayLabel(createdAt)}</Text>
+    <View
+      style={{
+        alignSelf: 'center',
+        backgroundColor: t.colors.surface2,
+        borderRadius: t.radius.full,
+        paddingHorizontal: t.space[3],
+        paddingVertical: t.space[1],
+      }}
+    >
+      <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{formatDayLabel(createdAt)}</Text>
     </View>
   );
 }
 
-// Kullanıcı balonu: lacivert dolu, sağda; saat mono. `local` henüz sunucuya
-// yazılmamış mesaj (gönderilirken hemen görünsün diye).
+// Kullanıcı balonu: marka zeminli, sağda. `local` henüz sunucuya yazılmamış
+// mesaj (gönderilirken hemen görünsün diye).
 export function UserBubble({ text, createdAt, local }: { text: string; createdAt: string; local?: boolean }) {
+  const t = useTheme();
   return (
-    <View style={styles.userBubble}>
-      <Text style={styles.userText}>{text}</Text>
-      <Text style={styles.userTime}>{local ? 'Gönderiliyor' : formatClockTime(createdAt)}</Text>
+    <View
+      style={{
+        alignSelf: 'flex-end',
+        maxWidth: '80%',
+        minWidth: 0,
+        backgroundColor: t.colors.brand,
+        borderRadius: t.radius.lg,
+        padding: t.space[3],
+        gap: t.space[1],
+      }}
+    >
+      <Text style={[t.type.body16, { color: t.colors.onBrand }]}>{text}</Text>
+      <Text style={[t.type.caption12, { color: t.colors.onBrand, textAlign: 'right' }]}>
+        {local ? 'Gönderiliyor' : formatClockTime(createdAt)}
+      </Text>
     </View>
   );
 }
 
-export function AssistantBubble({ text }: { text: string }) {
+export function AssistantBubble({ text, createdAt }: { text: string; createdAt?: string }) {
+  const t = useTheme();
   return (
-    <View style={styles.assistantBubble}>
-      <Text style={styles.assistantText}>{text}</Text>
+    <View style={assistantBubbleStyle(t)}>
+      <Text style={[t.type.body16, { color: t.colors.ink }]}>{text}</Text>
+      {createdAt ? (
+        <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatClockTime(createdAt)}</Text>
+      ) : null}
     </View>
   );
 }
 
 // "Hesaplıyor..." göstergesi (yanıt beklenirken); avatarı çağıran ekran koyar.
 export function ThinkingBubble({ label = 'Hesaplıyor...' }: { label?: string }) {
+  const t = useTheme();
   return (
-    <View style={styles.typingBubble} accessibilityLiveRegion="polite">
-      <ActivityIndicator size="small" color={colors.assistant} />
-      <Text style={styles.typingText}>{label}</Text>
+    <View
+      accessibilityLiveRegion="polite"
+      style={[assistantBubbleStyle(t), { flexDirection: 'row', alignItems: 'center', gap: t.space[2] }]}
+    >
+      <ActivityIndicator size="small" color={t.colors.brand} />
+      <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{label}</Text>
     </View>
   );
 }
 
+function assistantBubbleStyle(t: ReturnType<typeof useTheme>): ViewStyle {
+  return {
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    minWidth: 0,
+    backgroundColor: t.colors.surface1,
+    borderWidth: 1,
+    borderColor: t.colors.line,
+    borderRadius: t.radius.lg,
+    padding: t.space[3],
+    gap: t.space[1],
+  };
+}
+
 export interface ComposerChip {
   label: string;
-  icon?: keyof typeof Ionicons.glyphMap;
+  icon?: AnyIconName;
   onPress: () => void;
   accessibilityLabel?: string;
 }
 
-// Tonlu çok satırlı kutu + 44px kare kızıl gönder düğmesi. `chips` verilirse
-// kutunun üstünde yatay kaydırılan çipler çizilir (satıcı asistanında yok).
+// Ekranın altında yapışkan giriş alanı: 48px kutu + ≥44px gönder düğmesi.
+// `chips` verilirse kutunun üstünde yatay kaydırılan öneri çipleri çizilir
+// (satıcı asistanında yok).
 export function AssistantComposer({
   inputRef,
   value,
@@ -76,172 +126,145 @@ export function AssistantComposer({
   bottomInset: number;
   chips?: ComposerChip[];
 }) {
+  const t = useTheme();
   return (
-    <View style={[styles.footer, { paddingBottom: bottomInset + 10 }]}>
+    <View
+      style={[
+        {
+          backgroundColor: t.colors.surface1,
+          borderTopWidth: 1,
+          borderTopColor: t.colors.line,
+          paddingTop: t.space[2],
+          paddingBottom: bottomInset + t.space[3],
+          paddingHorizontal: t.space[4],
+          gap: t.space[2],
+        },
+        t.shadowRaised,
+      ]}
+    >
       {chips?.length ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.chipRow}
-        >
+        <ChipRow>
           {chips.map((chip) => (
-            <Pressable
+            <Chip
               key={chip.label}
+              label={chip.label}
+              icon={chip.icon}
               onPress={chip.onPress}
-              accessibilityRole="button"
-              accessibilityLabel={chip.accessibilityLabel ?? chip.label}
-              style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-            >
-              {chip.icon ? <Ionicons name={chip.icon} size={14} color={colors.primary} /> : null}
-              <Text style={styles.chipText}>{chip.label}</Text>
-            </Pressable>
+            />
           ))}
-        </ScrollView>
+        </ChipRow>
       ) : null}
-      <View style={styles.composer}>
+      <View
+        style={{
+          width: '100%',
+          maxWidth: t.size.maxContentWidth,
+          alignSelf: 'center',
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          gap: t.space[2],
+          minWidth: 0,
+        }}
+      >
         <TextInput
           ref={inputRef}
-          style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={t.colors.ink3}
           value={value}
           onChangeText={onChangeText}
           multiline
           accessibilityLabel={accessibilityLabel}
+          style={[
+            t.type.body16,
+            {
+              flex: 1,
+              minWidth: 0,
+              minHeight: t.size.control,
+              // Uzun metinde kutu büyür ama sohbeti yemesin.
+              maxHeight: t.size.controlLg * 2,
+              borderRadius: t.radius.md,
+              borderWidth: 1,
+              borderColor: t.colors.lineStrong,
+              backgroundColor: t.colors.surface1,
+              color: t.colors.ink,
+              paddingHorizontal: t.space[3],
+              paddingVertical: t.space[3],
+              outlineStyle: 'none',
+            } as never,
+          ]}
         />
-        <Pressable
-          onPress={onSend}
-          disabled={!canSend}
-          accessibilityRole="button"
-          accessibilityLabel="Gönder"
-          accessibilityState={{ disabled: !canSend }}
-          style={({ pressed }) => [styles.send, !canSend && styles.sendDisabled, pressed && canSend && styles.sendPressed]}
-        >
-          <Ionicons name="arrow-up" size={20} color={colors.primaryText} />
-        </Pressable>
+        <SendButton onPress={onSend} canSend={canSend} />
       </View>
     </View>
   );
 }
 
-// Sohbet ekranlarının ortak düzen stilleri (liste, satır, örnek soru kutusu).
-export const chatStyles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  listContent: { paddingHorizontal: spacing.gutter, paddingTop: 12, paddingBottom: spacing.md, gap: 12 },
-  assistantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  assistantColumn: { flex: 1, minWidth: 0, gap: spacing.sm },
-  examples: { paddingHorizontal: spacing.xs, gap: spacing.sm },
-  example: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: spacing.sm,
-  },
-  exampleText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  examplePressed: { backgroundColor: colors.pressed },
-});
+// Gönder düğmesi: marka rengi (asistan bakırı değil), en az 44px kare.
+function SendButton({ onPress, canSend }: { onPress: () => void; canSend: boolean }) {
+  const t = useTheme();
+  return (
+    <View style={{ paddingBottom: (t.size.control - t.size.touchMin) / 2 }}>
+      <Pressable
+        onPress={canSend ? onPress : undefined}
+        disabled={!canSend}
+        accessibilityRole="button"
+        accessibilityLabel="Gönder"
+        accessibilityState={{ disabled: !canSend }}
+        style={({ pressed }) => ({
+          width: t.size.touchMin,
+          height: t.size.touchMin,
+          borderRadius: t.radius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: pressed && canSend ? t.colors.brandStrong : t.colors.brand,
+          opacity: canSend ? 1 : 0.4,
+        })}
+      >
+        <Icon name="arrow-up-outline" size={t.size.iconSm} colorValue={t.colors.onBrand} />
+      </Pressable>
+    </View>
+  );
+}
 
-const styles = StyleSheet.create({
-  dayChip: {
-    alignSelf: 'center',
-    backgroundColor: colors.chip,
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  dayChipText: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+// Sohbet ekranlarının ortak düzen ölçüleri. Renk/boşluk temadan geldiği için
+// StyleSheet değil, tema alan küçük yardımcılar.
+export function useChatStyles() {
+  const t = useTheme();
+  return {
+    screen: { flex: 1, backgroundColor: t.colors.surface0 } as ViewStyle,
+    flex: { flex: 1 } as ViewStyle,
+    listContent: {
+      paddingHorizontal: t.space[4],
+      paddingTop: t.space[4],
+      paddingBottom: t.space[6],
+      gap: t.space[3],
+    } as ViewStyle,
+    assistantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2], minWidth: 0 } as ViewStyle,
+    assistantColumn: { flex: 1, minWidth: 0, gap: t.space[2] } as ViewStyle,
+    examples: { gap: t.space[2] } as ViewStyle,
+  };
+}
 
-  userBubble: {
-    alignSelf: 'flex-end',
-    maxWidth: '85%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  userText: { ...typography.label, fontFamily: fonts.regular, color: colors.primaryText },
-  userTime: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    lineHeight: 15,
-    color: colors.onPrimaryMuted,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-
-  assistantBubble: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  assistantText: { ...typography.label, fontFamily: fonts.regular, color: colors.text },
-  typingBubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  typingText: { ...typography.caption, color: colors.textMuted },
-
-  footer: { backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  chipRow: { gap: spacing.sm, paddingHorizontal: spacing.gutter, paddingTop: 10 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 32,
-    paddingHorizontal: 12,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipPressed: { backgroundColor: colors.pressed },
-  chipText: { ...typography.caption, fontFamily: fonts.medium, color: colors.primary },
-  composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.gutter,
-    paddingTop: 10,
-  },
-  input: {
-    flex: 1,
-    minHeight: MIN_TOUCH,
-    maxHeight: 120,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 11,
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    color: colors.text,
-  },
-  // Asistan kızılı: gönder düğmesi (renk kuralı, MOBILE-DESIGN.md Asistan).
-  send: {
-    width: MIN_TOUCH,
-    height: MIN_TOUCH,
-    borderRadius: radius.md,
-    backgroundColor: colors.assistant,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendDisabled: { opacity: 0.45 },
-  sendPressed: { opacity: 0.85 },
-});
+// Örnek soru kutusu (boş sohbet): kenarlıklı, en az 44px.
+export function ExampleRow({ label, onPress }: { label: string; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Örnek soru: ${label}`}
+      style={({ pressed }) => ({
+        minHeight: t.size.touchMin,
+        justifyContent: 'center',
+        backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.md,
+        paddingHorizontal: t.space[3],
+        paddingVertical: t.space[2],
+        minWidth: 0,
+      })}
+    >
+      <Text style={[t.type.body16, { color: t.colors.ink }]}>{label}</Text>
+    </Pressable>
+  );
+}

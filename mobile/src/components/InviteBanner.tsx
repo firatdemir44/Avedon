@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text } from 'react-native';
 import { ApiError, fetchInviteByCode, type InvitePreview } from '../api/client';
 import { clearStoredInviteCode, readStoredInviteCode } from '../features/invites/storedCode';
-import { colors, fonts, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
 // Davet bağlantısıyla gelen kişiye ince karşılama şeridi (Faz 2, Adım 4).
 // Oturumsuz karşılama ve giriş ekranlarının üstünde durur. Kod yoksa ya da
 // sunucu 404 derse (iptal edilmiş / yanlış kod) hiçbir şey çizilmez; geçersiz
 // kod cihazdan da silinir ki kayıt alanına boşuna gelmesin.
+// Görünüm yeni tasarım (4. adım): `brandSoft` zemin, `brand` ikon + metin.
 export function InviteBanner() {
+  const t = useTheme();
   const [invite, setInvite] = useState<InvitePreview | null>(null);
 
   useEffect(() => {
@@ -35,21 +37,21 @@ export function InviteBanner() {
   const who = invite.inviterCompany ? `${invite.inviterName} (${invite.inviterCompany})` : invite.inviterName;
 
   return (
-    <View style={styles.banner}>
-      <Ionicons name="person-add-outline" size={18} color={colors.primary} />
-      <Text style={styles.text}>{who} sizi Avedon'a davet etti.</Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space[2],
+        backgroundColor: t.colors.brandSoft,
+        paddingHorizontal: t.space[4],
+        paddingVertical: t.space[3],
+      }}
+    >
+      <Icon name="person-add-outline" size={t.size.iconSm} color="brand" />
+      {/* Uzun firma adlarında 375 px'te taşmasın. */}
+      <Text style={[t.type.body14, { color: t.colors.brand, flex: 1, minWidth: 0 }]}>
+        {who} sizi Avedon'a davet etti.
+      </Text>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-  },
-  text: { ...typography.caption, fontFamily: fonts.medium, color: colors.primary, flex: 1, minWidth: 0 },
-});

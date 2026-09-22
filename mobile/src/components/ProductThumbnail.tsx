@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Image } from 'react-native';
 import { getCachedProductImage, loadProductImage } from '../features/products/productImageCache';
-import { colors, fonts, radius } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
 interface Props {
   productId: string;
@@ -9,9 +10,12 @@ interface Props {
   size?: number;
 }
 
-// Fotoğraf liste yanıtında gelmiyor; kart göründüğünde buradan tek tek çekilip
-// önbelleğe alınıyor (bkz. features/imageCache.ts).
-export function ProductThumbnail({ productId, hasImage, size = 76 }: Props) {
+// Ürün görseli (DESIGN.md §3 ürün kartı): `thumb` 72px, radius-sm, 1px line;
+// görsel yoksa surface-2 kare + kumaş ikonu. Fotoğraf liste yanıtında
+// gelmiyor; kart göründüğünde buradan tek tek çekilip önbelleğe alınıyor.
+export function ProductThumbnail({ productId, hasImage, size }: Props) {
+  const t = useTheme();
+  const d = size ?? t.size.thumb;
   const [imageUrl, setImageUrl] = useState<string | null>(
     () => getCachedProductImage(productId) ?? null
   );
@@ -36,33 +40,25 @@ export function ProductThumbnail({ productId, hasImage, size = 76 }: Props) {
     };
   }, [productId, hasImage]);
 
-  if (imageUrl) {
-    return <Image source={{ uri: imageUrl }} style={[styles.image, { width: size, height: size }]} />;
-  }
-
   return (
-    <View style={[styles.placeholder, { width: size, height: size }]}>
-      <Text style={styles.placeholderText}>{hasImage ? '...' : 'Görsel yok'}</Text>
+    <View
+      style={{
+        width: d,
+        height: d,
+        borderRadius: t.radius.sm,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        backgroundColor: t.colors.surface2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+      }}
+    >
+      {imageUrl ? (
+        <Image source={{ uri: imageUrl }} resizeMode="cover" style={{ width: '100%', height: '100%' }} />
+      ) : (
+        <Icon name="fabric" color="ink3" />
+      )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  image: {
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-  },
-  placeholder: {
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-  },
-  placeholderText: {
-    fontFamily: fonts.regular,
-    fontSize: 11,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-});

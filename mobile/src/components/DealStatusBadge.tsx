@@ -1,17 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import type { DealStatus } from '../api/client';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { Badge, type BadgeKind } from '../ui';
 
-// Sipariş kaydının durum rozeti (Faz 3, Adım 4); desen QuoteStatusBadge ile
-// aynı. Metin sunucudan gelmiyor, eşleme burada. Renk tek başına anlam
-// taşımaz: yanında hep metin var.
-const TONES: Record<DealStatus, { label: string; background: string; text: string }> = {
-  acik: { label: 'Açık', background: colors.accentSoft, text: colors.primary },
-  teslim_bildirildi: { label: 'Teslim bildirildi', background: colors.warningSoft, text: colors.warning },
-  teslim_edildi: { label: 'Teslim edildi', background: colors.successSoft, text: colors.success },
-  itiraz: { label: 'İtiraz var', background: colors.dangerSoft, text: colors.danger },
-  iptal: { label: 'İptal', background: colors.chip, text: colors.textMuted },
+// Sipariş kaydının durum rozeti (Faz 3, Adım 4). İçi ui/Badge; metin sunucudan
+// gelmediği için eşleme burada. Durum yalnız renkle verilmez: ikon + metin.
+const TONES: Record<DealStatus, { label: string; kind: BadgeKind }> = {
+  acik: { label: 'Açık', kind: 'new' },
+  teslim_bildirildi: { label: 'Teslim bildirildi', kind: 'pending' },
+  teslim_edildi: { label: 'Teslim edildi', kind: 'delivered' },
+  itiraz: { label: 'İtiraz var', kind: 'cancelled' },
+  iptal: { label: 'İptal', kind: 'cancelled' },
 };
 
 export function dealStatusLabel(status: DealStatus): string {
@@ -20,21 +18,5 @@ export function dealStatusLabel(status: DealStatus): string {
 
 export function DealStatusBadge({ status }: { status: DealStatus }) {
   const tone = TONES[status] ?? TONES.acik;
-  return (
-    <View style={[styles.badge, { backgroundColor: tone.background }]} accessibilityLabel={`Durum: ${tone.label}`}>
-      <Text style={[styles.text, { color: tone.text }]} numberOfLines={1}>
-        {tone.label}
-      </Text>
-    </View>
-  );
+  return <Badge kind={tone.kind} label={tone.label} />;
 }
-
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  text: { ...typography.caption, fontFamily: fonts.semibold },
-});

@@ -1,41 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import type { ViewStyle } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Badge as UiBadge } from '../ui';
 
 interface Props {
   label: string;
-  // solid: dolu vurgu (durum rozeti) · soft: tonlu zemin (bilgi rozeti)
-  // outline: sadece çerçeve (ikincil sınıflandırma, örn. ürün tipi)
+  // Eski tonlar korunuyor (geriye dönük). Yeni tasarımda hepsi ui/Badge'in
+  // `info` türü (brand-soft / brand); `outline` yalnızca zemin yerine 1px
+  // çerçeve alır. Yeni kodda doğrudan `ui/Badge kind=…` kullanılır.
   tone?: 'solid' | 'soft' | 'outline';
   style?: ViewStyle;
 }
 
-// Tasarımdaki hap rozetler. Uygulamada aynı görünüm sekiz ayrı ekranda
-// kopyalanmıştı; tek yerde toplandı.
+// Genel amaçlı bilgi rozeti; eski sekiz ayrı kopyanın yerine tek yer.
 export function Badge({ label, tone = 'soft', style }: Props) {
-  return (
-    <View style={[styles.base, styles[tone], style]}>
-      <Text style={[styles.text, tone === 'solid' && styles.textSolid]} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
+  const t = useTheme();
+  const outline: ViewStyle | undefined =
+    tone === 'outline'
+      ? { backgroundColor: t.colors.surface1, borderWidth: 1, borderColor: t.colors.line }
+      : undefined;
+  return <UiBadge kind="info" label={label} style={[outline, style]} />;
 }
-
-const styles = StyleSheet.create({
-  base: {
-    alignSelf: 'flex-start',
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm + 2,
-    paddingVertical: 3,
-  },
-  solid: { backgroundColor: colors.primary },
-  soft: { backgroundColor: colors.accentSoft },
-  outline: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  text: {
-    ...typography.caption,
-    fontFamily: fonts.semibold,
-    color: colors.primary,
-  },
-  textSolid: { color: colors.primaryText },
-});

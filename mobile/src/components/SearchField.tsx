@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, TextInput, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { MIN_TOUCH, colors, fonts, radius } from '../theme';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { SearchBox } from '../ui';
 
-// Taslaklardaki arama kutusu (CUrunler, CMesajlar): tonlu zemin, büyüteç ikonu,
-// yazı varken temizleme düğmesi. Ürünler ve Mesajlar ortak kullanır.
+// Geriye dönük sarmalayıcı: içi ui/SearchBox (DESIGN.md §2: 48px, surface-1,
+// line-strong kenarlık). Ürünler, Mesajlar ve GlobalSearch ortak kullanır.
 export function SearchField({
   value,
   onChangeText,
@@ -25,52 +24,14 @@ export function SearchField({
   onSubmitEditing?: () => void;
 }) {
   return (
-    <View style={[styles.field, style]}>
-      <Ionicons name="search-outline" size={18} color={colors.textMuted} />
-      <TextInput
-        style={styles.input}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textMuted}
-        value={value}
-        onChangeText={onChangeText}
-        returnKeyType="search"
-        autoFocus={autoFocus}
-        onSubmitEditing={onSubmitEditing}
-        autoCorrect={false}
-        accessibilityLabel={accessibilityLabel}
-      />
-      {value ? (
-        <Pressable
-          onPress={() => onChangeText('')}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Aramayı temizle"
-        >
-          <Ionicons name="close-circle" size={18} color={colors.chevron} />
-        </Pressable>
-      ) : null}
-    </View>
+    <SearchBox
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      accessibilityLabel={accessibilityLabel}
+      autoFocus={autoFocus}
+      onSubmitEditing={onSubmitEditing}
+      style={style}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  field: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    minHeight: MIN_TOUCH,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.surfaceTonal,
-    paddingHorizontal: 12,
-  },
-  input: {
-    flex: 1,
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    color: colors.text,
-    paddingVertical: 0,
-    minHeight: MIN_TOUCH - 2,
-  },
-});

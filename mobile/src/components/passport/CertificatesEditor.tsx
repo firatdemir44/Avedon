@@ -1,13 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { TextField } from '../TextField';
+import { Icon, Input } from '../../ui';
 import { ChipSelect } from '../ChipSelect';
 import { CERTIFICATES } from '../../features/products/glossaryLabels';
 import { MAX_CERTIFICATES } from '../../features/products/limits';
 import { haptics } from '../../features/haptics';
-import { colors } from '../../theme';
-import { rowStyles as styles } from './styles';
+import { useTheme } from '../../theme/ThemeContext';
+import { passportStyles } from './styles';
 import { emptyCertificateRow, type CertificateRow } from './rows';
 import { DocField } from './DocField';
 
@@ -40,6 +39,8 @@ export function CertificatesEditor({
   onPickingChange,
   disabled,
 }: Props) {
+  const t = useTheme();
+  const styles = passportStyles(t);
   const [ownPicking, setOwnPicking] = useState<string | null>(null);
   const pickingKey = picking !== undefined ? picking : ownPicking;
   const setPicking = (key: string | null) => {
@@ -68,6 +69,8 @@ export function CertificatesEditor({
     onChange(rows.filter((row) => row.key !== key));
   };
 
+  const field = { marginBottom: t.space[4] };
+
   return (
     <>
       {rows.length === 0 && hint ? <Text style={styles.labelHint}>{hint}</Text> : null}
@@ -78,12 +81,11 @@ export function CertificatesEditor({
             <Pressable
               onPress={() => removeRow(row.key)}
               disabled={disabled}
-              hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel={`${index + 1}. sertifika satırını kaldır`}
               style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
             >
-              <Ionicons name="close" size={18} color={colors.textMuted} />
+              <Icon name="x" color="ink2" />
             </Pressable>
           </View>
           <ChipSelect
@@ -92,20 +94,24 @@ export function CertificatesEditor({
             onChange={(name) => updateRow(row.key, { name })}
             compact
           />
-          <TextField
-            label="Belge no (isteğe bağlı)"
+          <Input
+            label="Belge no"
+            helper="İsteğe bağlı"
             value={row.number}
             onChangeText={(number) => updateRow(row.key, { number })}
             placeholder="Örn. 21.0.12345"
             editable={!disabled}
+            containerStyle={field}
           />
-          <TextField
-            label="Geçerlilik tarihi (YYYY-AA-GG, isteğe bağlı)"
+          <Input
+            label="Geçerlilik tarihi"
+            helper="YYYY-AA-GG, isteğe bağlı"
             value={row.validUntil}
             onChangeText={(validUntil) => updateRow(row.key, { validUntil })}
             placeholder="Örn. 2027-03-01"
             autoCapitalize="none"
             editable={!disabled}
+            containerStyle={field}
           />
           <DocField
             image={row.image}
@@ -126,7 +132,7 @@ export function CertificatesEditor({
           accessibilityLabel="Sertifika satırı ekle"
           style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
         >
-          <Ionicons name="add" size={18} color={colors.accent} />
+          <Icon name="plus" size={t.size.iconSm} color="brand" />
           <Text style={styles.addRowText}>Sertifika ekle</Text>
         </Pressable>
       ) : null}

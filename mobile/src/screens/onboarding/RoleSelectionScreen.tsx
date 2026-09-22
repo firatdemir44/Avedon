@@ -1,11 +1,15 @@
+// Kayıt 1. adım: hesap türü (yeni tasarım, 4. adım).
+// Veri katmanı aynı: seçim taslağa yazılır ve Position ekranına gidilir.
+// Görünüm `ui/Card` + token'lar; ham hex / ham px yok.
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { InviteBanner } from '../../components/InviteBanner';
 import { useRegistration } from '../../context/RegistrationContext';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Card } from '../../ui';
 import type { AccountType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RoleSelection'>;
@@ -29,6 +33,7 @@ const OPTIONS: { value: AccountType; title: string; description: string }[] = [
 ];
 
 export function RoleSelectionScreen({ navigation }: Props) {
+  const t = useTheme();
   const { draft, updateDraft } = useRegistration();
 
   const handleSelect = (value: AccountType) => {
@@ -44,60 +49,37 @@ export function RoleSelectionScreen({ navigation }: Props) {
       subtitle="Hesap türünüzü seçin"
       banner={<InviteBanner />}
     >
-      <View style={styles.list}>
-        {OPTIONS.map((option) => (
-          <Pressable
-            key={option.value}
-            onPress={() => handleSelect(option.value)}
-            style={[styles.card, draft.accountType === option.value && styles.cardSelected]}
-          >
-            <Text style={styles.cardTitle}>{option.title}</Text>
-            <Text style={styles.cardDescription}>{option.description}</Text>
-          </Pressable>
-        ))}
+      <View style={{ gap: t.space[3], minWidth: 0 }}>
+        {OPTIONS.map((option) => {
+          const selected = draft.accountType === option.value;
+          return (
+            <Card
+              key={option.value}
+              onPress={() => handleSelect(option.value)}
+              accessibilityLabel={`${option.title}. ${option.description}`}
+              // Seçili kart yalnızca renkle değil, kenarlık kalınlığıyla da ayrılır.
+              style={{
+                minHeight: t.size.touchMin,
+                borderColor: selected ? t.colors.brand : t.colors.line,
+                backgroundColor: selected ? t.colors.brandSoft : t.colors.surface1,
+              }}
+            >
+              <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{option.title}</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: t.space[1] }]}>
+                {option.description}
+              </Text>
+            </Card>
+          );
+        })}
       </View>
-      <Pressable style={styles.loginLink} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.loginLinkText}>Zaten hesabım var, giriş yap</Text>
-      </Pressable>
+
+      {/* Ekranın ana eylemi kart seçimi olduğu için burada dolu düğme yok. */}
+      <Button
+        kind="quiet"
+        fullWidth
+        label="Zaten hesabım var, giriş yap"
+        onPress={() => navigation.navigate('Login')}
+      />
     </OnboardingLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  list: {
-    gap: spacing.md,
-  },
-  card: {
-    minHeight: MIN_TOUCH,
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    ...shadow.card,
-  },
-  cardSelected: {
-    borderColor: colors.accent,
-    borderWidth: 2,
-    backgroundColor: colors.surfaceTonal,
-  },
-  cardTitle: {
-    ...typography.subtitle,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  cardDescription: {
-    ...typography.body,
-    color: colors.textMuted,
-  },
-  loginLink: {
-    marginTop: spacing.lg,
-    minHeight: MIN_TOUCH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loginLinkText: {
-    ...typography.bodyStrong,
-    color: colors.accent,
-  },
-});

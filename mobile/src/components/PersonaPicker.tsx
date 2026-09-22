@@ -1,13 +1,16 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { AssistantPersonaKey, AssistantPersonaOption } from '../api/client';
 import { AssistantAvatar } from './AssistantAvatar';
-import { colors, fonts, radius, spacing, typography } from '../theme';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 
 // Asistan karakteri seçimi (Faz 1, Adım 9): iki kart yan yana.
 // Hem ilk açılışta (Asistan sekmesi) hem de değiştirirken (Firma hafızası)
 // aynı kartlar kullanılır. Uygulama cinsiyet sormaz; kullanıcı yüzü seçer.
+//
+// Yeni tasarım (DESIGN.md, 4. adım): kart `surface1` + 1px `line` + `radius.lg`;
+// seçili kartta bakır (`accent`) çerçeve — asistanın kendisi burada.
 
 // Sunucuya ulaşılamazsa gösterilecek liste; adlar backend/src/assistant/persona.ts
 // ile aynı kalmalı.
@@ -34,8 +37,9 @@ export function PersonaPicker({
   avatarSize?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useTheme();
   return (
-    <View style={[styles.row, style]}>
+    <View style={[{ flexDirection: 'row', gap: t.space[3], minWidth: 0 }, style]}>
       {options.map((option) => {
         const selected = value === option.key;
         const busy = busyKey === option.key;
@@ -47,43 +51,35 @@ export function PersonaPicker({
             accessibilityRole="button"
             accessibilityState={{ selected, disabled: disabled || busy }}
             accessibilityLabel={`${option.name}. ${option.tagline}${selected ? ' Seçili.' : ''}`}
-            style={({ pressed }) => [
-              styles.card,
-              selected && styles.cardSelected,
-              pressed && !disabled && styles.cardPressed,
-            ]}
+            style={({ pressed }) => ({
+              flex: 1,
+              minWidth: 0,
+              alignItems: 'center',
+              gap: t.space[2],
+              borderWidth: 1,
+              borderRadius: t.radius.lg,
+              padding: t.space[3],
+              borderColor: selected ? t.colors.accent : t.colors.line,
+              backgroundColor: selected
+                ? t.colors.accentSoft
+                : pressed && !disabled
+                  ? t.colors.surface2
+                  : t.colors.surface1,
+              opacity: disabled && !selected ? 0.4 : 1,
+            })}
           >
             <AssistantAvatar persona={option.key} size={avatarSize} state={selected ? 'result' : 'idle'} />
-            <View style={styles.nameRow}>
-              <Text style={styles.name}>{option.name}</Text>
-              {selected ? <Ionicons name="checkmark-circle" size={16} color={colors.assistant} /> : null}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], minWidth: 0 }}>
+              <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={1}>
+                {option.name}
+              </Text>
+              {selected ? <Icon name="checkmark-circle-outline" size={t.size.iconSm} color="accent" /> : null}
             </View>
-            <Text style={styles.tagline}>{option.tagline}</Text>
-            {busy ? <ActivityIndicator size="small" color={colors.assistant} style={styles.busy} /> : null}
+            <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center' }]}>{option.tagline}</Text>
+            {busy ? <ActivityIndicator size="small" color={t.colors.accent} /> : null}
           </Pressable>
         );
       })}
     </View>
   );
 }
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm },
-  card: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-  },
-  // Seçili kartın çerçevesi asistan kızılı: asistanın kendisi burada.
-  cardSelected: { borderColor: colors.assistant, backgroundColor: colors.assistantSoft },
-  cardPressed: { backgroundColor: colors.pressed },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: spacing.xs },
-  name: { ...typography.subtitle, color: colors.text },
-  tagline: { ...typography.caption, fontFamily: fonts.regular, color: colors.textMuted, textAlign: 'center' },
-  busy: { marginTop: spacing.xs },
-});

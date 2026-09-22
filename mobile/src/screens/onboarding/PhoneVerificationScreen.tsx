@@ -1,18 +1,22 @@
+// Kayıt 5. adım: telefon doğrulama (yeni tasarım, 4. adım).
+// Veri/işlev katmanı aynı: kod isteme, doğrulama, bireysel hesapta doğrudan
+// kayıt, firmalı hesapta CompanyCode. Görünüm token'lar + `ui` bileşenleri.
 import React, { useEffect, useState } from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
-import { PrimaryButton } from '../../components/PrimaryButton';
 import { OtpCodeField } from '../../components/OtpCodeField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, registerUser, requestOtp, verifyOtp } from '../../api/client';
-import { colors, fonts, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Icon } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
 
 export function PhoneVerificationScreen({ navigation }: Props) {
+  const t = useTheme();
   const { draft, updateDraft } = useRegistration();
   const { login } = useSession();
   const [code, setCode] = useState('');
@@ -92,33 +96,45 @@ export function PhoneVerificationScreen({ navigation }: Props) {
       totalSteps={6}
       title="Telefonunuzu doğrulayın"
       subtitle={`${draft.phone || 'Telefon numaranıza'} gönderilen 6 haneli kodu girin`}
+      footer={
+        alreadyRegistered ? (
+          <Button size="lg" label="Giriş Yap'a Git" onPress={() => navigation.replace('Login')} />
+        ) : (
+          <Button
+            size="lg"
+            label="Doğrula ve Devam Et"
+            loading={submitting}
+            disabled={code.trim().length !== 6}
+            onPress={handleContinue}
+          />
+        )
+      }
     >
-      <OtpCodeField
-        code={code}
-        onChangeCode={setCode}
-        onResend={handleResend}
-        resendCooldownSeconds={cooldown}
-        resending={resending}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      {alreadyRegistered ? (
-        <PrimaryButton label="Giriş Yap'a Git" onPress={() => navigation.replace('Login')} />
-      ) : (
-        <PrimaryButton
-          label={submitting ? 'Kaydediliyor...' : 'Doğrula ve Devam Et'}
-          disabled={code.trim().length !== 6 || submitting}
-          onPress={handleContinue}
+      <View style={{ gap: t.space[3], minWidth: 0 }}>
+        <OtpCodeField
+          code={code}
+          onChangeCode={setCode}
+          onResend={handleResend}
+          resendCooldownSeconds={cooldown}
+          resending={resending}
         />
-      )}
+        {/* Hata: yalnız renk değil, ikon + metin (DESIGN.md §6). */}
+        {error ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
+          </View>
+        ) : null}
+      </View>
     </OnboardingLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  error: {
-    ...typography.label,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-    marginBottom: spacing.md,
-  },
-});

@@ -1,17 +1,19 @@
+// Profil bilgileri (yeni tasarım, 4. adım): başlık, konum, hakkında.
+// Kaydet, ekranın tek dolu düğmesi olarak yapışkan alt çubukta (DESIGN.md §2).
+// Kaydedince geri dönülür; profil ekranı odaklanınca kendini yeniler.
+//
+// Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { ApiError, updateMyProfile } from '../../api/client';
-import { PrimaryButton } from '../../components/PrimaryButton';
-import { TextField } from '../../components/TextField';
 import { InlineError } from '../../components/StateView';
-import { colors, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import { Button, Input, Screen } from '../../ui';
 
 type Props = RootStackScreenProps<'ProfileEdit'>;
 
-// Profil bilgileri (LinkedIn benzeri başlık, 2026-09-22): başlık, konum,
-// hakkında. Kaydedince geri dönülür; profil ekranı odaklanınca kendini yeniler.
 export function ProfileEditScreen({ navigation, route }: Props) {
+  const t = useTheme();
   const [headline, setHeadline] = useState(route.params?.headline ?? '');
   const [location, setLocation] = useState(route.params?.location ?? '');
   const [about, setAbout] = useState(route.params?.about ?? '');
@@ -36,45 +38,33 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.block}>
-        <TextField
-          label="Başlık"
-          value={headline}
-          onChangeText={setHeadline}
-          placeholder="Genel Müdür · Melide Tekstil"
-          maxLength={120}
-        />
-        <Text style={styles.hint}>Boş bırakırsanız unvanınız ve firma adınız yazılır.</Text>
+    <Screen
+      contentStyle={{ gap: t.space[4] }}
+      sticky={<Button size="lg" label="Kaydet" loading={saving} onPress={save} />}
+    >
+      <Input
+        label="Başlık"
+        value={headline}
+        onChangeText={setHeadline}
+        placeholder="Genel Müdür · Melide Tekstil"
+        maxLength={120}
+        helper="Boş bırakırsanız unvanınız ve firma adınız yazılır."
+      />
 
-        <TextField
-          label="Konum"
-          value={location}
-          onChangeText={setLocation}
-          placeholder="Bursa, Türkiye"
-          maxLength={80}
-        />
+      <Input label="Konum" value={location} onChangeText={setLocation} placeholder="Bursa, Türkiye" maxLength={80} />
 
-        <TextField
-          label="Hakkında"
-          value={about}
-          onChangeText={setAbout}
-          placeholder="Kısaca kendinizden ve işinizden bahsedin"
-          multiline
-          maxLength={1000}
-        />
+      <Input
+        label="Hakkında"
+        value={about}
+        onChangeText={setAbout}
+        placeholder="Kısaca kendinizden ve işinizden bahsedin"
+        multiline
+        // `Input` stil prop'u almıyor; çok satırlı alan numberOfLines ile açılıyor.
+        numberOfLines={4}
+        maxLength={1000}
+      />
 
-        {error ? <InlineError message={error} /> : null}
-
-        <PrimaryButton label={saving ? 'Kaydediliyor...' : 'Kaydet'} size="lg" disabled={saving} onPress={save} />
-      </View>
-    </ScrollView>
+      {error ? <InlineError message={error} /> : null}
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingBottom: spacing.xl },
-  block: { backgroundColor: colors.surface, padding: spacing.gutter, gap: spacing.xs },
-  hint: { ...typography.caption, color: colors.textMuted, marginTop: -spacing.sm, marginBottom: spacing.sm },
-});

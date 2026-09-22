@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, Image, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { ListRow } from '../ListRow';
-import { PrimaryButton } from '../PrimaryButton';
+import { Button, Icon, ListRow } from '../../ui';
 import { haptics } from '../../features/haptics';
-import { colors } from '../../theme';
-import { rowStyles as styles } from './styles';
+import { useTheme } from '../../theme/ThemeContext';
+import { passportStyles } from './styles';
 import { isPdfDoc, pickDocImage, pickDocPdf, type DocImage } from './rows';
 
 interface Props {
@@ -27,6 +25,8 @@ interface Props {
  * açılan kutuyla yapılır, çünkü web'de Alert.alert hiçbir şey göstermiyor.
  */
 export function DocField({ image, onChange, busy, onBusyChange, onError, disabled, labelPrefix }: Props) {
+  const t = useTheme();
+  const styles = passportStyles(t);
   const [sourceOpen, setSourceOpen] = useState(false);
   const pdf = isPdfDoc(image);
 
@@ -51,25 +51,27 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
         {image.kind !== 'none' ? (
           pdf ? (
             <View style={[styles.docPhoto, styles.docPdf]}>
-              <Ionicons name="document-text-outline" size={22} color={colors.danger} />
+              <Icon name="document-text-outline" size={t.size.iconSm} color="danger" />
               <Text style={styles.docPdfText}>PDF</Text>
             </View>
           ) : image.uri ? (
-            <Image source={{ uri: image.uri }} style={styles.docPhoto} />
+            <View style={styles.docPhoto}>
+              <Image source={{ uri: image.uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            </View>
           ) : (
             <View style={[styles.docPhoto, styles.docLoading]}>
-              <ActivityIndicator color={colors.chevron} />
+              <ActivityIndicator color={t.colors.ink3} />
             </View>
           )
         ) : (
           <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
-            <Ionicons name="document-outline" size={20} color={colors.chevron} />
+            <Icon name="document-outline" size={t.size.iconSm} color="ink3" />
           </View>
         )}
         <View style={styles.docActions}>
-          <PrimaryButton
-            label={busy ? 'Seçiliyor...' : image.kind === 'none' ? 'Belge Ekle' : 'Değiştir'}
-            variant="outline"
+          <Button
+            kind="secondary"
+            label={busy ? 'Seçiliyor...' : image.kind === 'none' ? 'Belge ekle' : 'Değiştir'}
             onPress={() => {
               haptics.selection();
               onError?.(null);
@@ -79,9 +81,9 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
             accessibilityLabel={`${labelPrefix} belgesi seç`}
           />
           {image.kind !== 'none' ? (
-            <PrimaryButton
+            <Button
+              kind="quiet"
               label="Kaldır"
-              variant="outline"
               onPress={() => {
                 haptics.selection();
                 setSourceOpen(false);
@@ -98,13 +100,13 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
           <ListRow
             title="Fotoğraf"
             subtitle="Galeriden belge fotoğrafı"
-            left={<Ionicons name="image-outline" size={20} color={colors.primary} />}
+            left={<Icon name="image-outline" color="brand" />}
             onPress={() => pick('photo')}
           />
           <ListRow
             title="PDF dosyası"
             subtitle="En fazla 1,5 MB"
-            left={<Ionicons name="document-text-outline" size={20} color={colors.danger} />}
+            left={<Icon name="document-text-outline" color="danger" />}
             divider={false}
             onPress={() => pick('pdf')}
           />

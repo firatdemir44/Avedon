@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { MIN_TOUCH, colors, fonts, radius, shadow, spacing, typography } from '../theme';
+import { View, Text, Pressable, type TextStyle, type ViewStyle } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../ui';
 import type { ResultRow } from '../features/assistant/toolResult';
 
 interface Row {
   label: string;
   value: string;
-  /** Etiketin altındaki küçük gri açıklama (örn. toplam içindeki pay). */
+  /** Etiketin altındaki küçük açıklama (örn. toplam içindeki pay). */
   note?: string;
   /** Öne çıkan satır: üstünde ayırıcı çizgi, daha büyük ve kalın değer. */
   strong?: boolean;
@@ -15,27 +15,63 @@ interface Row {
   highlight?: boolean;
 }
 
-// Hesaplayıcı ekranlarının sonuç kutusu (tonlu zemin, etiket + değer).
+// Hesaplayıcı ekranlarının sonuç kutusu: ui/Card ölçüleri (surface-1, 1px
+// line, radius-lg), etiket + mono değer; öne çıkan satır mono-20 brand.
 export function ResultCard({ rows }: { rows: Row[] }) {
+  const t = useTheme();
   return (
-    <View style={styles.card}>
+    <View
+      style={{
+        backgroundColor: t.colors.surface1,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.lg,
+        paddingHorizontal: t.space[4],
+        paddingVertical: t.space[2],
+        marginTop: t.space[6],
+      }}
+    >
       {rows.map((row) => (
-        <View key={row.label} style={[styles.row, row.strong && styles.rowStrong]}>
-          <View style={styles.rowTexts}>
-            <Text style={[styles.label, (row.strong || row.highlight) && styles.labelStrong]}>{row.label}</Text>
-            {row.note ? <Text style={styles.note}>{row.note}</Text> : null}
+        <View
+          key={row.label}
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: t.space[3],
+              paddingVertical: t.space[2],
+            },
+            row.strong && {
+              borderTopWidth: 1,
+              borderTopColor: t.colors.lineStrong,
+              marginTop: t.space[1],
+              paddingTop: t.space[3],
+            },
+          ]}
+        >
+          <View style={{ flexShrink: 1 }}>
+            <Text
+              style={[
+                row.strong || row.highlight ? t.type.body16Strong : t.type.body16,
+                { color: row.strong || row.highlight ? t.colors.ink : t.colors.ink2 },
+              ]}
+            >
+              {row.label}
+            </Text>
+            {row.note ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{row.note}</Text> : null}
           </View>
-          <Text style={[styles.value, row.strong && styles.valueStrong]}>{row.value}</Text>
+          <Text style={[row.strong ? t.type.mono20 : t.type.mono14, { color: t.colors.brand }]}>{row.value}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-// Asistan sohbetindeki araç sonucu kartı (taslak: docs/tasarim-2027/Asistan.dc.html).
-// Beyaz kutunun içinde kesik çizgili iç çerçeve, üstte küçük gri büyük harfli
-// başlık, sağda birim; altında satırlar. Karttaki her rakam ARAÇ ÇIKTISINDAN
-// gelir (model metninden değil) — bkz. features/assistant/toolResult.ts.
+// Asistan sohbetindeki araç sonucu kartı. Kartın içinde kesik çizgili iç
+// çerçeve, üstte BÜYÜK HARF caption-12 başlık, sağda birim; altında satırlar.
+// Karttaki her rakam ARAÇ ÇIKTISINDAN gelir (model metninden değil) — bkz.
+// features/assistant/toolResult.ts.
 export function AssistantResultCard({
   title,
   unit,
@@ -55,25 +91,70 @@ export function AssistantResultCard({
   // Kapasite aramasında firma satırına dokunma (Faz 2, Adım 5).
   onCompanyPress?: (companyId: string) => void;
 }) {
+  const t = useTheme();
   const [openFormula, setOpenFormula] = useState(false);
 
+  const rowBase: ViewStyle = {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: t.space[2],
+    minHeight: t.space[8],
+    paddingVertical: t.space[1],
+    borderTopWidth: 1,
+    borderTopColor: t.colors.line,
+  };
+  const label = (strong?: boolean): TextStyle[] => [
+    strong ? t.type.body16Strong : t.type.body14,
+    { color: t.colors.ink },
+  ];
+  const value = (strong?: boolean): TextStyle[] => [
+    strong ? t.type.mono20 : t.type.mono14,
+    { color: strong ? t.colors.brand : t.colors.ink },
+  ];
+
   return (
-    <View style={styles.toolCard}>
-      <View style={styles.toolInner}>
-        <View style={styles.toolHeader}>
-          <Text style={styles.toolTitle} accessibilityRole="header">
+    <View
+      style={{
+        backgroundColor: t.colors.surface1,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        borderRadius: t.radius.lg,
+        padding: t.space[1],
+      }}
+    >
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: t.colors.lineStrong,
+          borderStyle: 'dashed',
+          borderRadius: t.radius.md,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[2],
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: t.space[2],
+            paddingBottom: t.space[2],
+          }}
+        >
+          <Text style={[t.type.caption12, { color: t.colors.ink3, flexShrink: 1 }]} accessibilityRole="header">
             {title.toLocaleUpperCase('tr-TR')}
           </Text>
-          {unit ? <Text style={styles.toolUnit}>{unit}</Text> : null}
+          {unit ? <Text style={[t.type.mono14, { color: t.colors.ink3 }]}>{unit}</Text> : null}
         </View>
         {rows.map((row, index) => {
           const body = (
             <>
-              <View style={styles.toolRowTexts}>
-                <Text style={[styles.toolLabel, row.strong && styles.toolLabelStrong]}>{row.label}</Text>
-                {row.note ? <Text style={styles.toolNote}>{row.note}</Text> : null}
+              <View style={{ flexShrink: 1 }}>
+                <Text style={label(row.strong)}>{row.label}</Text>
+                {row.note ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{row.note}</Text> : null}
               </View>
-              <Text style={[styles.toolValue, row.strong && styles.toolValueStrong]}>{row.value}</Text>
+              <Text style={value(row.strong)}>{row.value}</Text>
             </>
           );
           const productId = row.productId;
@@ -85,26 +166,35 @@ export function AssistantResultCard({
                 ? { onPress: () => onCompanyPress(companyId), target: 'firma sayfasını aç' }
                 : null;
           if (link) {
+            // Ürün / firma satırı dokunulabilir: en az 44px ve sonda ok.
             return (
               <Pressable
                 key={`${row.label}-${index}`}
                 onPress={link.onPress}
                 accessibilityRole="button"
                 accessibilityLabel={`${row.label}${row.note ? `, ${row.note}` : ''}, ${link.target}`}
-                style={({ pressed }) => [styles.toolRow, styles.toolRowLink, pressed && styles.toolRowPressed]}
+                style={({ pressed }) => [
+                  rowBase,
+                  { minHeight: t.size.touchMin, backgroundColor: pressed ? t.colors.surface2 : 'transparent' },
+                ]}
               >
                 {body}
-                <Ionicons name="chevron-forward" size={16} color={colors.chevron} />
+                <Icon name="chevron" size={t.size.iconSm} color="ink3" />
               </Pressable>
             );
           }
           return (
-            <View key={`${row.label}-${index}`} style={[styles.toolRow, row.strong && styles.toolRowStrong]}>
+            <View
+              key={`${row.label}-${index}`}
+              style={[rowBase, row.strong && { borderTopColor: t.colors.lineStrong, minHeight: t.size.control }]}
+            >
               {body}
             </View>
           );
         })}
-        {rows.length === 0 && text ? <Text style={styles.toolText}>{text}</Text> : null}
+        {rows.length === 0 && text ? (
+          <Text style={[t.type.body14, { color: t.colors.ink, paddingTop: t.space[1] / 2 }]}>{text}</Text>
+        ) : null}
       </View>
       {formula ? (
         <Pressable
@@ -112,129 +202,25 @@ export function AssistantResultCard({
           accessibilityRole="button"
           accessibilityState={{ expanded: openFormula }}
           accessibilityLabel={`Nasıl hesaplandı, ${openFormula ? 'kapat' : 'aç'}`}
-          style={({ pressed }) => [styles.formulaToggle, pressed && styles.formulaPressed]}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[1],
+            alignSelf: 'flex-start',
+            minHeight: t.size.touchMin,
+            paddingHorizontal: t.space[2],
+            opacity: pressed ? 0.6 : 1,
+          })}
         >
-          <Text style={styles.formulaToggleText}>Nasıl hesaplandı</Text>
-          <Ionicons name={openFormula ? 'chevron-up' : 'chevron-down'} size={14} color={colors.chevron} />
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplandı</Text>
+          <Icon name={openFormula ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
         </Pressable>
       ) : null}
-      {formula && openFormula ? <Text style={styles.formulaText}>{formula}</Text> : null}
+      {formula && openFormula ? (
+        <Text style={[t.type.body14, { color: t.colors.ink2, paddingHorizontal: t.space[2], paddingBottom: t.space[2] }]}>
+          {formula}
+        </Text>
+      ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surfaceTonal,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginTop: spacing.lg,
-    ...shadow.card,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  rowStrong: {
-    borderTopWidth: 1,
-    borderTopColor: colors.borderStrong,
-    marginTop: spacing.xs,
-    paddingTop: spacing.sm,
-  },
-  rowTexts: { flexShrink: 1 },
-  label: {
-    ...typography.body,
-    color: colors.textMuted,
-  },
-  labelStrong: {
-    fontFamily: fonts.semibold,
-    color: colors.text,
-  },
-  note: {
-    ...typography.caption,
-    color: colors.textMuted,
-  },
-  value: {
-    ...typography.bodyStrong,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-  },
-  valueStrong: {
-    fontFamily: fonts.monoSemibold,
-    fontSize: 19,
-    lineHeight: 25,
-  },
-  toolCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: 4,
-  },
-  toolInner: {
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderStyle: 'dashed',
-    borderRadius: radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: spacing.sm,
-  },
-  toolHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    paddingBottom: 6,
-  },
-  toolTitle: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    lineHeight: 15,
-    letterSpacing: 0.5,
-    color: colors.textMuted,
-    flexShrink: 1,
-  },
-  toolUnit: { fontFamily: fonts.mono, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  toolRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    minHeight: 32,
-    paddingVertical: 4,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  toolRowStrong: { borderTopColor: colors.borderStrong, minHeight: 38 },
-  // Ürün satırı dokunulabilir: en az 44px ve sonda ok.
-  toolRowLink: { minHeight: MIN_TOUCH },
-  toolRowPressed: { backgroundColor: colors.pressed },
-  toolRowTexts: { flexShrink: 1 },
-  toolLabel: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.text },
-  toolLabelStrong: { fontFamily: fonts.semibold, fontSize: 15, lineHeight: 20 },
-  toolNote: { ...typography.caption, fontSize: 11, lineHeight: 15, color: colors.textMuted },
-  toolValue: { fontFamily: fonts.mono, fontSize: 14, lineHeight: 19, color: colors.text },
-  toolValueStrong: { fontFamily: fonts.monoSemibold, fontSize: 17, lineHeight: 23, color: colors.primary },
-  toolText: { ...typography.caption, fontSize: 14, lineHeight: 19, color: colors.text, paddingTop: 2 },
-  formulaToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-  },
-  formulaPressed: { opacity: 0.6 },
-  formulaToggleText: { ...typography.caption, fontSize: 12, color: colors.textMuted },
-  formulaText: {
-    ...typography.caption,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textMuted,
-    paddingHorizontal: 6,
-    paddingBottom: spacing.sm,
-  },
-});

@@ -1,31 +1,57 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+// Teklif istekleri listesi (yeni tasarım, 4. adım — DESIGN.md §2/§3).
+// Kalıp: screens/requests/RequestsScreen.tsx (SegmentControl + ListRow + Badge).
+// Veri katmanı Faz 2, Adım 2 / Faz 3, Adım 1'deki gibi; yalnızca görünüm yeni.
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import { fetchQuoteRequests, fetchRfqs, type QuoteRequestRow, type RfqSummary } from '../../api/client';
-import { SectionHeader } from '../../components/SectionHeader';
-import { QuoteStatusBadge } from '../../components/QuoteStatusBadge';
-import { SkeletonList } from '../../components/Skeleton';
-import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
+import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { formatQuantity } from '../../features/quotes/format';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
-import { colors, fonts, radius, spacing, typography } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
+import {
+  AppBar,
+  Badge,
+  Button,
+  EmptyState,
+  Icon,
+  ListRow,
+  Screen,
+  SectionTitle,
+  SegmentControl,
+  SkeletonRow,
+  type BadgeKind,
+} from '../../ui';
 
 type Props = RootStackScreenProps<'QuoteRequests'>;
 
 type Role = 'buyer' | 'seller';
 
+// Teklif isteği durumu → rozet (components/QuoteStatusBadge ile aynı eşleme).
+const QUOTE_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> = {
+  open: { kind: 'pending', label: 'Teklif bekleniyor' },
+  quoted: { kind: 'info', label: 'Teklif verildi' },
+  accepted: { kind: 'delivered', label: 'Kabul edildi' },
+  declined: { kind: 'cancelled', label: 'Reddedildi' },
+  cancelled: { kind: 'cancelled', label: 'Geri çekildi' },
+};
+
 // Faz 2, Adım 2. İki sekme tek yüklemede geliyor: sekme değişince ekran
 // yeniden istek atmıyor, liste anında değişiyor.
 export function QuoteRequestsScreen({ route, navigation }: Props) {
+  const t = useTheme();
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
   const [role, setRole] = useState<Role>(route.params?.role === 'seller' && hasCompany ? 'seller' : 'buyer');
+
+  // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(async () => {
     const [buyer, seller, rfqs] = await Promise.all([
@@ -41,199 +67,161 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
   const requests = (role === 'seller' ? data?.seller : data?.buyer) ?? [];
   const rfqs = role === 'buyer' ? (data?.rfqs ?? []) : [];
 
-  if (status === 'loading') {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <SkeletonList variant="request" />
-      </SafeAreaView>
-    );
-  }
-
-  if (status === 'error') {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <ErrorState error={error} fallback="Teklif istekleri alınamadı" onRetry={reload} />
-      </SafeAreaView>
-    );
-  }
-
   const switchRole = (next: Role) => {
     if (next === role) return;
     haptics.selection();
     setRole(next);
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+  const shell = (children: React.ReactNode) => (
+    <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
+      <AppBar title="Tekliflerim" leading="back" onBack={() => navigation.goBack()} />
+      {children}
+    </View>
+  );
+
+  if (status === 'loading') {
+    return shell(
+      <Screen>
+        <View style={{ gap: t.space[4] }}>
+          <SkeletonRow />
+          <SkeletonRow />
+          <SkeletonRow />
+        </View>
+      </Screen>
+    );
+  }
+
+  if (status === 'error') {
+    return shell(
+      <Screen>
+        <EmptyState
+          icon="warning"
+          title="Yüklenemedi"
+          description={friendlyMessage(error, 'Teklif istekleri alınamadı')}
+          actionLabel="Tekrar dene"
+          onAction={reload}
+        />
+      </Screen>
+    );
+  }
+
+  const header = (
+    <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
       {hasCompany ? (
-        <View style={styles.tabBar}>
-          <TabButton label="Verdiğim istekler" selected={role === 'buyer'} onPress={() => switchRole('buyer')} />
-          <TabButton label="Gelen istekler" selected={role === 'seller'} onPress={() => switchRole('seller')} />
+        <SegmentControl<Role>
+          stretch
+          accessibilityLabel="Yön"
+          value={role}
+          onChange={switchRole}
+          options={[
+            { value: 'buyer', label: 'Verdiğim istekler' },
+            { value: 'seller', label: 'Gelen istekler' },
+          ]}
+        />
+      ) : null}
+      {error ? (
+        <View style={{ gap: t.space[2] }}>
+          <View
+            accessibilityRole="alert"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[2],
+              padding: t.space[3],
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.dangerSoft,
+            }}
+          >
+            <Icon name="warning" size={t.size.iconSm} color="danger" />
+            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
+              {friendlyMessage(error, 'Teklif istekleri alınamadı')}
+            </Text>
+          </View>
+          <Button kind="secondary" label="Tekrar dene" onPress={reload} />
         </View>
       ) : null}
+      {/* Çoklu istekler (Faz 3, Adım 1): her satır bir karşılaştırma. */}
+      {rfqs.length ? (
+        <View style={{ gap: t.space[2] }}>
+          <SectionTitle title={`Karşılaştırmalar (${rfqs.length})`} />
+          <View>
+            {rfqs.map((rfq, index) => (
+              <ListRow
+                key={rfq.id}
+                title={rfq.title}
+                subtitle={`${rfq.requestCount} firmadan ${rfq.quotedCount} teklif · ${formatQuantity(rfq.quantity, rfq.unit)} · ${formatRelativeTime(rfq.createdAt)}`}
+                left={
+                  <View
+                    style={{
+                      width: t.size.avatar,
+                      height: t.size.avatar,
+                      borderRadius: t.radius.sm,
+                      backgroundColor: t.colors.brandSoft,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="git-compare-outline" size={t.size.iconSm} color="brand" />
+                  </View>
+                }
+                divider={index < rfqs.length - 1}
+                onPress={() => navigation.navigate('RfqCompare', { rfqId: rfq.id })}
+              />
+            ))}
+          </View>
+          <SectionTitle title={`Tek tek istekler (${requests.length})`} style={{ paddingTop: t.space[3] }} />
+        </View>
+      ) : null}
+    </View>
+  );
 
+  const empty =
+    role === 'seller' ? (
+      <EmptyState
+        icon="quote"
+        title="Henüz gelen teklif isteği yok"
+        description="Ürünlerinize teklif isteği geldiğinde burada görünür ve teklifinizi buradan hazırlarsınız."
+      />
+    ) : (
+      <EmptyState
+        icon="quote"
+        title="Henüz teklif isteğiniz yok"
+        description="Beğendiğiniz ürünün sayfasından teklif isteyebilir, gelen teklifi buradan yanıtlayabilirsiniz."
+        actionLabel="Ürünlere göz at"
+        onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
+      />
+    );
+
+  return shell(
+    <Screen scroll={false} noPadding>
       <FlatList
         data={requests}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
         refreshControl={refreshControl(refreshing, refresh)}
-        ListHeaderComponent={
-          <View>
-            {error ? (
-              <InlineError
-                message={friendlyMessage(error, 'Teklif istekleri alınamadı')}
-                onRetry={reload}
-                style={styles.banner}
-              />
-            ) : null}
-            {/* Çoklu istekler (Faz 3, Adım 1): her satır bir karşılaştırma. */}
-            {rfqs.length ? (
-              <View>
-                <SectionHeader title="Karşılaştırmalar" count={rfqs.length} first />
-                <View style={styles.block}>
-                  {rfqs.map((rfq, index) => (
-                    <Pressable
-                      key={rfq.id}
-                      onPress={() => navigation.navigate('RfqCompare', { rfqId: rfq.id })}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${rfq.title}, ${rfq.requestCount} firmadan ${rfq.quotedCount} teklif. Karşılaştırmayı aç`}
-                      android_ripple={{ color: colors.pressed }}
-                      style={({ pressed }) => [
-                        styles.row,
-                        index < rfqs.length - 1 && styles.rowDivider,
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <View style={styles.texts}>
-                        <Text style={styles.rfqTitle} numberOfLines={1}>
-                          {rfq.title}
-                        </Text>
-                        <Text style={styles.meta} numberOfLines={1}>
-                          {rfq.requestCount} firmadan {rfq.quotedCount} teklif ·{' '}
-                          {formatQuantity(rfq.quantity, rfq.unit)} · {formatRelativeTime(rfq.createdAt)}
-                        </Text>
-                      </View>
-                      <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-                    </Pressable>
-                  ))}
-                </View>
-                <SectionHeader title="Tek tek istekler" count={requests.length} />
-              </View>
-            ) : null}
-          </View>
-        }
-        ListEmptyComponent={
-          role === 'seller' ? (
-            <EmptyState
-              icon="pricetag-outline"
-              title="Henüz gelen teklif isteği yok"
-              message="Ürünlerinize teklif isteği geldiğinde burada görünür ve teklifinizi buradan hazırlarsınız."
-            />
-          ) : (
-            <EmptyState
-              icon="pricetag-outline"
-              title="Henüz teklif isteğiniz yok"
-              message="Beğendiğiniz ürünün sayfasından teklif isteyebilir, gelen teklifi buradan yanıtlayabilirsiniz."
-              actionLabel="Ürünlere göz at"
-              onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
-            />
-          )
-        }
+        ListHeaderComponent={header}
+        ListEmptyComponent={empty}
         renderItem={({ item, index }) => {
           const counterparty =
             role === 'seller'
               ? [item.buyer.name, item.buyer.company?.name].filter(Boolean).join(' · ')
               : item.sellerCompany.name;
+          const badge = QUOTE_BADGE[item.status] ?? QUOTE_BADGE.open;
           return (
-            <Pressable
+            <ListRow
+              title={item.product.code}
+              subtitle={`${counterparty} · ${formatQuantity(item.quantity, item.unit)} · ${formatRelativeTime(item.updatedAt)}`}
+              avatarName={counterparty || item.product.code}
+              avatarKind={role === 'seller' ? 'person' : 'company'}
+              right={<Badge kind={badge.kind} label={badge.label} />}
+              divider={index < requests.length - 1}
               onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: item.id })}
-              accessibilityRole="button"
-              accessibilityLabel={`${item.product.code}, ${counterparty}, ${formatQuantity(item.quantity, item.unit)}. Teklif isteğini aç`}
-              android_ripple={{ color: colors.pressed }}
-              style={({ pressed }) => [
-                styles.row,
-                index < requests.length - 1 && styles.rowDivider,
-                pressed && styles.pressed,
-              ]}
-            >
-              <View style={styles.texts}>
-                <View style={styles.topLine}>
-                  <Text style={styles.code}>{item.product.code}</Text>
-                  <QuoteStatusBadge status={item.status} />
-                </View>
-                <Text style={styles.company} numberOfLines={1}>
-                  {counterparty}
-                </Text>
-                <Text style={styles.meta} numberOfLines={1}>
-                  {formatQuantity(item.quantity, item.unit)} · {formatRelativeTime(item.updatedAt)}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.chevron} />
-            </Pressable>
+            />
           );
         }}
       />
-    </SafeAreaView>
+    </Screen>
   );
 }
-
-function TabButton({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="tab"
-      accessibilityState={{ selected }}
-      style={({ pressed }) => [styles.tab, selected && styles.tabSelected, pressed && !selected && styles.pressed]}
-    >
-      <Text style={[styles.tabText, selected && styles.tabTextSelected]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  tabBar: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tab: {
-    flex: 1,
-    minHeight: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.sm,
-  },
-  tabSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  tabTextSelected: { color: colors.primaryText },
-  listContent: { paddingTop: spacing.blockGap, paddingBottom: spacing.xl },
-  banner: { marginHorizontal: spacing.gutter, marginBottom: spacing.blockGap },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: spacing.gutter,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-  },
-  rowDivider: { borderBottomWidth: 1, borderBottomColor: colors.divider },
-  pressed: { backgroundColor: colors.pressed },
-  texts: { flex: 1, gap: 2 },
-  topLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  block: { backgroundColor: colors.surface },
-  code: { ...typography.monoStrong, color: colors.primary },
-  rfqTitle: { ...typography.label, fontFamily: fonts.semibold, color: colors.primary },
-  company: { ...typography.label, color: colors.accent },
-  meta: { ...typography.label, fontFamily: fonts.regular, color: colors.textMuted },
-});

@@ -1,15 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { PrimaryButton } from './PrimaryButton';
+import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { ApiError } from '../api/client';
-import { colors, fonts, radius, spacing, typography } from '../theme';
-
-type IconName = keyof typeof Ionicons.glyphMap;
+import { useTheme } from '../theme/ThemeContext';
+import { Button, Icon, type AnyIconName } from '../ui';
 
 // Boş liste, bulunamadı ve hata ekranları tek bir kalıptan çıkıyor: ne olduğu
 // (başlık), neden / ne yapılabilir (açıklama) ve varsa tek bir sonraki adım.
-// Eskiden bunlar liste ortasında tek satır gri yazıydı ve çıkış yolu yoktu.
+//
+// Yeni tasarım (4. adım): DESIGN.md §3 "Boş durum" — 48px kontur ikon `ink3`
+// (hata tonunda `danger`), zemin kutusu YOK, `title18` başlık, `body14` `ink2`
+// tek cümle (en çok 280px), altında kenarlıklı düğme.
 export function EmptyState({
   icon,
   title,
@@ -20,7 +20,7 @@ export function EmptyState({
   compact,
   style,
 }: {
-  icon: IconName;
+  icon: AnyIconName;
   title: string;
   message?: string;
   actionLabel?: string;
@@ -30,18 +30,39 @@ export function EmptyState({
   compact?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useTheme();
   const isError = tone === 'error';
   return (
-    <View style={[styles.wrap, compact && styles.wrapCompact, style]} accessibilityLiveRegion="polite">
-      <View style={[styles.iconWrap, isError && styles.iconWrapError]}>
-        <Ionicons name={icon} size={26} color={isError ? colors.danger : colors.primary} />
-      </View>
-      <Text style={styles.title} accessibilityRole="header">
+    <View
+      accessibilityLiveRegion="polite"
+      style={[
+        {
+          alignItems: 'center',
+          gap: t.space[3],
+          paddingHorizontal: t.space[5],
+          paddingVertical: compact ? t.space[6] : t.space[10],
+        },
+        style,
+      ]}
+    >
+      <Icon name={icon} size={t.size.emptyIcon} color={isError ? 'danger' : 'ink3'} />
+      <Text accessibilityRole="header" style={[t.type.title18, { color: t.colors.ink, textAlign: 'center' }]}>
         {title}
       </Text>
-      {message ? <Text style={styles.message}>{message}</Text> : null}
+      {message ? (
+        <Text
+          style={[
+            t.type.body14,
+            { color: t.colors.ink2, textAlign: 'center', maxWidth: t.size.emptyTextWidth },
+          ]}
+        >
+          {message}
+        </Text>
+      ) : null}
       {actionLabel && onAction ? (
-        <PrimaryButton label={actionLabel} variant="secondary" onPress={onAction} style={styles.action} />
+        <View style={{ marginTop: t.space[2] }}>
+          <Button kind="secondary" label={actionLabel} onPress={onAction} />
+        </View>
       ) : null}
     </View>
   );
@@ -98,54 +119,36 @@ export function InlineError({
   onRetry?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useTheme();
   return (
-    <View style={[styles.inline, style]} accessibilityRole="alert">
-      <Ionicons name="alert-circle-outline" size={18} color={colors.danger} />
-      <Text style={styles.inlineText}>{message}</Text>
+    <View
+      accessibilityRole="alert"
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[2],
+          backgroundColor: t.colors.dangerSoft,
+          borderRadius: t.radius.md,
+          paddingHorizontal: t.space[3],
+          paddingVertical: t.space[3],
+          minWidth: 0,
+        },
+        style,
+      ]}
+    >
+      <Icon name="warning" size={t.size.iconSm} color="danger" />
+      <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{message}</Text>
       {onRetry ? (
-        <Pressable onPress={onRetry} hitSlop={10} accessibilityRole="button">
-          <Text style={styles.inlineAction}>Tekrar dene</Text>
+        <Pressable
+          onPress={onRetry}
+          accessibilityRole="button"
+          hitSlop={t.space[3]}
+          style={{ minHeight: t.size.touchMin, justifyContent: 'center' }}
+        >
+          <Text style={[t.type.label14, { color: t.colors.danger }]}>Tekrar dene</Text>
         </Pressable>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl * 2,
-  },
-  wrapCompact: { paddingVertical: spacing.lg },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.lg,
-    backgroundColor: colors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  iconWrapError: { backgroundColor: colors.dangerSoft },
-  title: { ...typography.heading, color: colors.text, textAlign: 'center' },
-  message: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-    maxWidth: 320,
-  },
-  action: { marginTop: spacing.lg, alignSelf: 'center', minWidth: 160 },
-  inline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.dangerSoft,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  inlineText: { ...typography.label, fontFamily: fonts.regular, color: colors.danger, flex: 1 },
-  inlineAction: { ...typography.label, fontFamily: fonts.semibold, color: colors.danger },
-});
