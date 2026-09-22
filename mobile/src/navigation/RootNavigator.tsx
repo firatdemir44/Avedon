@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { DefaultTheme, NavigationContainer, useNavigationContainerRef, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
@@ -63,6 +63,7 @@ import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { ExperienceFormScreen } from '../screens/profile/ExperienceFormScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
+import { UiGalleryScreen } from '../screens/dev/UiGalleryScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
 import { InvitesScreen } from '../screens/invites/InvitesScreen';
@@ -156,6 +157,10 @@ export function RootNavigator() {
       theme={navigationTheme}
       onReady={() => {
         isReady.current = true;
+        // Geliştirme: tarayıcıda ?ui=1 ile bileşen galerisi açılır (menüde yok).
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.search.includes('ui=1')) {
+          navigationRef.navigate('UiGallery');
+        }
         const waiting = pendingTarget.current;
         pendingTarget.current = null;
         if (waiting) goToTarget(waiting);
@@ -497,6 +502,9 @@ export function RootNavigator() {
             <Stack.Screen name="CompanyCode" component={CompanyCodeScreen} />
           </Stack.Group>
         )}
+        {/* Yalnızca geliştirme: bileşen galerisi. Menüde yok; oturum açık ya da
+            kapalıyken aynı şekilde açılabilsin diye koşulun dışında. */}
+        <Stack.Screen name="UiGallery" component={UiGalleryScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

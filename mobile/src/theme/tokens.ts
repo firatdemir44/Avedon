@@ -106,6 +106,21 @@ export const size = {
   pageWidth: 375,
   // Büyük ekranda içerik bu genişliğe kadar ortalanır (DESIGN.md §1).
   maxContentWidth: 480,
+
+  // DESIGN.md §3'te ölçüsü yazılı, tokens.json'da ayrı adı olmayan bileşen
+  // ölçüleri. src/ui bileşenleri ham px yazmasın diye burada ad kazandılar.
+  iconXs: 14, // rozet içindeki ikon
+  badge: 22, // rozet yüksekliği
+  chip: 36, // çip / segment öğesi yüksekliği
+  quickAction: 80, // ana sayfa kısayol kutusu
+  toolBox: 96, // hesap araç kutusu
+  emptyIcon: 48, // boş durum ikonu
+  emptyTextWidth: 280, // boş durum açıklamasının en çok genişliği
+  avatarSm: 32, // ürün çipi görseli
+  dot: 8, // sekmedeki bildirim noktası
+  counter: 20, // okunmamış sayacı (pill)
+  sheetHandleWidth: 36,
+  sheetHandleHeight: 4,
 } as const;
 
 // Yazı stilleri. Kalınlık ayrı yazı tipi dosyasıyla (theme/index.ts fonts).

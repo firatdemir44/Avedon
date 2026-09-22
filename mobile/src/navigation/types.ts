@@ -173,6 +173,9 @@ export type RootStackParamList = {
   CreatePost: { postId?: string; productId?: string; pickedAt?: number } | undefined;
   SelectProduct: { selectedId?: string } | undefined;
   PostComments: { postId: string };
+  // Yalnızca geliştirme: src/ui bileşen galerisi. Menüde yok, elle gezinilir
+  // (web'de tarayıcıdan). Tasarım sistemini açık/koyu temada görmek için.
+  UiGallery: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> = NativeStackScreenProps<
