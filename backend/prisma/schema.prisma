@@ -52,6 +52,13 @@ model Company {
   contractOpen          Boolean   @default(false)
   capacityUpdatedAt     DateTime?
   logoUpdatedAt     DateTime?
+  // Firma rehberi (2026-09-23): dernek listelerinden içe aktarılan firmalar sahipsiz (claimed=false)
+  // listelenir; sahiplenme onaylanınca true olur. source: liste kaynağı (itkib, ithib, ito, orsad…).
+  // categoryTags: ek kategoriler (JSON dizi); normalizedName: arama/mükerrer anahtarı.
+  claimed           Boolean   @default(true)
+  source            String    @default("")
+  categoryTags      String    @default("[]")
+  normalizedName    String    @default("")
   createdAt         DateTime  @default(now())
   users             User[]
   products          Product[]
@@ -64,6 +71,9 @@ model Company {
   referencesGiven   CompanyReference[] @relation("ReferenceFrom")
   referencesReceived CompanyReference[] @relation("ReferenceTo")
   questions         CompanyQuestion[]
+
+  @@index([companyType])
+  @@index([normalizedName])
 }
 
 // Firma sayfasındaki galeriler (Aşama B): kind "office" (ofis/üretim
@@ -1021,6 +1031,8 @@ model VerificationRequest {
   note        String    @default("")
   status      String    @default("pending")
   adminNote   String    @default("")
+  // true: "Bu firma benim" sahiplenme başvurusu (onayda kullanıcı firmaya bağlanır).
+  claim       Boolean   @default(false)
   createdAt   DateTime  @default(now())
   decidedAt   DateTime?
 

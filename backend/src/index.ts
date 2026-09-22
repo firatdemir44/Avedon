@@ -27,6 +27,8 @@ import { referencesRouter } from './routes/references';
 import { yarnsRouter } from './routes/yarns';
 import { rfqsRouter } from './routes/rfqs';
 import { tendersRouter } from './routes/tenders';
+import { adminDirectoryRouter, directoryRouter } from './routes/directory';
+import { backfillNormalizedNames } from './directory';
 import { looksRouter } from './routes/looks';
 import { dppRouter } from './routes/dpp';
 import { dealsRouter } from './routes/deals';
@@ -108,6 +110,8 @@ app.use('/api/references', referencesRouter);
 app.use('/api/yarns', yarnsRouter);
 app.use('/api/rfqs', rfqsRouter);
 app.use('/api/tenders', tendersRouter);
+app.use('/api/directory', directoryRouter);
+app.use('/api/admin/directory', adminDirectoryRouter);
 app.use('/api/looks', looksRouter);
 app.use('/api/dpp', dppRouter);
 app.use('/api/deals', dealsRouter);
@@ -124,4 +128,5 @@ app.listen(port, () => {
   void ensureWabaSubscription();
   // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
+  backfillNormalizedNames().catch((err) => console.error('[directory] backfill', err));
 });

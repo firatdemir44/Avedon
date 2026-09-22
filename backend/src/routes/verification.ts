@@ -12,7 +12,7 @@ const MAX_DOC_CHARS = 2_100_000; // ~1,5 MB PDF ya da sıkıştırılmış foto�
 
 const handle = makeHandle('verification');
 
-const REQUEST_SELECT = { id: true, companyId: true, userId: true, note: true, status: true, adminNote: true, createdAt: true, decidedAt: true } as const;
+const REQUEST_SELECT = { id: true, companyId: true, userId: true, note: true, status: true, adminNote: true, claim: true, createdAt: true, decidedAt: true } as const;
 
 async function adminIds() {
   return (await prisma.user.findMany({ where: { isAdmin: true }, select: { id: true } })).map((u) => u.id);
@@ -112,15 +112,21 @@ adminVerificationRouter.post(
       prisma.verificationRequest.update({ where: { id: row.id }, data: { status: approve ? 'approved' : 'rejected', adminNote: parsed.data.adminNote ?? '', decidedAt: new Date(), documentUrl: '' } }),
       prisma.company.update({
         where: { id: row.companyId },
-        data: approve ? { verification: 'dogrulanmis', verificationLevel: parsed.data.level ?? 'belge', verifiedAt: new Date() } : { verification: 'dogrulanmamis', verificationLevel: '', verifiedAt: null },
+        data: approve
+          ? { verification: 'dogrulanmis', verificationLevel: parsed.data.level ?? 'belge', verifiedAt: new Date(), ...(row.claim ? { claimed: true } : {}) }
+          : { verification: 'dogrulanmamis', verificationLevel: '', verifiedAt: null },
       }),
+      // Sahiplenme onayı: başvuran kullanıcı (hâlâ firmasızsa) firmaya bağlanır.
+      ...(approve && row.claim ? [prisma.user.updateMany({ where: { id: row.userId, companyId: null }, data: { companyId: row.companyId } })] : []),
     ]);
     // Belge karar sonrası tutulmaz (kişisel/ticari veri en az süre saklanır).
     const members = await prisma.user.findMany({ where: { companyId: row.companyId }, select: { id: true } });
+    // Reddedilen sahiplenmede başvuran firmaya bağlı değil; ona ayrıca haber ver.
+    if (row.claim && !approve) members.push({ id: row.userId });
     for (const m of members) {
       await notify(m.id, {
         kind: approve ? 'verification_approved' : 'verification_rejected',
-        title: approve ? `${company.name} doğrulandı` : 'Doğrulama başvurusu kabul edilmedi',
+        title: approve ? (row.claim ? `${company.name} artık sizin` : `${company.name} doğrulandı`) : row.claim ? 'Firma sahiplenme başvurusu kabul edilmedi' : 'Doğrulama başvurusu kabul edilmedi',
         body: approve ? 'Firma sayfanızda doğrulanmış rozeti görünüyor.' : parsed.data.adminNote || 'Belgeyi kontrol edip yeniden başvurabilirsiniz.',
         data: { companyId: row.companyId },
       });
