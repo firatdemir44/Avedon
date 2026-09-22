@@ -411,3 +411,11 @@ Sıra: **Ana sayfa · Katalog · Talepler · Mesajlar · Hesap**.
 - `TabBarFromNavigation`'a `hiddenRoutes` prop'u.
 - Düzeltmeler: `ChipRow` artık dikeyde uzamıyor (`flexGrow: 0`), `EmptyState`
   düğmesi ortalanıyor (`Button`un kendi `alignSelf: flex-start`i eziyordu).
+
+## Açık talep (ihale) ekranları (2026-09-22)
+
+- **Talepler sekmesi → "Açık talepler"**: alt segment Tümü · Benim · Tekliflerim (375 px'te üç segment sığsın diye kısa); Tümü'nde kategori çipleri (İplik/Kumaş/Diğer, ekranda süzülür). Satır `Card`: başlık `body16Strong` + sağda durum `Badge` (AÇIK / N TEKLİF / SEÇİLDİ / KAPANDI, `features/tenders/format.ts → tenderBadge`), özet `body14`, miktar `mono14`, alıcı firma + doğrulanmış rozeti, son teklif tarihi `caption12`. Yapışkan tek dolu düğme "Talep yayınla" (Tekliflerim'de yok).
+- **`TenderForm`**: kategori `SegmentControl`; iplik → lif ailesi / numara birimi / renk durumu çipleri, filament ve numara `Input`; kumaş → çeşit + alt çeşit çipleri, gramaj/en yan yana. Başlık alanlardan önerilir ("Polyester iplik · 96 filament"), kullanıcı yazınca öneri durur. Tarihler `YYYY-AA-GG`; son teklif tarihi günün sonuna yazılır. Tek dolu düğme yapışkan "Talebi yayınla"; başarıda `TenderDetail`'e `notified` ile gidilir ve "N firmaya haber verildi" bandı çıkar.
+- **`TenderDetail`**: üstte özet kartı (`title22`, kategori + durum rozeti, miktar `mono20`, alıcı satırı → firma sayfası). Alıcı: teklif tablosu RfqCompare kalıbında (sabit etiket sütunu + yatay kayan firma sütunları; "En düşük fiyat" yalnızca aynı para birimi+birim içinde, "En kısa termin"); sütun altında "Bu teklifi seç" (kenarlıklı, onaylı) + "Mesaj" (sessiz, kişi profiline); seçilen sütun `successSoft`. "Talebi kapat" `danger`. Satıcı: tek dolu "Teklif gönder / Teklifi güncelle"; gönderilmişse özet + "Teklifi güncelle" (kenarlıklı) + "Geri çek" (`danger`). Kapalı/süresi dolmuş talepte form yerine bilgi bandı.
+- **Akış kartı**: `post.tender` doluysa metin yerine talep kutusu (AÇIK TALEP rozeti, başlık, özet `mono14`, "N teklif · son teklif: tarih"); alt çubuğun 3. eylemi "Teklif ver" (yazar ise "Teklifleri gör").
+- Ana sayfadaki "Teklif iste" kısayolu artık `TenderForm` açar; ürün sayfasındaki ürün bazlı teklif isteği aynen durur.

@@ -32,6 +32,9 @@ type Props = RootStackScreenProps<'Notifications'>;
 // bildirimi okundu yapar hem ilgili ekranı açar.
 function iconFor(kind: string): AnyIconName {
   if (kind === 'watch_match') return 'bookmark-outline';
+  // Açık talep (ihale): tender_new, tender_offer, tender_awarded, tender_closed.
+  if (kind === 'tender_awarded') return 'trophy-outline';
+  if (kind.startsWith('tender')) return 'megaphone-outline';
   if (kind.startsWith('sample_request')) return 'sample';
   if (kind.startsWith('connection')) return 'people-outline';
   // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
@@ -187,6 +190,11 @@ export function NotificationsScreen({ navigation }: Props) {
           initialTab: 'about',
           focus: 'references',
         });
+        return;
+      }
+      // Açık talep (ihale): hepsi talebin kendi sayfasına.
+      if (item.kind.startsWith('tender')) {
+        if (item.data.tenderId) navigation.navigate('TenderDetail', { tenderId: item.data.tenderId });
         return;
       }
       if (item.kind.startsWith('quote')) {

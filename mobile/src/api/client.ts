@@ -516,6 +516,18 @@ export type FeedPost = {
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
+  // Açık talep gönderisi: doluysa kart metin yerine talep özetini çizer.
+  tender: FeedTender | null;
+};
+
+export type FeedTender = {
+  id: string;
+  category: TenderCategory;
+  title: string;
+  summary: string;
+  status: TenderStatus;
+  offerCount: number;
+  deadline: string | null;
 };
 
 export type FeedPostComment = {
@@ -1415,7 +1427,13 @@ export type NotificationKind =
   // hiçbir bildirimde geçmez.
   | 'verification_request'
   | 'verification_approved'
-  | 'verification_rejected';
+  | 'verification_rejected'
+  // Açık talep (ihale): hepsinde data.tenderId dolu. tender_new satıcıya,
+  // tender_offer alıcıya, tender_awarded seçilen satıcıya (data.userId alıcı).
+  | 'tender_new'
+  | 'tender_offer'
+  | 'tender_awarded'
+  | 'tender_closed';
 
 export interface NotificationData {
   productId?: string;
@@ -1438,6 +1456,8 @@ export interface NotificationData {
   inviteId?: string;
   // Firma doğrulama başvurusu (2026-09-22): yöneticiye giden bildirimde.
   verificationRequestId?: string;
+  // Açık talep (ihale).
+  tenderId?: string;
 }
 
 export interface AppNotification {
@@ -2632,4 +2652,143 @@ export function fetchPushStatus() {
 // sunucuda VAPID anahtarı tanımlı değil.
 export function sendTestPush() {
   return request<{ ok: true; devices: number }>('/push/test', { method: 'POST' });
+}
+
+// --- Açık talep (ihale) --------------------------------------------------
+// Alıcı ihtiyacını yayınlar (örn. "96 filament 7 ton polyester iplik"),
+// kategoriye uyan satıcı firmalar teklif verir, alıcı birini seçer.
+
+export type TenderCategory = 'iplik' | 'kumas' | 'diger';
+export type TenderStatus = 'open' | 'closed' | 'awarded';
+export type TenderUnit = 'kg' | 'm' | 'ton' | 'adet';
+export type TenderScope = 'open' | 'mine' | 'offered';
+export type TenderCurrency = 'TRY' | 'USD' | 'EUR';
+
+export interface TenderYarnSpec {
+  family?: string;
+  filaments?: number;
+  count?: number;
+  countUnit?: 'ne' | 'nm' | 'denye' | 'dtex' | 'tex';
+  colorState?: 'ham' | 'boyali' | 'ekru';
+  color?: string;
+}
+
+export interface TenderFabricSpec {
+  type?: 'orme' | 'raschel' | 'dokuma' | 'dantel' | 'triko' | 'diger';
+  subtype?: string;
+  weightGsm?: number;
+  widthCm?: number;
+  content?: string;
+  color?: string;
+}
+
+export interface TenderBuyer {
+  id: string;
+  name: string;
+  company: { id: string; name: string; verification: string; logoUpdatedAt: string | null } | null;
+}
+
+export interface Tender {
+  id: string;
+  category: TenderCategory;
+  categoryLabel: string;
+  title: string;
+  spec: (TenderYarnSpec & TenderFabricSpec) | null;
+  summary: string;
+  quantity: number;
+  unit: TenderUnit;
+  targetDate: string | null;
+  deadline: string | null;
+  note: string | null;
+  status: TenderStatus;
+  expired: boolean;
+  acceptingOffers: boolean;
+  offerCount: number;
+  awardedOfferId: string | null;
+  postId: string | null;
+  createdAt: string;
+  buyer: TenderBuyer;
+  isMine: boolean;
+  myCompanyOffered: boolean;
+}
+
+export type TenderOfferStatus = 'sent' | 'accepted' | 'declined' | 'withdrawn';
+
+export interface TenderOffer {
+  id: string;
+  price: { value: number; currency: TenderCurrency; unit: TenderUnit };
+  moq: number | null;
+  moqUnit: string | null;
+  leadTimeDays: number | null;
+  validUntil: string | null;
+  paymentTerms: string | null;
+  note: string | null;
+  status: TenderOfferStatus;
+  createdAt: string;
+  seller: {
+    id?: string;
+    name: string;
+    company: { id: string; name: string; verification?: string } | null;
+  } | null;
+  sellerCompanyId: string;
+}
+
+export function fetchTenders(scope: TenderScope = 'open', category?: TenderCategory) {
+  const params = new URLSearchParams({ scope });
+  if (category) params.set('category', category);
+  return request<{ tenders: Tender[] }>(`/tenders?${params.toString()}`);
+}
+
+export interface CreateTenderInput {
+  category: TenderCategory;
+  title: string;
+  spec?: TenderYarnSpec | TenderFabricSpec;
+  quantity: number;
+  unit: TenderUnit;
+  targetDate?: string | null;
+  deadline?: string | null;
+  note?: string;
+  shareToFeed?: boolean;
+}
+
+export function createTender(input: CreateTenderInput) {
+  return request<{ tender: Tender; notified: number }>('/tenders', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchTender(id: string) {
+  return request<{ tender: Tender; offers: TenderOffer[]; myOffer: TenderOffer | null }>(`/tenders/${id}`);
+}
+
+export interface TenderOfferInput {
+  priceValue: number;
+  priceCurrency: TenderCurrency;
+  priceUnit: TenderUnit;
+  moq?: number | null;
+  moqUnit?: string;
+  leadTimeDays?: number | null;
+  validUntil?: string | null;
+  paymentTerms?: string;
+  note?: string;
+}
+
+export function submitTenderOffer(id: string, input: TenderOfferInput) {
+  return request<{ offer: TenderOffer }>(`/tenders/${id}/offers`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function withdrawTenderOffer(id: string) {
+  return request<void>(`/tenders/${id}/offers/mine`, { method: 'DELETE' });
+}
+
+export function acceptTenderOffer(id: string, offerId: string) {
+  return request<{ tender: Tender }>(`/tenders/${id}/offers/${offerId}/accept`, { method: 'POST' });
+}
+
+export function closeTender(id: string) {
+  return request<{ tender: Tender }>(`/tenders/${id}/close`, { method: 'POST' });
 }

@@ -55,6 +55,8 @@ import { DealDetailScreen } from '../screens/deals/DealDetailScreen';
 import { DealsScreen } from '../screens/deals/DealsScreen';
 import { RfqFormScreen } from '../screens/quotes/RfqFormScreen';
 import { RfqCompareScreen } from '../screens/quotes/RfqCompareScreen';
+import { TenderFormScreen } from '../screens/tenders/TenderFormScreen';
+import { TenderDetailScreen } from '../screens/tenders/TenderDetailScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
@@ -415,6 +417,8 @@ export function RootNavigator() {
               component={RfqCompareScreen}
               options={{ headerShown: true, title: 'Teklif Karşılaştırma' }}
             />
+            <Stack.Screen name="TenderForm" component={TenderFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="TenderDetail" component={TenderDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="GarmentVisualCost"
               component={GarmentVisualCostScreen}

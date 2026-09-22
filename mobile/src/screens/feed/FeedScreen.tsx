@@ -247,7 +247,7 @@ export function FeedScreen({ navigation }: Props) {
           style={{ flexBasis: '47%', flexGrow: 1 }}
           icon="quote"
           label="Teklif iste"
-          onPress={() => navigation.navigate('ProductList')}
+          onPress={() => navigation.navigate('TenderForm')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}

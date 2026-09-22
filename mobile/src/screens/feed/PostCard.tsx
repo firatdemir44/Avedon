@@ -11,6 +11,10 @@
 // menüsünde: DESIGN.md alt satırda TAM 3 eylem istiyor.
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
+import { tenderBadge, tenderMetaLine } from '../../features/tenders/format';
 import { PostVideo } from '../../components/PostVideo';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
@@ -54,6 +58,13 @@ function PostCardComponent({
   onRequestQuote,
 }: Props) {
   const t = useTheme();
+  // Açık talep gönderisi: kart iki çağıran ekranda da (akış, firma sayfası)
+  // aynı yere gitsin diye gezinti burada.
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const tender = post.tender ?? null;
+  const openTender = () => {
+    if (tender) navigation.navigate('TenderDetail', { tenderId: tender.id });
+  };
   const [imageUrl, setImageUrl] = useState<string | null>(
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
   );
@@ -248,8 +259,45 @@ function PostCardComponent({
         </View>
       ) : null}
 
+      {/* Açık talep: gönderi metni yerine talep özeti */}
+      {tender ? (
+        <Pressable
+          onPress={openTender}
+          accessibilityRole="button"
+          accessibilityLabel={`Açık talep: ${tender.title}, ayrıntıyı aç`}
+          style={[pad, { paddingTop: t.space[3] }]}
+        >
+          {({ pressed }) => (
+            <View
+              style={{
+                gap: t.space[2],
+                padding: t.space[3],
+                borderRadius: t.radius.md,
+                borderWidth: 1,
+                borderColor: t.colors.line,
+                backgroundColor: pressed ? t.colors.surface2 : t.colors.surface0,
+              }}
+            >
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                <Badge kind="new" label="Açık talep" />
+                {tender.status !== 'open' ? <Badge {...tenderBadge(tender)} /> : null}
+              </View>
+              <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink }]}>
+                {tender.title}
+              </Text>
+              {tender.summary ? (
+                <Text numberOfLines={2} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+                  {tender.summary}
+                </Text>
+              ) : null}
+              <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{tenderMetaLine(tender)}</Text>
+            </View>
+          )}
+        </Pressable>
+      ) : null}
+
       {/* Metin */}
-      {post.body ? (
+      {post.body && !tender ? (
         <Pressable
           hitSlop={{ top: t.space[1], bottom: t.space[1] }}
           onPress={() => setExpanded((v) => !v)}
@@ -350,7 +398,15 @@ function PostCardComponent({
           count={post.commentCount}
           onPress={() => onOpenComments(post)}
         />
-        {product ? (
+        {tender ? (
+          <BarAction
+            icon="quote"
+            label={isMine ? 'Teklifleri gör' : 'Teklif ver'}
+            text={isMine ? 'Teklifleri gör' : 'Teklif ver'}
+            brand
+            onPress={openTender}
+          />
+        ) : product ? (
           <BarAction
             icon="sample"
             label={`${product.code} için numune talep et`}

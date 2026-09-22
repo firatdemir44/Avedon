@@ -153,6 +153,9 @@ export type RootStackParamList = {
     prefill?: { quantity?: number; unit?: 'm' | 'kg'; targetDate?: string; note?: string };
   };
   RfqCompare: { rfqId: string };
+  // Açık talep (ihale): alıcı talebi yayınlar, ilgili satıcılar teklif verir.
+  TenderForm: undefined;
+  TenderDetail: { tenderId: string; notified?: number };
   // Sipariş kaydı ve karşılıklı değerlendirme (Faz 3, Adım 4). Kayıt kabul
   // edilen tekliften doğar; platform ödeme almaz, sevkiyat izlemez.
   DealDetail: { dealId: string };

@@ -15,6 +15,9 @@ import {
   fetchIncomingSampleRequests,
   fetchMySampleRequests,
   fetchQuoteRequests,
+  fetchTenders,
+  type Tender,
+  type TenderCategory,
   updateSampleRequestStatus,
   type QuoteRequestRow,
   type SampleRequestRow,
@@ -26,11 +29,15 @@ import { friendlyMessage } from '../../components/StateView';
 import { formatRelativeTime } from '../../features/time';
 import { formatQuantity } from '../../features/quotes/format';
 import { haptics } from '../../features/haptics';
+import { TENDER_CATEGORIES, formatTenderDate, formatTenderQuantity, tenderBadge } from '../../features/tenders/format';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   AppBar,
   Badge,
   Button,
+  Card,
+  Chip,
+  ChipRow,
   EmptyState,
   Icon,
   ListRow,
@@ -42,7 +49,9 @@ import {
 
 type Props = MainTabScreenProps<'Requests'>;
 
-type Kind = 'sample' | 'quote';
+type Kind = 'sample' | 'quote' | 'tender';
+// Açık talep alt sekmesi: tüm açık talepler / benim yayınladıklarım / teklif verdiklerim.
+type TenderScope = 'open' | 'mine' | 'offered';
 type Side = 'outgoing' | 'incoming';
 
 // Numune durumu → rozet türü (DESIGN.md §3). Metin sunucudan gelen
@@ -69,6 +78,8 @@ export function RequestsScreen({ navigation }: Props) {
 
   const [kind, setKind] = useState<Kind>('sample');
   const [side, setSide] = useState<Side>('outgoing');
+  const [tenderScope, setTenderScope] = useState<TenderScope>('open');
+  const [tenderCategory, setTenderCategory] = useState<TenderCategory | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -86,6 +97,20 @@ export function RequestsScreen({ navigation }: Props) {
     ]);
     return { mine, incoming, buyerQuotes, sellerQuotes };
   });
+
+  // Açık talepler ayrı yüklenir: üç kapsam birlikte, kategori süzmesi ekranda.
+  const tenderLoad = useFocusLoad(async () => {
+    const [open, mine, offered] = await Promise.all([
+      fetchTenders('open').then((r) => r.tenders),
+      fetchTenders('mine').then((r) => r.tenders),
+      hasCompany ? fetchTenders('offered').then((r) => r.tenders) : Promise.resolve([] as Tender[]),
+    ]);
+    return { open, mine, offered };
+  });
+  const tenders = useMemo(() => {
+    const list = tenderLoad.data?.[tenderScope] ?? [];
+    return tenderScope === 'open' && tenderCategory ? list.filter((x) => x.category === tenderCategory) : list;
+  }, [tenderLoad.data, tenderScope, tenderCategory]);
 
   const samples = (side === 'incoming' ? data?.incoming : data?.mine) ?? [];
   const quotes = (side === 'incoming' ? data?.sellerQuotes : data?.buyerQuotes) ?? [];
@@ -111,7 +136,8 @@ export function RequestsScreen({ navigation }: Props) {
     }
   };
 
-  const banner = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
+  const loadError = kind === 'tender' ? tenderLoad.error : error;
+  const banner = actionError ?? (loadError ? friendlyMessage(loadError, 'Talepler alınamadı') : null);
 
   const header = (
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
@@ -123,10 +149,37 @@ export function RequestsScreen({ navigation }: Props) {
         options={[
           { value: 'sample', label: 'Numune' },
           { value: 'quote', label: 'Teklif' },
+          { value: 'tender', label: 'Açık talepler' },
         ]}
       />
+      {kind === 'tender' ? (
+        <SegmentControl<TenderScope>
+          stretch
+          accessibilityLabel="Açık talepler"
+          value={tenderScope}
+          onChange={setTenderScope}
+          options={[
+            { value: 'open', label: 'Tümü' },
+            { value: 'mine', label: 'Benim' },
+            ...(hasCompany ? [{ value: 'offered' as const, label: 'Tekliflerim' }] : []),
+          ]}
+        />
+      ) : null}
+      {kind === 'tender' && tenderScope === 'open' ? (
+        <ChipRow>
+          <Chip label="Tümü" selected={tenderCategory === null} onPress={() => setTenderCategory(null)} />
+          {TENDER_CATEGORIES.map((c) => (
+            <Chip
+              key={c.value}
+              label={c.label}
+              selected={tenderCategory === c.value}
+              onPress={() => setTenderCategory(tenderCategory === c.value ? null : c.value)}
+            />
+          ))}
+        </ChipRow>
+      ) : null}
       {/* Firması olmayan kullanıcıya gelen talep gelmez; ikinci segment gizli. */}
-      {hasCompany ? (
+      {hasCompany && kind !== 'tender' ? (
         <SegmentControl<Side>
           stretch
           accessibilityLabel="Yön"
@@ -155,6 +208,57 @@ export function RequestsScreen({ navigation }: Props) {
       ) : null}
     </View>
   );
+
+  const tenderEmpty =
+    tenderScope === 'offered' ? (
+      <EmptyState
+        icon="megaphone-outline"
+        title="Henüz teklif vermedin"
+        description="Açık taleplere teklif verdiğinde burada takip edersin."
+        actionLabel="Açık taleplere bak"
+        onAction={() => setTenderScope('open')}
+      />
+    ) : (
+      <EmptyState
+        icon="megaphone-outline"
+        title={tenderScope === 'mine' ? 'İlk açık talebini yayınla' : 'Şu an açık talep yok'}
+        description="Ne aradığını yaz (örn. 96 filament polyester iplik); bu işi yapan firmalar sana teklif versin."
+        actionLabel="Talep yayınla"
+        onAction={() => navigation.navigate('TenderForm')}
+      />
+    );
+
+  const renderTender = ({ item }: { item: Tender }) => {
+    const badge = tenderBadge(item);
+    const company = item.buyer.company;
+    return (
+      <Card onPress={() => navigation.navigate('TenderDetail', { tenderId: item.id })} style={{ marginBottom: t.space[3] }}>
+        <View style={{ gap: t.space[1] }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
+            <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+              {item.title}
+            </Text>
+            <Badge kind={badge.kind} label={badge.label} />
+          </View>
+          {item.summary ? (
+            <Text numberOfLines={2} style={[t.type.body14, { color: t.colors.ink2 }]}>
+              {item.summary}
+            </Text>
+          ) : null}
+          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{formatTenderQuantity(item.quantity, item.unit)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
+              {company?.name ?? item.buyer.name}
+            </Text>
+            {company?.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
+          </View>
+          <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
+            {item.deadline ? `Son teklif: ${formatTenderDate(item.deadline)}` : `Yayın: ${formatRelativeTime(item.createdAt)}`}
+          </Text>
+        </View>
+      </Card>
+    );
+  };
 
   const empty =
     kind === 'sample' ? (
@@ -201,8 +305,35 @@ export function RequestsScreen({ navigation }: Props) {
           },
         ]}
       />
-      <Screen scroll={false} noPadding>
-        {status === 'loading' ? (
+      <Screen
+        scroll={false}
+        noPadding
+        sticky={
+          kind === 'tender' && tenderScope !== 'offered' ? (
+            <Button size="lg" icon="plus" label="Talep yayınla" onPress={() => navigation.navigate('TenderForm')} />
+          ) : undefined
+        }
+      >
+        {kind === 'tender' ? (
+          tenderLoad.status === 'loading' ? (
+            <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
+              {header}
+              <SkeletonRow />
+              <SkeletonRow />
+            </View>
+          ) : (
+            <FlatList
+              data={tenders}
+              keyExtractor={(item) => item.id}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+              refreshControl={refreshControl(tenderLoad.refreshing, tenderLoad.refresh)}
+              ListHeaderComponent={header}
+              ListEmptyComponent={tenderEmpty}
+              renderItem={renderTender}
+            />
+          )
+        ) : status === 'loading' ? (
           <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
             {header}
             <SkeletonRow />
