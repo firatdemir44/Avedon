@@ -976,6 +976,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       <View style={styles.block}>
         <Fact label="Ürün sayısı" value={String(products.length)} />
         <Fact label="Kişi sayısı" value={String(people.length)} />
+        {/* Kendi firmanızda satır dokunulabilir: doğrulama başvurusu ekranı. */}
         <Fact
           label="Doğrulama"
           value={
@@ -986,6 +987,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 : 'Doğrulanmamış'
           }
           last
+          onPress={isOwnCompany ? () => navigation.navigate('Verification') : undefined}
+          accessibilityLabel="Doğrulama durumu, başvuru ekranını aç"
         />
       </View>
       {route.params?.focus === 'references' ? null : referencesContent}
@@ -1423,15 +1426,48 @@ function WebsiteFact({ website }: { website: string }) {
   );
 }
 
-function Fact({ label, value, mono, last }: { label: string; value: string; mono?: boolean; last?: boolean }) {
-  return (
-    <View style={[styles.fact, !last && styles.factDivider]}>
+function Fact({
+  label,
+  value,
+  mono,
+  last,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  last?: boolean;
+  // Dokunulabilir özet satırı (kendi firmanızda "Doğrulama" → başvuru ekranı).
+  onPress?: () => void;
+  accessibilityLabel?: string;
+}) {
+  const body = (
+    <>
       <Text style={styles.factLabel}>{label}</Text>
-      <Text style={[styles.factValue, mono && styles.factValueMono]} selectable>
+      <Text style={[styles.factValue, mono && styles.factValueMono]} selectable={!onPress}>
         {value}
       </Text>
-    </View>
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={colors.chevron} /> : null}
+    </>
   );
+  if (onPress) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? `${label}: ${value}`}
+        style={({ pressed }) => [
+          styles.fact,
+          !last && styles.factDivider,
+          pressed && { backgroundColor: colors.pressed },
+        ]}
+      >
+        {body}
+      </Pressable>
+    );
+  }
+  return <View style={[styles.fact, !last && styles.factDivider]}>{body}</View>;
 }
 
 const styles = StyleSheet.create({

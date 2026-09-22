@@ -44,6 +44,10 @@ function iconFor(kind: string): IconName {
   if (kind === 'product_draft') return 'logo-whatsapp';
   // Davetler (Faz 2, Adım 4): davet ettiğiniz kişi katıldı.
   if (kind === 'invite_joined') return 'person-add-outline';
+  // Firma doğrulama başvurusu (2026-09-22).
+  if (kind === 'verification_approved') return 'shield-checkmark';
+  if (kind === 'verification_rejected') return 'shield-outline';
+  if (kind === 'verification_request') return 'shield-half-outline';
   return 'notifications-outline';
 }
 
@@ -123,6 +127,16 @@ export function NotificationsScreen({ navigation }: Props) {
       if (item.kind.startsWith('deal') || (item.kind === 'quote_accepted' && dealId)) {
         if (dealId) navigation.navigate('DealDetail', { dealId });
         else navigation.navigate('Deals');
+        return;
+      }
+      // Firma doğrulama (2026-09-22): yöneticiye gelen başvuru → yönetici
+      // ekranı; firmaya gelen sonuç → kendi doğrulama ekranı.
+      if (item.kind === 'verification_request') {
+        navigation.navigate('Admin');
+        return;
+      }
+      if (item.kind === 'verification_approved' || item.kind === 'verification_rejected') {
+        navigation.navigate('Verification');
         return;
       }
       // Faz 2, Adım 3: satıcıya gelen soru → gelen sorular listesi; alıcıya

@@ -1394,7 +1394,14 @@ export type NotificationKind =
   | 'product_draft'
   // Faz 2, Adım 4 (davetler): davet ettiğiniz kişi kayıt oldu.
   // data.userId (katılan kişi) + data.inviteId.
-  | 'invite_joined';
+  | 'invite_joined'
+  // Firma doğrulama başvurusu (2026-09-22). verification_request yalnızca
+  // yöneticilere gider (data.verificationRequestId + companyId); sonuç
+  // bildirimleri firmanın çalışanlarına (data.companyId). Yöneticinin kimliği
+  // hiçbir bildirimde geçmez.
+  | 'verification_request'
+  | 'verification_approved'
+  | 'verification_rejected';
 
 export interface NotificationData {
   productId?: string;
@@ -1415,6 +1422,8 @@ export interface NotificationData {
   draftId?: string;
   // Davetler (Faz 2, Adım 4).
   inviteId?: string;
+  // Firma doğrulama başvurusu (2026-09-22): yöneticiye giden bildirimde.
+  verificationRequestId?: string;
 }
 
 export interface AppNotification {
@@ -2514,6 +2523,70 @@ export function updateCompanyVerification(
   return request<{ company: Company }>(`/admin/companies/${companyId}/verification`, {
     method: 'PATCH',
     body: JSON.stringify(level !== undefined ? { verification, level } : { verification }),
+  });
+}
+
+// --- Firma doğrulama başvurusu (2026-09-22) ----------------------------------
+// Firma belge yükleyip doğrulama ister; "Avedon ekibi" inceler. Yöneticinin
+// kimliği hiçbir yanıtta geçmez, bu yüzden istemcide de hiçbir yerde
+// gösterilmez. Belge karar verildikten sonra sunucuda silinir.
+
+export type VerificationRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface VerificationRequest {
+  id: string;
+  status: VerificationRequestStatus;
+  note: string;
+  adminNote: string;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export interface VerificationState {
+  verification: VerificationStatus;
+  level: '' | 'belge' | 'ziyaret';
+  verifiedAt: string | null;
+  // Firmanın EN SON başvurusu (hiç başvurmadıysa null).
+  request: VerificationRequest | null;
+}
+
+export function fetchVerificationState() {
+  return request<VerificationState>('/verification');
+}
+
+// document: `data:image/...` ya da `data:application/pdf;base64,...`
+// 409 request_pending | already_verified · 400 no_company.
+export function applyForVerification(input: { document: string; note?: string }) {
+  return request<{ request: VerificationRequest }>('/verification', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export interface AdminVerificationRequest extends VerificationRequest {
+  company: { id: string; name: string; taxId: string; verification: VerificationStatus } | null;
+  user: { firstName: string; lastName: string; position: string } | null;
+}
+
+export function fetchAdminVerificationRequests(status: VerificationRequestStatus | 'all' = 'pending') {
+  return request<{ requests: AdminVerificationRequest[] }>(
+    `/admin/verification-requests?status=${status}`
+  );
+}
+
+// Belge yalnızca karar anında çekilir (yanıtları şişirmesin diye listede yok).
+export function fetchAdminVerificationDocument(id: string) {
+  return request<{ documentUrl: string }>(`/admin/verification-requests/${id}/document`);
+}
+
+// 409 already_decided: başka bir yönetici karar vermiş.
+export function decideVerificationRequest(
+  id: string,
+  input: { decision: 'approve' | 'reject'; level?: 'belge' | 'ziyaret'; adminNote?: string }
+) {
+  return request<{ ok: true }>(`/admin/verification-requests/${id}/decide`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   });
 }
 

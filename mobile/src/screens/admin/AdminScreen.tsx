@@ -3,6 +3,7 @@ import { View, Text, Pressable, FlatList, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../context/SessionContext';
 import { fetchAdminCompanies, updateCompanyVerification } from '../../api/client';
+import { AdminVerificationRequests } from './AdminVerificationRequests';
 import { SkeletonList } from '../../components/Skeleton';
 import { EmptyState, ErrorState, InlineError, friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
@@ -29,7 +30,65 @@ function levelLabel(level?: string): string {
   return LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? 'Düzey belirtilmemiş';
 }
 
+/**
+ * Yönetici ekranı ("Firma Doğrulama"). İki sekme: gelen doğrulama başvuruları
+ * (karar verilen yer) ve firma listesinde elle durum değiştirme (eskiden beri
+ * duran yol, kaldırılmadı). Ekran yalnızca `user.isAdmin` olanlara açılır;
+ * yöneticinin kim olduğu firmaya hiçbir yerde gösterilmez.
+ */
 export function AdminScreen() {
+  const { user } = useSession();
+  const isAdmin = !!user?.isAdmin;
+  const [tab, setTab] = useState<'requests' | 'companies'>('requests');
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+
+  if (!isAdmin) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+        <EmptyState
+          icon="lock-closed-outline"
+          title="Erişim yetkiniz yok"
+          message="Bu ekran yalnızca Avedon ekibine açık."
+        />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.tabStrip}>
+        <Pressable
+          style={[styles.tab, tab === 'requests' && styles.tabActive]}
+          onPress={() => setTab('requests')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'requests' }}
+        >
+          <Text style={[styles.tabText, tab === 'requests' && styles.tabTextActive]} numberOfLines={1}>
+            {pendingCount === null ? 'Başvurular' : `Başvurular (${pendingCount})`}
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, tab === 'companies' && styles.tabActive]}
+          onPress={() => setTab('companies')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'companies' }}
+        >
+          <Text style={[styles.tabText, tab === 'companies' && styles.tabTextActive]} numberOfLines={1}>
+            Firmalar
+          </Text>
+        </Pressable>
+      </View>
+      {tab === 'requests' ? (
+        <AdminVerificationRequests onPendingCount={setPendingCount} />
+      ) : (
+        <AdminCompanies />
+      )}
+    </SafeAreaView>
+  );
+}
+
+// Firma listesi + elle durum değiştirme (eski ekranın aynısı).
+function AdminCompanies() {
   const { user } = useSession();
   const isAdmin = !!user?.isAdmin;
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
@@ -62,38 +121,26 @@ export function AdminScreen() {
     }
   };
 
-  if (!isAdmin) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
-        <EmptyState
-          icon="lock-closed-outline"
-          title="Erişim yetkiniz yok"
-          message="Bu ekran yalnızca Avedon yöneticilerine açık."
-        />
-      </SafeAreaView>
-    );
-  }
-
   if (status === 'loading') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.safeArea}>
         <SkeletonList variant="request" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+      <View style={styles.safeArea}>
         <ErrorState error={error} fallback="Firmalar alınamadı" onRetry={reload} />
-      </SafeAreaView>
+      </View>
     );
   }
 
   const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Firmalar alınamadı') : null);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['bottom']}>
+    <View style={styles.safeArea}>
       <FlatList
         data={data ?? []}
         keyExtractor={(item) => item.id}
@@ -157,12 +204,38 @@ export function AdminScreen() {
           </View>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
+  // Sekme şeridi: iki eşit düğme, seçili olan lacivert dolu (Ürünler/Akış
+  // ekranındaki görünüm seçimi kalıbı).
+  tabStrip: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  tab: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  tabActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { ...typography.label, fontFamily: fonts.semibold, color: colors.text },
+  tabTextActive: { color: colors.primaryText },
   listContent: { padding: spacing.lg },
   banner: { marginBottom: spacing.md },
   card: {

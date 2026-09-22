@@ -14,6 +14,7 @@ import { CompanyInfoScreen } from '../screens/onboarding/CompanyInfoScreen';
 import { PhoneVerificationScreen } from '../screens/onboarding/PhoneVerificationScreen';
 import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
+import { VerificationScreen } from '../screens/company/VerificationScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
@@ -414,10 +415,18 @@ export function RootNavigator() {
               component={GarmentVisualCostScreen}
               options={{ headerShown: true, title: 'Görsel Maliyet Tablosu' }}
             />
+            {/* Yönetici ekranı. Başlıkta "Admin" yazmaz: yöneticinin kim
+                olduğu hiçbir yerde görünmemeli (2026-09-22). */}
             <Stack.Screen
               name="Admin"
               component={AdminScreen}
-              options={{ headerShown: true, title: 'Firma Doğrulama (Admin)' }}
+              options={{ headerShown: true, title: 'Firma Doğrulama' }}
+            />
+            {/* Firma tarafı doğrulama başvurusu. */}
+            <Stack.Screen
+              name="Verification"
+              component={VerificationScreen}
+              options={{ headerShown: true, title: 'Firma Doğrulama' }}
             />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: 'Profil' }} />
             {/* Kişi profili düzenleme ve deneyim formu (2026-09-22). */}

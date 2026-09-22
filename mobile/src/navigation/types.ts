@@ -51,6 +51,9 @@ export type RootStackParamList = {
   // (GET /api/search). Oturumsuz da çalışır.
   GlobalSearch: undefined;
   Admin: undefined;
+  // Firma doğrulama başvurusu (firma tarafı, 2026-09-22): durum + belge yükleme.
+  // Yönetici tarafı "Admin" ekranının "Başvurular" sekmesinde.
+  Verification: undefined;
   // initialTab: kapasite aramasından gelindiğinde "Makine parkı" sekmesi açık
   // gelsin diye (Faz 2, Adım 5).
   // focus: 'references' — referans bildiriminden gelindiğinde Hakkında
