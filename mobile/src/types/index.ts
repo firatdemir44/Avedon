@@ -78,6 +78,8 @@ export interface User {
 export interface Company {
   id: string;
   name: string;
+  // Firma rehberi: dernek listesinden içe aktarılan firmalar false (sahipsiz).
+  claimed?: boolean;
   taxId: string;
   about: string;
   contactEmail: string;

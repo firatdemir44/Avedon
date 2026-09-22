@@ -239,9 +239,9 @@ export function FeedScreen({ navigation }: Props) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
-          icon="sample"
-          label="Numune talep et"
-          onPress={() => navigation.navigate('ProductList')}
+          icon="business-outline"
+          label="Firmalar"
+          onPress={() => navigation.navigate('CompaniesDirectory')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}

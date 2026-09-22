@@ -70,8 +70,14 @@ export type RootStackParamList = {
         companyId?: string;
         initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines';
         focus?: 'references';
+        // Rehberden gelindiğinde sahipsiz bilgisi (sunucu yanıtında da var; yedek).
+        claimed?: boolean;
       }
     | undefined;
+  // Firma rehberi: kategori + arama; sahipsiz firmalar da listelenir.
+  CompaniesDirectory: undefined;
+  // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
+  ClaimCompany: { companyId: string; companyName: string };
   EditCompany: { companyId: string };
   // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
   // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.

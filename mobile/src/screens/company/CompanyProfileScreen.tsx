@@ -21,6 +21,8 @@ import {
   fetchProductDrafts,
   fetchCompanyReferences,
   fetchCompanyTrust,
+  fetchMyClaim,
+  type CompanyClaim,
   fetchDeals,
   fetchQuoteRequests,
   likePost,
@@ -205,6 +207,31 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const [refBusyId, setRefBusyId] = useState<string | null>(null);
   // Doğrulama rozetine dokununca düzeylerin ne anlama geldiği açılır.
   const [verifyInfoOpen, setVerifyInfoOpen] = useState(false);
+
+  // Firma rehberi: dernek listesinden gelen, henüz sahiplenilmemiş firma.
+  // Sunucu `claimed` alanını döndürüyor; rota parametresi yalnızca yedek.
+  const unclaimed = !isOwnCompany && (company?.claimed ?? route.params?.claimed ?? true) === false;
+  // Firması olmayan kullanıcının sahiplenme başvurusu (bu firma için bekliyorsa bant).
+  const [myClaim, setMyClaim] = useState<CompanyClaim | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!unclaimed || user?.companyId) return;
+      let active = true;
+      fetchMyClaim()
+        .then(({ claim }) => {
+          if (active) setMyClaim(claim);
+        })
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, [unclaimed, user?.companyId])
+  );
+  // Sahipsiz firmada ürün/kişi sekmeleri yok.
+  const visibleTabs = unclaimed ? TABS.filter((item) => item.key !== 'products' && item.key !== 'people') : TABS;
+  useEffect(() => {
+    if (unclaimed && (tab === 'products' || tab === 'people')) setTab('about');
+  }, [unclaimed, tab]);
 
   const loadReferences = useCallback(() => {
     if (!viewedCompanyId) return;
@@ -585,7 +612,61 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const whatsappPhone = company.contactPhone?.replace(/[^0-9]/g, '') ?? '';
 
   // Eylem sırası: tek dolu düğme + kenarlıklı düğme + 48px kare ikon düğmesi.
-  const actionRow = isOwnCompany ? (
+  const claimPending = !!myClaim && myClaim.companyId === company.id && myClaim.status === 'pending';
+  const unclaimedBlock = (
+    <View style={{ gap: t.space[3] }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: t.space[2],
+          padding: t.space[3],
+          borderRadius: t.radius.md,
+          backgroundColor: t.colors.brandSoft,
+          minWidth: 0,
+        }}
+      >
+        <Icon name="info" size={t.size.iconSm} color="brand" />
+        <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+          Bu firma dernek listesinden eklendi, henüz Avedon'a katılmadı.
+        </Text>
+      </View>
+      {claimPending ? (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: t.space[2],
+            padding: t.space[3],
+            borderRadius: t.radius.md,
+            backgroundColor: t.colors.warningSoft,
+            minWidth: 0,
+          }}
+        >
+          <Icon name="clock" size={t.size.iconSm} color="warning" />
+          <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+            Başvurunuz inceleniyor. Sonuç bildirimle gelecek.
+          </Text>
+        </View>
+      ) : !user?.companyId ? (
+        <Button
+          label="Bu firma benim"
+          icon="shield-checkmark-outline"
+          onPress={() => navigation.navigate('ClaimCompany', { companyId: company.id, companyName: company.name })}
+          fullWidth
+        />
+      ) : null}
+      <Button
+        kind="secondary"
+        label="Bu firmayı davet et"
+        icon="person-add-outline"
+        onPress={() => navigation.navigate('Invites')}
+        fullWidth
+      />
+    </View>
+  );
+
+  const actionRow = unclaimed ? unclaimedBlock : isOwnCompany ? (
     <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
       <Button label="Ürün ekle" icon="plus" onPress={() => navigation.navigate('AddProduct')} style={{ flex: 1 }} />
       <Button
@@ -654,7 +735,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     <FlatList
       horizontal
       showsHorizontalScrollIndicator={false}
-      data={TABS}
+      data={visibleTabs}
       keyExtractor={(item) => item.key}
       style={{ borderBottomWidth: 1, borderBottomColor: t.colors.line, flexGrow: 0 }}
       contentContainerStyle={{ gap: t.space[4] }}
@@ -1293,7 +1374,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {setupBanner}
       {identity}
       {actionRow}
-      {statsCard}
+      {unclaimed ? null : statsCard}
       {tabStrip}
       {tab === 'about' ? aboutContent : null}
       {tab === 'docs' ? docsContent : null}

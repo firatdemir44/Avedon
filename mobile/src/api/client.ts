@@ -2792,3 +2792,68 @@ export function acceptTenderOffer(id: string, offerId: string) {
 export function closeTender(id: string) {
   return request<{ tender: Tender }>(`/tenders/${id}/close`, { method: 'POST' });
 }
+
+// --- Firma rehberi (/api/directory) ---------------------------------------
+export interface DirectoryCompany {
+  id: string;
+  name: string;
+  category: string;
+  categoryLabel: string;
+  tags: string[];
+  city: string;
+  website: string;
+  claimed: boolean;
+  source: string;
+  verification: VerificationStatus;
+  logoUpdatedAt: string | null;
+  productCount: number;
+  memberCount: number;
+}
+
+export interface DirectoryResult {
+  companies: DirectoryCompany[];
+  total: number;
+  nextOffset: number | null;
+  categories: { key: string; label: string; count: number }[];
+}
+
+export function fetchDirectory(
+  params: {
+    category?: string | null;
+    q?: string;
+    claimed?: 'all' | 'claimed' | 'unclaimed';
+    offset?: number;
+    limit?: number;
+  } = {}
+) {
+  const qs = new URLSearchParams();
+  if (params.category) qs.set('category', params.category);
+  if (params.q?.trim()) qs.set('q', params.q.trim());
+  if (params.claimed) qs.set('claimed', params.claimed);
+  if (params.offset) qs.set('offset', String(params.offset));
+  if (params.limit) qs.set('limit', String(params.limit));
+  const query = qs.toString();
+  return request<DirectoryResult>(`/directory${query ? `?${query}` : ''}`);
+}
+
+export type CompanyClaimStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CompanyClaim {
+  id: string;
+  companyId: string;
+  status: CompanyClaimStatus;
+  adminNote: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export function claimCompany(companyId: string, input: { document: string; note?: string }) {
+  return request<{ claim?: CompanyClaim }>(`/directory/${companyId}/claim`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function fetchMyClaim() {
+  return request<{ claim: CompanyClaim | null }>('/directory/my-claim');
+}
