@@ -26,7 +26,10 @@ export type NotificationKind =
   | 'deal_cancelled'
   | 'deal_review'
   | 'product_draft'
-  | 'invite_joined';
+  | 'invite_joined'
+  | 'verification_request'
+  | 'verification_approved'
+  | 'verification_rejected';
 
 export interface NotificationData {
   productId?: string;
@@ -42,6 +45,7 @@ export interface NotificationData {
   dealId?: string;
   draftId?: string;
   inviteId?: string;
+  verificationRequestId?: string;
 }
 
 export interface NotifyInput {

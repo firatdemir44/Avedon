@@ -1007,3 +1007,21 @@ model UserExperience {
 
   @@index([userId, startYear, startMonth])
 }
+
+// Firma doğrulama başvurusu (Fırat 2026-09-22): firma belge (vergi levhası vb.; fotoğraf ya da PDF,
+// base64 data URL) yükler, durum "inceleniyor" olur, yönetici belgeyi görüp onaylar/reddeder.
+// status: pending | approved | rejected. İlişki yok: mevcut tablolar yeniden kurulmasın.
+model VerificationRequest {
+  id          String    @id @default(cuid())
+  companyId   String
+  userId      String
+  documentUrl String
+  note        String    @default("")
+  status      String    @default("pending")
+  adminNote   String    @default("")
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  @@index([companyId, createdAt])
+  @@index([status, createdAt])
+}
