@@ -11,6 +11,7 @@ import { MAX_RFQ_COMPANIES, compareView } from '../routes/rfqs';
 import { findSimilarProducts, usable } from '../looks';
 import { describeLook, parseLook } from '../skills/fabricLook/schema';
 import { prisma } from '../db';
+import { tenderSummary } from '../routes/tenders';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
 import { SKILLS, runSkill } from '../skills';
@@ -222,6 +223,33 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
+  // Açık talepler (ihale): satıcıya "bana uygun açık talep var mı", alıcıya "benim taleplerime kaç teklif geldi".
+  // Talep yayınlamaz ve teklif vermez; uygulamadaki Talepler > Açık talepler ekranına yönlendirir.
+  const acikTalepleriListele = betaZodTool({
+    name: 'acik_talepleri_listele',
+    description:
+      'Platformdaki açık talepleri (ihaleleri) listeler: alıcıların yayınladığı "şu iplik/kumaş lazım, teklif verin" talepleri. ' +
+      'Kullan: "polyester iplik arayan var mı", "açık taleplere bakayım", "benim taleplerime teklif geldi mi" gibi sorularda. Talep yayınlamaz, teklif vermez; Talepler > Açık talepler ekranına yönlendir.',
+    inputSchema: z.object({
+      category: z.enum(['iplik', 'kumas', 'diger']).optional().describe('Kategori'),
+      scope: z.enum(['open', 'mine']).optional().describe('open: herkese açık talepler (varsayılan), mine: kullanıcının kendi talepleri'),
+    }),
+    run: async (args) => {
+      const where = args.scope === 'mine'
+        ? { buyerId: ctx.userId }
+        : { status: 'open', OR: [{ deadline: null }, { deadline: { gte: new Date() } }] };
+      const rows = await prisma.tender.findMany({ where: { ...where, ...(args.category ? { category: args.category } : {}) }, orderBy: { createdAt: 'desc' }, take: 10 });
+      const counts = rows.length ? await prisma.tenderOffer.groupBy({ by: ['tenderId'], where: { tenderId: { in: rows.map((r) => r.id) }, status: { not: 'withdrawn' } }, _count: { _all: true } }) : [];
+      const countMap = new Map<string, number>(counts.map((c) => [c.tenderId, c._count._all]));
+      const tenders = rows.map((t) => ({ id: t.id, category: t.category, title: t.title, summary: tenderSummary(t), status: t.status, offerCount: countMap.get(t.id) ?? 0, deadline: t.deadline, createdAt: t.createdAt }));
+      const summary = tenders.length
+        ? `${tenders.length} talep: ${tenders.map((t) => `${t.title} (${t.summary}; ${t.offerCount} teklif)`).join('; ')}`
+        : args.scope === 'mine' ? 'Yayınladığınız talep yok.' : 'Şu an açık talep yok.';
+      calls.push({ name: 'acik_talepleri_listele', title: 'Açık talepler', input: args, output: { tenders }, summary });
+      return JSON.stringify({ summary, tenders });
+    },
+  });
+
   const kapasiteAra = betaZodTool({
     name: 'kapasite_ara',
     description:
@@ -373,5 +401,5 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra], calls, suggestions, watchSuggestions };
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele], calls, suggestions, watchSuggestions };
 }
