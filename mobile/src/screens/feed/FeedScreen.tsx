@@ -29,6 +29,7 @@ import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { UserAvatar } from '../../components/UserAvatar';
 import {
   AppBar,
   Button,
@@ -311,7 +312,17 @@ export function FeedScreen({ navigation }: Props) {
             dot: !!today && today.unreadNotifications > 0,
             onPress: () => navigation.navigate('Notifications'),
           },
-          { icon: 'user', label: 'Profilim', onPress: () => navigation.navigate('MyProfile') },
+          {
+            icon: 'user',
+            label: 'Profilim',
+            onPress: () => navigation.navigate('MyProfile'),
+            // Profil fotoğrafı (yoksa baş harfler); 32px, bant üzerinde beyaz çerçeve.
+            content: user ? (
+              <View style={{ borderRadius: t.radius.full, borderWidth: 2, borderColor: t.colors.onBrand, overflow: 'hidden' }}>
+                <UserAvatar userId={user.id} firstName={user.firstName} lastName={user.lastName} avatarUpdatedAt={user.avatarUpdatedAt ?? null} size={t.size.avatarSm} />
+              </View>
+            ) : undefined,
+          },
         ]}
       />
       <Screen scroll={false} noPadding>

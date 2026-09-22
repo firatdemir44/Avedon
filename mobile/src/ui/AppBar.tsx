@@ -15,6 +15,8 @@ export interface AppBarAction {
   onPress: () => void;
   /** Sağ üstte accent bildirim noktası. */
   dot?: boolean;
+  /** İkon yerine çizilecek içerik (ör. kullanıcının profil fotoğrafı). */
+  content?: React.ReactNode;
 }
 
 export interface AppBarProps {
@@ -45,7 +47,7 @@ function BarButton({ action }: { action: AppBarAction }) {
         backgroundColor: pressed ? t.colors.brandStrong : 'transparent',
       })}
     >
-      <Icon name={action.icon} colorValue={t.colors.onBrand} />
+      {action.content ?? <Icon name={action.icon} colorValue={t.colors.onBrand} />}
       {action.dot ? (
         <View
           style={{
