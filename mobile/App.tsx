@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import { SessionProvider } from './src/context/SessionContext';
+import { ThemeProvider } from './src/theme/ThemeContext';
 import { captureInviteCodeFromUrl } from './src/features/invites/storedCode';
 import { ensureManifestLink } from './src/features/push/webPush';
 
@@ -53,11 +54,13 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <SessionProvider>
-        <RegistrationProvider>
-          <RootNavigator />
-        </RegistrationProvider>
-      </SessionProvider>
+      <ThemeProvider>
+        <SessionProvider>
+          <RegistrationProvider>
+            <RootNavigator />
+          </RegistrationProvider>
+        </SessionProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

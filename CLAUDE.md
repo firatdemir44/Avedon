@@ -31,6 +31,10 @@ Asistanın hafızası makineye özel olduğu için kalıcı tercihler burada:
 - Asistan kimlik bilgisi, ödeme bilgisi girmez ve güvenlik ayarlarını (güvenlik duvarı vb.) değiştirmez; bunları kullanıcı yapar.
 - Tasarım dili: **C · Pazar Masası** (`docs/tasarim-yonleri/`, tokenlar `mobile/src/theme/index.ts`). Yeniden tasarım aşamalı ilerliyor, her aşama telefonda kontrol ediliyor; durum `docs/yapilacaklar.md`'de.
 
+## Arayüz kuralları
+
+Arayüz kuralları `DESIGN.md` dosyasındadır; her ekran ve bileşen ona uyar. Uygulama telefon öncelikli web uygulaması (PWA) olarak yayınlanır; kod tabanı Expo/React Native (web + native) olduğu için CSS token'ları `mobile/src/theme/tokens.ts`'e birebir aktarılır ve ekranlar `useTheme()` ile kullanır; `design/tokens.css` yalnızca web sayfaları (public/) ve `data-theme` içindir. Kodda ham hex/px yazılmaz; yeni değer önce token olur.
+
 ## Otomatik commit + push (önceden onaylanmış)
 
 Kod değişikliklerini (backend/ ve mobile/ kaynak kodu, docs/) düzenli olarak commit edip `origin main`'e push etmek için kullanıcıdan her seferinde onay istemene gerek yok — bu, kullanıcı tarafından önceden onaylanmış standart bir işlemdir. Anlamlı bir değişiklik grubu tamamlandığında (bir özellik, bir düzeltme) uygun bir Türkçe commit mesajıyla commit at ve push et.

@@ -1,0 +1,65 @@
+# DESIGN.md — Avedon arayüz kuralları (Claude Code bunu her oturumda okur)
+
+Bu dosya, onaylanmış tasarım sisteminin koda uygulanma kurallarıdır. Görsel referanslar:
+- Tasarım sistemi (token, bileşen, marka kitabı): https://claude.ai/artifact/9LnpXPcDBu3kwSuqD7rkcK
+- Ekranlar (9 artboard, 375 px): https://claude.ai/artifact/29MKBhA1RivVmPm3YPGQrb
+
+**Uygulama notu (2026-09-22):** kod tabanı Expo/React Native (web + native). CSS değişkenleri RN bileşenlerinde çalışmadığı için token'lar `mobile/src/theme/tokens.ts`'e aynı adlarla aktarıldı (`surface-0` → `colors.surface0`, `.body-16` → `type.body16`, `--space-4` → `space[4]`); ekranlar `useTheme()` ile alır. `design/tokens.css` web sayfaları (public/) ve `data-theme` anahtarı için yüklenir. Aşağıdaki kurallardaki CSS adları bu eşlemeyle okunur.
+
+Token'lar `design/tokens.css` dosyasında hazır. **Kodda ham hex, ham px yazılmaz; her renk, boşluk, köşe ve yazı boyutu bir CSS değişkeninden gelir.** Yeni bir değer gerekiyorsa önce `design/tokens.css`'e token olarak eklenir.
+
+## 1. Kurulum
+- `design/tokens.css` global olarak en başta yüklenir. Google Fonts: IBM Plex Sans (400, 500, 600) ve IBM Plex Mono (500).
+- `<html>` üzerinde `data-theme="light" | "dark"`; tema seçilmemişse `prefers-color-scheme` geçerli. Tema anahtarı Hesap sayfasında.
+- Sayfa genişliği 375 px'e göre; içerik `max-width: 480px; margin: 0 auto` ile daha büyük ekranlarda ortalanır. Yatay kaydırma hiçbir ekranda olmaz.
+- PWA: manifest `theme_color` = `#1f3a5f`, `background_color` = `#f6f4f0`; simge 192/512 px maskable (güvenli alan %80). Simge SVG'si `design/icon.svg`.
+- Güvenli alanlar: üst bant `padding-top: env(safe-area-inset-top)`, alt sekme `padding-bottom: env(safe-area-inset-bottom)`.
+
+## 2. Yerleşim iskeleti (her ekran)
+```
+<header class="appbar">  56px, --surface-brand, --on-brand; sol geri/logo (44px), başlık .title-18, sağda en fazla 2 ikon düğmesi (44px)
+<main>                   padding: 0 var(--space-4); bölümler arası var(--space-6); son eleman altında var(--space-10)
+<nav class="tabbar">     64px, --surface-1, üst kenarlık --line; 5 sekme: Ana sayfa · Katalog · Talepler · Mesajlar · Hesap
+```
+Arama kutusu banta gömülmez; `main` içinde 48px ayrı alan (`--surface-1`, `--line-strong` kenarlık, `--radius-md`).
+Ekranın tek ana eylemi varsa (Ürün detayı: "Numune talep et") yapışkan alt çubuk: `--surface-1`, üst kenarlık `--line`, `--shadow-raised`, içinde `control-lg` 52px dolu düğme.
+
+## 3. Bileşenler (ölçüler token adıyla)
+| Bileşen | Kural |
+| --- | --- |
+| Düğme | yükseklik `--control` 48px (ana eylem `--control-lg` 52px, tam genişlik); `--radius-md`; `.button-16`; ikon solda `--icon-sm` 20px + `--space-2`. Türler: **dolu** `--brand`/`--on-brand`, basılı `--brand-strong`; **kenarlıklı** `--surface-1` + 1px `--line-strong` + `--ink`; **sessiz** zeminsiz `--brand`; **tehlikeli** kenarlıklı, `--danger`. Pasif: `opacity:.4`. Ekranda en fazla 1 dolu düğme. |
+| Giriş alanı | etiket üstte `.label-14` `--ink-2`; alan 48px, `--radius-md`, 1px `--line-strong`, odak `outline: 2px solid var(--focus); outline-offset: 2px`. Hata: kenarlık `--danger` + altında `.body-14` `--danger` metin + ikon. Birim eki (gr/m², cm, ₺/kg) sağda `.mono-14` `--ink-3`. Sayısal alanlarda `inputmode="decimal"`. |
+| Kart | `--surface-1`, 1px `--line`, `--radius-lg`, iç boşluk `--space-4`. Gölge yok. Tamamı tıklanabilirse sağda 24px chevron `--ink-3`. |
+| Ürün kartı | sol 72px görsel `--thumb` `--radius-sm` 1px `--line`; ad `.body-16-strong`; kod `.mono-14` `--ink-2`; özellik satırı `.body-14` `--ink-2` ("165 gr/m² · 160 cm · %94 PES %6 EA"); firma `.body-14` `--ink-3` + doğrulanmış rozeti. Görsel yoksa `--surface-2` kare + kumaş ikonu. |
+| Liste satırı | min 64px `--row`; sol 40px avatar (kişi `--radius-full`, firma `--radius-sm`, zemin `--brand-soft`, harfler `--brand`); başlık `.body-16-strong`, alt `.body-14` `--ink-2`; sağ zaman `.caption-12` `--ink-3` / rozet / chevron. Satırlar tam genişlik 1px `--line` ile ayrılır. Okunmamış: alt metin `--ink` 500 + `--accent` sayaç (20px pill, `--on-brand` metin). |
+| Rozet | 22px, `--radius-sm`, `.caption-12` BÜYÜK HARF, `--space-2` yatay iç boşluk, 14px ikon. DOĞRULANMIŞ `--success-soft`/`--success`; BEKLİYOR `--warning-soft`/`--warning`; TESLİM EDİLDİ `--success`; İPTAL `--danger-soft`/`--danger`; YENİ `--accent-soft`/`--accent`; STOKTA `--brand-soft`/`--brand`. Her rozette ikon + metin (yalnız renk değil). |
+| Çip / filtre | 36px pill `--radius-full`, 1px `--line-strong`, `.label-14`; seçili: `--brand` zemin, `--on-brand` metin. Yatay kaydırılır, satır kırmaz. |
+| Segment kontrol | `--surface-2` zemin 4px iç boşluk `--radius-md`; öğe 36px; seçili `--surface-1` + 1px `--line`. |
+| Sekme çubuğu | 64px; ikon 24px `--icon` + `.caption-12` etiket her zaman birlikte; aktif `--brand`, pasif `--ink-3`; bildirim noktası 8px `--accent`. |
+| Paylaşım kartı (akış) | `--surface-1` kart, `--radius-lg`, 1px `--line`, iç boşluk yok (bölümler kendi boşluğunu taşır). Üst satır: 40px firma logosu karesi (`--brand-soft`/`--brand`, `--radius-sm`, firma sayfasına gider), firma adı `.body-16-strong` + doğrulanmış rozeti, altında `.body-14` `--ink-3` "Kişi · Görev · zaman", sağda 44px "daha fazla" ikon düğmesi. Metin `.body-16`, 16px yan boşluk, 3 satırdan uzunsa "…devamı". İsteğe bağlı görsel 343×180 `object-fit: cover`. Ürün bağlıysa 44px ürün çipi (32px görsel + ad + `.mono-14` kod). Alt satır 44px, üst kenarlık `--line`, 3 eşit eylem: beğen (sayı), yorum (sayı), ana eylem `--brand` ("Numune talep et" ürün varsa, yoksa "Mesaj gönder"). Akış ana sayfada "Sektörden" başlığıyla, hızlı eylemlerin ALTINDA; yalnızca bağlantılı firmaların paylaşımları, en yeni üstte. Akış boşsa boş durum: "Firmaları takip et, yenilikleri burada gör" + "Firmaları keşfet" düğmesi. |
+| Kısayol kutusu (Ana sayfa) | 80px, `--surface-1` kart; sol 40px ikon karesi `--brand-soft`/`--brand` `--radius-md`; metin 16px 600, iki satıra kırılabilir. 2 sütun, aralık `--space-3`. |
+| Araç kutusu (Hesap araçları) | 96px, ikon karesi 36px üstte, metin 15px 600 altta; 2 sütun. |
+| İstatistik kutusu | sayı `.display-28` (vurgulu ise `--accent`), etiket `.body-14` `--ink-2`; 3 sütun. |
+| Boş durum | dikey ortada; 48px kontur ikon `--ink-3` (1.5px), `.title-18` başlık (yapılacak işi söyler), `.body-14` `--ink-2` tek cümle (max 280px), altında kenarlıklı düğme. |
+| Alt sayfa (sheet) | `--surface-1`, üst köşe `--radius-lg`, iç boşluk `--space-5`, arka `--overlay`, `--shadow-raised`; üstte 36×4 px tutamaç `--line-strong`. |
+| Yükleme | iskelet bloklar `--surface-2`, metin satırı yüksekliğinde, `--radius-sm`. Dönen simge yalnızca düğme içinde. |
+| Kumaş görseli | gerçek fotoğraf `object-fit: cover`; koyu temada da kendi renginde, 1px `--line` çerçeve. |
+
+## 4. İkonlar
+Lucide (kontur, 24px, `stroke-width: 1.75`, yuvarlak uç). Dolu ikon yalnızca aktif sekme. Emoji yok. Sektör ikonları (kumaş topu, iplik bobini, terazi, makine) aynı dille inline SVG. İkon rengi her zaman metnin token'ı (`currentColor`).
+
+## 5. Tipografi kullanımı
+`.title-22` ekran başlığı (bantta `.title-18`) · `.title-18` bölüm/kart başlığı · `.body-16` gövde · `.body-14` ikincil · `.label-14` sekme/çip · `.caption-12` yalnızca rozet ve zaman · `.mono-14` kod, gramaj, en, içerik, iplik numarası · `.display-28` tek büyük sonuç. Gövde 16px altına inmez. Başlıklar cümle düzeni; BÜYÜK HARF yalnız rozet.
+
+## 6. Erişilebilirlik (zorunlu)
+- Dokunma hedefi ≥ 44×44 (`--touch-min`), aralarında ≥ 8px.
+- Metin kontrastı ≥ 4.5:1 (token çiftleri bunu sağlar; `--ink-3` yalnız `--surface-0/1` üzerinde, 14px altında değil).
+- Gerçek `<button>`, `<a href>`, `<input>` + `<label>`; ikon-yalnız düğmede `aria-label`; div'e tıklama bağlanmaz.
+- Durum yalnız renkle verilmez (ikon + metin). Sistem yazı büyütmesi %130'da düzen kırılmaz: metin sığmazsa kart uzar.
+
+## 7. Yapılmayacaklar
+Gradyan, cam efekti, renkli gölge, kartın sol kenarında renkli şerit, emoji, ekranda ikiden fazla dolu düğme, gri üzerine gri metin, sahte durum çubuğu, ham hex/px.
+
+## 8. Ekran listesi ve karşılık gelen artboard
+1 Ana sayfa — bugün, hızlı eylemler, altında "Sektörden" akışı (`Main`) · 2 Katalog/arama (`Katalog`) · 3 Ürün detayı (`Urun`) · 4 Firma sayfası (`Firma`) · 5 Mesajlar (`Mesajlar`) · 6 Hesap araçları + asistan (`Hesap`) · 7 Talepler boş durum (`BosDurum`) · 8 Koyu tema (`AnaSayfaKoyu`) · 9 Simge (`Simge`).
+Henüz çizilmemiş ekranlar (numune talep formu, hesap aracı iç ekranı, asistan sohbeti, kayıt akışı) aynı bileşenlerle ve aynı iskeletle yapılır; yeni bir bileşen gerekiyorsa önce bu dosyaya eklenir.

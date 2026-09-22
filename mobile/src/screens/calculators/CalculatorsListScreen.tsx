@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } fr
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { RootStackParamList, MainTabScreenProps } from '../../navigation/types';
 import { SectionHeader } from '../../components/SectionHeader';
+import { ThemeSwitch } from '../../components/ThemeSwitch';
 import { colors, fonts, radius, spacing, typography } from '../../theme';
 
 type Props = MainTabScreenProps<'Calculators'>;
@@ -132,6 +133,10 @@ export function CalculatorsListScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
+        <View style={styles.themeRow}>
+          <ThemeSwitch />
+        </View>
+
         {SECTIONS.map((section, sectionIndex) => (
           <View key={section.title}>
             <SectionHeader title={section.title} first={sectionIndex === 0} />
@@ -171,6 +176,7 @@ export function CalculatorsListScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   content: { paddingBottom: spacing.xl },
+  themeRow: { paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.divider },
   intro: {
     paddingHorizontal: spacing.gutter,
     paddingTop: 12,

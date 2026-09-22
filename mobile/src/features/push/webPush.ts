@@ -106,6 +106,13 @@ export function ensureManifestLink(): void {
     const doc = typeof document !== 'undefined' ? document : null;
     if (!doc?.head) return;
 
+    // Tasarım token'ları (design/tokens.css kopyası): data-theme ile açık/koyu.
+    if (!doc.head.querySelector('link[href="/tokens.css"]')) {
+      const css = doc.createElement('link');
+      css.setAttribute('rel', 'stylesheet');
+      css.setAttribute('href', '/tokens.css');
+      doc.head.appendChild(css);
+    }
     const addLink = (rel: string, href: string) => {
       if (doc.head.querySelector(`link[rel="${rel}"]`)) return;
       const link = doc.createElement('link');

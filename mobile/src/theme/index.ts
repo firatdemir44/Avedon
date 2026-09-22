@@ -1,4 +1,8 @@
-// Avedon tasarım dili: C · Pazar Masası (kullanıcı onayı 2026-09-14).
+// Avedon tasarım dili — 2026-09-22 onaylı tasarım sistemi (DESIGN.md, design/tokens.json).
+// Kaynak token'lar theme/tokens.ts'te; temaya duyarlı ekranlar `useTheme()` kullanır.
+// Aşağıdaki ESKİ adlar geçiş köprüsüdür: değerleri yeni açık temanın token'larına eşlendi,
+// böylece henüz taşınmamış ekranlar da yeni renklerle çizilir. Yeni kodda kullanılmaz.
+// Önceki dil: C · Pazar Masası (kullanıcı onayı 2026-09-14).
 // Taslaklar: docs/tasarim-yonleri/, karar ve gerekçe: docs/yapilacaklar.md.
 // Yoğun, bilgi önde B2B düzen: lacivert üst bant, beyaz yüzeyler gri zemin
 // üzerinde, ince çizgiler, 6px köşeler, kod ve ölçüler eşit aralıklı yazıyla.
@@ -6,46 +10,46 @@
 // Token ADLARI bilinçli olarak eski tasarımdakiyle aynı; yalnızca değerler
 // değişti, böylece ekranlar mekanik olarak yeni dile geçti.
 export const colors = {
-  background: '#EEF1F4',
+  background: '#f6f4f0', // surface-0
   surface: '#FFFFFF',
   // Giriş alanları ve seçili olmayan çiplerin zemini.
-  surfaceTonal: '#F3F5F7',
-  primary: '#133C5F', // lacivert: üst bant, birincil düğmeler, kodlar
-  accent: '#2696C6', // mavi: bağlantılar, firma adları, vurgu
-  accentSoft: '#E4F2F9',
+  surfaceTonal: '#eeebe5', // surface-2
+  primary: '#1f3a5f', // brand / surface-brand
+  accent: '#1f3a5f', // bağlantı ve vurgu artık marka lacivertinde (DESIGN.md: tek vurgu rengi bakır, yalnızca rozette)
+  accentSoft: '#e4ebf5', // brand-soft
   primaryText: '#FFFFFF',
-  text: '#111A22',
-  textMuted: '#5B6672',
-  border: '#DCE2E8',
+  text: '#1a1f26', // ink
+  textMuted: '#4b5563', // ink-2
+  border: '#ddd8d0', // line
   // Liste satırları arasındaki çizgi; kenarlıktan bir ton açık.
-  divider: '#E6EBF0',
-  danger: '#B3261E',
-  dangerSoft: '#FBEAE9', // satır içi hata şeridi, hata ekranı ikon zemini
+  divider: '#ddd8d0', // line
+  danger: '#b3261e',
+  dangerSoft: '#fbe5e3', // satır içi hata şeridi, hata ekranı ikon zemini
   // Yükleniyor iskeleti (docs/tasarim-yonleri/CYukleniyor.dc.html):
   // görsel/başlık kemikleri koyu, ikincil satırlar açık ton.
-  skeleton: '#E3E8ED',
-  skeletonSoft: '#EDF1F4',
-  success: '#2E7D4F', // stokta
-  successSoft: '#E6F2EB',
-  warning: '#8A5A00', // az stok, bekleyen adım
-  warningSoft: '#FFF4D6',
-  warningDot: '#B7791F', // az stok noktası (yazısı `warning`)
-  notification: '#C8372D', // okunmamış sayısı
+  skeleton: '#eeebe5', // surface-2
+  skeletonSoft: '#f3f1ec',
+  success: '#1e7a46',
+  successSoft: '#e3f3e9',
+  warning: '#8a5a00',
+  warningSoft: '#fbf0d9',
+  warningDot: '#8a5a00',
+  notification: '#b5562e', // accent: okunmamış sayısı, bildirim noktası
   // 5. aşama taslaklarından (docs/tasarim-yonleri/C*.dc.html):
-  borderStrong: '#C3CCD5', // çerçeveli düğme, bekleyen takip adımı
-  chevron: '#8C97A2', // satır sonundaki ok
-  chip: '#E1E6EB', // sohbetteki "Bugün" gibi tarih çipi
-  onPrimaryMuted: '#B7C7D6', // lacivert baloncuk içindeki saat
+  borderStrong: '#b8b1a6', // line-strong
+  chevron: '#5f6b7a', // ink-3
+  chip: '#eeebe5', // surface-2
+  onPrimaryMuted: '#c9d3e0', // lacivert baloncuk içindeki saat
   // 4. aşama: beyaz satır/blok basılıyken aldığı zemin. Arka plandan
   // (`background`) bir ton koyu ki beyaz satırın üstünde fark edilsin.
-  pressed: '#E4E9EE',
+  pressed: '#eeebe5', // surface-2
   // Asistan kızılı (kök boya), taslak docs/tasarim-2027/Asistan.dc.html.
   // KURAL: yalnızca asistanın kendisinin olduğu yerde kullanılır — seçili
   // "Asistan" sekme ikonu, sohbetteki asistan avatarı, gönder düğmesi ve
   // asistan rozetleri. Başka hiçbir ekranda, düğmede ya da durumda geçmez;
   // ikincil renk lacivert/mavi olarak kalır.
-  assistant: '#A34F2E',
-  assistantSoft: '#F6E9E3',
+  assistant: '#b5562e', // accent
+  assistantSoft: '#f7e9e1', // accent-soft
 };
 
 export const spacing = {
@@ -63,9 +67,9 @@ export const spacing = {
 // Yeni dilde butonlar, giriş alanları ve kartlar 6px köşeli; hap biçimi
 // (pill) yalnızca gerçekten yuvarlak işaretler için (okunmamış sayısı, nokta).
 export const radius = {
-  sm: 4,
-  md: 6,
-  lg: 8,
+  sm: 6,
+  md: 10,
+  lg: 14,
   pill: 999,
 };
 
