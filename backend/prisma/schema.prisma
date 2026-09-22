@@ -155,10 +155,6 @@ model Product {
   content        String
   // Serbest kullanım notu (isteğe bağlı); etiketler usages'ta.
   useArea        String          @default("")
-  /// @deprecated Tek fotoğraf dönemi. 2026-09-15 migration'ı fotoğrafları
-  /// ProductImage'a (sıra 0) kopyaladı; artık okunmuyor ve yazılmıyor. Ayrı bir
-  /// temizlik migration'ında silinecek.
-  imageUrl       String?
   // --- Kumaş pasaportu (Faz 1, Adım 2; docs/faz1-plani.md) ---
   // Hepsi isteğe bağlı; eski istemciler bu alanlar olmadan çalışır.
   // widthType: "" | acik | tup
