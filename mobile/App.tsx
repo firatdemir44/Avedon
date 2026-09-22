@@ -13,6 +13,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import { SessionProvider } from './src/context/SessionContext';
 import { ThemeProvider } from './src/theme/ThemeContext';
+import { installWebPullToRefresh } from './src/features/webPullToRefresh';
 import { captureInviteCodeFromUrl } from './src/features/invites/storedCode';
 import { ensureManifestLink } from './src/features/push/webPush';
 
@@ -48,6 +49,8 @@ export default function App() {
   // Push yalnızca ana ekrana eklenmiş uygulamada çalışıyor). Native'de sessiz.
   useEffect(() => {
     ensureManifestLink();
+    // Web'de aşağı çekerek yenileme (native'de ekranlar RefreshControl kullanır).
+    installWebPullToRefresh();
   }, []);
 
   if (!ready) return null;

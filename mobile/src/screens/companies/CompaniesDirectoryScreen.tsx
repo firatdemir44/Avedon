@@ -6,6 +6,7 @@
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
+import { refreshControl } from '../../components/refresh';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { fetchDirectory, type DirectoryCompany, type DirectoryResult } from '../../api/client';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
@@ -192,6 +193,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
           keyExtractor={(item) => item.id}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          refreshControl={refreshControl(loading && companies.length > 0, load, t)}
           contentContainerStyle={{ paddingBottom: t.space[10] }}
           ListHeaderComponent={header}
           ListEmptyComponent={empty}
