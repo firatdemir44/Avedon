@@ -51,7 +51,7 @@ import { isSameCalendarDay } from '../../features/time';
 import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { setVoicePersona } from '../../features/speech';
+import { consumeVoiceTurn, setVoicePersona, toggleSpeak } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
@@ -358,6 +358,8 @@ export function AssistantScreen({ navigation }: Props) {
         const turn = await sendAssistantMessage(id, question);
         setMessages((prev) => [...prev, turn.userMessage, turn.message]);
         setPending(null);
+        // Soru sesle sorulduysa cevap İpek/Mert sesiyle kendiliğinden okunur.
+        if (consumeVoiceTurn() && turn.message.text) toggleSpeak(`auto-${turn.message.id}`, turn.message.text);
         retryTextRef.current = '';
         // Hesap kartı varsa avatar "sonuç" halini alır (kart öne çıkar).
         flashAvatar(turn.message.toolCalls.length > 0 ? 'result' : 'speaking');

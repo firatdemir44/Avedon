@@ -13,7 +13,7 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, type ViewStyle } f
 import { formatClockTime, formatDayLabel } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import { Chip, ChipRow, Icon, type AnyIconName } from '../../ui';
-import { canListen, canSpeak, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, type ListenError } from '../../features/speech';
+import { canListen, canSpeak, markVoiceTurn, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, unlockSpeech, type ListenError } from '../../features/speech';
 
 export function ChatDayChip({ createdAt }: { createdAt: string }) {
   const t = useTheme();
@@ -250,6 +250,8 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
     }
     onError(null);
     stopSpeaking();
+    unlockSpeech();
+    markVoiceTurn();
     setListening(true);
     stopRef.current = startListening({
       onText: (text) => onText(text),

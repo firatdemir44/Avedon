@@ -105,6 +105,30 @@ export const onSpeakingChange = (l: (id: string | null) => void) => {
   };
 };
 
+// Telefon tarayıcıları sesi ancak kullanıcı dokunuşuyla başlatır. Mikrofona dokunulduğu anda
+// boş bir okuma yapılıp ses "açılır"; cevap geldiğinde otomatik okuma izinli olur.
+let voiceTurn = false;
+export function unlockSpeech() {
+  if (!canSpeak()) return;
+  try {
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0;
+    window.speechSynthesis.speak(u);
+    window.speechSynthesis.getVoices();
+  } catch {
+    // sessiz
+  }
+}
+// Soru mikrofonla sorulduysa cevap kendiliğinden okunur.
+export const markVoiceTurn = () => {
+  voiceTurn = true;
+};
+export function consumeVoiceTurn() {
+  const v = voiceTurn;
+  voiceTurn = false;
+  return v;
+}
+
 export function stopSpeaking() {
   if (!canSpeak()) return;
   window.speechSynthesis.cancel();
