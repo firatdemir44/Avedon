@@ -48,4 +48,23 @@ export const rowStyles = StyleSheet.create({
   },
   docActions: { flex: 1, flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   docLoading: { alignItems: 'center', justifyContent: 'center' },
+  // Belge PDF ise fotoğraf yerine kırmızı "PDF" kutusu.
+  docPdf: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: colors.dangerSoft,
+  },
+  docPdfText: { ...typography.caption, fontFamily: fonts.semibold, color: colors.danger, fontSize: 11 },
+  // Belge kaynağı seçimi ekran içinde açılan kutu (web'de Alert.alert yok).
+  docSourceBox: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+    marginTop: -spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
 });

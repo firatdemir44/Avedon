@@ -1,15 +1,15 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, Image, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TextField } from '../TextField';
 import { ChipSelect } from '../ChipSelect';
-import { PrimaryButton } from '../PrimaryButton';
 import { CERTIFICATES } from '../../features/products/glossaryLabels';
 import { MAX_CERTIFICATES } from '../../features/products/limits';
 import { haptics } from '../../features/haptics';
 import { colors } from '../../theme';
 import { rowStyles as styles } from './styles';
-import { emptyCertificateRow, pickDocImage, type CertificateRow } from './rows';
+import { emptyCertificateRow, type CertificateRow } from './rows';
+import { DocField } from './DocField';
 
 const CERTIFICATE_OPTIONS = CERTIFICATES.map((c) => ({ value: c.key, label: c.label }));
 
@@ -68,19 +68,6 @@ export function CertificatesEditor({
     onChange(rows.filter((row) => row.key !== key));
   };
 
-  const addPhoto = async (key: string) => {
-    setPicking(key);
-    onError?.(null);
-    const result = await pickDocImage();
-    setPicking(null);
-    if (!result) return;
-    if ('error' in result) {
-      onError?.(result.error);
-      return;
-    }
-    updateRow(key, { image: result.image });
-  };
-
   return (
     <>
       {rows.length === 0 && hint ? <Text style={styles.labelHint}>{hint}</Text> : null}
@@ -120,43 +107,15 @@ export function CertificatesEditor({
             autoCapitalize="none"
             editable={!disabled}
           />
-          <Text style={styles.label}>Belge fotoğrafı</Text>
-          <View style={styles.docRow}>
-            {row.image.kind !== 'none' ? (
-              row.image.uri ? (
-                <Image source={{ uri: row.image.uri }} style={styles.docPhoto} />
-              ) : (
-                <View style={[styles.docPhoto, styles.docLoading]}>
-                  <ActivityIndicator color={colors.chevron} />
-                </View>
-              )
-            ) : (
-              <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
-                <Ionicons name="document-outline" size={20} color={colors.chevron} />
-              </View>
-            )}
-            <View style={styles.docActions}>
-              <PrimaryButton
-                label={pickingKey === row.key ? 'Seçiliyor...' : row.image.kind === 'none' ? 'Fotoğraf Ekle' : 'Değiştir'}
-                variant="outline"
-                onPress={() => addPhoto(row.key)}
-                disabled={disabled || pickingKey !== null}
-                accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafı seç`}
-              />
-              {row.image.kind !== 'none' ? (
-                <PrimaryButton
-                  label="Kaldır"
-                  variant="outline"
-                  onPress={() => {
-                    haptics.selection();
-                    updateRow(row.key, { image: { kind: 'none' } });
-                  }}
-                  disabled={disabled}
-                  accessibilityLabel={`${index + 1}. sertifika belgesi fotoğrafını kaldır`}
-                />
-              ) : null}
-            </View>
-          </View>
+          <DocField
+            image={row.image}
+            onChange={(image) => updateRow(row.key, { image })}
+            busy={pickingKey === row.key}
+            onBusyChange={(active) => setPicking(active ? row.key : null)}
+            onError={onError}
+            disabled={disabled || (pickingKey !== null && pickingKey !== row.key)}
+            labelPrefix={`${index + 1}. sertifika`}
+          />
         </View>
       ))}
       {rows.length < MAX_CERTIFICATES ? (

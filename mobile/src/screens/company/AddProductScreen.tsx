@@ -24,7 +24,6 @@ import {
   docImageInput,
   emptyCompositionRow,
   newKey,
-  pickDocImage,
   splitCompositionText,
   toDateInput,
   withCertificateImage,
@@ -32,6 +31,7 @@ import {
   type CompositionRow,
   type DocImage,
 } from '../../components/passport/rows';
+import { DocField } from '../../components/passport/DocField';
 import { useSession } from '../../context/SessionContext';
 import {
   ApiError,
@@ -850,19 +850,6 @@ export function AddProductScreen({ navigation, route }: Props) {
     setTestReportRows((prev) => prev.filter((row) => row.key !== key));
   };
 
-  const addTestReportPhoto = async (key: string) => {
-    setPickingDoc(key);
-    setError(null);
-    const result = await pickDocImage();
-    setPickingDoc(null);
-    if (!result) return;
-    if ('error' in result) {
-      setError(result.error);
-      return;
-    }
-    updateTestReportRow(key, { image: result.image });
-  };
-
   // --- Doğrulama ---
   const stockNum = parseNumber(stock);
   const weightGsmNum = parseNumber(weightGsm);
@@ -1641,42 +1628,15 @@ export function AddProductScreen({ navigation, route }: Props) {
                   placeholder="Örn. 2026-05-14"
                   autoCapitalize="none"
                 />
-                <Text style={styles.label}>Belge fotoğrafı</Text>
-                <View style={styles.docRow}>
-                  {row.image.kind !== 'none' ? (
-                    row.image.uri ? (
-                      <Image source={{ uri: row.image.uri }} style={styles.docPhoto} />
-                    ) : (
-                      <View style={[styles.docPhoto, styles.photoLoading]}>
-                        <ActivityIndicator color={colors.chevron} />
-                      </View>
-                    )
-                  ) : (
-                    <View style={[styles.docPhoto, styles.docPhotoEmpty]}>
-                      <Ionicons name="document-outline" size={20} color={colors.chevron} />
-                    </View>
-                  )}
-                  <View style={styles.docActions}>
-                    <PrimaryButton
-                      label={pickingDoc === row.key ? 'Seçiliyor...' : row.image.kind === 'none' ? 'Fotoğraf Ekle' : 'Değiştir'}
-                      variant="outline"
-                      onPress={() => addTestReportPhoto(row.key)}
-                      disabled={pickingDoc !== null}
-                      accessibilityLabel={`${index + 1}. test raporu fotoğrafı seç`}
-                    />
-                    {row.image.kind !== 'none' ? (
-                      <PrimaryButton
-                        label="Kaldır"
-                        variant="outline"
-                        onPress={() => {
-                          haptics.selection();
-                          updateTestReportRow(row.key, { image: { kind: 'none' } });
-                        }}
-                        accessibilityLabel={`${index + 1}. test raporu fotoğrafını kaldır`}
-                      />
-                    ) : null}
-                  </View>
-                </View>
+                <DocField
+                  image={row.image}
+                  onChange={(image) => updateTestReportRow(row.key, { image })}
+                  busy={pickingDoc === row.key}
+                  onBusyChange={(active) => setPickingDoc(active ? row.key : null)}
+                  onError={setError}
+                  disabled={pickingDoc !== null && pickingDoc !== row.key}
+                  labelPrefix={`${index + 1}. test raporu`}
+                />
               </View>
             ))}
             {testReportRows.length < MAX_TEST_REPORTS ? (

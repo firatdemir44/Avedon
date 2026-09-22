@@ -47,6 +47,8 @@ import {
   yarnUnitLabel,
 } from '../../features/products/catalog';
 import { certificateLabel, effectiveWidthCm, fiberLabel } from '../../features/products/glossaryLabels';
+import { isPdfDataUrl } from '../../components/passport/rows';
+import { openPdfDataUrl } from '../../features/docViewer';
 import { optionLabel, otherCountLabels, useYarnOptions } from '../../features/yarns/catalog';
 import { formatMeasure, toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
@@ -355,6 +357,12 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         kind === 'certificate'
           ? await fetchCertificateImage(product.id, position)
           : await fetchTestReportImage(product.id, position);
+      // Belge PDF ise Image ile çizilemez: web'de yeni sekme, telefonda
+      // sistemin kendi açma/paylaşma ekranı.
+      if (isPdfDataUrl(imageUrl)) {
+        await openPdfDataUrl(imageUrl, kind === 'certificate' ? 'sertifika.pdf' : 'test-raporu.pdf');
+        return;
+      }
       setViewerUrl(imageUrl);
     } catch {
       haptics.error();

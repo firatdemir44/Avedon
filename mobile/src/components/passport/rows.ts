@@ -6,6 +6,7 @@
 
 import type { CertificateInput, DocImageInput, ProductCertificate } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
+import { DocumentPickError, pickPdf } from '../../features/documentPicker';
 import { MAX_COMPOSITION_ROWS } from '../../features/products/limits';
 import { FIBERS } from '../../features/products/glossaryLabels';
 import { parseNumber, toInputNumber } from '../../features/calculators/parse';
@@ -134,6 +135,24 @@ export const certificateInputs = (rows: CertificateRow[]): CertificateInput[] =>
       image: docImageInput(row.image),
     }));
 
+// Belge PDF olabilir (Textile Exchange gibi sertifikalar PDF geliyor). Hem yeni
+// seçilende hem sunucudan gelen önizlemede ayırt etme tek yerde: data URL'in
+// türüne bakılır (sunucu PDF'i `data:application/pdf;base64,...` döndürüyor).
+export const PDF_DATA_PREFIX = 'data:application/pdf';
+
+export const isPdfDoc = (image: DocImage): boolean =>
+  image.kind === 'new'
+    ? image.dataUrl.startsWith(PDF_DATA_PREFIX)
+    : image.kind === 'existing'
+      ? !!image.uri?.startsWith(PDF_DATA_PREFIX)
+      : false;
+
+export const isPdfDataUrl = (url: string) => url.startsWith(PDF_DATA_PREFIX);
+
+// Sunucu sınırı 2.100.000 karakter base64 (~1,5 MB dosya).
+export const MAX_DOC_PDF_CHARS = 2_100_000;
+const PDF_TOO_LARGE = "PDF 1,5 MB'ı geçemez.";
+
 // Belge fotoğrafı seçme: iki formda da aynı hata metinleri.
 export async function pickDocImage(): Promise<{ image: DocImage } | { error: string } | null> {
   try {
@@ -146,6 +165,27 @@ export async function pickDocImage(): Promise<{ image: DocImage } | { error: str
         err instanceof Error && err.message === 'permission_denied'
           ? 'Galeriye erişim izni verilmedi.'
           : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.',
+    };
+  }
+}
+
+// Belge olarak PDF seçme (sertifika ve test raporu satırları).
+export async function pickDocPdf(): Promise<{ image: DocImage } | { error: string } | null> {
+  try {
+    const picked = await pickPdf();
+    if (!picked) return null;
+    const dataUrl = picked.dataBase64.startsWith('data:')
+      ? picked.dataBase64
+      : `${PDF_DATA_PREFIX};base64,${picked.dataBase64}`;
+    if (!dataUrl.startsWith(PDF_DATA_PREFIX)) return { error: 'Yalnızca PDF dosyası seçilebilir.' };
+    if (dataUrl.length > MAX_DOC_PDF_CHARS) return { error: PDF_TOO_LARGE };
+    return { image: { kind: 'new', uri: dataUrl, dataUrl } };
+  } catch (err) {
+    return {
+      error:
+        err instanceof DocumentPickError && err.code === 'too_large'
+          ? PDF_TOO_LARGE
+          : 'PDF okunamadı, lütfen başka bir dosya deneyin.',
     };
   }
 }
