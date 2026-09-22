@@ -65,3 +65,32 @@ meRouter.delete(
     res.status(204).send();
   })
 );
+
+// Ana sayfa "Bugün" kutuları (yeni tasarım, DESIGN.md §8 artboard 1): tek istekte üç sayı.
+//  - bekleyen numune: firmama gelen, henüz teslim edilmemiş numune talepleri (alıcıysam: kendi açık taleplerim)
+//  - yeni teklif: alıcı olarak açık isteklerime gelen, henüz okunmamış "teklif geldi" bildirimi sayısı;
+//    satıcı olarak: firmama gelen, henüz teklif verilmemiş teklif istekleri
+//  - okunmamış mesaj
+meRouter.get(
+  '/today',
+  requireAuth,
+  handle(async (req, res) => {
+    const me = req.user!;
+    const companyId = me.companyId ?? null;
+    const [incomingSamples, mySamples, sellerOpenQuotes, buyerNewQuotes, unreadMessages, unreadNotifications] = await Promise.all([
+      companyId ? prisma.sampleRequest.count({ where: { product: { companyId }, status: { not: 'teslim_edildi' } } }) : 0,
+      prisma.sampleRequest.count({ where: { requesterId: me.id, status: { not: 'teslim_edildi' } } }),
+      companyId ? prisma.quoteRequest.count({ where: { sellerCompanyId: companyId, status: 'open' } }) : 0,
+      prisma.notification.count({ where: { userId: me.id, kind: 'quote_received', readAt: null } }),
+      prisma.message.count({ where: { senderId: { not: me.id }, readAt: null, conversation: { OR: [{ userAId: me.id }, { userBId: me.id }] } } }),
+      prisma.notification.count({ where: { userId: me.id, readAt: null } }),
+    ]);
+    res.json({
+      pendingSamples: incomingSamples + mySamples,
+      newQuotes: sellerOpenQuotes + buyerNewQuotes,
+      unreadMessages,
+      unreadNotifications,
+      companyName: me.company?.name ?? null,
+    });
+  })
+);
