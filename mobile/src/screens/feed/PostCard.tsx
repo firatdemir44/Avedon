@@ -184,13 +184,15 @@ function PostCardComponent({
           {logoUrl ? (
             <Image
               source={{ uri: logoUrl }}
-              resizeMode="cover"
+              // Logo kareye sığar, kırpılmaz; şeffaf/renkli logolar için beyaz zemin.
+              resizeMode="contain"
               style={{
                 width: t.size.avatar,
                 height: t.size.avatar,
                 borderRadius: t.radius.sm,
                 borderWidth: 1,
                 borderColor: t.colors.line,
+                backgroundColor: t.colors.surface1,
               }}
             />
           ) : (
@@ -421,7 +423,7 @@ function BarAction({
       accessibilityLabel={showCount ? `${label}, ${count}` : label}
       accessibilityState={active !== undefined ? { selected: active } : undefined}
       style={({ pressed }) => ({
-        flex: 1,
+        flex: text ? 2 : 1,
         minWidth: 0,
         minHeight: t.size.touchMin,
         flexDirection: 'row',

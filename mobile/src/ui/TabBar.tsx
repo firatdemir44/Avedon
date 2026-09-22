@@ -50,13 +50,17 @@ export function TabBar({ items, activeKey, onSelect, style }: TabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={item.label}
+            // Seçili sekme: brandSoft zemin + kalın çizgi + brand renk (Fırat: hangi sekmede
+            // olduğum belli olsun, 2026-09-22).
             style={({ pressed }) => ({
               flex: 1,
               minHeight: t.size.tabbar,
               alignItems: 'center',
               justifyContent: 'center',
               gap: t.space[1] / 2,
-              backgroundColor: pressed ? t.colors.surface2 : 'transparent',
+              backgroundColor: on ? t.colors.brandSoft : pressed ? t.colors.surface2 : 'transparent',
+              borderTopWidth: 2,
+              borderTopColor: on ? t.colors.brand : 'transparent',
             })}
           >
             <View>
