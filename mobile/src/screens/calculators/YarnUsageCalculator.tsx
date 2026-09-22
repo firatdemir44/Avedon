@@ -15,38 +15,58 @@ import { usePersistedFields } from '../../features/calculators/usePersistedField
 import { colors, spacing } from '../../theme';
 
 interface Fields {
+  // Üretilecek miktar metre ya da kg olarak girilir.
+  unit: 'metre' | 'kg';
   length: string;
   weightGsm: string;
   widthCm: string;
   wastage: string;
 }
 
-const INITIAL: Fields = { length: '', weightGsm: '', widthCm: '', wastage: '0' };
+const INITIAL: Fields = { unit: 'metre', length: '', weightGsm: '', widthCm: '', wastage: '0' };
 
 export function YarnUsageCalculator() {
   const [fields, update] = usePersistedFields('yarn_usage', INITIAL);
-  const { length, weightGsm, widthCm, wastage } = fields;
+  const { unit, length, weightGsm, widthCm, wastage } = fields;
+  const byKg = unit === 'kg';
 
+  // Kg girildiyse: iplik = kumaş kg × (1 + fire); gramaj ve en yalnızca kaç metre kumaş
+  // ettiğini göstermek için kullanılır (isteğe bağlı).
+  const gsm = parseNumber(weightGsm);
+  const width = parseNumber(widthCm);
+  const metersPerKg = gsm > 0 && width > 0 ? 1000 / (gsm * (width / 100)) : null;
   const result = useMemo(() => {
-    if (!length || !weightGsm || !widthCm) return null;
+    if (!length) return null;
+    const wastagePercent = parseNumber(wastage);
+    if (byKg) return parseNumber(length) * (1 + wastagePercent / 100);
+    if (!weightGsm || !widthCm) return null;
     return calculateYarnUsageKg({
       fabricLengthMeters: parseNumber(length),
       weightGsm: parseNumber(weightGsm),
       widthCm: parseNumber(widthCm),
-      wastagePercent: parseNumber(wastage),
+      wastagePercent,
     });
-  }, [length, weightGsm, widthCm, wastage]);
+  }, [byKg, length, weightGsm, widthCm, wastage]);
+  const fabricMeters = byKg && length && metersPerKg ? parseNumber(length) * metersPerKg : null;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <CalcTable title="İplik ihtiyacı">
           <CalcInputRow
-            label="Üretilecek kumaş uzunluğu"
+            label="Üretilecek kumaş miktarı"
+            hint={byKg ? 'Kg ile hesaplarken gramaj ve en zorunlu değil' : undefined}
             value={length}
             onChangeText={(v) => update({ length: v })}
             placeholder="500"
-            unit="metre"
+            unitToggle={{
+              options: [
+                { value: 'metre', label: 'metre' },
+                { value: 'kg', label: 'kg' },
+              ],
+              value: unit,
+              onChange: (v) => update({ unit: v === 'kg' ? 'kg' : 'metre' }),
+            }}
           />
           <CalcInputRow
             label="Kumaş gramajı"
@@ -75,10 +95,15 @@ export function YarnUsageCalculator() {
             unit="kg"
             emphasis="primary"
           />
-          {result === null ? (
-            <CalcNoteRow text="Hesap için uzunluk, gramaj ve en girin." />
+          {fabricMeters !== null ? (
+            <CalcResultRow label="Bu kadar kumaş yaklaşık" value={formatNumber(fabricMeters)} unit="metre" note="Gramaj ve ene göre" />
           ) : null}
-          <CalcFormulaRow text="İplik (kg) = uzunluk × en (m) × gramaj ÷ 1000 × (1 + fire ÷ 100)" />
+          {result === null ? (
+            <CalcNoteRow text={byKg ? 'Hesap için kumaş miktarını (kg) girin.' : 'Hesap için uzunluk, gramaj ve en girin.'} />
+          ) : null}
+          <CalcFormulaRow
+            text={byKg ? 'İplik (kg) = kumaş (kg) × (1 + fire ÷ 100)' : 'İplik (kg) = uzunluk × en (m) × gramaj ÷ 1000 × (1 + fire ÷ 100)'}
+          />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
       </ScrollView>
