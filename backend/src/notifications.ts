@@ -29,7 +29,11 @@ export type NotificationKind =
   | 'invite_joined'
   | 'verification_request'
   | 'verification_approved'
-  | 'verification_rejected';
+  | 'verification_rejected'
+  | 'tender_new'
+  | 'tender_offer'
+  | 'tender_awarded'
+  | 'tender_closed';
 
 export interface NotificationData {
   productId?: string;
@@ -46,6 +50,7 @@ export interface NotificationData {
   draftId?: string;
   inviteId?: string;
   verificationRequestId?: string;
+  tenderId?: string;
 }
 
 export interface NotifyInput {

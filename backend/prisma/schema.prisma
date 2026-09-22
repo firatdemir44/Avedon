@@ -425,6 +425,8 @@ model Post {
   // Bir gönderide ya fotoğraf ya video olur, ikisi birden olmaz (API'de zorunlu).
   videoId    String?       @unique
   video      Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  // Açık talep kartı (Tender.id; ilişki yok, yalnızca sütun eklendi).
+  tenderId   String?
   createdAt  DateTime      @default(now())
   // Yazar yazıyı/görünürlüğü/ürünü değiştirince dolar; akışta "düzenlendi"
   // gösterilir (alıcı metnin sonradan değiştiğini bilsin). Fotoğraf ve video
@@ -1024,4 +1026,56 @@ model VerificationRequest {
 
   @@index([companyId, createdAt])
   @@index([status, createdAt])
+}
+
+// Açık talep / ihale (Fırat 2026-09-23): alıcı ürüne bağlı olmadan ihtiyacını yayınlar
+// ("96 filament polyester iplik, 7 ton"), kategoriye uyan satıcılar teklif verir, alıcı seçer.
+// Akışa Post.tenderId ile kart olarak düşer. İlişki yok: mevcut tablolar yeniden kurulmasın.
+// category: iplik | kumas | diger. status: open | closed | awarded.
+// specJson: kategoriye göre yapılandırılmış alanlar (iplik: family, filaments, count, countUnit,
+// colorState; kumaş: type, weightGsm, widthCm, content) + serbest metin.
+model Tender {
+  id             String    @id @default(cuid())
+  buyerId        String
+  buyerCompanyId String?
+  category       String
+  title          String
+  specJson       String    @default("{}")
+  quantity       Float
+  unit           String
+  targetDate     DateTime?
+  deadline       DateTime?
+  note           String    @default("")
+  status         String    @default("open")
+  awardedOfferId String?
+  postId         String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([status, category, createdAt])
+  @@index([buyerId, createdAt])
+}
+
+// status: sent | accepted | declined | withdrawn. Firma başına talebe bir teklif (güncellenir).
+model TenderOffer {
+  id              String    @id @default(cuid())
+  tenderId        String
+  sellerUserId    String
+  sellerCompanyId String
+  priceValue      Float
+  priceCurrency   String
+  priceUnit       String
+  moq             Float?
+  moqUnit         String    @default("")
+  leadTimeDays    Int?
+  validUntil      DateTime?
+  paymentTerms    String    @default("")
+  note            String    @default("")
+  status          String    @default("sent")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([tenderId, sellerCompanyId])
+  @@index([tenderId, createdAt])
+  @@index([sellerCompanyId, createdAt])
 }

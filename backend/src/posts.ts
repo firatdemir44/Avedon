@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { prisma } from './db';
+import { tenderSummary } from './routes/tenders';
 import { getConnectionState, isConnectedAccepted } from './connections';
 import { YARN_SPEC_SELECT, toYarnSpecRow } from './yarns';
 import { VIDEO_SELECT, toVideoRow, type VideoRecord } from './videoFields';
@@ -81,7 +83,22 @@ export async function canViewPost(
   return isConnectedAccepted(await getConnectionState(viewerId, post.authorId));
 }
 
+// Açık talep kartı (Post.tenderId): akışta gönderi yerine talep özeti çizilir.
+export type TenderCard = { id: string; category: string; title: string; summary: string; status: string; offerCount: number; deadline: Date | null };
+
+export async function tenderCardsFor(posts: { tenderId: string | null }[]): Promise<Map<string, TenderCard>> {
+  const ids = [...new Set(posts.map((p) => p.tenderId).filter((x): x is string => !!x))];
+  const map = new Map<string, TenderCard>();
+  if (!ids.length) return map;
+  const rows = await prisma.tender.findMany({ where: { id: { in: ids } } });
+  const counts = await prisma.tenderOffer.groupBy({ by: ['tenderId'], where: { tenderId: { in: ids }, status: { not: 'withdrawn' } }, _count: { _all: true } });
+  const countMap = new Map<string, number>(counts.map((c) => [c.tenderId, c._count._all]));
+  for (const t of rows) map.set(t.id, { id: t.id, category: t.category, title: t.title, summary: tenderSummary(t), status: t.status, offerCount: countMap.get(t.id) ?? 0, deadline: t.deadline });
+  return map;
+}
+
 type PostWithIncludes = {
+  tenderId?: string | null;
   id: string;
   body: string;
   imageUrl: string | null;
@@ -119,9 +136,10 @@ type PostWithIncludes = {
 // olur; liste yanıtlarında fotoğraf gönderilmez, istemci ayrı uçtan çeker.
 // productFavorite: görüntüleyen kullanıcı bu ürünü takibe almış mı (ProductFavorite;
 // akış kartındaki "Takibe Al" düğmesinin durumu).
-export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeImage = false, productFavorite = false) {
+export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeImage = false, productFavorite = false, tender: TenderCard | null = null) {
   return {
     id: post.id,
+    tender,
     body: post.body,
     hasImage: !!post.imageUrl,
     imageUrl: includeImage ? post.imageUrl : null,

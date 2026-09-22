@@ -13,6 +13,7 @@ import {
   feedVisibilityWhere,
   toCommentRow,
   toFeedRow,
+  tenderCardsFor,
 } from '../posts';
 import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
 
@@ -114,9 +115,10 @@ postsRouter.get(
       favorites.forEach((row) => favoriteSet.add(row.productId));
     }
 
+    const tenderCards = await tenderCardsFor(posts);
     const last = posts[posts.length - 1];
     res.json({
-      posts: posts.map((p) => toFeedRow(p, likedSet.has(p.id), false, !!p.product && favoriteSet.has(p.product.id))),
+      posts: posts.map((p) => toFeedRow(p, likedSet.has(p.id), false, !!p.product && favoriteSet.has(p.product.id), p.tenderId ? tenderCards.get(p.tenderId) ?? null : null)),
       nextCursor:
         posts.length === limit && last
           ? { before: last.createdAt.toISOString(), beforeId: last.id }
