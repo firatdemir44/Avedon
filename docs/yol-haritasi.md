@@ -127,6 +127,8 @@ Bu kod **yeniden yazılmaz, genişletilir**.
 
 ## 8. Açık konular
 
+- Lansman ve pazarlama mesajları `lansman-pazarlama.md` dosyasında birikir (Fırat, 2026-09-22: dağınık sektörü toplayan, düzenleyen, masraftan kurtaran; numune araç trafiğini azaltan).
+
 - Uygulama adı: "Avedon" geçici; ürün oturunca yeniden değerlendirilecek.
 - AB Dijital Ürün Pasaportu tekstil takvimi ve zorunlu alanlar araştırılacak; sonuç §4'e işlenecek.
 - Fiyatlandırma: 2021 modeli (3 ay ücretsiz, sonra aylık ücret) ve rakip (kişi başı yıllık) karşılaştırılacak; hesaplayıcı ve bilgi asistanı katmanı ücretsiz kalacak.
