@@ -3,9 +3,12 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
+import { profileExtras, userProfileRouter } from './userProfile';
 
 export const usersRouter = Router();
 usersRouter.use(requireAuth);
+// Profil başlığı/kapak/deneyimler (LinkedIn benzeri kişi sayfası).
+usersRouter.use(userProfileRouter);
 
 // Telefon 512 px'e küçültüp JPEG ile gönderir (~40-80 KB); sınır sıkıştırılmamış fotoğrafı engeller.
 const MAX_AVATAR_CHARS = 400_000;
@@ -43,6 +46,7 @@ usersRouter.get('/:id', async (req, res) => {
 
   const isSelf = req.user!.id === user.id;
   const state = isSelf ? null : await getConnectionState(req.user!.id, user.id);
+  const extras = await profileExtras(user.id);
 
   res.json({
     user: {
@@ -52,6 +56,7 @@ usersRouter.get('/:id', async (req, res) => {
       position: user.position,
       accountType: user.accountType,
       avatarUpdatedAt: user.avatarUpdatedAt,
+      ...extras,
       company: user.company
         ? {
             id: user.company.id,

@@ -977,3 +977,33 @@ model PushSubscription {
 
   @@index([userId])
 }
+
+// Kişi profili (LinkedIn benzeri; Fırat 2026-09-22): başlık, konum, hakkında ve kapak fotoğrafı.
+// Kapak fotoğrafı base64 data URL; profil yanıtında dönmez, /users/:id/cover ile alınır.
+// İlişki yok: mevcut tablolar yeniden kurulmasın.
+model UserProfile {
+  userId         String    @id
+  headline       String    @default("")
+  location       String    @default("")
+  about          String    @default("")
+  coverImageUrl  String    @default("")
+  coverUpdatedAt DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+// Deneyim satırları (görev, firma, tarih aralığı, konum, açıklama). endYear boş = devam ediyor.
+model UserExperience {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  company     String
+  startMonth  Int
+  startYear   Int
+  endMonth    Int?
+  endYear     Int?
+  location    String   @default("")
+  description String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([userId, startYear, startMonth])
+}
