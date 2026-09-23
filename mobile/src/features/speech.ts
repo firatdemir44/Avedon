@@ -125,22 +125,57 @@ function plain(text: string) {
     .trim();
 }
 
-// Asistan kişiliğine göre ses: İpek kadın, Mert erkek. Tarayıcının Türkçe sesleri arasında
-// adından cinsiyeti anlaşılan varsa o seçilir; yoksa aynı sesle ton (pitch) ayarlanır.
+// Ses seçimi (2026-09-23, tek kimlik "Takyon asistanı"): cihazdaki en doğal Türkçe ses.
+// Sıra: Edge/Windows "Online (Natural)" sinir sesleri > iOS "Gelişmiş/Premium" > Google Türkçe >
+// diğer Türkçe sesler. Eski kişilik (İpek/Mert) ayarı yok sayılır.
 export type VoicePersona = 'ipek' | 'mert';
-let persona: VoicePersona = 'ipek';
-export const setVoicePersona = (p: VoicePersona) => {
-  persona = p;
-};
-const FEMALE = /(yelda|filiz|seda|emel|female|kad[ıi]n|woman|zira|google t[üu]rk[çc]e)/i;
-const MALE = /(tolga|cem|mehmet|ahmet|male|erkek|man\b)/i;
-function pickVoice(): { voice: SpeechSynthesisVoice | null; pitch: number } {
-  const tr = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().startsWith('tr'));
-  const want = persona === 'mert' ? MALE : FEMALE;
-  const match = tr.find((v) => want.test(v.name) && !(persona === 'mert' && FEMALE.test(v.name)));
-  if (match) return { voice: match, pitch: 1 };
-  // Tek Türkçe ses varsa ton farkıyla ayırt edilir.
-  return { voice: tr[0] ?? null, pitch: persona === 'mert' ? 0.75 : 1.15 };
+export const setVoicePersona = (_p: VoicePersona) => undefined;
+function voiceScore(v: SpeechSynthesisVoice) {
+  const n = v.name.toLowerCase();
+  if (/natural|neural|online/.test(n)) return 5;
+  if (/premium|enhanced|geli[şs]mi[şs]/.test(n)) return 4;
+  if (/google/.test(n)) return 3;
+  if (!v.localService) return 2;
+  return 1;
+}
+function pickVoice(): SpeechSynthesisVoice | null {
+  const tr = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().replace('_', '-').startsWith('tr'));
+  return tr.sort((x, y) => voiceScore(y) - voiceScore(x))[0] ?? null;
+}
+
+// Yazıyı konuşma diline çevirir: kısaltmalar, birimler, simgeler okunur hale gelir.
+function spoken(text: string) {
+  return plain(text)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
+    .replace(/%\s?(\d)/g, 'yüzde $1')
+    .replace(/(\d)\s?gr\/m²|(\d)\s?g\/m2|(\d)\s?gr\/m2/g, (_m, a1, a2, a3) => `${a1 ?? a2 ?? a3} gram metrekare`)
+    .replace(/(\d)\s?kg\b/g, '$1 kilo')
+    .replace(/(\d)\s?cm\b/g, '$1 santim')
+    .replace(/(\d)\s?mt?\b/g, '$1 metre')
+    .replace(/(\d)\s?\$/g, '$1 dolar')
+    .replace(/\$\s?(\d[\d.,]*)/g, '$1 dolar')
+    .replace(/(\d)\s?(TL|₺)/g, '$1 lira')
+    .replace(/(\d)\s?€/g, '$1 avro')
+    .replace(/\bör\./gi, 'örneğin')
+    .replace(/\bvb\./gi, 've benzeri')
+    .replace(/\bvs\./gi, 've saire')
+    .replace(/\bNe\s?(\d)/g, 'Ne $1')
+    .replace(/\s[·•|]\s/g, ', ')
+    .replace(/\s-\s/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Uzun metin cümlelere bölünür: Chrome tek parçada ~15 sn sonra okumayı kesiyor ve kısa
+// parçalar arasındaki doğal duraklama konuşmayı akıcı kılıyor.
+function sentences(text: string) {
+  const parts = text.match(/[^.!?…:;]+[.!?…:;]*/g) ?? [text];
+  const out: string[] = [];
+  for (const p of parts.map((x) => x.trim()).filter(Boolean)) {
+    if (out.length && (out[out.length - 1].length < 40 || p.length < 12)) out[out.length - 1] += ' ' + p;
+    else out.push(p);
+  }
+  return out;
 }
 
 let speakingId: string | null = null;
@@ -192,22 +227,34 @@ export function toggleSpeak(id: string, text: string) {
     return;
   }
   window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(plain(text));
-  u.lang = 'tr-TR';
-  const { voice, pitch } = pickVoice();
-  if (voice) u.voice = voice;
-  u.pitch = pitch;
-  u.rate = 1;
-  u.onend = () => {
-    if (speakingId === id) {
-      speakingId = null;
-      emit();
-    }
-  };
-  u.onerror = u.onend;
+  const voice = pickVoice();
+  const chunks = sentences(spoken(text));
+  if (!chunks.length) return;
   speakingId = id;
   emit();
-  window.speechSynthesis.speak(u);
+  chunks.forEach((chunk, i) => {
+    const u = new SpeechSynthesisUtterance(chunk);
+    u.lang = 'tr-TR';
+    if (voice) u.voice = voice;
+    u.pitch = 1;
+    // Doğal sesler normal hızda akıcı; basit seslerde hafif hızlandırma tekdüzeliği azaltır.
+    u.rate = voice && voiceScore(voice) >= 4 ? 1 : 1.08;
+    if (i === chunks.length - 1) {
+      u.onend = () => {
+        if (speakingId === id) {
+          speakingId = null;
+          emit();
+        }
+      };
+    }
+    u.onerror = () => {
+      if (speakingId === id) {
+        speakingId = null;
+        emit();
+      }
+    };
+    window.speechSynthesis.speak(u);
+  });
 }
 
 // Kayıt yolu (2026-09-23): tarayıcı tanıması telefonda kısa sürede kapandığı için ses kaydedilir,
