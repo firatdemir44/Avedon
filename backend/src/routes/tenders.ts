@@ -20,9 +20,15 @@ export const MAX_TENDERS_PER_DAY = 10;
 export const MAX_TENDER_NOTIFY = 200;
 const DAY = 24 * 60 * 60 * 1000;
 
-const CATEGORIES = ['iplik', 'kumas', 'konfeksiyon', 'diger'] as const;
+const CATEGORIES = ['iplik', 'kumas', 'konfeksiyon', 'aksesuar', 'diger'] as const;
 export type TenderCategory = (typeof CATEGORIES)[number];
-export const CATEGORY_LABELS: Record<TenderCategory, string> = { iplik: 'İplik', kumas: 'Kumaş', konfeksiyon: 'Konfeksiyon', diger: 'Diğer' };
+export const CATEGORY_LABELS: Record<TenderCategory, string> = { iplik: 'İplik', kumas: 'Kumaş', konfeksiyon: 'Konfeksiyon', aksesuar: 'Aksesuar', diger: 'Diğer' };
+
+// Aksesuar talebi (düğme, fermuar, etiket, askı, ambalaj…).
+export const ACCESSORY_TYPES = ['dugme', 'fermuar', 'etiket', 'aski', 'lastik', 'kordon', 'baski_nakis', 'ambalaj', 'diger'] as const;
+export const ACCESSORY_LABELS: Record<(typeof ACCESSORY_TYPES)[number], string> = {
+  dugme: 'Düğme', fermuar: 'Fermuar', etiket: 'Etiket', aski: 'Askı', lastik: 'Lastik', kordon: 'Kordon', baski_nakis: 'Baskı / nakış', ambalaj: 'Ambalaj', diger: 'Diğer',
+};
 
 // Konfeksiyon (fason üretim) talebi: ürün tipi, beden dağılımı, kumaşı kim sağlıyor, teslim kapsamı.
 // Teklif "paket fiyat" olarak verilir (adet başı; toplam = adet × fiyat istemcide).
@@ -76,6 +82,15 @@ const garmentSpecSchema = z
   })
   .strict();
 
+const accessorySpecSchema = z
+  .object({
+    accessoryType: z.enum(ACCESSORY_TYPES).optional(),
+    material: z.string().trim().max(80).optional(),
+    size: z.string().trim().max(80).optional(),
+    color: z.string().trim().max(60).optional(),
+  })
+  .strict();
+
 const mediaInput = z
   .object({
     dataUrl: z.string().refine(
@@ -107,6 +122,7 @@ function parseSpec(category: TenderCategory, spec: unknown) {
   if (category === 'iplik') return yarnSpecSchema.safeParse(spec ?? {});
   if (category === 'kumas') return fabricSpecSchema.safeParse(spec ?? {});
   if (category === 'konfeksiyon') return garmentSpecSchema.safeParse(spec ?? {});
+  if (category === 'aksesuar') return accessorySpecSchema.safeParse(spec ?? {});
   return z.object({}).strict().safeParse({});
 }
 
@@ -140,6 +156,12 @@ export function tenderSummary(t: { category: string; specJson: string; quantity:
     if (spec.fabric) parts.push(String(spec.fabric));
     const d = Array.isArray(spec.delivery) ? (spec.delivery as string[]).map((k) => DELIVERY_LABELS[k as keyof typeof DELIVERY_LABELS]).filter(Boolean) : [];
     if (d.length) parts.push(d.join(', '));
+  } else if (t.category === 'aksesuar') {
+    const a = ACCESSORY_LABELS[spec.accessoryType as keyof typeof ACCESSORY_LABELS];
+    if (a) parts.push(a);
+    if (spec.material) parts.push(String(spec.material));
+    if (spec.size) parts.push(String(spec.size));
+    if (spec.color) parts.push(String(spec.color));
   }
   parts.push(`${formatQty(t.quantity)} ${t.unit}`);
   return parts.join(' · ');
@@ -236,6 +258,8 @@ async function matchingSellerUserIds(category: TenderCategory, spec: Record<stri
     addCompanies(await prisma.company.findMany({ where: { companyType: 'kumas_uretici' }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
   } else if (category === 'konfeksiyon') {
     addCompanies(await prisma.company.findMany({ where: { OR: [{ companyType: 'konfeksiyon' }, { categoryTags: { contains: '"konfeksiyon"' } }] }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
+  } else if (category === 'aksesuar') {
+    addCompanies(await prisma.company.findMany({ where: { OR: [{ companyType: { in: ['aksesuar', 'baski'] } }, { categoryTags: { contains: '"aksesuar"' } }] }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
   } else {
     addCompanies(await prisma.company.findMany({ where: { companyType: { in: ['toptanci', 'aksesuar', 'boyahane', 'baski'] } }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
   }
