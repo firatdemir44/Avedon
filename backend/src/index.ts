@@ -22,6 +22,7 @@ import { skillsRouter } from './routes/skills';
 import { assistantRouter } from './routes/assistant';
 import { speechStatus } from './speechToText';
 import { relevanceStatus } from './feedRules';
+import { startDigestScheduler } from './assistantReport';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
@@ -136,5 +137,7 @@ app.listen(port, () => {
   void ensureWabaSubscription();
   // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
+  // Haftalık asistan raporu bildirimi (pazartesi 09:00 sonrası, firma başına bir kez).
+  startDigestScheduler();
   backfillNormalizedNames().catch((err) => console.error('[directory] backfill', err));
 });

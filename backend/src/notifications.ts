@@ -34,7 +34,8 @@ export type NotificationKind =
   | 'tender_offer'
   | 'tender_awarded'
   | 'tender_closed'
-  | 'feed_moderation';
+  | 'feed_moderation'
+  | 'assistant_digest';
 
 export interface NotificationData {
   productId?: string;

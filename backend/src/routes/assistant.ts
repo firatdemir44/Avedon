@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import { SpeechNotConfiguredError, isSpeechConfigured, transcribe } from '../speechToText';
+import { assistantReport } from '../assistantReport';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { LlmNotConfiguredError, isLlmConfigured } from '../llm';
@@ -17,6 +18,13 @@ import { makeHandle } from './handle';
 // onayıyla yazılır. Eski POST /api/advisor/ask bir sürüm daha kalır.
 export const assistantRouter = Router();
 assistantRouter.use(requireAuth);
+
+// Asistan raporu: firmanın asistanına başka firmalardan gelen sorular (son 7 ya da 30 gün).
+assistantRouter.get('/report', async (req, res) => {
+  if (!req.user!.companyId) return res.status(400).json({ error: 'no_company' });
+  const days = req.query.days === '30' ? 30 : 7;
+  res.json({ report: await assistantReport(req.user!.companyId, days) });
+});
 
 // Sesli soru: telefonun kaydettiği ses (webm/mp4, en çok ~2 dk) yazıya çevrilir.
 assistantRouter.get('/speech', (_req, res) => {
