@@ -275,6 +275,27 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
     }
     // Faz 2, Adım 5: fason kapasite araması. Firma satırına dokununca firma
     // sayfası açılır (katalog satırındaki ürün deseninin aynısı).
+    // Asistandan asistana: firma başına kısa cevap; satır firma sayfasını açar.
+    case 'firma_asistanlarina_sor': {
+      for (const item of asArray(out.answers)) {
+        const a = asObject(item);
+        const answer = asText(a.answer);
+        rows.push({
+          label: asText(a.companyName) || 'Firma',
+          value: a.error ? 'ulaşılamadı' : a.forwarded === true ? 'firmaya iletildi' : 'cevapladı',
+          note: answer ? (answer.length > 220 ? answer.slice(0, 220) + '…' : answer) : asText(a.error) || undefined,
+          companyId: asText(a.companyId) || undefined,
+        });
+      }
+      return { ...base, rows, text: rows.length ? undefined : call.summary };
+    }
+    case 'firma_bul': {
+      for (const item of asArray(out.companies)) {
+        const c = asObject(item);
+        rows.push({ label: asText(c.name) || 'Firma', value: c.verification === 'dogrulanmis' ? 'doğrulanmış' : '', note: asText(c.city) || undefined, companyId: asText(c.id) || undefined });
+      }
+      return { ...base, rows, text: rows.length ? undefined : call.summary };
+    }
     case 'kapasite_ara': {
       const results = asArray(out.results);
       for (const item of results) {

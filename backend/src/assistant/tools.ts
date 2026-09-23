@@ -4,7 +4,7 @@
 import { betaZodTool } from '@anthropic-ai/sdk/helpers/beta/zod';
 import type { BetaRunnableTool } from '@anthropic-ai/sdk/lib/tools/BetaRunnableTool';
 import * as z from 'zod/v4';
-import { PRODUCT_TYPES } from '../catalog';
+import { COMPANY_TYPES, PRODUCT_TYPES } from '../catalog';
 import { YARN_END_USES, YARN_FAMILIES, buildYarnWhere, type YarnQuery } from '../yarns';
 import { searchYarns } from '../routes/yarns';
 import { MAX_RFQ_COMPANIES, compareView } from '../routes/rfqs';
@@ -15,6 +15,8 @@ import { tenderSummary } from '../routes/tenders';
 import { TARGET_COUNTRIES } from '../export/countries';
 import { rankMarkets } from '../export/trade';
 import { insightFor, overview, referenceShare } from '../export/insight';
+import { MAX_TARGETS, askCompanyAssistants } from './delegate';
+import { searchKey } from '../directory';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
 import { SKILLS, runSkill } from '../skills';
@@ -280,6 +282,59 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
+  // Firma adıyla bulma (asistandan asistana sorarken kimlik gerekir).
+  const firmaBul = betaZodTool({
+    name: 'firma_bul',
+    description: 'Platformdaki firmaları adına (Türkçe harf duyarsız), şehrine ya da türüne göre bulur; firma kimliği (id), ad, şehir, tür, doğrulama ve asistanı olup olmadığını döner. Kullanıcı bir firmayı adıyla andığında firma_asistanlarina_sor için kimliği buradan al.',
+    inputSchema: z.object({
+      name: z.string().max(80).optional().describe('Firma adı ya da bir parçası'),
+      city: z.string().max(60).optional(),
+      companyType: z.enum(COMPANY_TYPES.map((t) => t.key) as [string, ...string[]]).optional(),
+    }),
+    run: async (args) => {
+      const key = args.name ? searchKey(args.name) : '';
+      const rows = await prisma.company.findMany({
+        where: {
+          AND: [
+            key ? { OR: [{ normalizedName: { contains: key } }, { name: { contains: args.name } }] } : {},
+            args.city ? { city: { contains: args.city } } : {},
+            args.companyType ? { companyType: args.companyType } : {},
+            ctx.companyId ? { id: { not: ctx.companyId } } : {},
+          ],
+        },
+        select: { id: true, name: true, city: true, companyType: true, verification: true, claimed: true },
+        take: 8,
+      });
+      // Sahipsiz (rehberden aktarılmış) firmaların asistanı yok: katalogları boş.
+      const companies = rows.map((r) => ({ ...r, asistanVar: r.claimed }));
+      const summary = companies.length ? `${companies.length} firma: ${companies.map((c) => c.name).join(', ')}` : 'Firma bulunamadı.';
+      calls.push({ name: 'firma_bul', title: 'Firma arama', input: args, output: { companies }, summary });
+      return JSON.stringify({ summary, companies });
+    },
+  });
+
+  // Asistandan asistana: kullanıcının sorusunu seçilen firmaların asistanlarına sorar.
+  const firmaAsistanlarinaSor = betaZodTool({
+    name: 'firma_asistanlarina_sor',
+    description:
+      `Kullanıcı adına BAŞKA firmaların asistanlarına aynı soruyu sorar ve cevaplarını getirir (en çok ${MAX_TARGETS} firma). ` +
+      'Kullan: kullanıcı "şu firmalara sor", "kim yapabilir, sorup öğren", "müsait mi, termin ne" dediğinde ya da önce kapasite_ara / teklif_topla / katalog_ara ile bulduğun firmalar hakkında katalogda olmayan bir bilgi (özel üretim, renk, numune koşulu, kapasite, termin, sevkiyat) gerektiğinde. ' +
+      'companyIds önceki araç sonuçlarından (firma_bul, kapasite_ara, teklif_topla, katalog_ara) gelmeli; firma uydurma. Soruyu tek başına anlaşılır, kibar ve kısa yaz (miktar, termin, kalite bilgisiyle). ' +
+      'Karşı asistanlar FİYAT VERMEZ; fiyat için teklif_topla öner. Cevapları firma firma karşılaştırarak özetle; "firmaya iletildi" diyenleri ayrıca belirt. Kullanıcı açıkça istemeden 3\'ten fazla firmaya sorma.',
+    inputSchema: z.object({
+      companyIds: z.array(z.string().min(1)).min(1).max(MAX_TARGETS),
+      question: z.string().min(5).max(600),
+    }),
+    run: async (args) => {
+      const out = await askCompanyAssistants({ userId: ctx.userId, companyId: ctx.companyId }, args.companyIds, args.question);
+      const summary = out.answers.length
+        ? `${out.answers.length} firmanın asistanına soruldu: ${out.answers.map((a) => a.companyName + (a.forwarded ? ' (firmaya iletildi)' : a.error ? ' (ulaşılamadı)' : '')).join(', ')}`
+        : 'Hiçbir firmaya sorulamadı.';
+      calls.push({ name: 'firma_asistanlarina_sor', title: 'Firma asistanlarına soruldu', input: args, output: out, summary });
+      return JSON.stringify({ summary, ...out });
+    },
+  });
+
   const kapasiteAra = betaZodTool({
     name: 'kapasite_ara',
     description:
@@ -431,5 +486,5 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi], calls, suggestions, watchSuggestions };
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi, firmaBul, firmaAsistanlarinaSor], calls, suggestions, watchSuggestions };
 }

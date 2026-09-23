@@ -36,7 +36,7 @@ export function buyerSystemPrompt(company: SellerProfile, askerName: string | nu
 
 Kesin kurallar:
 - FİYAT VERMEZSİN. Fiyat, iskonto, ödeme koşulu sorulursa: "Fiyat bilgisi yalnızca teklifle paylaşılıyor; ürün sayfasındaki Teklif iste düğmesiyle miktarınızı yazarsanız firma size teklif gönderir" de. Tahmini, aralık ya da "yaklaşık" fiyat da söyleme.
-- Yalnızca katalog_ara ve sss_oku araçlarından gelen bilgiyi kullan. Katalogda olmayan ürün, özellik, sertifika, stok ya da termin UYDURMA. Bulamadıysan "katalogda göremedim" de.
+- Yalnızca katalog_ara, sss_oku ve makine_parki araçlarından gelen bilgiyi kullan. Fason/kapasite sorularında makine_parki'na bak; müsaitlik bilgisi firmanın kendi beyanıdır, kesin söz verme. Katalogda olmayan ürün, özellik, sertifika, stok ya da termin UYDURMA. Bulamadıysan "katalogda göremedim" de.
 - Cevaplayamadığın, firmaya özel soru (özel üretim, renk kartelası, numune koşulu, kapasite, sevkiyat, ödeme) için soruyu_ilet aracını kullan ve alıcıya "sorunuzu firmaya ilettim, cevap gelince bildirim alacaksınız" de. Aynı soruyu iki kez iletme.
 - Bu firmanın iç bilgilerini (maliyet, fire, fason ücreti, müşteri, başka alıcıların soruları) bilmiyorsun ve tahmin etmezsin. Başka firmalar hakkında konuşmazsın.
 - Metre/kilo çevirisi ve iplik numarası çevirisi için hesap araçlarını kullan; kafadan hesap yapma.
@@ -106,6 +106,36 @@ export function buildBuyerTools(ctx: { askerId: string; threadId: string; seller
     },
   });
 
+  // Fason soruları için: makine parkı ve firmanın beyan ettiği müsaitlik (fiyat yok).
+  const makineParki = betaZodTool({
+    name: 'makine_parki',
+    description: 'Bu firmanın makine parkı: tür, marka/model, pus (çap), fayn, sistem, iğne, çalışma eni, adet, günlük kapasite ve müsaitlik (dolu olduğu tarih). Fason/kapasite sorularında kullan.',
+    inputSchema: z.object({ kind: z.string().max(60).optional().describe('Tür süzgeci, ör. "raschel", "süprem"') }),
+    run: async (args) => {
+      const rows = await prisma.machine.findMany({ where: { companyId: ctx.sellerCompanyId }, orderBy: { createdAt: 'asc' }, take: 200 });
+      const q = args.kind?.toLocaleLowerCase('tr');
+      const now = Date.now();
+      const machines = rows
+        .filter((m) => !q || `${m.kind} ${m.feature} ${m.brand} ${m.model}`.toLocaleLowerCase('tr').includes(q))
+        .map((m) => ({
+          tur: m.kind,
+          marka: [m.brand, m.model].filter(Boolean).join(' '),
+          pus: m.diameterInch,
+          fayn: m.gauge,
+          sistem: m.feeders,
+          igne: m.needles,
+          enCm: m.workingWidthCm,
+          ozellik: m.feature,
+          adet: m.count,
+          gunlukKapasiteKg: m.dailyCapacityKg,
+          durum: m.busyUntil && m.busyUntil.getTime() > now ? `${m.busyUntil.toISOString().slice(0, 10)} tarihine kadar dolu` : 'müsait',
+        }));
+      const summary = machines.length ? `${machines.length} makine kaydı` : 'Makine parkı girilmemiş.';
+      calls.push({ name: 'makine_parki', title: `${ctx.sellerName} makine parkı`, input: args, output: { count: machines.length }, summary });
+      return JSON.stringify({ summary, machines });
+    },
+  });
+
   const soruyuIlet = betaZodTool({
     name: 'soruyu_ilet',
     description: 'Katalogdan ve SSS\'den cevaplanamayan, firmaya özel bir soruyu firmanın yetkililerine iletir. Alıcı cevap gelince bildirim alır.',
@@ -146,5 +176,5 @@ export function buildBuyerTools(ctx: { askerId: string; threadId: string; seller
       })
     );
 
-  return { tools: [katalogAra, sssOku, soruyuIlet, ...skillTools], calls, suggestions: [], watchSuggestions: [] };
+  return { tools: [katalogAra, sssOku, makineParki, soruyuIlet, ...skillTools], calls, suggestions: [], watchSuggestions: [] };
 }

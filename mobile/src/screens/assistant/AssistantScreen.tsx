@@ -522,7 +522,9 @@ export function AssistantScreen({ navigation }: Props) {
                     onCompanyPress={
                       call.name === 'kapasite_ara'
                         ? (companyId) => navigation.navigate('CompanyProfile', { companyId, initialTab: 'machines' })
-                        : undefined
+                        : call.name === 'firma_asistanlarina_sor' || call.name === 'firma_bul'
+                          ? (companyId) => navigation.navigate('CompanyProfile', { companyId })
+                          : undefined
                     }
                   />
                 );
