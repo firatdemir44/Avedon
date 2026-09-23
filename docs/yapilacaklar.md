@@ -10,7 +10,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 4. **Net Takyon logosu + yazı dosyası** (SVG/PNG): geçici girdap çizimi değiştirilecek.
 5. **Doğal Türkçe ses (isteğe bağlı):** Google Cloud Chirp 3 HD (tr-TR destekli, doğrulandı); fiyat/ücretsiz kota doğrulanıp panel adımları verilecek; Fırat onaylarsa.
 6. **TÜRKPATENT "takyon" ön araştırması** (sınıf 9, 35, 42).
-7. **Dernek üye listeleri** (Excel/CSV: firma adı, sektör, şehir, web, kaynak) → firma rehberine aktarım.
+7. **Dernek üye listeleri:** UTİB herkese açık listesinden 2.301 firma eklendi (2026-09-23, `backend/data/directory/utib.json`). İTHİB, İHKİB, EİB, TOBB Sanayi Veritabanı vb. için Fırat kuruluşlarla görüşüp listeyi kendisi alacak (Excel/CSV: unvan, sektör, il, web) → aynı yolla `data/directory/*.json` olarak eklenir. Öneri bekliyor: "Diğer" kategorisindeki 1.609 firmanın 805 web sitesinden kategori zenginleştirme.
 8. **Pilot firmaları doğrula:** herkese açık paylaşım artık yalnızca doğrulanmış firmalara açık (Yönetim ekranı).
 9. **Danışman geri bildirimi** (Ticaret Bakanlığı destek taslağı).
 10. **İngiltere sicili anahtarı (Companies House, ücretsiz):** alıcı listesinde İngiltere firmaları için; tıklama yolları doğrulanıp tek seferde verilecek, Render `COMPANIES_HOUSE_KEY`.
