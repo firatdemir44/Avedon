@@ -27,6 +27,11 @@ export const canSpeak = () => Platform.OS === 'web' && typeof window !== 'undefi
 export type ListenError = 'not-allowed' | 'no-speech' | 'network' | 'other';
 
 // Dinlemeyi başlatır; ara sonuçlar onText ile gelir (kutuya yazılır). Dönen fonksiyon durdurur.
+// Tarayıcı kısa bir duraklamada tanımayı kendiliğinden kapatır (özellikle telefonda 1-2 sn).
+// Bu yüzden kullanıcı durdurana kadar yeniden başlatılır ve metin birikir; konuşma bittikten
+// sonra SILENCE_MS sessizlikte ya da hiç konuşulmazsa IDLE_MS sonra kendiliğinden biter.
+const SILENCE_MS = 4000;
+const IDLE_MS = 10000;
 export function startListening(opts: { onText: (text: string, final: boolean) => void; onEnd: () => void; onError: (e: ListenError) => void }): () => void {
   const Ctor = recognitionCtor();
   if (!Ctor) {
@@ -34,35 +39,78 @@ export function startListening(opts: { onText: (text: string, final: boolean) =>
     opts.onEnd();
     return () => undefined;
   }
-  const rec = new Ctor();
-  rec.lang = 'tr-TR';
-  rec.interimResults = true;
-  rec.continuous = false;
-  let finalText = '';
-  rec.onresult = (e) => {
-    let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
-      const r = e.results[i];
-      if (r.isFinal) finalText += r[0].transcript;
-      else interim += r[0].transcript;
-    }
-    opts.onText((finalText + interim).trim(), !interim);
-  };
-  rec.onerror = (e) => {
-    opts.onError(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'not-allowed' : e.error === 'no-speech' ? 'no-speech' : e.error === 'network' ? 'network' : 'other');
-  };
-  rec.onend = () => opts.onEnd();
-  try {
-    rec.start();
-  } catch {
-    opts.onError('other');
-    opts.onEnd();
-  }
-  return () => {
+  let stopped = false;
+  let finished = false;
+  let committed = ''; // önceki oturumlardan kesinleşen metin
+  let rec: Recognition | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    stopped = true;
+    if (timer) clearTimeout(timer);
     try {
-      rec.stop();
+      rec?.stop();
     } catch {
       // sessiz
+    }
+    opts.onEnd();
+  };
+  const arm = (ms: number) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(finish, ms);
+  };
+  const join = (x: string, y: string) => (x && y ? `${x} ${y}` : x || y).trim();
+  const begin = () => {
+    const r = new Ctor();
+    rec = r;
+    r.lang = 'tr-TR';
+    r.interimResults = true;
+    r.continuous = false; // Android Chrome sürekli kipte sonuçları çiftliyor; yeniden başlatma yeterli
+    let sessionFinal = '';
+    r.onresult = (e) => {
+      let fin = '';
+      let interim = '';
+      for (let i = 0; i < e.results.length; i++) {
+        const x = e.results[i];
+        if (x.isFinal) fin += x[0].transcript;
+        else interim += x[0].transcript;
+      }
+      sessionFinal = fin.trim();
+      opts.onText(join(join(committed, sessionFinal), interim.trim()), !interim);
+      arm(SILENCE_MS);
+    };
+    r.onerror = (e) => {
+      if (e.error === 'no-speech' || e.error === 'aborted') return; // yeniden başlatılacak
+      stopped = true;
+      opts.onError(e.error === 'not-allowed' || e.error === 'service-not-allowed' ? 'not-allowed' : e.error === 'network' ? 'network' : 'other');
+    };
+    r.onend = () => {
+      committed = join(committed, sessionFinal);
+      if (stopped) finish();
+      else {
+        try {
+          begin();
+        } catch {
+          finish();
+        }
+      }
+    };
+    r.start();
+  };
+  try {
+    begin();
+    arm(IDLE_MS);
+  } catch {
+    opts.onError('other');
+    finish();
+  }
+  return () => {
+    stopped = true;
+    try {
+      rec?.stop();
+    } catch {
+      finish();
     }
   };
 }
