@@ -1109,3 +1109,16 @@ model TenderMedia {
 
   @@index([tenderId, position])
 }
+
+// Dünyayı Keşfet pazar verisi önbelleği (UN Comtrade; ithalatçı ülke × HS6 × yıl). json boşsa
+// o yıl için veri yok demektir (yine de 30 gün tekrar sorulmaz). İlişki yok.
+model TradeStat {
+  id        String   @id @default(cuid())
+  reporter  Int
+  hs6       String
+  year      Int
+  json      String   @default("")
+  fetchedAt DateTime @default(now())
+
+  @@unique([reporter, hs6, year])
+}
