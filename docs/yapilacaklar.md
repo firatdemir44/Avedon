@@ -2,6 +2,19 @@
 
 Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen kararları tutar. Yeni bir çalışma oturumuna başlarken önce burası kontrol edilir.
 
+## FIRAT'IN YAPACAKLARI ("ne yapmamız gerekiyor / eksikler neler" sorulunca BUNU hatırlat; 2026-09-23)
+
+1. **Meta WhatsApp engeli:** canlı health . Meta hesabındaki engel ekranının fotoğrafı bekleniyor → çözüm adımları resmi belgeden doğrulanıp tek seferde verilecek.
+2. **WhatsApp gerçek numara:** ayrı SIM + Meta işletme doğrulaması (şu an test numarası, 5 alıcı sınırı). Numara gelince uygulamaya "WhatsApp'tan sor" simgesi (wa.me + hazır mesaj) eklenecek.
+3. **Cloudflare AI anahtarını yenile (Roll):** anahtar birkaç dakika herkese açık durum sayfasında göründü; Render  kutusuna YALNIZCA anahtar yapıştırılacak.
+4. **Net Takyon logosu + yazı dosyası** (SVG/PNG): geçici girdap çizimi değiştirilecek.
+5. **Doğal Türkçe ses (isteğe bağlı):** Google Cloud Chirp 3 HD (tr-TR destekli, doğrulandı); fiyat/ücretsiz kota doğrulanıp panel adımları verilecek; Fırat onaylarsa.
+6. **TÜRKPATENT "takyon" ön araştırması** (sınıf 9, 35, 42).
+7. **Dernek üye listeleri** (Excel/CSV: firma adı, sektör, şehir, web, kaynak) → firma rehberine aktarım.
+8. **Pilot firmaları doğrula:** herkese açık paylaşım artık yalnızca doğrulanmış firmalara açık (Yönetim ekranı).
+9. **Danışman geri bildirimi** (Ticaret Bakanlığı destek taslağı).
+10. **Telefon kontrolleri:** sesli soru göstergesi, makine parkuru fotoğraftan aktarma (Melide listesi), asistandan asistana soru, tasarım düzeltmeleri, akış şikâyet/gizleme, Dünyayı Keşfet.
+
 ## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
 
 - 2026-09-23: **Firma rehberi ve sahiplenme (Fırat kararı).** Ana sayfa kısayolu "Numune talep et" → "Firmalar" (numune Katalog'dan). Rehber: arama + kategoriler (İplik, Kumaş üreticisi, Konfeksiyon, Boyahane, Aksesuar, Baskı, Toptancı, Diğer; ana tür + ek etiketler). Dernek/kuruluş listelerinden (İTKİB, İTHİB, İTO, ÖRSAD…) içe aktarılan firmalar SAHİPSİZ listelenir; sahibi "Bu firma benim" + belge → yönetici onayı → kullanıcı firmaya bağlanır, firma sahipli+doğrulanmış olur, ürün girebilir. Sunucu (e02d5f1): `Company.claimed/source/categoryTags/normalizedName`, `VerificationRequest.claim` (yalnızca sütun eklendi), `GET /api/directory` (arama Türkçe harf duyarsız, sayfalama, kategori sayıları), `POST /api/directory/:id/claim`, `POST /api/admin/directory/import` (en çok 2000 satır; mükerrer ad atlanır); test 25/25; canlıda doğrulandı. **KVKK/kaynak kararı:** yalnızca firma adı, sektör, şehir, web alınır; kişi verisi alınmaz; listeleri Fırat temin eder (dernek sitelerinden otomatik çekilmez). **Fırat'tan bekleniyor:** dernek üye listeleri (Excel/CSV: firma adı, sektör, şehir, web, kaynak). **Açık:** "bu firma kapandı / kaydı düzelt" bildirimi; sahipsiz sayfada "Bu firmayı davet et"; ücretli öne çıkarma (ileride).
