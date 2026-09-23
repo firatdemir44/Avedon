@@ -2,6 +2,7 @@
 // Üstte kenardan kenara marka bloğu (`surfaceBrand`), altında `surface0`
 // zeminde başlık, telefon / kod alanı ve düğmeler. Veri katmanı aynı: kod
 // isteme, doğrulama, oturum açma. Ham hex / ham px yok; ölçüler token'dan.
+import { TakyonMark } from '../../ui/TakyonMark';
 import React, { useState } from 'react';
 import { View, Text, ScrollView, KeyboardAvoidingView, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +21,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 // Logo dosyası 900×145; yüksekliği token'dan alıp genişliği orandan
 // hesaplıyoruz (web'de aspectRatio uygulanmıyordu).
-const LOGO_RATIO = 900 / 145;
 
 export function LoginScreen({ navigation }: Props) {
   const t = useTheme();
@@ -127,16 +127,12 @@ export function LoginScreen({ navigation }: Props) {
             }}
           >
             <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, alignSelf: 'center' }}>
-              {/* Orijinal Takyon logosu; lacivert zemin için harfleri beyaz sürüm
-                  (assets/brand, kaynak docs/orijinal-tasarim/logo). */}
-              <Image
-                source={require('../../../assets/brand/avedon-logo-light.png')}
-                style={{ height: logoHeight, width: Math.round(logoHeight * LOGO_RATIO), maxWidth: '100%' }}
-                resizeMode="contain"
-                accessible
-                accessibilityRole="header"
-                accessibilityLabel="Takyon"
-              />
+              {/* Takyon logosu: girdap işareti + aralıklı büyük harf yazı (logo kartındaki gibi).
+                  Eski Avedon yazılı görsel kaldırıldı; net logo dosyası gelince görselle değişecek. */}
+              <View accessible accessibilityRole="header" accessibilityLabel="Takyon" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+                <TakyonMark size={logoHeight} />
+                <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON</Text>
+              </View>
               <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>
                 Kaliteli kumaş aramanın yenilikçi yolu
               </Text>
