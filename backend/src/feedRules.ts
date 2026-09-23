@@ -220,7 +220,8 @@ export const NOT_TEXTILE_MESSAGE =
 // /api/health için: içerik denetimi gerçekten çalışıyor mu (6 saatte bir, sabit bir kedi cümlesiyle).
 let selfTest: { at: number; ok: boolean; detail: string } | null = null;
 export async function relevanceStatus() {
-  if (!selfTest || Date.now() - selfTest.at > 6 * 3_600_000) {
+  // Başarısızsa 2 dk sonra yeniden denenir (kredi yüklenince hemen görünsün); başarılıysa 6 saatte bir.
+  if (!selfTest || Date.now() - selfTest.at > (selfTest.ok ? 6 * 3_600_000 : 120_000)) {
     const r = await checkTextileRelevance({ body: 'Kedimiz bugün 3 yaşında oldu, doğum günü pastası yaptık.' });
     selfTest = { at: Date.now(), ok: r.checked && !r.textile, detail: r.checked ? r.reason : `denetim çalışmadı (${lastRelevanceError ?? r.reason})` };
   }
