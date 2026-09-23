@@ -18,6 +18,7 @@ export const iconMap = {
   user: 'person-outline',
   search: 'search-outline',
   back: 'arrow-back-outline',
+  up: 'arrow-up-outline',
   chevron: 'chevron-forward-outline',
   filter: 'funnel-outline',
   camera: 'camera-outline',

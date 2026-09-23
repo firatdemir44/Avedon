@@ -8,7 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Share, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useScrollToTop } from '@react-navigation/native';
 import type { MainTabScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
@@ -52,6 +52,11 @@ const SCOPE_KEY = 'avedon.feedScope';
 
 export function FeedScreen({ navigation }: Props) {
   const t = useTheme();
+  // Uzun akışta yukarı dönüş: "Ana sayfa" sekmesine yeniden dokunmak ya da "En üste" düğmesi.
+  const listRef = useRef<FlatList<any>>(null);
+  useScrollToTop(listRef);
+  const [showTop, setShowTop] = useState(false);
+  const scrollTop = useCallback(() => { haptics.light?.(); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }, []);
   const { user } = useSession();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [cursor, setCursor] = useState<FeedCursor | null>(null);
@@ -348,6 +353,12 @@ export function FeedScreen({ navigation }: Props) {
       />
       <Screen scroll={false} noPadding>
         <FlatList
+          ref={listRef}
+          onScroll={(e) => {
+            const far = e.nativeEvent.contentOffset.y > e.nativeEvent.layoutMeasurement.height * 1.5;
+            if (far !== showTop) setShowTop(far);
+          }}
+          scrollEventThrottle={100}
           data={loading ? [] : posts}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
@@ -422,6 +433,32 @@ export function FeedScreen({ navigation }: Props) {
             />
           )}
         />
+        {showTop ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="En üste çık"
+            onPress={scrollTop}
+            style={({ pressed }) => [
+              {
+                position: 'absolute',
+                right: t.space[4],
+                bottom: t.space[4],
+                minHeight: t.size.touchMin,
+                paddingHorizontal: t.space[4],
+                borderRadius: t.radius.full,
+                backgroundColor: t.colors.brand,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[2],
+                opacity: pressed ? 0.85 : 1,
+              },
+              t.shadowRaised,
+            ]}
+          >
+            <Icon name="up" color="onBrand" />
+            <Text style={[t.type.label14, { color: t.colors.onBrand }]}>En üste</Text>
+          </Pressable>
+        ) : null}
       </Screen>
     </View>
   );
