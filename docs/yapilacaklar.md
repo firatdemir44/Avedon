@@ -15,7 +15,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 9. **Danışman geri bildirimi** (Ticaret Bakanlığı destek taslağı).
 10. **İngiltere sicili anahtarı (Companies House, ücretsiz):** alıcı listesinde İngiltere firmaları için; tıklama yolları doğrulanıp tek seferde verilecek, Render `COMPANIES_HOUSE_KEY`.
 11. **Telefon kontrolleri:** sesli soru göstergesi, makine parkuru fotoğraftan aktarma (Melide listesi), asistandan asistana soru, tasarım düzeltmeleri, akış şikâyet/gizleme, Dünyayı Keşfet.
-11. **Dünyayı Keşfet B (aday alıcılar) telefonda kontrol:** ülke ayrıntısı → "Aday alıcıları gör" (Fransa: sicil + Wikidata; diğer ülkeler yalnız Wikidata markaları), ilk açılışta 1-2 dk "getiriliyor" yoklaması, takibe alma, Takip listem. BK sicili için `COMPANIES_HOUSE_KEY` (ücretsiz anahtar) Render ortamına girilince İngiltere de sicil kapsamına girer; girilince `/api/health` → `buyers.companiesHouseKeySet: true` olmalı.
+11. ~~Dünyayı Keşfet B telefonda kontrol~~ **GEÇTİ 2026-09-23 (Fırat: "sonuçlar harika").** Eski not: ülke ayrıntısı → "Aday alıcıları gör" (Fransa: sicil + Wikidata; diğer ülkeler yalnız Wikidata markaları), ilk açılışta 1-2 dk "getiriliyor" yoklaması, takibe alma, Takip listem. BK sicili için `COMPANIES_HOUSE_KEY` (ücretsiz anahtar) Render ortamına girilince İngiltere de sicil kapsamına girer; girilince `/api/health` → `buyers.companiesHouseKeySet: true` olmalı.
 
 ## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
 
