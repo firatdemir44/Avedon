@@ -19,6 +19,10 @@ export interface ColorTokens {
   brand: string;
   brandStrong: string;
   brandSoft: string;
+  // Takyon işaretinin mavileri (logo sanatı; tema değişse de aynı).
+  markLight: string;
+  markDark: string;
+  markFeather: string;
   onBrand: string;
   accent: string;
   accentSoft: string;
@@ -46,6 +50,9 @@ export const colorTokens: Record<ThemeName, ColorTokens> = {
     brand: '#1f3a5f',
     brandStrong: '#162b47',
     brandSoft: '#e4ebf5',
+    markLight: '#3fa9e0',
+    markDark: '#1b5e9e',
+    markFeather: '#4fb3e6',
     onBrand: '#ffffff',
     accent: '#b5562e',
     accentSoft: '#f7e9e1',
@@ -71,6 +78,9 @@ export const colorTokens: Record<ThemeName, ColorTokens> = {
     brand: '#3d6fb5',
     brandStrong: '#2f5a96',
     brandSoft: '#1e2c40',
+    markLight: '#3fa9e0',
+    markDark: '#1b5e9e',
+    markFeather: '#4fb3e6',
     onBrand: '#ffffff',
     accent: '#e0895f',
     accentSoft: '#3a2a22',

@@ -8,7 +8,7 @@ import { requireAuth } from '../middleware/auth';
 import { deleteMemory, readMemory, writeMemory } from '../assistant/memory';
 import { MEMORY_KEYS, memoryKeyDef } from '../assistant/memoryKeys';
 import { runAssistantTurn, toView } from '../assistant/run';
-import { PERSONAS, PERSONA_KEYS, greetingText, isPersonaKey, personaFor } from '../assistant/persona';
+import { ASSISTANT_NAME, LEGACY_PERSONA_KEY, greetingText } from '../assistant/persona';
 import { MAX_BUYER_QUESTIONS_PER_DAY } from '../assistant/buyer';
 import { notify } from '../notifications';
 import { makeHandle } from './handle';
@@ -179,24 +179,21 @@ assistantRouter.delete(
 
 // --- Kişilik ve karşılama (Adım 9) -------------------------------------------
 
-const personaOptions = () => PERSONA_KEYS.map((k) => ({ key: k, name: PERSONAS[k].name, tagline: PERSONAS[k].tagline }));
+// Kişilik seçimi kaldırıldı (2026-09-23). Uçlar eski uygulama sürümleri çökmesin
+// diye duruyor: her zaman "seçilmiş" tek kimlik döner, PUT hiçbir şey kaydetmez.
+const legacyPersona = { key: LEGACY_PERSONA_KEY, name: ASSISTANT_NAME, tagline: 'Tekstil ve maliyet asistanınız.' };
 
 assistantRouter.get(
   '/persona',
-  handle(async (req, res) => {
-    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { assistantPersona: true } });
-    const chosen = isPersonaKey(user?.assistantPersona) ? user!.assistantPersona : null;
-    res.json({ persona: chosen, effective: personaFor(chosen).key, options: personaOptions() });
+  handle(async (_req, res) => {
+    res.json({ persona: LEGACY_PERSONA_KEY, effective: LEGACY_PERSONA_KEY, options: [legacyPersona] });
   })
 );
 
 assistantRouter.put(
   '/persona',
-  handle(async (req, res) => {
-    const key = (req.body as { persona?: unknown })?.persona;
-    if (!isPersonaKey(key)) return res.status(400).json({ error: 'unknown_persona', options: PERSONA_KEYS });
-    await prisma.user.update({ where: { id: req.user!.id }, data: { assistantPersona: key } });
-    res.json({ persona: key, name: PERSONAS[key].name });
+  handle(async (_req, res) => {
+    res.json({ persona: LEGACY_PERSONA_KEY, name: ASSISTANT_NAME });
   })
 );
 
@@ -208,7 +205,7 @@ assistantRouter.get(
     const hourRaw = Number(req.query.hour);
     const hour = Number.isInteger(hourRaw) && hourRaw >= 0 && hourRaw <= 23 ? hourRaw : new Date().getHours();
     const [user, pendingIncoming, unreadMessages, memoryCount] = await Promise.all([
-      prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true, assistantPersona: true } }),
+      prisma.user.findUnique({ where: { id: me.id }, select: { firstName: true } }),
       me.companyId
         ? prisma.sampleRequest.count({ where: { product: { companyId: me.companyId }, status: 'talep_edildi' } })
         : Promise.resolve(0),
@@ -217,12 +214,10 @@ assistantRouter.get(
       }),
       me.companyId ? prisma.companyMemory.count({ where: { companyId: me.companyId } }) : Promise.resolve(0),
     ]);
-    const chosen = isPersonaKey(user?.assistantPersona) ? user!.assistantPersona : null;
-    const persona = personaFor(chosen);
     res.json({
-      persona: chosen,
-      name: persona.name,
-      text: greetingText(persona, { firstName: user?.firstName ?? null, hour, pendingIncoming, unreadMessages, memoryEmpty: memoryCount === 0 }),
+      persona: LEGACY_PERSONA_KEY,
+      name: ASSISTANT_NAME,
+      text: greetingText({ firstName: user?.firstName ?? null, hour, pendingIncoming, unreadMessages, memoryEmpty: memoryCount === 0 }),
       pendingIncoming,
       unreadMessages,
       memoryEmpty: memoryCount === 0,

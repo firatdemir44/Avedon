@@ -7,13 +7,15 @@ import { Icon, type AnyIconName } from './Icon';
 
 export interface QuickActionProps {
   label: string;
-  icon: AnyIconName;
+  icon?: AnyIconName;
+  /** Hazır ikon yerine özel çizim (ör. TakyonMark); verilirse `icon` yok sayılır. */
+  iconNode?: React.ReactNode;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
-export function QuickAction({ label, icon, onPress, style, testID }: QuickActionProps) {
+export function QuickAction({ label, icon, iconNode, onPress, style, testID }: QuickActionProps) {
   const t = useTheme();
   return (
     <Pressable
@@ -47,7 +49,7 @@ export function QuickAction({ label, icon, onPress, style, testID }: QuickAction
           justifyContent: 'center',
         }}
       >
-        <Icon name={icon} color="brand" />
+        {iconNode ?? (icon ? <Icon name={icon} color="brand" /> : null)}
       </View>
       <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
         {label}

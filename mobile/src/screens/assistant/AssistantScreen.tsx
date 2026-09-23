@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -16,22 +15,16 @@ import {
   createAssistantThread,
   createWatchRule,
   fetchAssistantGreeting,
-  fetchAssistantPersona,
   fetchAssistantThread,
-  fetchCompany,
   fetchSkills,
   sendAssistantMessage,
-  setAssistantPersona,
   setCompanyMemory,
   type AssistantGreeting,
   type AssistantMemorySuggestion,
   type AssistantMessage,
-  type AssistantPersonaKey,
-  type AssistantPersonaState,
   type AssistantWatchSuggestion,
 } from '../../api/client';
-import { AssistantAvatar, type AssistantAvatarState } from '../../components/AssistantAvatar';
-import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
+import { ASSISTANT_DISPLAY_NAME, AssistantAvatar, type AssistantAvatarState } from '../../components/AssistantAvatar';
 import { AssistantResultCard } from '../../components/ResultCard';
 import {
   AssistantBubble,
@@ -45,13 +38,12 @@ import {
 } from '../../components/assistant/ChatParts';
 import { RfqCandidatesCard, RfqSummaryCard } from '../../components/assistant/RfqAssistantCards';
 import { friendlyMessage } from '../../components/StateView';
-import { useSession } from '../../context/SessionContext';
 import { haptics } from '../../features/haptics';
 import { isSameCalendarDay } from '../../features/time';
 import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { consumeVoiceTurn, setVoicePersona, toggleSpeak } from '../../features/speech';
+import { consumeVoiceTurn, toggleSpeak } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
@@ -59,8 +51,8 @@ type Props = MainTabScreenProps<'AssistantTab'>;
 // Sekme ekranı: firma asistanı (Faz 1, Adım 5).
 // Sohbet kaydı sunucuda; cihazda yalnızca son sohbetin kimliği durur.
 //
-// Adım 9: asistanın adı ve yüzü var (İpek / Mert). Seçilmemişse sohbet yerine
-// seçim görünümü çıkar; karşılama sunucudan modelsiz gelir ve sohbete YAZILMAZ.
+// Asistanın tek kimliği "Takyon asistanı", yüzü uygulama simgesi (2026-09-23;
+// İpek/Mert seçimi kaldırıldı). Karşılama sunucudan modelsiz gelir ve sohbete YAZILMAZ.
 //
 // Yeni tasarım (DESIGN.md, 4. adım): ekran kendi `AppBar`ını çiziyor
 // (navigation başlığı gizlendi), balonlar marka/yüzey tonlarında, bakır
@@ -106,21 +98,11 @@ const SKILL_CHIPS: { label: string; starter: string }[] = [
   { label: 'Teklif topla', starter: 'Şu özellikte kumaş için teklif toplayalım: ' },
 ];
 
-// Firma adı üst bantta gösteriliyor; oturum boyunca bir kez çekilir.
-let cachedCompanyName: string | null = null;
-
-function personaLabel(key: AssistantPersonaKey, state: AssistantPersonaState | null): string {
-  const option = state?.options.find((item) => item.key === key);
-  if (option) return option.name;
-  return key === 'mert' ? 'Mert' : 'İpek';
-}
-
 type ChatItem = AssistantMessage & { local?: boolean };
 
 export function AssistantScreen({ navigation }: Props) {
   const t = useTheme();
   const chat = useChatStyles();
-  const { user } = useSession();
   const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<ChatItem[]>([]);
@@ -131,17 +113,11 @@ export function AssistantScreen({ navigation }: Props) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [skillCount, setSkillCount] = useState(FALLBACK_SKILL_COUNT);
-  const [companyName, setCompanyName] = useState<string | null>(cachedCompanyName);
   // Hafıza öneri kartının durumu: `${mesajId}:${anahtar}`.
   const [memoryState, setMemoryState] = useState<Record<string, 'saved' | 'dismissed' | 'error'>>({});
   // İzleme öneri kartının durumu: `${mesajId}:${sıra}` (hafıza kartıyla aynı desen).
   const [watchState, setWatchState] = useState<Record<string, 'saved' | 'dismissed' | 'error' | 'limit'>>({});
 
-  // Kişilik: null persona = kullanıcı henüz seçmedi.
-  const [persona, setPersona] = useState<AssistantPersonaState | null>(null);
-  const [personaReady, setPersonaReady] = useState(false);
-  const [savingPersona, setSavingPersona] = useState<AssistantPersonaKey | null>(null);
-  const [personaError, setPersonaError] = useState<string | null>(null);
   const [greeting, setGreeting] = useState<AssistantGreeting | null>(null);
   // Yanıt sonrası avatarın kısa süreli hali.
   const [replyState, setReplyState] = useState<'idle' | 'speaking' | 'result'>('idle');
@@ -158,19 +134,15 @@ export function AssistantScreen({ navigation }: Props) {
   // Sohbet balonlarının yanındaki avatar (satır yüksekliğiyle uyumlu).
   const chatAvatarSize = t.size.avatar;
 
-  const chosenPersona = persona?.persona ?? null;
-  const effectivePersona: AssistantPersonaKey = chosenPersona ?? persona?.effective ?? 'ipek';
-  // Sesli okuma kişiliğin sesiyle (İpek kadın, Mert erkek).
-  useEffect(() => setVoicePersona(effectivePersona), [effectivePersona]);
-  const personaName = personaLabel(effectivePersona, persona);
-  const subtitle = companyName ? `${companyName} · ${personaName}` : personaName;
+  const personaName = ASSISTANT_DISPLAY_NAME;
+  const subtitle = personaName;
 
   // Yeni tasarım: ekran kendi bandını çiziyor, react-navigation başlığı gizli.
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // Beceri sayısı ve firma adı: ekran başına bir kez, hata sessiz (kozmetik).
+  // Beceri sayısı: ekran başına bir kez, hata sessiz (kozmetik).
   useEffect(() => {
     let cancelled = false;
     fetchSkills()
@@ -178,43 +150,10 @@ export function AssistantScreen({ navigation }: Props) {
         if (!cancelled && skills.length) setSkillCount(skills.length);
       })
       .catch(() => {});
-    if (!cachedCompanyName && user?.companyId) {
-      fetchCompany(user.companyId)
-        .then(({ company }) => {
-          cachedCompanyName = company.name;
-          if (!cancelled) setCompanyName(company.name);
-        })
-        .catch(() => {});
-    }
     return () => {
       cancelled = true;
     };
-  }, [user?.companyId]);
-
-  // Kişilik her odakta okunur: "Firma hafızası" ekranından değiştirilmiş olabilir.
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      fetchAssistantPersona()
-        .then((state) => {
-          if (!cancelled) setPersona(state);
-        })
-        .catch(() => {
-          // Sunucuya ulaşılamazsa seçim ekranında kilitlenmeyelim: varsayılanla devam.
-          if (!cancelled) {
-            setPersona(
-              (prev) => prev ?? { persona: 'ipek', effective: 'ipek', options: FALLBACK_PERSONA_OPTIONS }
-            );
-          }
-        })
-        .finally(() => {
-          if (!cancelled) setPersonaReady(true);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+  }, []);
 
   const flashAvatar = useCallback((next: 'speaking' | 'result') => {
     if (replyTimerRef.current) clearTimeout(replyTimerRef.current);
@@ -236,7 +175,6 @@ export function AssistantScreen({ navigation }: Props) {
 
   // Karşılama modelsiz ve anında; sohbet kaydına YAZILMAZ, yalnızca gösterilir.
   useEffect(() => {
-    if (!chosenPersona) return;
     let cancelled = false;
     fetchAssistantGreeting(new Date().getHours())
       .then((data) => {
@@ -250,7 +188,7 @@ export function AssistantScreen({ navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [chosenPersona, flashAvatar]);
+  }, [flashAvatar]);
 
   const loadThread = useCallback(async (id: string | null) => {
     setSendError(null);
@@ -306,26 +244,6 @@ export function AssistantScreen({ navigation }: Props) {
     listRef.current?.scrollToEnd({ animated: true });
   }, []);
 
-  const choosePersona = useCallback(async (key: AssistantPersonaKey) => {
-    setSavingPersona(key);
-    setPersonaError(null);
-    try {
-      const { persona: saved } = await setAssistantPersona(key);
-      haptics.success();
-      setPersona((prev) => ({
-        persona: saved,
-        effective: saved,
-        options: prev?.options ?? FALLBACK_PERSONA_OPTIONS,
-      }));
-      setGreeting(null);
-    } catch (err) {
-      haptics.error();
-      setPersonaError(friendlyMessage(err, 'Seçim kaydedilemedi, tekrar deneyin.'));
-    } finally {
-      setSavingPersona(null);
-    }
-  }, []);
-
   const send = useCallback(
     async (text: string) => {
       const question = text.trim();
@@ -358,7 +276,7 @@ export function AssistantScreen({ navigation }: Props) {
         const turn = await sendAssistantMessage(id, question);
         setMessages((prev) => [...prev, turn.userMessage, turn.message]);
         setPending(null);
-        // Soru sesle sorulduysa cevap İpek/Mert sesiyle kendiliğinden okunur.
+        // Soru sesle sorulduysa cevap asistan sesiyle kendiliğinden okunur.
         if (consumeVoiceTurn() && turn.message.text) toggleSpeak(`auto-${turn.message.id}`, turn.message.text);
         retryTextRef.current = '';
         // Hesap kartı varsa avatar "sonuç" halini alır (kart öne çıkar).
@@ -457,7 +375,6 @@ export function AssistantScreen({ navigation }: Props) {
           {dayChip}
           <View style={chat.assistantRow}>
             <AssistantAvatar
-              persona={effectivePersona}
               size={chatAvatarSize}
               state={isLast ? avatarState : 'idle'}
               accessibilityLabel={`${personaName}, asistan`}
@@ -562,7 +479,6 @@ export function AssistantScreen({ navigation }: Props) {
       data,
       dismissSuggestion,
       dismissWatchSuggestion,
-      effectivePersona,
       memoryState,
       navigation,
       personaName,
@@ -610,7 +526,7 @@ export function AssistantScreen({ navigation }: Props) {
     />
   );
 
-  if (status === 'loading' || !personaReady) {
+  if (status === 'loading') {
     return (
       <View style={chat.screen}>
         {bar}
@@ -619,46 +535,6 @@ export function AssistantScreen({ navigation }: Props) {
           <SkeletonText lines={3} />
           <Skeleton width="80%" height={t.size.control} />
         </View>
-      </View>
-    );
-  }
-
-  // Kişilik seçilmeden sohbet açılmaz: uygulama cinsiyet sormaz, yüz seçtirir.
-  if (chosenPersona === null) {
-    return (
-      <View style={chat.screen}>
-        {bar}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            padding: t.space[4],
-            gap: t.space[4],
-            alignItems: 'center',
-          }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, gap: t.space[3], minWidth: 0 }}>
-            <Text
-              accessibilityRole="header"
-              style={[t.type.title22, { color: t.colors.ink, textAlign: 'center' }]}
-            >
-              Kim yardımcı olsun?
-            </Text>
-            <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center' }]}>
-              Asistanınızın bir adı ve yüzü olsun. İkisi de aynı hesapları yapar, aynı kataloğu bilir; sonra
-              değiştirebilirsiniz.
-            </Text>
-            <PersonaPicker
-              options={persona?.options?.length ? persona.options : FALLBACK_PERSONA_OPTIONS}
-              value={null}
-              onSelect={(key) => void choosePersona(key)}
-              busyKey={savingPersona}
-              disabled={savingPersona !== null}
-              avatarSize={t.size.toolBox}
-            />
-            {personaError ? <ErrorBanner message={personaError} /> : null}
-          </View>
-        </ScrollView>
       </View>
     );
   }
@@ -700,7 +576,6 @@ export function AssistantScreen({ navigation }: Props) {
             <View style={{ gap: t.space[4] }}>
               <View style={{ alignItems: 'center', gap: t.space[3] }}>
                 <AssistantAvatar
-                  persona={effectivePersona}
                   size={t.size.thumb + t.space[10]}
                   state={avatarState}
                   accessibilityLabel={`${personaName}, asistan`}
@@ -734,7 +609,6 @@ export function AssistantScreen({ navigation }: Props) {
               {sending ? (
                 <View style={chat.assistantRow}>
                   <AssistantAvatar
-                    persona={effectivePersona}
                     size={chatAvatarSize}
                     state="thinking"
                     accessibilityLabel={`${personaName} düşünüyor`}

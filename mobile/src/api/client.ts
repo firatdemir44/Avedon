@@ -1751,40 +1751,13 @@ export function deleteCompanyMemory(key: string) {
   return request<void>(`/assistant/memory/${encodeURIComponent(key)}`, { method: 'DELETE' });
 }
 
-// --- Asistan kişiliği (Faz 1, Adım 9) ---------------------------------------
-// İki karakter: İpek ve Mert. Kullanıcı ilk açılışta seçer (persona null),
-// sonra "Firma hafızası" ekranından değiştirir; uygulama cinsiyet sormaz.
-
-export type AssistantPersonaKey = 'ipek' | 'mert';
-
-export interface AssistantPersonaOption {
-  key: AssistantPersonaKey;
-  name: string;
-  tagline: string;
-}
-
-export interface AssistantPersonaState {
-  // null: kullanıcı henüz seçmedi (seçim ekranı gösterilir).
-  persona: AssistantPersonaKey | null;
-  // Seçilmediyse sunucunun kullandığı varsayılan.
-  effective: AssistantPersonaKey;
-  options: AssistantPersonaOption[];
-}
-
-export function fetchAssistantPersona() {
-  return request<AssistantPersonaState>('/assistant/persona');
-}
-
-export function setAssistantPersona(persona: AssistantPersonaKey) {
-  return request<{ persona: AssistantPersonaKey; name: string }>('/assistant/persona', {
-    method: 'PUT',
-    body: JSON.stringify({ persona }),
-  });
-}
+// --- Asistan karşılaması ------------------------------------------------------
+// Tek kimlik "Takyon asistanı" (2026-09-23; İpek/Mert seçimi kaldırıldı).
 
 // Karşılama metni modelsiz üretilir (anında, maliyetsiz); saat cihazdan gider.
 export interface AssistantGreeting {
-  persona: AssistantPersonaKey | null;
+  // Eski sürüm uyumluluğu için sunucu hâlâ gönderiyor; kullanılmıyor.
+  persona?: string | null;
   name: string;
   text: string;
   pendingIncoming: number;

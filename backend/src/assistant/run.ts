@@ -7,7 +7,7 @@ import { LLM_MODELS, LlmNotConfiguredError, getAnthropic, isLlmMock } from '../l
 import { buildBuyerTools, buyerSystemPrompt } from './buyer';
 import { readMemory } from './memory';
 import { mockAssistantTurn } from './mock';
-import { personaBlock, personaFor } from './persona';
+import { identityBlock } from './persona';
 import { ASSISTANT_SYSTEM_PROMPT, memoryBlock } from './system';
 import { buildTools, type MemorySuggestion, type ToolCallRecord, type WatchSuggestion } from './tools';
 
@@ -99,9 +99,8 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
     prisma.assistantMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { apiJson: true } }),
     companyId && !sellerCompany ? readMemory(companyId) : Promise.resolve([]),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
-    prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, assistantPersona: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
   ]);
-  const persona = personaFor(user?.assistantPersona);
   const history = historyFromRows(rows);
   const userApi: ApiMessage = { role: 'user', content: text };
   const messages: ApiMessage[] = [...history, userApi];
@@ -131,8 +130,8 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
         ? [{ type: 'text', text: buyerSystemPrompt(sellerCompany, user?.firstName ?? null) }]
         : [
         { type: 'text', text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
-        // Kişilik (İpek / Mert) kullanıcıya özel: önbellek dışı blokta.
-        { type: 'text', text: `${personaBlock(persona, user?.firstName ?? null)}
+        // Kimlik + kullanıcı adı kullanıcıya özel: önbellek dışı blokta.
+        { type: 'text', text: `${identityBlock(user?.firstName ?? null)}
 
 ${memoryBlock(memory, company?.name ?? null)}` },
       ],

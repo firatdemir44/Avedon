@@ -1,20 +1,14 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
   deleteCompanyMemory,
-  fetchAssistantPersona,
   fetchCompanyMemory,
-  setAssistantPersona,
   setCompanyMemory,
-  type AssistantPersonaKey,
-  type AssistantPersonaState,
   type MemoryEntry,
   type MemoryKeyDef,
 } from '../../api/client';
-import { AssistantAvatar } from '../../components/AssistantAvatar';
-import { FALLBACK_PERSONA_OPTIONS, PersonaPicker } from '../../components/PersonaPicker';
 import { friendlyMessage } from '../../components/StateView';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
@@ -38,10 +32,6 @@ type Props = RootStackScreenProps<'AssistantMemory'>;
 // Firma hafızası: asistanın hesaplarda varsayılan olarak ÖNERDİĞİ değerler
 // (kur, fason ücreti, fire, kâr oranı...). Asistan buraya kendisi yazmaz;
 // yazma ya sohbetteki öneri kartından ya da bu ekrandan olur.
-//
-// Adım 9: ekranın üstünde "Asistan" bölümü — seçili karakter (İpek / Mert) ve
-// "Değiştir". Kişilik kullanıcıya bağlı, firmaya değil: firması olmayan
-// kullanıcıda da görünür.
 //
 // Yeni tasarım (DESIGN.md, 4. adım): kendi `AppBar`ı (navigation başlığı
 // gizlendi), `Screen` iskeleti, `ListRow` / `Card` / `Input` / `Button`.
@@ -149,15 +139,11 @@ export function AssistantMemoryScreen({ navigation }: Props) {
 
   const bar = <AppBar title="Firma hafızası" leading="back" onBack={() => navigation.goBack()} />;
 
-  // Kişilik bölümü her durumda üstte kalır (yükleniyor, 403, hata dahil).
-  const personaSection = <PersonaSection />;
-
   if (status === 'loading') {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
         <Screen>
-          {personaSection}
           <SkeletonRow />
           <SkeletonRow />
           <SkeletonRow />
@@ -172,7 +158,6 @@ export function AssistantMemoryScreen({ navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
         <Screen>
-          {personaSection}
           <EmptyState
             icon="business-outline"
             title="Firma hafızası firmaya bağlı"
@@ -188,7 +173,6 @@ export function AssistantMemoryScreen({ navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
         <Screen>
-          {personaSection}
           <EmptyState
             icon="warning"
             title="Firma hafızası alınamadı"
@@ -207,8 +191,6 @@ export function AssistantMemoryScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       {bar}
       <Screen>
-        {personaSection}
-
         {/* Faz 2, Adım 3: satıcı asistanının alıcılara verdiği hazır cevaplar. */}
         <View style={{ gap: t.space[3] }}>
           <SectionTitle title="Alıcı soruları" />
@@ -305,96 +287,3 @@ export function AssistantMemoryScreen({ navigation }: Props) {
   );
 }
 
-// Asistan karakteri: seçili yüz + "Değiştir" (aynı iki kart). Kişilik kullanıcıya
-// bağlı olduğu için firma hafızası yüklenemese de bu bölüm çalışır.
-function PersonaSection() {
-  const t = useTheme();
-  const [state, setState] = useState<AssistantPersonaState | null>(null);
-  const [ready, setReady] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [savingKey, setSavingKey] = useState<AssistantPersonaKey | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchAssistantPersona()
-      .then((value) => {
-        if (!cancelled) setState(value);
-      })
-      .catch(() => {
-        if (!cancelled) setError('Asistan bilgisi alınamadı.');
-      })
-      .finally(() => {
-        if (!cancelled) setReady(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const options = state?.options?.length ? state.options : FALLBACK_PERSONA_OPTIONS;
-  const current: AssistantPersonaKey = state?.persona ?? state?.effective ?? 'ipek';
-  const option = options.find((item) => item.key === current);
-
-  const select = useCallback(
-    async (key: AssistantPersonaKey) => {
-      setSavingKey(key);
-      setError(null);
-      try {
-        const { persona } = await setAssistantPersona(key);
-        haptics.success();
-        setState((prev) => ({ persona, effective: persona, options: prev?.options ?? FALLBACK_PERSONA_OPTIONS }));
-        setOpen(false);
-      } catch (err) {
-        haptics.error();
-        setError(friendlyMessage(err, 'Değiştirilemedi, tekrar deneyin.'));
-      } finally {
-        setSavingKey(null);
-      }
-    },
-    []
-  );
-
-  if (!ready) return null;
-
-  return (
-    <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Asistan" />
-      <Card style={{ gap: t.space[3] }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3], minWidth: 0 }}>
-          <AssistantAvatar persona={current} size={t.size.control} />
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={1}>
-              {option?.name ?? (current === 'mert' ? 'Mert' : 'İpek')}
-            </Text>
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]} numberOfLines={2}>
-              {option?.tagline ?? ''}
-            </Text>
-          </View>
-          <Button
-            kind="secondary"
-            label={open ? 'Kapat' : 'Değiştir'}
-            onPress={() => setOpen((value) => !value)}
-            accessibilityLabel={open ? 'Karakter seçimini kapat' : 'Asistan karakterini değiştir'}
-          />
-        </View>
-        {open ? (
-          <PersonaPicker
-            options={options}
-            value={state?.persona ?? null}
-            onSelect={(key) => void select(key)}
-            busyKey={savingKey}
-            disabled={savingKey !== null}
-            avatarSize={t.size.thumb}
-          />
-        ) : null}
-        {error ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-            <Icon name="warning" size={t.size.iconSm} color="danger" />
-            <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
-          </View>
-        ) : null}
-      </Card>
-    </View>
-  );
-}

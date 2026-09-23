@@ -43,3 +43,4 @@ export { StatBox } from './StatBox';
 export type { StatBoxProps } from './StatBox';
 export { TabBar, TabBarFromNavigation, routeIcons } from './TabBar';
 export type { TabBarProps, TabItem, TabBarFromNavigationProps } from './TabBar';
+export { TakyonMark } from './TakyonMark';
