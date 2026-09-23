@@ -343,7 +343,7 @@ export function ExportRadarScreen({ navigation }: Props) {
   ) : (
     <View style={{ gap: t.space[3] }}>
       <SectionTitle title="3. Pazarlar" linkLabel="Bu ekran nasıl okunur?" onLinkPress={() => setHelpOpen(true)} />
-      {result?.overview && result.overview.top.length ? <OverviewCard overview={result.overview} /> : null}
+      {result?.overview && result.overview.top.length ? <OverviewCard overview={result.overview} pendingCount={pendingCount} /> : null}
       {pendingCount > 0 ? (
         <View
           accessibilityLiveRegion="polite"
@@ -565,14 +565,14 @@ const HELP: { title: string; lines: string[] }[] = [
   },
 ];
 
-function OverviewCard({ overview }: { overview: ExportMarketsOverview }) {
+function OverviewCard({ overview, pendingCount }: { overview: ExportMarketsOverview; pendingCount: number }) {
   const t = useTheme();
   return (
     <Card>
       <View style={{ gap: t.space[3] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
           <Icon name="trophy-outline" color="brand" />
-          <Text style={[t.type.title18, { color: t.colors.ink, flex: 1 }]}>Sizin için en iyi 3 pazar</Text>
+          <Text style={[t.type.title18, { color: t.colors.ink, flex: 1 }]}>{overview.top.length >= 3 ? "Sizin için en iyi 3 pazar" : overview.top.length === 1 ? "Sizin için en iyi pazar" : `Sizin için en iyi ${overview.top.length} pazar`}</Text>
         </View>
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{overview.headline}</Text>
         {overview.top.map((m, i) => (
@@ -590,6 +590,7 @@ function OverviewCard({ overview }: { overview: ExportMarketsOverview }) {
             </View>
           </View>
         ))}
+        {overview.top.length < 3 ? (<Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{pendingCount > 0 ? `Diğer ülkelerin verisi geliyor (${pendingCount}); liste kendiliğinden güncellenecek.` : "Bu bölgede puanlanabilen başka ülke yok; üstten başka bir bölge seçerek karşılaştırabilirsiniz."}</Text>) : null}
         {overview.winnableUsd >= 1e6 ? (
           <View
             style={{
