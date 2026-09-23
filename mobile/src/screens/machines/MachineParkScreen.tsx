@@ -26,6 +26,7 @@ import { toInputNumber } from '../../features/calculators/parse';
 import { groupMachines, machineSummary } from '../../features/machines/catalog';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Button,
   Card,
@@ -44,6 +45,7 @@ const NUMBER_PATTERN = /^\d+([.,]\d+)?$/;
 
 export function MachineParkScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const companyId = user?.companyId ?? null;
 
@@ -188,7 +190,7 @@ export function MachineParkScreen({ navigation }: Props) {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl(refreshing, refresh)}
         >

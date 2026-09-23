@@ -18,6 +18,7 @@ import { refreshControl } from '../../components/refresh';
 import { formatDateTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -43,6 +44,7 @@ const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
 export function SampleRequestTrackingScreen({ route, navigation }: Props) {
   const { sampleRequestId } = route.params;
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchSampleRequestTimeline(sampleRequestId)
   );
@@ -153,7 +155,7 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ gap: t.space[6], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ gap: t.space[6], paddingBottom: bottomPad }}
           refreshControl={refreshControl(refreshing, refresh)}
         >
           {/* Özet: ürün kodu + güncel durum rozeti, firma, teslim şekli, not. */}

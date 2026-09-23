@@ -1,6 +1,6 @@
 // Katalog / arama ekranı — yeni tasarım sistemi (DESIGN.md, artboard 2).
-// Düzen: AppBar "Katalog" (sağda fotoğrafla ara + süzgeç) · 48px arama kutusu ·
-// kapsam ve çeşit çipleri · "N sonuç" + sıralama · ProductCard listesi.
+// Düzen: AppBar "Katalog" (sağda fotoğrafla ara + teklif için seç) · 48px arama kutusu ·
+// tek satır çip (süzgeç · kapsam · çeşit) · "N sonuç" + sıralama · ProductCard listesi.
 // Veri/işlev katmanı (api çağrıları, süzgeç, izleme, teklif seçimi, iplik
 // dizini, sayfa parametreleri) eski sürümden aynen korunur; yalnızca görünüm
 // yeniden çizildi. Ham hex / ham px yok: her değer useTheme() token'ından.
@@ -38,6 +38,7 @@ import { YarnDirectory } from '../yarns/YarnDirectoryScreen';
 import type { Company, Product } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   BottomSheet,
@@ -123,8 +124,11 @@ function useProductImage(productId: string, hasImage: boolean) {
 
 export function ProductListScreen({ navigation, route }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const [query, setQuery] = useState('');
+  // Kullanım alanı kısayolları ve diğer süzgeçler alt sayfada (tasarım incelemesi 2026-09-23).
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [filters, setFilters] = useState<ProductFilters>(EMPTY_FILTERS);
   const [products, setProducts] = useState<Product[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -364,6 +368,7 @@ export function ProductListScreen({ navigation, route }: Props) {
   const applyUsageShortcut = (key: string) => {
     haptics.selection();
     setFilters((prev) => ({ ...prev, usages: [key] }));
+    setFilterSheetOpen(false);
   };
 
   // "Bu aramayı izle" arama kutusunda en az iki karakter varken de çıkar.
@@ -420,47 +425,86 @@ export function ProductListScreen({ navigation, route }: Props) {
     </View>
   );
 
-  // Kapsam çipleri: Kumaş | İplik (+ teklif seçim kipi ve giriş gerektiren kısayollar).
+  // Tek satır, yatay kaydırılır: süzgeç düğmesi · Kumaş | İplik · çeşitler
+  // (tasarım incelemesi 2026-09-23). "Teklif için seç" üst bantta; kullanım
+  // alanı, Fason kapasite ve Firmam süzgeç alt sayfasında.
+  const activeFilterCount = chips.length;
   const scopeChips = (
     <ChipRow style={gutter}>
+      <Chip
+        label={activeFilterCount ? `Süzgeç (${activeFilterCount})` : 'Süzgeç'}
+        icon="filter"
+        selected={activeFilterCount > 0}
+        onPress={() => setFilterSheetOpen(true)}
+      />
       <Chip label="Kumaş" icon="fabric" selected={domain === 'kumas'} onPress={() => changeDomain('kumas')} />
       <Chip label="İplik" icon="yarn" selected={domain === 'iplik'} onPress={() => changeDomain('iplik')} />
-      {user ? (
-        <Chip
-          label={selection.active ? 'Seçmeyi bırak' : 'Teklif için seç'}
-          icon={selection.active ? 'x' : 'check'}
-          selected={selection.active}
-          onPress={() => {
-            haptics.selection();
-            if (selection.active) selection.cancel();
-            else selection.start();
-          }}
-        />
+      {domain === 'kumas' && typeGroups.length > 0 ? (
+        <Chip label="Tümü" selected={!inOpenFolder} onPress={() => chooseType(null)} />
       ) : null}
-      {user ? (
-        <Chip label="Fason kapasite" icon="machine" onPress={() => navigation.navigate('CapacitySearch')} />
-      ) : null}
-      {user?.companyId ? (
-        <Chip label="Firmam" icon="user" onPress={() => navigation.navigate('CompanyProfile')} />
-      ) : null}
+      {domain === 'kumas'
+        ? typeGroups.map((g) => (
+            <Chip
+              key={g.type}
+              label={`${TYPE_LABELS[g.type]} (${g.count})`}
+              selected={inOpenFolder && openType === g.type}
+              onPress={() => chooseType(g.type)}
+            />
+          ))
+        : null}
     </ChipRow>
   );
 
-  // Çeşit çipleri (eski "Tümü | Çeşitler" seçimi + klasörler).
-  const typeChips =
-    typeGroups.length > 0 ? (
-      <ChipRow style={gutter}>
-        <Chip label="Tümü" selected={!inOpenFolder} onPress={() => chooseType(null)} />
-        {typeGroups.map((g) => (
-          <Chip
-            key={g.type}
-            label={`${TYPE_LABELS[g.type]} (${g.count})`}
-            selected={inOpenFolder && openType === g.type}
-            onPress={() => chooseType(g.type)}
-          />
-        ))}
-      </ChipRow>
-    ) : null;
+  const filterSheet = (
+    <BottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title="Süzgeçler">
+      {domain === 'kumas' && usageGroups.length > 0 ? (
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Kullanım alanı</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+            {usageGroups.map((g) => (
+              <Chip
+                key={g.key}
+                label={`${g.label} (${g.count})`}
+                selected={filters.usages.includes(g.key)}
+                onPress={() => applyUsageShortcut(g.key)}
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+      <Button
+        kind="secondary"
+        icon="filter"
+        fullWidth
+        label="Tüm süzgeçler"
+        onPress={() => {
+          setFilterSheetOpen(false);
+          openFilters();
+        }}
+      />
+      {user ? (
+        <ListRow
+          title="Fason kapasite"
+          left={<Icon name="machine" color="brand" />}
+          onPress={() => {
+            setFilterSheetOpen(false);
+            navigation.navigate('CapacitySearch');
+          }}
+        />
+      ) : null}
+      {user?.companyId ? (
+        <ListRow
+          title="Firmam"
+          left={<Icon name="user" color="brand" />}
+          divider={false}
+          onPress={() => {
+            setFilterSheetOpen(false);
+            navigation.navigate('CompanyProfile');
+          }}
+        />
+      ) : null}
+    </BottomSheet>
+  );
 
   const subtypeChips =
     inOpenFolder && subtypeGroups.length > 0 ? (
@@ -475,15 +519,6 @@ export function ProductListScreen({ navigation, route }: Props) {
               setOpenSubtype(g.key);
             }}
           />
-        ))}
-      </ChipRow>
-    ) : null;
-
-  const usageChips =
-    !inOpenFolder && usageGroups.length > 0 && filters.usages.length === 0 ? (
-      <ChipRow style={gutter}>
-        {usageGroups.map((g) => (
-          <Chip key={g.key} label={`${g.label} (${g.count})`} onPress={() => applyUsageShortcut(g.key)} />
         ))}
       </ChipRow>
     ) : null;
@@ -670,12 +705,19 @@ export function ProductListScreen({ navigation, route }: Props) {
               },
             ]
           : []),
-        {
-          icon: 'filter' as const,
-          label: chips.length ? `Süzgeçler, ${chips.length} süzgeç etkin` : 'Süzgeçler',
-          onPress: openFilters,
-          dot: chips.length > 0,
-        },
+        ...(user
+          ? [
+              {
+                icon: (selection.active ? 'x' : 'check') as 'check',
+                label: selection.active ? 'Seçmeyi bırak' : 'Teklif için seç',
+                onPress: () => {
+                  haptics.selection();
+                  if (selection.active) selection.cancel();
+                  else selection.start();
+                },
+              },
+            ]
+          : []),
       ]}
     />
   );
@@ -723,6 +765,7 @@ export function ProductListScreen({ navigation, route }: Props) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {appBar}
+        {filterSheet}
         <View style={{ paddingTop: t.space[3] }}>{scopeChips}</View>
         <View style={{ flex: 1 }}>
           <YarnDirectory
@@ -738,12 +781,11 @@ export function ProductListScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       {appBar}
+      {filterSheet}
       <Screen scroll={false} noPadding contentStyle={{ gap: t.space[3] }} sticky={rfqBar}>
         {searchBox}
         {scopeChips}
-        {typeChips}
         {subtypeChips}
-        {usageChips}
         {filterChips}
         {selection.active
           ? notice('Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.', 'info')
@@ -760,7 +802,7 @@ export function ProductListScreen({ navigation, route }: Props) {
             keyExtractor={(item) => item.id}
             keyboardShouldPersistTaps="handled"
             refreshControl={refresh}
-            contentContainerStyle={{ gap: t.space[3], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ gap: t.space[3], paddingBottom: bottomPad }}
             ListHeaderComponent={companiesHeader}
             ListEmptyComponent={emptyState}
             renderItem={({ item }) => (

@@ -14,12 +14,13 @@ import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
-import { EmptyState, Icon, ListRow, SkeletonRow } from '../../ui';
+import { useBottomPadding, EmptyState, Icon, ListRow, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewConversation'>;
 
 export function NewConversationScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
   );
@@ -87,7 +88,7 @@ export function NewConversationScreen({ navigation }: Props) {
         contentContainerStyle={{
           paddingHorizontal: t.space[4],
           paddingTop: t.space[3],
-          paddingBottom: t.space[10],
+          paddingBottom: bottomPad,
         }}
         refreshControl={refreshControl(refreshing, refresh, t)}
         ListHeaderComponent={

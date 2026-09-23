@@ -14,12 +14,13 @@ import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Connections'>;
 
 export function ConnectionsListScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchConnections().then(({ connections }) => connections)
   );
@@ -57,7 +58,7 @@ export function ConnectionsListScreen({ navigation }: Props) {
         data={connections}
         keyExtractor={(item) => item.connectionId}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>

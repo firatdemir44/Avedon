@@ -41,6 +41,7 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -202,6 +203,7 @@ function Notice({
 // (`request.role`), istemci karar vermiyor.
 export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { requestId } = route.params;
   const { data: request, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchQuoteRequest(requestId).then((res) => res.request)
@@ -473,7 +475,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
     <Screen scroll={false} noPadding sticky={sticky}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad, gap: t.space[6] }}
         keyboardShouldPersistTaps="handled"
         refreshControl={refreshControl(refreshing, refresh)}
       >

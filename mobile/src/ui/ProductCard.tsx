@@ -73,15 +73,18 @@ export function ProductCard({
           </Text>
         ) : null}
         {companyName ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flexShrink: 1 }]}>
-              {companyName}
-            </Text>
+          // Firma adı kısaltılmaz (satır kırar); rozet bir alt satırda.
+          <View style={{ gap: t.space[1], alignItems: 'flex-start', minWidth: 0 }}>
+            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{companyName}</Text>
             {companyVerified ? <Badge kind="verified" /> : null}
           </View>
         ) : null}
       </View>
-      {onPress ? <Icon name="chevron" color="ink3" /> : null}
+      {onPress ? (
+        <View style={{ alignSelf: 'center' }}>
+          <Icon name="chevron" color="ink3" />
+        </View>
+      ) : null}
     </>
   );
 

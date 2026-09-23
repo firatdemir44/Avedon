@@ -21,6 +21,7 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import type { Product } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   Button,
   Chip,
   ChipRow,
@@ -96,6 +97,7 @@ function useProductImage(productId: string, hasImage: boolean) {
 
 export function GlobalSearchScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<GlobalSearchResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -213,7 +215,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: t.space[10], gap: t.space[6] }}
+        contentContainerStyle={{ paddingBottom: bottomPad, gap: t.space[6] }}
         keyboardShouldPersistTaps="handled"
       >
         {error ? (

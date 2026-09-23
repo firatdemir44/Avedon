@@ -13,7 +13,7 @@ import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'CompanyQuestions'>;
 
@@ -26,6 +26,7 @@ type Props = RootStackScreenProps<'CompanyQuestions'>;
 
 export function CompanyQuestionsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchCompanyQuestions);
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -226,7 +227,7 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: t.space[4],
-          paddingBottom: t.space[10],
+          paddingBottom: bottomPad,
           paddingHorizontal: t.space[4],
           alignItems: 'center',
         }}

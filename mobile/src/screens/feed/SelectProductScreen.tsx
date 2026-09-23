@@ -14,6 +14,7 @@ import { categoryLabel } from '../../features/products/catalog';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Button,
   EmptyState,
@@ -56,6 +57,7 @@ function useProductImage(productId: string, hasImage: boolean) {
 
 export function SelectProductScreen({ navigation, route }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const selectedId = route.params?.selectedId ?? null;
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<MyProductOption[]>([]);
@@ -177,7 +179,7 @@ export function SelectProductScreen({ navigation, route }: Props) {
             style={{ flex: 1 }}
             contentContainerStyle={{
               paddingHorizontal: t.space[4],
-              paddingBottom: t.space[10],
+              paddingBottom: bottomPad,
               gap: t.space[3],
             }}
             keyboardShouldPersistTaps="handled"

@@ -15,7 +15,7 @@ import { PhoneVerificationScreen } from '../screens/onboarding/PhoneVerification
 import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { VerificationScreen } from '../screens/company/VerificationScreen';
-import { CompaniesDirectoryScreen } from '../screens/companies/CompaniesDirectoryScreen';
+import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { ExportRadarScreen } from '../screens/export/ExportRadarScreen';
 import { ClaimCompanyScreen } from '../screens/companies/ClaimCompanyScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
@@ -211,7 +211,7 @@ export function RootNavigator() {
               // başka firma kendi adı.
               options={{ headerShown: true, title: 'Firma' }}
             />
-            <Stack.Screen name="CompaniesDirectory" component={CompaniesDirectoryScreen} />
+            <Stack.Screen name="Calculators" component={CalculatorsListScreen} />
             <Stack.Screen name="ExportRadar" component={ExportRadarScreen} />
             <Stack.Screen name="ClaimCompany" component={ClaimCompanyScreen} />
             <Stack.Screen

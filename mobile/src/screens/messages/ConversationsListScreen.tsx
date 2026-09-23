@@ -17,6 +17,7 @@ import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   EmptyState,
   Icon,
@@ -32,6 +33,7 @@ const REFRESH_INTERVAL_MS = 15000;
 
 export function ConversationsListScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const [query, setQuery] = useState('');
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -61,14 +63,18 @@ export function ConversationsListScreen({ navigation }: Props) {
 
   const banner = status === 'ready' && error ? friendlyMessage(error, 'Mesajlar alınamadı') : null;
 
+  // Liste boşken arama kutusu gösterilmez (tasarım incelemesi 2026-09-23).
+  const hasConversations = (data?.length ?? 0) > 0;
   const header = (
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
-      <SearchBox
-        placeholder="Mesajlarda ara"
-        accessibilityLabel="Mesajlarda ara"
-        value={query}
-        onChangeText={setQuery}
-      />
+      {hasConversations ? (
+        <SearchBox
+          placeholder="Mesajlarda ara"
+          accessibilityLabel="Mesajlarda ara"
+          value={query}
+          onChangeText={setQuery}
+        />
+      ) : null}
       {banner ? (
         <View
           style={{
@@ -124,7 +130,7 @@ export function ConversationsListScreen({ navigation }: Props) {
             keyExtractor={(item) => item.id}
             style={{ flex: 1 }}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
             refreshControl={refreshControl(refreshing, refresh)}
             ListHeaderComponent={header}
             ListEmptyComponent={

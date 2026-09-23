@@ -18,6 +18,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   EmptyState,
@@ -45,6 +46,7 @@ const DEAL_BADGE: Record<DealStatus, BadgeKind> = {
 
 export function DealsScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
   const [role, setRole] = useState<Role>(route.params?.role === 'seller' && hasCompany ? 'seller' : 'buyer');
@@ -149,7 +151,7 @@ export function DealsScreen({ route, navigation }: Props) {
             data={deals}
             keyExtractor={(item) => item.id}
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
             refreshControl={refreshControl(refreshing, refresh)}
             ListHeaderComponent={header}
             ListEmptyComponent={empty}

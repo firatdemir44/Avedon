@@ -1,19 +1,19 @@
-// Hesap (yeni tasarım, 3. adım — DESIGN.md §8, artboard 6 "Hesap araçları + asistan").
+// Hesap araçları (yeni tasarım, 3. adım — DESIGN.md §8, artboard 6 "Hesap araçları + asistan").
 //
 // Rota adı `Calculators` DEĞİŞMEDİ (başka ekranlar oraya navigate ediyor);
-// sekme etiketi "Hesap". Üstte asistan kartı, altında 2 sütun araç kutuları
+// 2026-09-23'ten beri sekme değil, kök yığında geri oklu ekran. Üstte asistan kartı, altında 2 sütun araç kutuları
 // (DESIGN.md §3 "Araç kutusu": 96px, 36px ikon karesi üstte, ad altta),
-// en altta tema anahtarı.
+// en altta "Dünyayı Keşfet". Tema ve hesap işleri ana sayfadaki profil
+// avatarının alt sayfasına taşındı (tasarım incelemesi 2026-09-23).
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import type { MainTabScreenProps, RootStackParamList } from '../../navigation/types';
-import { ThemeSwitch } from '../../components/ThemeSwitch';
+import type { RootStackParamList, RootStackScreenProps } from '../../navigation/types';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Icon, Screen, SectionTitle, type AnyIconName } from '../../ui';
+import { AppBar, Card, Icon, Screen, SectionTitle, type AnyIconName } from '../../ui';
 
-type Props = MainTabScreenProps<'Calculators'>;
+type Props = RootStackScreenProps<'Calculators'>;
 
 type Tool = { route: keyof RootStackParamList; title: string; icon: AnyIconName };
 
@@ -44,17 +44,12 @@ export function CalculatorsListScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar
-        title="Hesap"
-        actions={[
-          { icon: 'user', label: 'Profilim', onPress: () => navigation.navigate('MyProfile') },
-        ]}
-      />
+      <AppBar title="Hesap araçları" leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         {/* Asistan kartı: artboard 6'da lacivert dolu kart. Kart olduğu için
             "ekranda en fazla 1 dolu düğme" kuralını bozmuyor. */}
         <Pressable
-          onPress={() => navigation.navigate('AssistantTab')}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'AssistantTab' })}
           accessibilityRole="button"
           accessibilityLabel="Tekstil asistanına sor"
           style={({ pressed }) => ({
@@ -104,8 +99,27 @@ export function CalculatorsListScreen({ navigation }: Props) {
         ))}
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Görünüm" />
-          <ThemeSwitch />
+          <SectionTitle title="Dış pazar" />
+          <Card onPress={() => navigation.navigate('ExportRadar')} accessibilityLabel="Dünyayı Keşfet" testID="tools-export-radar">
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+              <View
+                style={{
+                  width: t.size.avatar,
+                  height: t.size.avatar,
+                  borderRadius: t.radius.md,
+                  backgroundColor: t.colors.brandSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="globe-outline" color="brand" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Dünyayı Keşfet</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Ürününüzü hangi ülkelere satabilirsiniz?</Text>
+              </View>
+            </View>
+          </Card>
         </View>
 
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>

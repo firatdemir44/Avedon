@@ -94,6 +94,7 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -234,6 +235,7 @@ const emptyTestReportRow = (): TestReportRow => ({
 // eskisiyle AYNI. Ham hex / ham px yok.
 export function AddProductScreen({ navigation, route }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const productId = route.params?.productId ?? null;
   const isEditing = !!productId;
@@ -1317,7 +1319,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad, gap: t.space[6] }}
           keyboardShouldPersistTaps="handled"
         >
           {draftId ? (

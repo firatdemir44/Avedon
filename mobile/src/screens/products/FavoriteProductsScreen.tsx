@@ -19,7 +19,7 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import type { Product } from '../../types';
 import { toSelectionItem } from './ProductListScreen';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, EmptyState, Icon, ProductCard, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, EmptyState, Icon, ProductCard, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'FavoriteProducts'>;
 
@@ -174,6 +174,7 @@ export function ErrorBanner({ message }: { message: string }) {
 // takip edilenler zaten karşılaştırılacak kısa listedir.
 export function FavoriteProductsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const selection = useRfqSelection();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
@@ -258,7 +259,7 @@ export function FavoriteProductsScreen({ navigation }: Props) {
           data={data}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ gap: t.space[3], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ gap: t.space[3], paddingBottom: bottomPad }}
           refreshControl={refreshControl(refreshing, refresh)}
           ListHeaderComponent={header}
           ListEmptyComponent={

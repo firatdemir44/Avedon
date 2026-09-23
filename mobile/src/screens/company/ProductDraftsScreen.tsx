@@ -18,12 +18,13 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'ProductDrafts'>;
 
 export function ProductDraftsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(fetchProductDrafts);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -114,7 +115,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
             data={drafts}
             keyExtractor={(item) => item.id}
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
             refreshControl={refreshControl(refreshing, refresh)}
             ListHeaderComponent={header}
             ListEmptyComponent={

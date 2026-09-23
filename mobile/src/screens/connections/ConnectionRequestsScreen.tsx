@@ -16,12 +16,13 @@ import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
-import { Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectionRequests'>;
 
 export function ConnectionRequestsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchIncomingConnectionRequests().then(({ requests }) => requests)
   );
@@ -78,7 +79,7 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
         data={requests}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           bannerMessage ? (

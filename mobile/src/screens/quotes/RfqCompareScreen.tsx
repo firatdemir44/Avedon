@@ -16,7 +16,7 @@ import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { formatMeasure } from '../../features/calculators/parse';
 import { formatQuantity, formatQuoteDate, unitShort } from '../../features/quotes/format';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Screen } from '../../ui';
+import { useBottomPadding, AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Screen } from '../../ui';
 
 type Props = RootStackScreenProps<'RfqCompare'>;
 
@@ -252,6 +252,7 @@ function Notice({ tone, text }: { tone: 'danger' | 'warning'; text: string }) {
 // para birimi içinde veriliyor, ekran da bunu yazıyor.
 export function RfqCompareScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { rfqId } = route.params;
   // Kırpılan hücrenin tam metni (alt sayfa).
   const [expanded, setExpanded] = useState<{ label: string; text: string } | null>(null);
@@ -310,7 +311,7 @@ export function RfqCompareScreen({ route, navigation }: Props) {
     <Screen scroll={false} noPadding>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad, gap: t.space[6] }}
         refreshControl={refreshControl(refreshing, refresh)}
       >
         <Card>

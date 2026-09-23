@@ -19,6 +19,7 @@ import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   Badge,
   Card,
   Chip,
@@ -119,6 +120,7 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
 // Firma listesi + elle durum değiştirme (veri akışı eski ekranın aynısı).
 function AdminCompanies() {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const isAdmin = !!user?.isAdmin;
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
@@ -183,7 +185,7 @@ function AdminCompanies() {
         data={data ?? []}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[4] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad, gap: t.space[4] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           bannerMessage ? (

@@ -56,9 +56,11 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
+  ButtonRow,
   Card,
   Chip,
   EmptyState,
@@ -75,9 +77,10 @@ import type { Product } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 
-// Sekmeler artboard sırasında: Ürünler · Hakkında · Kişiler · Belgeler.
-// "Makine parkı" ve "Firma akışı" korunuyor (şerit yatay kaydırılır), böylece
-// initialTab: 'machines' | 'feed' parametresi kırılmıyor.
+// Sekmeler (tasarım incelemesi 2026-09-23): Ürünler · Hakkında · Kişiler · Belgeler.
+// Makine parkı artık Hakkında sekmesinin içinde; initialTab: 'machines'
+// Hakkında'yı açar. "Firma akışı" şeritte yok ama initialTab: 'feed' ile
+// açılan eski bağlantılar kırılmasın diye içerik korunuyor.
 type CompanyTab = 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
 
 const TABS: { key: CompanyTab; label: string }[] = [
@@ -85,16 +88,17 @@ const TABS: { key: CompanyTab; label: string }[] = [
   { key: 'about', label: 'Hakkında' },
   { key: 'people', label: 'Kişiler' },
   { key: 'docs', label: 'Belgeler' },
-  { key: 'machines', label: 'Makine parkı' },
-  { key: 'feed', label: 'Firma akışı' },
 ];
 
 export function CompanyProfileScreen({ navigation, route }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
-  const [tab, setTab] = useState<CompanyTab>(route.params?.initialTab ?? 'about');
+  const [tab, setTab] = useState<CompanyTab>(
+    route.params?.initialTab === 'machines' ? 'about' : route.params?.initialTab ?? 'about'
+  );
   const [typeFilter, setTypeFilter] = useState<ProductType | null>(null);
   const [usageFilter, setUsageFilter] = useState<string | null>(null);
 
@@ -190,7 +194,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   // güncel hali gelsin. Elde veri varsa ekranda kalır (iskelet yerine sessiz).
   useFocusEffect(
     useCallback(() => {
-      if (tab === 'machines') loadPark();
+      if (tab === 'about') loadPark();
     }, [tab, loadPark])
   );
 
@@ -683,49 +687,44 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       />
     </View>
   ) : (
-    <View style={{ gap: t.space[2] }}>
-      <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
-        <Button
-          label="Mesaj gönder"
-          icon="message"
-          onPress={() => navigation.navigate('NewConversation')}
-          style={{ flex: 1 }}
-        />
+    // Mesaj gönder + WhatsApp (telefon varsa) + bağlantı kur kare düğmesi.
+    // Metinler kısaltılmaz: dar ekranda iki düğme alt alta iner, kare düğme yanda kalır.
+    <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
+      <ButtonRow style={{ flex: 1, minWidth: 0 }}>
+        <Button label="Mesaj gönder" icon="message" onPress={() => navigation.navigate('NewConversation')} />
         {whatsappPhone ? (
           <Button
             kind="secondary"
             label="WhatsApp"
             icon="whatsapp"
+            accessibilityLabel={`${company.name} ile WhatsApp'ta yazış`}
             onPress={() => Linking.openURL(`https://wa.me/${whatsappPhone}`).catch(() => {})}
-            style={{ flex: 1 }}
           />
         ) : null}
-        {user?.companyId ? (
-          <SquareButton icon="person-add-outline" label="Bağlantı kur" onPress={openReferenceForm} />
-        ) : null}
-      </View>
-      {/* Faz 2, Adım 3: firmanın asistanına soru sorma. */}
-      <Button
-        kind="secondary"
-        label="Asistana sor"
-        icon="sparkles-outline"
-        onPress={() => navigation.navigate('SellerAssistant', { companyId: company.id, companyName: company.name })}
-        accessibilityLabel={`${company.name} asistanına sor`}
-        fullWidth
-      />
+      </ButtonRow>
+      {user?.companyId ? (
+        <SquareButton icon="person-add-outline" label="Bağlantı kur" onPress={openReferenceForm} />
+      ) : null}
     </View>
   );
 
-  const responseRate = trust?.quoteResponse ? `%${trust.quoteResponse.responseRate}` : '—';
-  const responseTime = responseTimeText(trust?.quoteResponse?.medianHours ?? null) ?? '—';
+  // Değeri olmayan ("—") kutular gizlenir (tasarım incelemesi 2026-09-23).
+  const responseTime = responseTimeText(trust?.quoteResponse?.medianHours ?? null);
+  const stats: { value: string | number; label: string }[] = [
+    { value: products.length, label: 'Ürün' },
+    ...(trust?.quoteResponse ? [{ value: `%${trust.quoteResponse.responseRate}`, label: 'Numune yanıtı' }] : []),
+    ...(responseTime ? [{ value: responseTime, label: 'Ort. yanıt' }] : []),
+    ...(trust?.confirmedReferenceCount != null
+      ? [{ value: trust.confirmedReferenceCount, label: 'Ortak bağlantı' }]
+      : []),
+  ];
 
   const statsCard = (
     <Card>
       <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
-        <StatBox value={products.length} label="Ürün" />
-        <StatBox value={responseRate} label="Numune yanıtı" />
-        <StatBox value={responseTime} label="Ort. yanıt" />
-        <StatBox value={trust?.confirmedReferenceCount ?? '—'} label="Ortak bağlantı" />
+        {stats.map((item) => (
+          <StatBox key={item.label} value={item.value} label={item.label} />
+        ))}
       </View>
     </Card>
   );
@@ -1060,25 +1059,50 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </>
   ) : null;
 
-  const factRow = (label: string, value: string, mono?: boolean, onPress?: () => void) => (
-    <ListRow
-      key={label}
-      title={label}
-      left={null}
-      right={
-        onPress ? undefined : (
+  // Bilgi satırı (ürün detayındaki özellik tablosuyla aynı): etiket body-16
+  // ink-2 normal, değer ink. Boş değer "Eklenmemiş" (ink-3).
+  const factRow = (label: string, value: string | null | undefined, mono?: boolean, onPress?: () => void) => {
+    const empty = !value || value === '—';
+    const row = (
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space[3],
+          minHeight: t.size.row,
+          paddingVertical: t.space[2],
+          borderBottomWidth: 1,
+          borderBottomColor: t.colors.line,
+        }}
+      >
+        <Text style={[t.type.body16, { color: t.colors.ink2 }]}>{label}</Text>
+        <View style={{ flex: 1, minWidth: 0, alignItems: 'flex-end' }}>
           <Text
-            numberOfLines={2}
-            style={[mono ? t.type.mono14 : t.type.body14, { color: t.colors.ink2, textAlign: 'right', maxWidth: t.size.emptyTextWidth }]}
+            style={[
+              mono && !empty ? t.type.mono14 : t.type.body16,
+              { color: empty ? t.colors.ink3 : t.colors.ink, textAlign: 'right' },
+            ]}
           >
-            {value}
+            {empty ? 'Eklenmemiş' : value}
           </Text>
-        )
-      }
-      subtitle={onPress ? value : undefined}
-      onPress={onPress}
-    />
-  );
+        </View>
+        {onPress ? <Icon name="chevron" color="ink3" /> : null}
+      </View>
+    );
+    return onPress ? (
+      <Pressable
+        key={label}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${empty ? 'Eklenmemiş' : value}`}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+      >
+        {row}
+      </Pressable>
+    ) : (
+      <View key={label}>{row}</View>
+    );
+  };
 
   const aboutContent = (
     <View style={{ gap: t.space[4] }}>
@@ -1123,7 +1147,22 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               [company.address, [company.district, company.city].filter(Boolean).join('/')].filter(Boolean).join(', ')
             )
           : null}
-        {factRow('Vergi numarası', company.taxId, true)}
+        {/* Vergi numarası hiç gösterilmez; yalnızca doğrulanmış firmada onay satırı. */}
+        {company.verification === 'dogrulanmis' ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space[3],
+              minHeight: t.size.row,
+              borderBottomWidth: 1,
+              borderBottomColor: t.colors.line,
+            }}
+          >
+            <Text style={[t.type.body16, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>Vergi kaydı doğrulandı</Text>
+            <Icon name="checkmark-circle-outline" color="success" />
+          </View>
+        ) : null}
         {isOwnCompany ? factRow('Şirket kodu', company.companyCode, true) : null}
       </Card>
 
@@ -1378,7 +1417,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {tabStrip}
       {tab === 'about' ? aboutContent : null}
       {tab === 'docs' ? docsContent : null}
-      {tab === 'machines' ? machinesContent : null}
+      {tab === 'about' ? (
+        <View style={{ gap: t.space[4] }}>
+          <SectionTitle title="Makineler" />
+          {machinesContent}
+        </View>
+      ) : null}
       {tab === 'products' ? (
         <View style={{ gap: t.space[3] }}>
           {productFilters}
@@ -1474,13 +1518,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           columnWrapperStyle={tab === 'products' ? { gap: t.space[3] } : undefined}
           data={data as { id: string }[]}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ gap: t.space[3], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ gap: t.space[3], paddingBottom: bottomPad }}
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl(refreshing, () => {
             refresh();
             loadTrust();
             if (tab === 'feed') loadPosts();
-            if (tab === 'machines') loadPark();
+            if (tab === 'about') loadPark();
           })}
           ListHeaderComponent={listHeader}
           ListHeaderComponentStyle={{ paddingBottom: t.space[4] }}

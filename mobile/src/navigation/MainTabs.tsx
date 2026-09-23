@@ -9,7 +9,7 @@ import { ProductListScreen } from '../screens/products/ProductListScreen';
 import { AssistantScreen } from '../screens/assistant/AssistantScreen';
 import { RequestsScreen } from '../screens/requests/RequestsScreen';
 import { ConversationsListScreen } from '../screens/messages/ConversationsListScreen';
-import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
+import { CompaniesDirectoryScreen } from '../screens/companies/CompaniesDirectoryScreen';
 import { MainHeader } from '../components/MainHeader';
 import { TabBarFromNavigation } from '../ui';
 import { colors } from '../theme';
@@ -19,7 +19,8 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const BADGE_POLL_MS = 20000;
 
 // Yeni tasarım, 3. adım (DESIGN.md §2): çubukta TAM 5 sekme —
-// Ana sayfa · Katalog · Talepler · Mesajlar · Hesap. Çubuğu artık
+// Ana sayfa · Katalog · Talepler · Mesajlar · Firmalar (2026-09-23; Hesap araçları
+// sekmeden çıkıp kök yığında geri oklu ekran oldu). Çubuğu artık
 // `src/ui`deki TabBar çiziyor (64px, surface-1, ikon + etiket, accent nokta).
 //
 // AssistantTab: sekmeden ÇIKTI ama rota olarak DURUYOR. Pek çok ekran
@@ -59,7 +60,7 @@ export function MainTabs() {
           {...props}
           hiddenRoutes={['AssistantTab']}
           // Talepler sekmesinin ikonu numune kutusu (artboard 1 ve 7).
-          icons={{ Requests: 'sample' }}
+          icons={{ Requests: 'sample', CompaniesDirectory: 'business-outline' }}
         />
       )}
       screenOptions={{
@@ -89,7 +90,7 @@ export function MainTabs() {
           tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
         }}
       />
-      <Tab.Screen name="Calculators" component={CalculatorsListScreen} options={{ title: 'Hesap' }} />
+      <Tab.Screen name="CompaniesDirectory" component={CompaniesDirectoryScreen} options={{ title: 'Firmalar' }} />
 
       {/* Çubukta görünmez (hiddenRoutes); yalnızca navigate ile açılır.
           Kendi üst başlığı yok, ortak MainHeader'ı kullanmayı sürdürüyor. */}

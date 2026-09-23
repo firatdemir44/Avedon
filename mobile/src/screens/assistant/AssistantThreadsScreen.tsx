@@ -9,7 +9,7 @@ import { formatListTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'AssistantThreads'>;
 
@@ -20,6 +20,7 @@ type Props = RootStackScreenProps<'AssistantThreads'>;
 // (navigation başlığı gizlendi), satırlar `ListRow`.
 export function AssistantThreadsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, reload } = useFocusLoad(fetchAssistantThreads);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -106,7 +107,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
           data={threads}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
           ListHeaderComponent={
             <View style={{ gap: t.space[3] }}>
               {removeError ? (

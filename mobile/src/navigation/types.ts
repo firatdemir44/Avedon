@@ -33,10 +33,9 @@ export type MainTabParamList = {
   // QuoteRequests ekranlarıyla aynı uçlardan alır; o rotalar da yerinde kalır.
   Requests: undefined;
   Conversations: undefined;
-  // Hesaplayıcı ızgarası (Fırat 2026-09-21): Profil alt çubuktan çıkınca
-  // hesaplamalar beşinci sekme olarak geri geldi. Rota adı "Calculators";
-  // kök yığındaki eski "CalculatorsList" kaydı kalktı.
-  Calculators: undefined;
+  // Firma rehberi (2026-09-23): beşinci sekme "Firmalar". Kök yığındaki
+  // "CompaniesDirectory" kaydı kalktı (aynı ad iki listede olamaz).
+  CompaniesDirectory: undefined;
 };
 
 export type RootStackParamList = {
@@ -77,8 +76,6 @@ export type RootStackParamList = {
         claimed?: boolean;
       }
     | undefined;
-  // Firma rehberi: kategori + arama; sahipsiz firmalar da listelenir.
-  CompaniesDirectory: undefined;
   // Dünyayı Keşfet — İhracat Radarı (ürün → GTİP → pazar puanı).
   ExportRadar: undefined;
   // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
@@ -136,8 +133,9 @@ export type RootStackParamList = {
   YarnDirectory: { preset?: YarnDirectoryPreset; presetKey?: number } | undefined;
   // yarnId verilirse düzenleme kipinde açılır (iplik detayındaki "Düzenle").
   YarnForm: { yarnId?: string } | undefined;
-  // Hesaplayıcı listesi alt çubuktaki "Hesaplamalar" sekmesinde
-  // (MainTabParamList.Calculators); tek tek hesaplar yığında kalır.
+  // Hesap araçları listesi (2026-09-23): sekme olmaktan çıktı, ana sayfadaki
+  // "Hesap araçları" kutusundan açılan geri oklu ekran. Tek tek hesaplar da yığında.
+  Calculators: undefined;
   FabricCostCalculator: undefined;
   GarmentCostCalculator: undefined;
   YarnCountCalculator: undefined;

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemePreference, type ThemePreference } from '../theme/ThemeContext';
 import { SegmentControl } from '../ui';
 
-// Tema anahtarı (DESIGN.md §1: Hesap sayfasında; varsayılan sistem tercihi).
+// Tema anahtarı (DESIGN.md §1: ana sayfadaki profil avatarının alt sayfasında; varsayılan sistem tercihi).
 // Segment kontrolün kendisi src/ui/SegmentControl.tsx'te.
 const OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: 'system', label: 'Sistem' },

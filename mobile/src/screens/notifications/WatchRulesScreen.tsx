@@ -17,7 +17,7 @@ import { EMPTY_FILTERS, isYarnWatchQuery } from '../../features/products/filters
 import { presetFromYarnWatchQuery } from '../../features/yarns/watch';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { Badge, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, Badge, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'WatchRules'>;
 
@@ -47,6 +47,7 @@ function ruleSubtitle(rule: WatchRule): string {
 // mevcut süzgeç ekranının "izleme kipinde" açılmasıyla kuruluyor.
 export function WatchRulesScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(fetchWatchRules);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -201,7 +202,7 @@ export function WatchRulesScreen({ navigation }: Props) {
         data={rules}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <View style={{ gap: t.space[3], paddingBottom: t.space[2] }}>

@@ -228,3 +228,5 @@ Diğer, vizyonla ilgisiz adaylar (bkz. `docs/durum.md`):
 - 2026-09-13: **Faz 1 — Bağlantı sistemi + Profil sayfası** tamamlandı. Yeni `Connection` modeli (pending/accepted, reddetme = satır silme), `POST/PATCH /api/connections`, `GET /api/connections(?status=)`, `GET /api/connections/status/:userId`, `GET /api/users/:id` (bağlantı yoksa telefon alanı gizli). Mobilde: Profil ekranı (bağlantı kur/kabul/reddet butonları), Bağlantılarım ve Bağlantı İstekleri ekranları, firma sayfasında tıklanabilir çalışan listesi, gelen numune taleplerinde talep edenin adı artık profile bağlıyor. Uçtan uca curl ile doğrulandı (istek/kabul/red/kendine-istek-engeli/tekrar-istek-engeli/telefon gizliliği). Plan: `C:\Users\ebosc\.claude\plans\swift-rolling-kazoo.md`.
 
 - [ ] (2026-09-23) Sesli soru için Cloudflare Workers AI token (CLOUDFLARE_AI_TOKEN) Render'a girilecek; sonra /api/health speech.tokenActive=true ve telefonda uzun soru testi.
+
+- [ ] (2026-09-23) Tasarım kontrolü düzeltmeleri telefonda kontrol: alt çubuk (Firmalar), avatar alt sayfası (Profilim/Görünüm/Çıkış), katalog tek çip satırı + Süzgeç, ürün detayı firma satırı, firma sayfası 4 sekme, WhatsApp düğmesi.

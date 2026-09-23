@@ -15,7 +15,7 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'CompanyFaq'>;
 
@@ -31,6 +31,7 @@ type EditingId = string | 'new' | null;
 
 export function CompanyFaqScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchCompanyFaqs);
   const [editing, setEditing] = useState<EditingId>(null);
   const [question, setQuestion] = useState('');
@@ -199,7 +200,7 @@ export function CompanyFaqScreen({ navigation }: Props) {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingTop: t.space[4],
-          paddingBottom: t.space[10],
+          paddingBottom: bottomPad,
           paddingHorizontal: t.space[4],
           gap: t.space[6],
           alignItems: 'center',

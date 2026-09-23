@@ -95,7 +95,7 @@ export const routeIcons: Record<string, AnyIconName> = {
   ProductList: 'catalog',
   AssistantTab: 'message',
   Conversations: 'messages',
-  Calculators: 'calculator',
+  CompaniesDirectory: 'business-outline',
   QuoteRequests: 'requests',
 };
 

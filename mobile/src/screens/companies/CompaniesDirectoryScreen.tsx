@@ -7,13 +7,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { refreshControl } from '../../components/refresh';
-import type { RootStackScreenProps } from '../../navigation/types';
+import type { MainTabScreenProps } from '../../navigation/types';
 import { fetchDirectory, type DirectoryCompany, type DirectoryResult } from '../../api/client';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -26,7 +27,8 @@ import {
   SkeletonRow,
 } from '../../ui';
 
-type Props = RootStackScreenProps<'CompaniesDirectory'>;
+// Alt çubuktaki "Firmalar" sekmesi (2026-09-23): geri oku yok.
+type Props = MainTabScreenProps<'CompaniesDirectory'>;
 
 const PAGE_SIZE = 30;
 const SEARCH_DELAY_MS = 300;
@@ -47,6 +49,7 @@ const shortLabel = (key: string, fallback: string) => SHORT_LABELS[key] ?? fallb
 
 export function CompaniesDirectoryScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const [text, setText] = useState('');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -186,7 +189,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Firmalar" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title="Firmalar" />
       <Screen scroll={false} contentStyle={{ flex: 1, gap: 0 }}>
         <FlatList
           data={loading ? [] : companies}
@@ -194,7 +197,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={refreshControl(loading && companies.length > 0, load, t)}
-          contentContainerStyle={{ paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           ListHeaderComponent={header}
           ListEmptyComponent={empty}
           ListFooterComponent={footer}

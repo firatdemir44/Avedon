@@ -20,7 +20,7 @@ import { confirmAction } from '../../features/confirm';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { Badge, Button, Card, EmptyState, Icon, SectionTitle, SkeletonRow } from '../../ui';
+import { useBottomPadding, Badge, Button, Card, EmptyState, Icon, SectionTitle, SkeletonRow } from '../../ui';
 
 const EXCERPT_MAX = 240;
 
@@ -38,6 +38,7 @@ type Row = { type: 'post'; post: AdminReportedPost } | { type: 'company'; compan
 
 export function AdminFeedReports() {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() => fetchAdminFeedReports());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -92,7 +93,7 @@ export function AdminFeedReports() {
       data={rows}
       keyExtractor={(r) => (r.type === 'title' ? r.key : r.type === 'post' ? `p-${r.post.id}` : `c-${r.company.id}`)}
       style={{ flex: 1 }}
-      contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10], gap: t.space[4] }}
+      contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad, gap: t.space[4] }}
       refreshControl={refreshControl(refreshing, refresh)}
       ListHeaderComponent={
         actionError ? (

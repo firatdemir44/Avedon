@@ -12,6 +12,7 @@ import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   EmptyState,
@@ -33,6 +34,7 @@ const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
 
 export function MySampleRequestsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchMySampleRequests().then(({ sampleRequests }) => sampleRequests)
   );
@@ -102,7 +104,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
           data={requests}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
           refreshControl={refreshControl(refreshing, refresh)}
           ListHeaderComponent={header}
           ListEmptyComponent={

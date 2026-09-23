@@ -24,7 +24,7 @@ import { setUnreadNotificationCount } from '../../features/notifications/unreadC
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
-import { EmptyState, Icon, ListRow, Screen, SkeletonRow, type AnyIconName } from '../../ui';
+import { useBottomPadding, EmptyState, Icon, ListRow, Screen, SkeletonRow, type AnyIconName } from '../../ui';
 
 type Props = RootStackScreenProps<'Notifications'>;
 
@@ -81,6 +81,7 @@ function IconSquare({ name }: { name: AnyIconName }) {
 
 export function NotificationsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() => fetchNotifications(30));
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -276,7 +277,7 @@ export function NotificationsScreen({ navigation }: Props) {
         data={notifications}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <View style={{ gap: t.space[4], paddingBottom: t.space[2] }}>

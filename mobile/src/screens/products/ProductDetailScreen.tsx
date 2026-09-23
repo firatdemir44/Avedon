@@ -52,7 +52,7 @@ import { optionLabel, otherCountLabels, useYarnOptions } from '../../features/ya
 import { formatMeasure, toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Badge, Button, Card, Icon, Screen, SectionTitle } from '../../ui';
+import { AppBar, Badge, Button, ButtonRow, Card, Icon, Screen, SectionTitle } from '../../ui';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
 
@@ -664,24 +664,23 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
   // Yapışkan alt çubuk: ekranın tek dolu düğmesi "Numune talep et"; altında iki
   // eşit sütun kenarlıklı eylem. Kendi ürününde düzenleme eylemleri.
+  // Düğme metinleri kısaltılmaz: sığmazsa ButtonRow alt alta dizer.
   const sticky = isOwnProduct ? (
-    <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+    <ButtonRow>
       <Button
         kind="secondary"
         label={isYarn ? 'İpliği düzenle' : 'Ürünü düzenle'}
         icon="create-outline"
         onPress={openEdit}
-        style={{ flex: 1 }}
       />
       <Button
         kind="secondary"
-        label="Gönderide paylaş"
+        label="Paylaş"
         icon="share"
         accessibilityLabel="Bu ürünü gönderide paylaş"
         onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
-        style={{ flex: 1 }}
       />
-    </View>
+    </ButtonRow>
   ) : (
     <View style={{ gap: t.space[2] }}>
       <Button
@@ -692,7 +691,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
         }
       />
-      <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+      <ButtonRow>
         <Button
           kind="secondary"
           label="Teklif iste"
@@ -704,7 +703,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               stockUnit: product.stockUnit,
             })
           }
-          style={{ flex: 1 }}
         />
         {company ? (
           <Button
@@ -719,10 +717,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                 productCode: product.code,
               })
             }
-            style={{ flex: 1 }}
           />
         ) : null}
-      </View>
+      </ButtonRow>
     </View>
   );
 
@@ -743,33 +740,6 @@ export function ProductDetailScreen({ route, navigation }: Props) {
           />
 
           <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[6] }}>
-            {isOwnProduct && pendingFields.length ? (
-              <Card style={{ borderColor: t.colors.warning, gap: t.space[3] }}>
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
-                  <Icon name="warning" size={t.size.iconSm} color="warning" />
-                  <Text style={[t.type.body14, { color: t.colors.ink, flex: 1 }]}>
-                    Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
-                  </Text>
-                </View>
-                <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-                  <Button
-                    kind="secondary"
-                    label={confirmBusy ? 'Onaylanıyor…' : 'Onayla'}
-                    icon="check"
-                    disabled={confirmBusy}
-                    onPress={confirmFields}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    kind="secondary"
-                    label="Düzenle"
-                    icon="create-outline"
-                    onPress={() => navigation.navigate('AddProduct', { productId: product.id })}
-                    style={{ flex: 1 }}
-                  />
-                </View>
-              </Card>
-            ) : null}
 
             {/* Kod + STOKTA rozeti, ürün adı, firma satırı */}
             <View style={{ gap: t.space[2] }}>
@@ -780,6 +750,39 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               <Text accessibilityRole="header" style={[t.type.title22, { color: t.colors.ink }]}>
                 {productName}
               </Text>
+
+              {/* Otomatik çıkarılan alanların onayı: yalnızca ürünün sahibine,
+                  ad ve kodun hemen altında (tasarım incelemesi 2026-09-23). */}
+              {isOwnProduct && pendingFields.length ? (
+                <Card style={{ borderColor: t.colors.warning, gap: t.space[3] }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
+                    <Icon name="warning" size={t.size.iconSm} color="warning" />
+                    <Text style={[t.type.body14, { color: t.colors.ink, flex: 1 }]}>
+                      Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
+                    </Text>
+                  </View>
+                  <ButtonRow>
+                    <Button
+                      kind="secondary"
+                      label={confirmBusy ? 'Onaylanıyor…' : 'Onayla'}
+                      icon="check"
+                      disabled={confirmBusy}
+                      onPress={confirmFields}
+                    />
+                    <Button
+                      kind="secondary"
+                      label="Düzenle"
+                      icon="create-outline"
+                      onPress={openEdit}
+                    />
+                  </ButtonRow>
+                </Card>
+              ) : null}
+
+              {/* Fotoğrafı olmayan kendi ürününde doğrudan "Fotoğraf ekle". */}
+              {isOwnProduct && (product.imageCount ?? (product.hasImage ? 1 : 0)) === 0 ? (
+                <Button kind="secondary" icon="camera" label="Fotoğraf ekle" onPress={openEdit} />
+              ) : null}
 
               {company ? (
                 <Pressable
@@ -796,18 +799,21 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                     pressed ? { opacity: 0.6 } : null,
                   ]}
                 >
+                  {/* Logo üzerinde doğrulama işareti yok: tek DOĞRULANMIŞ rozeti adın yanında. */}
                   <CompanyAvatar
                     name={company.name}
-                    verification={company.verification}
                     size={t.size.avatarSm}
                     companyId={company.id}
                     logoUpdatedAt={company.logoUpdatedAt}
                   />
-                  <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink, flexShrink: 1 }]}>
-                    {company.name}
+                  {/* Dar ekranda ad kırpılmasın: ad satır kırar, rozet adın altına iner (katalog kartıyla aynı). */}
+                  <View style={{ flex: 1, minWidth: 0, gap: t.space[1], alignItems: 'flex-start' }}>
+                    <Text style={[t.type.body16, { color: t.colors.ink }]}>{company.name}</Text>
+                    {company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
+                  </View>
+                  <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flexShrink: 0 }]}>
+                    {product.companyProductCount} ürün
                   </Text>
-                  {company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
-                  <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{product.companyProductCount} ürün</Text>
                 </Pressable>
               ) : null}
             </View>

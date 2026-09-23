@@ -579,7 +579,7 @@ export function AssistantScreen({ navigation }: Props) {
     {
       label: 'Tüm hesaplayıcılar',
       icon: 'calculator' as const,
-      // Hesaplayıcılar artık alt çubuktaki beşinci sekmede (2026-09-21).
+      // Hesap araçları kök yığında geri oklu ekran (2026-09-23).
       onPress: () => navigation.navigate('Calculators'),
     },
   ];

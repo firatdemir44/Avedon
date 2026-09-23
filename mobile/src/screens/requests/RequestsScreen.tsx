@@ -33,6 +33,7 @@ import { TenderAttachmentLine, TenderCoverThumb } from '../../components/TenderC
 import { TENDER_CATEGORIES, formatTenderDate, formatTenderQuantity, tenderBadge } from '../../features/tenders/format';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -74,6 +75,7 @@ const QUOTE_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: s
 
 export function RequestsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
 
@@ -331,7 +333,7 @@ export function RequestsScreen({ navigation }: Props) {
               data={tenders}
               keyExtractor={(item) => item.id}
               style={{ flex: 1 }}
-              contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+              contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
               refreshControl={refreshControl(tenderLoad.refreshing, tenderLoad.refresh)}
               ListHeaderComponent={header}
               ListEmptyComponent={tenderEmpty}
@@ -350,7 +352,7 @@ export function RequestsScreen({ navigation }: Props) {
             data={rows}
             keyExtractor={(item) => item.id}
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
             refreshControl={refreshControl(refreshing, refresh)}
             ListHeaderComponent={header}
             ListEmptyComponent={empty}

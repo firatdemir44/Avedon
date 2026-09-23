@@ -12,10 +12,11 @@ import { formatRelativeTime } from '../../features/time';
 import { haptics } from '../../features/haptics';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
-import { Button, EmptyState, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, Button, EmptyState, ListRow, Screen, SkeletonRow } from '../../ui';
 
 export function FeedMutesScreen() {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchFeedMutes().then((r) => r.mutes)
   );
@@ -71,7 +72,7 @@ export function FeedMutesScreen() {
         data={mutes}
         keyExtractor={(m) => m.companyId}
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ padding: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, () => {
           setRemoved(new Set());
           refresh();

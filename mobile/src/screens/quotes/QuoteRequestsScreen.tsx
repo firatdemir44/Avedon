@@ -14,6 +14,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -44,6 +45,7 @@ const QUOTE_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: s
 // yeniden istek atmıyor, liste anında değişiyor.
 export function QuoteRequestsScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { user } = useSession();
   const hasCompany = !!user?.companyId;
   const [role, setRole] = useState<Role>(route.params?.role === 'seller' && hasCompany ? 'seller' : 'buyer');
@@ -199,7 +201,7 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
         data={requests}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}

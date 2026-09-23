@@ -32,10 +32,11 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { UserAvatar } from '../../components/UserAvatar';
+import { AccountSheet } from '../../components/AccountSheet';
 import {
+  useBottomPadding,
   AppBar,
   Button,
-  Card,
   Chip,
   EmptyState,
   Icon,
@@ -58,10 +59,12 @@ const NOTICE_MS = 6000;
 
 export function FeedScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   // Uzun akışta yukarı dönüş: "Ana sayfa" sekmesine yeniden dokunmak ya da "En üste" düğmesi.
   const listRef = useRef<FlatList<any>>(null);
   useScrollToTop(listRef);
   const [showTop, setShowTop] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const scrollTop = useCallback(() => { haptics.light?.(); listRef.current?.scrollToOffset({ offset: 0, animated: true }); }, []);
   const { user } = useSession();
   const [posts, setPosts] = useState<FeedPost[]>([]);
@@ -326,9 +329,9 @@ export function FeedScreen({ navigation }: Props) {
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
-          icon="business-outline"
-          label="Firmalar"
-          onPress={() => navigation.navigate('CompaniesDirectory')}
+          icon="globe-outline"
+          label="Dünyayı Keşfet"
+          onPress={() => navigation.navigate('ExportRadar')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
@@ -349,26 +352,6 @@ export function FeedScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('AssistantTab')}
         />
       </View>
-      <Card onPress={() => navigation.navigate('ExportRadar')} accessibilityLabel="Dünyayı Keşfet" testID="feed-export-radar">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
-          <View
-            style={{
-              width: t.size.avatar,
-              height: t.size.avatar,
-              borderRadius: t.radius.md,
-              backgroundColor: t.colors.brandSoft,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Icon name="globe-outline" color="brand" />
-          </View>
-          <View style={{ flex: 1, gap: t.space[1] }}>
-            <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Dünyayı Keşfet</Text>
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Ürününüzü hangi ülkelere satabilirsiniz?</Text>
-          </View>
-        </View>
-      </Card>
 
       {/* Akış: Bağlantılarım | Genel akış + Paylaş (Fırat 2026-09-23: başlık ve süzgeç kaldırıldı, sade tek satır) */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
@@ -419,8 +402,9 @@ export function FeedScreen({ navigation }: Props) {
           },
           {
             icon: 'user',
-            label: 'Profilim',
-            onPress: () => navigation.navigate('MyProfile'),
+            label: 'Hesabım',
+            // Profilim, Görünüm ve Çıkış alt sayfada (Araçlar sekmesinden taşındı).
+            onPress: () => setAccountOpen(true),
             // Profil fotoğrafı (yoksa baş harfler); 32px, bant üzerinde beyaz çerçeve.
             content: user ? (
               <View style={{ borderRadius: t.radius.full, borderWidth: 2, borderColor: t.colors.onBrand, overflow: 'hidden' }}>
@@ -429,6 +413,11 @@ export function FeedScreen({ navigation }: Props) {
             ) : undefined,
           },
         ]}
+      />
+      <AccountSheet
+        visible={accountOpen}
+        onClose={() => setAccountOpen(false)}
+        onOpenProfile={() => navigation.navigate('MyProfile')}
       />
       <Screen scroll={false} noPadding>
         <FlatList
@@ -441,7 +430,7 @@ export function FeedScreen({ navigation }: Props) {
           data={loading ? [] : posts}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
           ItemSeparatorComponent={() => <View style={{ height: t.space[4] }} />}
           refreshControl={refreshControl(refreshing, () => {
             setRefreshing(true);

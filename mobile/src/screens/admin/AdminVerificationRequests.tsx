@@ -28,6 +28,7 @@ import { formatDateTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   Badge,
   Button,
   Card,
@@ -59,6 +60,7 @@ export function AdminVerificationRequests({
   onPendingCount?: (count: number) => void;
 }) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const [filter, setFilter] = useState<VerificationRequestStatus>('pending');
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(
     () => fetchAdminVerificationRequests(filter).then(({ requests }) => requests),
@@ -202,7 +204,7 @@ export function AdminVerificationRequests({
         data={requests}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: t.space[10], gap: t.space[4] }}
+        contentContainerStyle={{ paddingBottom: bottomPad, gap: t.space[4] }}
         refreshControl={refreshControl(refreshing, refresh)}
         ListHeaderComponent={
           <>

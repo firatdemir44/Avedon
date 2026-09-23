@@ -20,7 +20,7 @@ import { haptics } from '../../features/haptics';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
 
@@ -29,6 +29,7 @@ const KEYBOARD_OFFSET = 80;
 
 export function PostCommentsScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { postId } = route.params;
   const { user } = useSession();
   // Bir yorumcunun profiline gidip geri dönünce liste artık yükleniyor
@@ -175,7 +176,7 @@ export function PostCommentsScreen({ route, navigation }: Props) {
             data={comments}
             keyExtractor={(item) => item.id}
             style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: t.space[10] }}
+            contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
             keyboardShouldPersistTaps="handled"
             refreshControl={refreshControl(refreshing, refresh)}
             ListEmptyComponent={

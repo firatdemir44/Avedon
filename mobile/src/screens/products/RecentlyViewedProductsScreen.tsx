@@ -14,7 +14,7 @@ import { haptics } from '../../features/haptics';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Button, EmptyState, ProductCard, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { useBottomPadding, AppBar, Button, EmptyState, ProductCard, Screen, SectionTitle, SkeletonRow } from '../../ui';
 import { categoryLabel } from '../../features/products/catalog';
 import { ErrorBanner, productSpecs, useProductImage } from './FavoriteProductsScreen';
 
@@ -41,6 +41,7 @@ function ViewedCard({ product, onOpen }: { product: RecentlyViewedProduct; onOpe
 // firmanın ürünleri tutulmuyor.
 export function RecentlyViewedProductsScreen({ navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchRecentlyViewedProducts().then(({ products }) => products)
   );
@@ -120,7 +121,7 @@ export function RecentlyViewedProductsScreen({ navigation }: Props) {
           sections={sections}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           refreshControl={refreshControl(refreshing, refresh)}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (

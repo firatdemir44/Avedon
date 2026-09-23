@@ -178,7 +178,7 @@ export function UiGalleryScreen({ navigation }: RootStackScreenProps<'UiGallery'
               { key: 'catalog', label: 'Katalog', icon: 'catalog' },
               { key: 'requests', label: 'Talepler', icon: 'requests', dot: true },
               { key: 'messages', label: 'Mesajlar', icon: 'messages' },
-              { key: 'account', label: 'Hesap', icon: 'user' },
+              { key: 'companies', label: 'Firmalar', icon: 'business-outline' },
             ]}
           />
         </View>

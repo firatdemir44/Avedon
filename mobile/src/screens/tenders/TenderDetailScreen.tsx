@@ -48,7 +48,7 @@ import {
   tenderUnitShort,
 } from '../../features/tenders/format';
 import { useTheme } from '../../theme/ThemeContext';
-import { AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
+import { useBottomPadding, AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
 
 type Props = RootStackScreenProps<'TenderDetail'>;
 
@@ -746,6 +746,7 @@ function OfferForm({
 
 export function TenderDetailScreen({ route, navigation }: Props) {
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { tenderId, notified } = route.params;
   const { user } = useSession();
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -856,7 +857,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
     <Screen scroll={false} noPadding>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], paddingBottom: t.space[10], gap: t.space[6] }}
+        contentContainerStyle={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], paddingBottom: bottomPad, gap: t.space[6] }}
         refreshControl={refreshControl(refreshing, refresh)}
         keyboardShouldPersistTaps="handled"
       >

@@ -5,6 +5,7 @@ import React from 'react';
 import { ScrollView, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
+import { useBottomPadding } from './useBottomPadding';
 
 export interface ScreenProps {
   children: React.ReactNode;
@@ -30,6 +31,8 @@ export function Screen({
 }: ScreenProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  // Alt sekme çubuğu + güvenli alan kadar boşluk (yapışkan çubuk varsa o zaten güvenli alanı taşır).
+  const bottomPad = useBottomPadding();
 
   const inner: StyleProp<ViewStyle> = [
     {
@@ -48,7 +51,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingTop: t.space[4], paddingBottom: t.space[10], alignItems: 'center' }}
+          contentContainerStyle={{ paddingTop: t.space[4], paddingBottom: sticky ? t.space[10] : bottomPad, alignItems: 'center' }}
           keyboardShouldPersistTaps="handled"
         >
           <View style={inner}>{children}</View>

@@ -37,6 +37,7 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import {
+  useBottomPadding,
   AppBar,
   Badge,
   Button,
@@ -144,6 +145,7 @@ function Notice({
 export function DealDetailScreen({ route, navigation }: Props) {
   const { dealId } = route.params;
   const t = useTheme();
+  const bottomPad = useBottomPadding();
   const { data: deal, setData, status, error, refreshing, reload, refresh } = useFocusLoad(() =>
     fetchDeal(dealId).then((res) => res.deal)
   );
@@ -280,7 +282,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
       <Screen scroll={false} noPadding contentStyle={{ paddingTop: 0, gap: 0 }}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: t.space[10] }}
+          contentContainerStyle={{ paddingBottom: bottomPad }}
           keyboardShouldPersistTaps="handled"
           refreshControl={refreshControl(refreshing, refresh)}
         >
