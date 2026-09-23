@@ -968,11 +968,14 @@ model VideoLink {
   productId      String?
   messageId      String?  @unique
   conversationId String?
+  // Açık talep videosu (Tender.id): talebi görebilen herkes izler.
+  tenderId       String?
   sortOrder      Int      @default(0)
   createdAt      DateTime @default(now())
 
   @@index([productId, sortOrder])
   @@index([conversationId])
+  @@index([tenderId])
 }
 
 // Anlık bildirim abonelikleri (Web Push). Bir kullanıcının birden çok cihazı olabilir.
@@ -1090,4 +1093,19 @@ model TenderOffer {
   @@unique([tenderId, sellerCompanyId])
   @@index([tenderId, createdAt])
   @@index([sellerCompanyId, createdAt])
+}
+
+// Açık talep ekleri (Fırat 2026-09-23): kumaş numunesinin yakın/uzak fotoğrafları, konfeksiyon
+// ürününün görselleri, teknik föy / ölçü tablosu PDF'i. base64 data URL; liste yanıtında dönmez,
+// /api/tenders/:id/media/:mediaId ile tek tek alınır. kind: image | pdf. caption: "yakın", "etiket"…
+model TenderMedia {
+  id        String   @id @default(cuid())
+  tenderId  String
+  kind      String
+  dataUrl   String
+  caption   String   @default("")
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@index([tenderId, position])
 }

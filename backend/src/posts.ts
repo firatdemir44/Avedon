@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './db';
-import { tenderSummary } from './routes/tenders';
+import { coverMedia, tenderSummary } from './routes/tenders';
 import { getConnectionState, isConnectedAccepted } from './connections';
 import { YARN_SPEC_SELECT, toYarnSpecRow } from './yarns';
 import { VIDEO_SELECT, toVideoRow, type VideoRecord } from './videoFields';
@@ -84,7 +84,7 @@ export async function canViewPost(
 }
 
 // Açık talep kartı (Post.tenderId): akışta gönderi yerine talep özeti çizilir.
-export type TenderCard = { id: string; category: string; title: string; summary: string; status: string; offerCount: number; deadline: Date | null };
+export type TenderCard = { id: string; category: string; title: string; summary: string; status: string; offerCount: number; deadline: Date | null; coverMediaId: string | null; mediaCount: number; videoCount: number };
 
 export async function tenderCardsFor(posts: { tenderId: string | null }[]): Promise<Map<string, TenderCard>> {
   const ids = [...new Set(posts.map((p) => p.tenderId).filter((x): x is string => !!x))];
@@ -93,7 +93,8 @@ export async function tenderCardsFor(posts: { tenderId: string | null }[]): Prom
   const rows = await prisma.tender.findMany({ where: { id: { in: ids } } });
   const counts = await prisma.tenderOffer.groupBy({ by: ['tenderId'], where: { tenderId: { in: ids }, status: { not: 'withdrawn' } }, _count: { _all: true } });
   const countMap = new Map<string, number>(counts.map((c) => [c.tenderId, c._count._all]));
-  for (const t of rows) map.set(t.id, { id: t.id, category: t.category, title: t.title, summary: tenderSummary(t), status: t.status, offerCount: countMap.get(t.id) ?? 0, deadline: t.deadline });
+  const covers = await coverMedia(ids);
+  for (const t of rows) map.set(t.id, { id: t.id, category: t.category, title: t.title, summary: tenderSummary(t), status: t.status, offerCount: countMap.get(t.id) ?? 0, deadline: t.deadline, ...covers(t.id) });
   return map;
 }
 

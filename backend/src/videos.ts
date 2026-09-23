@@ -84,7 +84,7 @@ export async function loadViewableVideo(viewerId: string, videoId: string) {
   if (video.post && (await canViewPost(viewerId, video.post))) return video;
   // Ürün videosu: ürün sayfası gibi, oturum açmış herkese. Sohbet videosu: yalnızca iki katılımcıya.
   const link = await prisma.videoLink.findUnique({ where: { videoId } });
-  if (link?.productId) return video;
+  if (link?.productId || link?.tenderId) return video;
   if (link?.conversationId) {
     const conv = await prisma.conversation.findFirst({
       where: { id: link.conversationId, OR: [{ userAId: viewerId }, { userBId: viewerId }] },

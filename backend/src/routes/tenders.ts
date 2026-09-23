@@ -6,6 +6,8 @@ import { notify, notifyMany } from '../notifications';
 import { PRICE_CURRENCIES, PRODUCT_TYPES, STOCK_UNITS, TYPE_LABELS } from '../catalog';
 import { YARN_COUNT_UNITS, YARN_FAMILIES } from '../yarns';
 import { makeHandle } from './handle';
+import { checkClaimable } from '../videoLinks';
+import { VIDEO_SELECT, toVideoRow } from '../videoFields';
 
 // Açık talep / ihale (Fırat 2026-09-23): alıcı ürüne bağlı olmadan ihtiyacını yayınlar,
 // kategoriye uyan tüm satıcılar teklif verir, alıcı karşılaştırıp seçer. Talep akışta kart
@@ -18,9 +20,26 @@ export const MAX_TENDERS_PER_DAY = 10;
 export const MAX_TENDER_NOTIFY = 200;
 const DAY = 24 * 60 * 60 * 1000;
 
-const CATEGORIES = ['iplik', 'kumas', 'diger'] as const;
+const CATEGORIES = ['iplik', 'kumas', 'konfeksiyon', 'diger'] as const;
 export type TenderCategory = (typeof CATEGORIES)[number];
-export const CATEGORY_LABELS: Record<TenderCategory, string> = { iplik: 'İplik', kumas: 'Kumaş', diger: 'Diğer' };
+export const CATEGORY_LABELS: Record<TenderCategory, string> = { iplik: 'İplik', kumas: 'Kumaş', konfeksiyon: 'Konfeksiyon', diger: 'Diğer' };
+
+// Konfeksiyon (fason üretim) talebi: ürün tipi, beden dağılımı, kumaşı kim sağlıyor, teslim kapsamı.
+// Teklif "paket fiyat" olarak verilir (adet başı; toplam = adet × fiyat istemcide).
+export const GARMENT_TYPES = ['tisort', 'sweatshirt', 'gomlek', 'pantolon', 'etek', 'elbise', 'mont', 'ceket', 'esofman', 'ic_giyim', 'bebek_cocuk', 'diger'] as const;
+export const GARMENT_LABELS: Record<(typeof GARMENT_TYPES)[number], string> = {
+  tisort: 'Tişört', sweatshirt: 'Sweatshirt', gomlek: 'Gömlek', pantolon: 'Pantolon', etek: 'Etek', elbise: 'Elbise',
+  mont: 'Mont', ceket: 'Ceket', esofman: 'Eşofman', ic_giyim: 'İç giyim', bebek_cocuk: 'Bebek / çocuk', diger: 'Diğer',
+};
+export const DELIVERY_SCOPE = ['kesim', 'dikim', 'utu', 'etiket', 'paket', 'poset', 'koli', 'tam_teslim'] as const;
+export const DELIVERY_LABELS: Record<(typeof DELIVERY_SCOPE)[number], string> = {
+  kesim: 'Kesim', dikim: 'Dikim', utu: 'Ütü', etiket: 'Etiket', paket: 'Paket', poset: 'Poşet', koli: 'Koli', tam_teslim: 'Tam teslim',
+};
+export const MAX_TENDER_IMAGES = 8;
+export const MAX_TENDER_PDFS = 3;
+export const MAX_TENDER_VIDEOS = 2;
+const MAX_IMAGE_CHARS = 700_000;
+const MAX_PDF_CHARS = 2_100_000;
 const familyKeys = YARN_FAMILIES.map((f) => f.key) as [string, ...string[]];
 const countUnitKeys = YARN_COUNT_UNITS.map((u) => u.key) as [string, ...string[]];
 
@@ -46,8 +65,31 @@ const fabricSpecSchema = z
   })
   .strict();
 
+const garmentSpecSchema = z
+  .object({
+    garmentType: z.enum(GARMENT_TYPES).optional(),
+    sizes: z.string().trim().max(200).optional(),
+    fabric: z.string().trim().max(160).optional(),
+    fabricSupplied: z.enum(['alici', 'uretici']).optional(),
+    delivery: z.array(z.enum(DELIVERY_SCOPE)).max(DELIVERY_SCOPE.length).optional(),
+    colors: z.string().trim().max(120).optional(),
+  })
+  .strict();
+
+const mediaInput = z
+  .object({
+    dataUrl: z.string().refine(
+      (s) => (s.startsWith('data:image/') && s.length <= MAX_IMAGE_CHARS) || (s.startsWith('data:application/pdf;base64,') && s.length <= MAX_PDF_CHARS),
+      'media_invalid_or_too_large'
+    ),
+    caption: z.string().trim().max(40).optional(),
+  })
+  .strict();
+
 const createSchema = z
   .object({
+    media: z.array(mediaInput).max(MAX_TENDER_IMAGES + MAX_TENDER_PDFS).optional(),
+    videoIds: z.array(z.string().min(1)).max(MAX_TENDER_VIDEOS).optional(),
     category: z.enum(CATEGORIES),
     title: z.string().trim().min(3).max(120),
     spec: z.record(z.string(), z.unknown()).optional(),
@@ -64,6 +106,7 @@ const createSchema = z
 function parseSpec(category: TenderCategory, spec: unknown) {
   if (category === 'iplik') return yarnSpecSchema.safeParse(spec ?? {});
   if (category === 'kumas') return fabricSpecSchema.safeParse(spec ?? {});
+  if (category === 'konfeksiyon') return garmentSpecSchema.safeParse(spec ?? {});
   return z.object({}).strict().safeParse({});
 }
 
@@ -91,6 +134,12 @@ export function tenderSummary(t: { category: string; specJson: string; quantity:
     if (spec.weightGsm) parts.push(`${spec.weightGsm} gr/m²`);
     if (spec.widthCm) parts.push(`${spec.widthCm} cm`);
     if (spec.content) parts.push(String(spec.content));
+  } else if (t.category === 'konfeksiyon') {
+    const g = GARMENT_LABELS[spec.garmentType as keyof typeof GARMENT_LABELS];
+    if (g) parts.push(g);
+    if (spec.fabric) parts.push(String(spec.fabric));
+    const d = Array.isArray(spec.delivery) ? (spec.delivery as string[]).map((k) => DELIVERY_LABELS[k as keyof typeof DELIVERY_LABELS]).filter(Boolean) : [];
+    if (d.length) parts.push(d.join(', '));
   }
   parts.push(`${formatQty(t.quantity)} ${t.unit}`);
   return parts.join(' · ');
@@ -185,6 +234,8 @@ async function matchingSellerUserIds(category: TenderCategory, spec: Record<stri
     });
     cos.forEach((p) => companyIds.add(p.companyId));
     addCompanies(await prisma.company.findMany({ where: { companyType: 'kumas_uretici' }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
+  } else if (category === 'konfeksiyon') {
+    addCompanies(await prisma.company.findMany({ where: { OR: [{ companyType: 'konfeksiyon' }, { categoryTags: { contains: '"konfeksiyon"' } }] }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
   } else {
     addCompanies(await prisma.company.findMany({ where: { companyType: { in: ['toptanci', 'aksesuar', 'boyahane', 'baski'] } }, select: { id: true }, take: MAX_TENDER_NOTIFY }));
   }
@@ -201,6 +252,23 @@ const listSchema = z
     limit: z.coerce.number().int().min(1).max(100).optional(),
   })
   .strict();
+
+// Kartta gösterilecek ilk fotoğraf ve ek sayıları (veri değil, yalnızca kimlik).
+export async function coverMedia(ids: string[]) {
+  if (!ids.length) return () => ({ coverMediaId: null as string | null, mediaCount: 0, videoCount: 0 });
+  const [media, vids] = await Promise.all([
+    prisma.tenderMedia.findMany({ where: { tenderId: { in: ids } }, orderBy: { position: 'asc' }, select: { id: true, tenderId: true, kind: true } }),
+    prisma.videoLink.groupBy({ by: ['tenderId'], where: { tenderId: { in: ids } }, _count: { _all: true } }),
+  ]);
+  return (id: string) => {
+    const mine = media.filter((m) => m.tenderId === id);
+    return {
+      coverMediaId: mine.find((m) => m.kind === 'image')?.id ?? null,
+      mediaCount: mine.length,
+      videoCount: vids.find((v) => v.tenderId === id)?._count._all ?? 0,
+    };
+  };
+}
 
 async function offerCounts(ids: string[]) {
   if (!ids.length) return new Map<string, number>();
@@ -230,7 +298,8 @@ tendersRouter.get(
     const mine = me.companyId
       ? new Set((await prisma.tenderOffer.findMany({ where: { sellerCompanyId: me.companyId, tenderId: { in: rows.map((r) => r.id) } }, select: { tenderId: true } })).map((o) => o.tenderId))
       : new Set<string>();
-    res.json({ tenders: rows.map((r) => ({ ...toTenderView(r, buyers.get(r.buyerId), counts.get(r.id) ?? 0, me), myCompanyOffered: mine.has(r.id) })) });
+    const covers = await coverMedia(rows.map((r) => r.id));
+    res.json({ tenders: rows.map((r) => ({ ...toTenderView(r, buyers.get(r.buyerId), counts.get(r.id) ?? 0, me), myCompanyOffered: mine.has(r.id), ...covers(r.id) })) });
   })
 );
 
@@ -245,6 +314,14 @@ tendersRouter.post(
     const me = req.user!;
     const today = await prisma.tender.count({ where: { buyerId: me.id, createdAt: { gte: new Date(Date.now() - DAY) } } });
     if (today >= MAX_TENDERS_PER_DAY) return res.status(429).json({ error: 'daily_limit', max: MAX_TENDERS_PER_DAY });
+    const media = d.media ?? [];
+    if (media.filter((m) => m.dataUrl.startsWith('data:image/')).length > MAX_TENDER_IMAGES) return res.status(400).json({ error: 'too_many_images', max: MAX_TENDER_IMAGES });
+    if (media.filter((m) => m.dataUrl.startsWith('data:application/pdf')).length > MAX_TENDER_PDFS) return res.status(400).json({ error: 'too_many_pdfs', max: MAX_TENDER_PDFS });
+    const videoIds = [...new Set(d.videoIds ?? [])];
+    for (const vid of videoIds) {
+      const claim = await checkClaimable(me.id, vid);
+      if (claim) return res.status(claim === 'video_not_found' ? 404 : 409).json({ error: claim });
+    }
 
     let tender = await prisma.tender.create({
       data: {
@@ -260,6 +337,14 @@ tendersRouter.post(
         note: d.note ?? '',
       },
     });
+    if (media.length) {
+      await prisma.tenderMedia.createMany({
+        data: media.map((m, position) => ({ tenderId: tender.id, kind: m.dataUrl.startsWith('data:application/pdf') ? 'pdf' : 'image', dataUrl: m.dataUrl, caption: m.caption ?? '', position })),
+      });
+    }
+    if (videoIds.length) {
+      await prisma.videoLink.createMany({ data: videoIds.map((videoId, sortOrder) => ({ videoId, tenderId: tender.id, sortOrder })) });
+    }
     // Akış kartı: herkese açık gönderi; kart metni istemcide talep özetinden çizilir.
     if (d.shareToFeed !== false) {
       const post = await prisma.post.create({ data: { authorId: me.id, body: '', visibility: 'public', tenderId: tender.id } });
@@ -299,11 +384,31 @@ tendersRouter.get(
     const buyers = await partyInfo([t.buyerId]);
     const count = (await offerCounts([t.id])).get(t.id) ?? 0;
     const myOffer = !isBuyer ? offers.find((o) => o.sellerCompanyId === me.companyId) ?? null : null;
+    const [mediaRows, videoLinks] = await Promise.all([
+      prisma.tenderMedia.findMany({ where: { tenderId: t.id }, orderBy: { position: 'asc' }, select: { id: true, kind: true, caption: true, position: true } }),
+      prisma.videoLink.findMany({ where: { tenderId: t.id }, orderBy: { sortOrder: 'asc' }, select: { videoId: true } }),
+    ]);
+    const videos = videoLinks.length ? await prisma.video.findMany({ where: { id: { in: videoLinks.map((l) => l.videoId) } }, select: VIDEO_SELECT }) : [];
     res.json({
+      media: mediaRows,
+      videos: videoLinks.flatMap((l) => {
+        const v = videos.find((x) => x.id === l.videoId);
+        return v ? [toVideoRow(v)] : [];
+      }),
       tender: toTenderView(t, buyers.get(t.buyerId), count, me),
       offers: offers.map((o) => toOfferView(o, sellers.get(o.sellerUserId), isBuyer || o.sellerCompanyId === me.companyId)),
       myOffer: myOffer ? toOfferView(myOffer, sellers.get(myOffer.sellerUserId), true) : null,
     });
+  })
+);
+
+// Tek bir ek (fotoğraf/PDF). Talepler herkese açık olduğu için oturumlu her kullanıcı alır.
+tendersRouter.get(
+  '/:id/media/:mediaId',
+  handle(async (req, res) => {
+    const row = await prisma.tenderMedia.findFirst({ where: { id: req.params.mediaId, tenderId: req.params.id }, select: { dataUrl: true, kind: true } });
+    if (!row) return res.status(404).json({ error: 'media_not_found' });
+    res.json(row);
   })
 );
 
