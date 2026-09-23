@@ -42,6 +42,8 @@ model Company {
   // Faz 2 Adım 7: doğrulamanın nasıl yapıldığı: "" | belge (vergi levhası/ticaret sicil) | ziyaret (yerinde ziyaret)
   verificationLevel String    @default("")
   verifiedAt        DateTime?
+  // Akış düzeni (2026-09-23): çok şikâyet alan firma bu tarihe kadar herkese açık paylaşamaz.
+  publicPostBlockedUntil DateTime?
   companyCode       String    @unique
   // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:
   // istemci "logo var mı" bilgisini ve önbellek anahtarını buradan alır.
@@ -442,6 +444,8 @@ model Post {
   // gösterilir (alıcı metnin sonradan değiştiğini bilsin). Fotoğraf ve video
   // düzenlenemez.
   editedAt   DateTime?
+  // Farklı firmalardan yeterli şikâyet gelince gizlenir (yalnızca yazar görür); yönetici geri açabilir.
+  hiddenAt   DateTime?
   likes      PostLike[]
   comments   PostComment[]
 
@@ -1121,4 +1125,32 @@ model TradeStat {
   fetchedAt DateTime @default(now())
 
   @@unique([reporter, hs6, year])
+}
+
+// Akış düzeni (2026-09-23): şikâyet ve firma gizleme. İlişki alanı yok, yalnızca sütunlar
+// (mevcut tabloları yeniden kurmamak için).
+model PostReport {
+  id         String   @id @default(cuid())
+  postId     String
+  reporterId String
+  // Şikâyet edenin firması: eşik "farklı firmalardan" sayılır (tek firmanın çalışanları yetmez).
+  reporterCompanyId String?
+  // Şikâyet edilen gönderinin firması (firma düzeyi eşik için).
+  authorCompanyId   String?
+  reason     String
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+  resolvedAt DateTime?
+
+  @@unique([postId, reporterId])
+  @@index([authorCompanyId, createdAt])
+}
+
+model FeedMute {
+  id        String   @id @default(cuid())
+  userId    String
+  companyId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, companyId])
 }

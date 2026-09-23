@@ -76,9 +76,11 @@ export function cursorWhere(before?: string, beforeId?: string) {
 
 export async function canViewPost(
   viewerId: string,
-  post: { authorId: string; visibility: string }
+  post: { authorId: string; visibility: string; hiddenAt?: Date | null }
 ): Promise<boolean> {
   if (post.authorId === viewerId) return true;
+  // Şikâyetle gizlenen gönderiyi yalnızca yazarı görür (feedRules.ts).
+  if (post.hiddenAt) return false;
   if (post.visibility === 'public') return true;
   return isConnectedAccepted(await getConnectionState(viewerId, post.authorId));
 }

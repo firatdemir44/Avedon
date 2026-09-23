@@ -21,6 +21,7 @@ import { passportRouter } from './routes/passport';
 import { skillsRouter } from './routes/skills';
 import { assistantRouter } from './routes/assistant';
 import { speechStatus } from './speechToText';
+import { relevanceStatus } from './feedRules';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
@@ -83,6 +84,8 @@ app.get('/api/health', async (_req, res) => {
     push: await pushStatus(),
     // Asistana sesli soru: Workers AI (Whisper) anahtarı girilmiş mi, token geçerli mi.
     speech: await speechStatus(),
+    // Akış içerik denetimi (tekstille ilgisiz genel paylaşımı engeller).
+    feedModeration: await relevanceStatus(),
   });
 });
 app.use('/api/register', registerRouter);

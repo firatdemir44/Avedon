@@ -12,6 +12,54 @@ adminRouter.use(requireAdminAuth);
 
 const handle = makeHandle('admin');
 
+// Akış şikâyetleri (feedRules.ts): açık şikâyetler gönderi bazında, kapanan firmalar.
+adminRouter.get(
+  '/feed-reports',
+  handle(async (_req, res) => {
+    const reports = await prisma.postReport.findMany({ where: { resolvedAt: null }, orderBy: { createdAt: 'desc' }, take: 300 });
+    const postIds = [...new Set(reports.map((r) => r.postId))];
+    const posts = postIds.length
+      ? await prisma.post.findMany({
+          where: { id: { in: postIds } },
+          select: { id: true, body: true, hiddenAt: true, visibility: true, createdAt: true, productId: true, imageUrl: false, author: { select: { firstName: true, lastName: true, company: { select: { id: true, name: true } } } } },
+        })
+      : [];
+    const blocked = await prisma.company.findMany({ where: { publicPostBlockedUntil: { gt: new Date() } }, select: { id: true, name: true, publicPostBlockedUntil: true } });
+    res.json({
+      posts: posts.map((p) => {
+        const rs = reports.filter((r) => r.postId === p.id);
+        return { ...p, reportCount: rs.length, reasons: [...new Set(rs.map((r) => r.reason))], notes: rs.map((r) => r.note).filter(Boolean).slice(0, 5), lastReportAt: rs[0]?.createdAt };
+      }),
+      blockedCompanies: blocked,
+    });
+  })
+);
+// Şikâyeti yersiz bul: gönderi geri açılır, şikâyetler kapanır.
+adminRouter.post(
+  '/posts/:id/restore',
+  handle(async (req, res) => {
+    await prisma.post.update({ where: { id: req.params.id }, data: { hiddenAt: null } });
+    await prisma.postReport.updateMany({ where: { postId: req.params.id, resolvedAt: null }, data: { resolvedAt: new Date() } });
+    res.json({ ok: true });
+  })
+);
+// Şikâyeti haklı bul: gönderi gizli kalır, şikâyetler kapanır.
+adminRouter.post(
+  '/posts/:id/hide',
+  handle(async (req, res) => {
+    await prisma.post.update({ where: { id: req.params.id }, data: { hiddenAt: new Date() } });
+    await prisma.postReport.updateMany({ where: { postId: req.params.id, resolvedAt: null }, data: { resolvedAt: new Date() } });
+    res.json({ ok: true });
+  })
+);
+adminRouter.post(
+  '/companies/:id/unblock-public',
+  handle(async (req, res) => {
+    await prisma.company.update({ where: { id: req.params.id }, data: { publicPostBlockedUntil: null } });
+    res.json({ ok: true });
+  })
+);
+
 adminRouter.get('/companies', async (_req, res) => {
   const companies = await prisma.company.findMany({
     orderBy: { createdAt: 'desc' },

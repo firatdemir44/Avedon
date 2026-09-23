@@ -16,6 +16,7 @@ import {
   tenderCardsFor,
 } from '../posts';
 import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
+import { NOT_TEXTILE_MESSAGE, REPORT_REASONS, checkTextileRelevance, feedFilters, publicPostRule, reportPost } from '../feedRules';
 
 export const postsRouter = Router();
 postsRouter.use(requireAuth);
@@ -49,6 +50,8 @@ const feedQuerySchema = z.object({
   // firmalarındaki herkesin gönderileri. withProduct: yalnızca ürünlü gönderiler.
   scope: z.enum(['all', 'connections']).optional(),
   withProduct: z.enum(['1', 'true']).optional(),
+  // Sektör sekmesinde "Benim için": firma türüne göre ilgili tedarik zinciri (feedRules.ts).
+  forMe: z.enum(['1', 'true']).optional(),
 });
 
 postsRouter.get(
@@ -58,7 +61,7 @@ postsRouter.get(
     if (!parsed.success) {
       return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
     }
-    const { limit = DEFAULT_LIMIT, before, beforeId, authorId, companyId, scope, withProduct } = parsed.data;
+    const { limit = DEFAULT_LIMIT, before, beforeId, authorId, companyId, scope, withProduct, forMe } = parsed.data;
     const me = req.user!.id;
 
     const connectedIds = await getAcceptedConnectionIds(me);
@@ -78,10 +81,16 @@ postsRouter.get(
       if (!connectedIds.length) scopeWhere = { id: { in: [] } };
     }
 
+    // Firma/kişi sayfasında gizleme ve "Benim için" uygulanmaz; şikâyetle gizlenen her yerde gizli.
+    const onProfile = !!(authorId || companyId);
+    const rules = onProfile
+      ? [{ OR: [{ hiddenAt: null }, { authorId: me }] }]
+      : await feedFilters({ id: me, companyId: req.user!.companyId ?? null }, connectedIds, { forMe: !!forMe && scope !== 'connections' });
+
     const posts = await prisma.post.findMany({
       where: {
         OR: feedVisibilityWhere(me, connectedIds),
-        AND: [...cursorWhere(before, beforeId), scopeWhere, ...(withProduct ? [{ productId: { not: null } }] : [])],
+        AND: [...cursorWhere(before, beforeId), scopeWhere, ...rules, ...(withProduct ? [{ productId: { not: null } }] : [])],
         ...(authorId ? { authorId } : {}),
         ...(companyId ? { author: { companyId } } : {}),
       },
@@ -126,6 +135,86 @@ postsRouter.get(
     });
   })
 );
+
+// Herkese açık paylaşım hakkı: istemci seçeneği kilitli/açık gösterir, nedenini yazar.
+postsRouter.get(
+  '/public-rule',
+  handle(async (req, res) => {
+    const productId = typeof req.query.productId === 'string' ? req.query.productId : null;
+    const excludePostId = typeof req.query.postId === 'string' ? req.query.postId : undefined;
+    res.json({ rule: await publicPostRule(req.user!, { productId, excludePostId }) });
+  })
+);
+
+// Akışta firma gizleme: gizlenen firmanın gönderileri akışta görünmez (firma sayfasında görünür).
+postsRouter.get(
+  '/mutes',
+  handle(async (req, res) => {
+    const mutes = await prisma.feedMute.findMany({ where: { userId: req.user!.id }, orderBy: { createdAt: 'desc' } });
+    const companies = mutes.length ? await prisma.company.findMany({ where: { id: { in: mutes.map((m) => m.companyId) } }, select: { id: true, name: true } }) : [];
+    const names = new Map(companies.map((c) => [c.id, c.name]));
+    res.json({ mutes: mutes.map((m) => ({ companyId: m.companyId, name: names.get(m.companyId) ?? 'Firma', createdAt: m.createdAt })) });
+  })
+);
+postsRouter.post(
+  '/mutes',
+  handle(async (req, res) => {
+    const parsed = z.object({ companyId: z.string().min(1) }).safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body' });
+    if (parsed.data.companyId === req.user!.companyId) return res.status(400).json({ error: 'own_company' });
+    const company = await prisma.company.findUnique({ where: { id: parsed.data.companyId }, select: { id: true } });
+    if (!company) return res.status(404).json({ error: 'company_not_found' });
+    await prisma.feedMute.upsert({
+      where: { userId_companyId: { userId: req.user!.id, companyId: company.id } },
+      create: { userId: req.user!.id, companyId: company.id },
+      update: {},
+    });
+    res.status(201).json({ ok: true });
+  })
+);
+postsRouter.delete(
+  '/mutes/:companyId',
+  handle(async (req, res) => {
+    await prisma.feedMute.deleteMany({ where: { userId: req.user!.id, companyId: req.params.companyId } });
+    res.status(204).end();
+  })
+);
+
+// Şikâyet: eşikler feedRules.ts'te (farklı firmalardan 3 şikâyet → gönderi gizlenir).
+postsRouter.post(
+  '/:id/report',
+  handle(async (req, res) => {
+    const parsed = z
+      .object({ reason: z.enum(REPORT_REASONS.map((r) => r.key) as [string, ...string[]]), note: z.string().trim().max(500).optional() })
+      .safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body' });
+    const viewable = await loadViewablePost(req, res);
+    if (!viewable) return;
+    const out = await reportPost(req.user!, viewable.id, parsed.data.reason as (typeof REPORT_REASONS)[number]['key'], parsed.data.note ?? '');
+    if (out.status === 'own_post') return res.status(400).json({ error: 'own_post' });
+    if (out.status === 'not_found') return res.status(404).json({ error: 'post_not_found' });
+    res.status(201).json({ ok: true, already: out.status === 'already' });
+  })
+);
+
+// Herkese açık paylaşım kuralları + içerik uygunluğu. Uygun değilse yanıtı yazar, false döner.
+async function checkPublicAllowed(
+  req: Request,
+  res: Response,
+  input: { body: string; imageUrl?: string | null; productId?: string | null; excludePostId?: string }
+) {
+  const rule = await publicPostRule(req.user!, { productId: input.productId, excludePostId: input.excludePostId });
+  if (!rule.allowed) {
+    res.status(403).json({ error: 'public_not_allowed', reason: rule.reason, message: rule.message, rule });
+    return false;
+  }
+  const rel = await checkTextileRelevance({ body: input.body, imageDataUrl: input.imageUrl, productAttached: !!input.productId });
+  if (!rel.textile) {
+    res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+    return false;
+  }
+  return true;
+}
 
 // Fotoğraflar liste yanıtında dönmüyor (bkz. schema.prisma'daki açıklama);
 // istemci görünür kartlar için tek tek buradan çekiyor.
@@ -206,7 +295,7 @@ postsRouter.patch(
 
     const existing = await prisma.post.findUnique({
       where: { id: req.params.id },
-      select: { id: true, authorId: true, body: true, imageUrl: true, videoId: true, productId: true, visibility: true },
+      select: { id: true, authorId: true, body: true, imageUrl: true, videoId: true, productId: true, visibility: true, createdAt: true },
     });
     if (!existing) {
       return res.status(404).json({ error: 'post_not_found' });
@@ -221,6 +310,15 @@ postsRouter.patch(
       return res.status(400).json({ error: 'empty_post' });
     }
     if (productId && productId !== existing.productId && !(await checkOwnProduct(req, res, productId))) return;
+    // Herkese açığa çevirmek yeni paylaşım sayılır; herkese açık gönderinin metni değişirse içerik yeniden denetlenir.
+    const nextVisibility = visibility ?? existing.visibility;
+    const nextProductId = productId !== undefined ? productId : existing.productId;
+    if (nextVisibility === 'public' && existing.visibility !== 'public') {
+      if (!(await checkPublicAllowed(req, res, { body: nextBody, imageUrl: existing.imageUrl, productId: nextProductId, excludePostId: existing.id }))) return;
+    } else if (nextVisibility === 'public' && nextBody !== existing.body && !nextProductId) {
+      const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl });
+      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+    }
 
     const changed =
       nextBody !== existing.body ||
@@ -285,6 +383,7 @@ postsRouter.post(
     }
 
     if (productId && !(await checkOwnProduct(req, res, productId))) return;
+    if ((visibility ?? 'public') === 'public' && !(await checkPublicAllowed(req, res, { body: body?.trim() ?? '', imageUrl, productId }))) return;
 
     let post;
     try {
