@@ -4,9 +4,9 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## FIRAT'IN YAPACAKLARI ("ne yapmamız gerekiyor / eksikler neler" sorulunca BUNU hatırlat; 2026-09-23)
 
-1. **Meta WhatsApp engeli:** canlı health . Meta hesabındaki engel ekranının fotoğrafı bekleniyor → çözüm adımları resmi belgeden doğrulanıp tek seferde verilecek.
+1. **Meta WhatsApp engeli:** canlı health: wabaSubscription "API access blocked". Meta hesabındaki engel ekranının fotoğrafı bekleniyor → çözüm adımları resmi belgeden doğrulanıp tek seferde verilecek.
 2. **WhatsApp gerçek numara:** ayrı SIM + Meta işletme doğrulaması (şu an test numarası, 5 alıcı sınırı). Numara gelince uygulamaya "WhatsApp'tan sor" simgesi (wa.me + hazır mesaj) eklenecek.
-3. **Cloudflare AI anahtarını yenile (Roll):** anahtar birkaç dakika herkese açık durum sayfasında göründü; Render  kutusuna YALNIZCA anahtar yapıştırılacak.
+3. **Cloudflare AI anahtarını yenile (Roll):** anahtar birkaç dakika herkese açık durum sayfasında göründü; Render CLOUDFLARE_AI_TOKEN kutusuna YALNIZCA anahtar yapıştırılacak.
 4. **Net Takyon logosu + yazı dosyası** (SVG/PNG): geçici girdap çizimi değiştirilecek.
 5. **Doğal Türkçe ses (isteğe bağlı):** Google Cloud Chirp 3 HD (tr-TR destekli, doğrulandı); fiyat/ücretsiz kota doğrulanıp panel adımları verilecek; Fırat onaylarsa.
 6. **TÜRKPATENT "takyon" ön araştırması** (sınıf 9, 35, 42).
