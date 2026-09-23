@@ -122,7 +122,7 @@ export interface MarketRow {
   turkeySharePct: number | null;
   turkeyRank: number | null;
   unitUsdKg: { turkey: number | null; world: number | null; china: number | null };
-  topSuppliers: { m49: number; sharePct: number }[];
+  topSuppliers: { m49: number; sharePct: number; usdKg: number | null }[];
   score: number | null;
   scoreParts: { label: string; points: number }[];
   blocked: boolean;
@@ -154,7 +154,7 @@ export function scoreMarket(country: TargetCountry, cur: YearStat | null, prev: 
   const idx = ranked.findIndex((p) => p.partner === TURKEY_M49);
   base.turkeyRank = idx >= 0 ? idx + 1 : null;
   base.unitUsdKg = { turkey: unit(tr), world: cur.totalKg ? cur.total / cur.totalKg : null, china: unit(share(cur, CHINA_M49)) };
-  base.topSuppliers = ranked.slice(0, 5).map((p) => ({ m49: p.partner, sharePct: (p.value / cur.total) * 100 }));
+  base.topSuppliers = ranked.slice(0, 6).map((p) => ({ m49: p.partner, sharePct: (p.value / cur.total) * 100, usdKg: unit(p) }));
 
   // Büyüklük: 1 M$ → 0, 1 milyar $ → 35 (logaritmik).
   const size = Math.max(0, Math.min(35, ((Math.log10(Math.max(cur.total, 1)) - 6) / 3) * 35));

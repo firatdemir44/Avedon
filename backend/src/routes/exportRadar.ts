@@ -6,6 +6,7 @@ import { makeHandle } from './handle';
 import { COMMON_HS, suggestHs } from '../export/hs';
 import { TARGET_COUNTRIES } from '../export/countries';
 import { rankMarkets, rankMarketsProgressive } from '../export/trade';
+import { insightFor, overview, referenceShare } from '../export/insight';
 
 // Dünyayı Keşfet / İhracat Radarı — A aşaması (docs/kesfet-ihracat-plani.md §7):
 // ürün → HS6 önerisi, ülke listesi ve pazar puanı. Aday alıcı listesi B aşamasında.
@@ -79,11 +80,18 @@ exportRadarRouter.get(
     if (region) m49s = TARGET_COUNTRIES.filter((c) => c.region === region && m49s.includes(c.m49)).map((c) => c.m49);
     if (m49s.length > 40) return res.status(400).json({ error: 'too_many_countries' });
     // wait=1: tüm ülkeler hazır olana kadar bekler (asistan/testler); varsayılan: aşamalı.
-    if (req.query.wait === '1') {
-      const rows = await rankMarkets(hs6, m49s);
-      return res.json({ hs6, markets: rows, pending: [], source: 'UN Comtrade (ithalat, USD, CIF)', note: 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir.' });
-    }
-    const { markets, pending } = await rankMarketsProgressive(hs6, m49s);
-    res.json({ hs6, markets, pending, source: 'UN Comtrade (ithalat, USD, CIF)', note: 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir.' });
+    const { markets: raw, pending } = req.query.wait === '1' ? { markets: await rankMarkets(hs6, m49s), pending: [] as number[] } : await rankMarketsProgressive(hs6, m49s);
+    // Yorum: sayılar karara çevrilir (pazar tipi, kazanılabilir pazar, fiyat konumu, hamle).
+    const ref = referenceShare(raw);
+    const markets = raw.map((m) => ({ ...m, insight: insightFor(m, ref) }));
+    res.json({
+      hs6,
+      markets,
+      pending,
+      overview: overview(markets),
+      referenceSharePct: ref,
+      source: 'UN Comtrade (ithalat, USD, CIF)',
+      note: 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir. Yorumlar veriden kurallarla üretilir; yatırım tavsiyesi değildir.',
+    });
   })
 );

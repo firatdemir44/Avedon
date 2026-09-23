@@ -12,6 +12,9 @@ import { findSimilarProducts, usable } from '../looks';
 import { describeLook, parseLook } from '../skills/fabricLook/schema';
 import { prisma } from '../db';
 import { tenderSummary } from '../routes/tenders';
+import { TARGET_COUNTRIES } from '../export/countries';
+import { rankMarkets } from '../export/trade';
+import { insightFor, overview, referenceShare } from '../export/insight';
 import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
 import { SKILLS, runSkill } from '../skills';
@@ -250,6 +253,33 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
+  // Dünyayı Keşfet: HS6 kodu için ülke pazar analizi (UN Comtrade). Yorumlar kurallarla üretilir;
+  // asistan bunları kendi sözleriyle özetler, sayı uydurmaz.
+  const pazarAnalizi = betaZodTool({
+    name: 'ihracat_pazar_analizi',
+    description:
+      'Bir ürünün (6 haneli HS/GTİP kodu) hangi ülkelerde ihracat fırsatı olduğunu analiz eder: ithalat büyüklüğü, büyüme, Türkiye payı, kg fiyatları, pazar tipi, kazanılabilir pazar ve önerilen hamle. ' +
+      'Kullan: "elastanlı örme kumaşımı nereye satabilirim", "Mısır pazarı nasıl", "Afrika\'da hangi ülke" gibi sorularda. Kodu bilmiyorsan örme elastanlı kumaş 600410, polyester örme boyalı 600632, pamuklu örme 600622, denim 520942, pamuklu tişört 610910. En çok 12 ülke iste; bölge verilebilir.',
+    inputSchema: z.object({
+      hs6: z.string().regex(/^\d{6}$/).describe('6 haneli HS kodu'),
+      region: z.enum(['AB', 'Avrupa', 'Kuzey Amerika', 'Latin Amerika', 'Orta Doğu', 'Afrika', 'Asya']).optional(),
+      countries: z.array(z.string().length(2)).max(12).optional().describe('ISO2 ülke kodları, ör. ["EG","DE","US"]'),
+    }),
+    run: async (args) => {
+      let list = TARGET_COUNTRIES;
+      if (args.countries?.length) list = list.filter((c) => args.countries!.includes(c.iso2));
+      else if (args.region) list = list.filter((c) => c.region === args.region);
+      else list = list.filter((c) => ['DE', 'IT', 'ES', 'GB', 'US', 'AE', 'EG', 'MA', 'IQ', 'PL', 'NL', 'FR'].includes(c.iso2));
+      const raw = await rankMarkets(args.hs6, list.slice(0, 12).map((c) => c.m49));
+      const ref = referenceShare(raw);
+      const rows = raw.map((m) => ({ ...m, insight: insightFor(m, ref) }));
+      const ov = overview(rows);
+      const brief = rows.map((r) => ({ country: r.country.name, score: r.score, type: r.insight.typeLabel, summary: r.insight.summary, action: r.insight.action, price: r.insight.pricePositionText }));
+      calls.push({ name: 'ihracat_pazar_analizi', title: 'İhracat pazar analizi', input: args, output: { overview: ov, markets: brief }, summary: ov.headline });
+      return JSON.stringify({ overview: ov.headline, top: ov.top, markets: brief, source: 'UN Comtrade (ithalat, USD); yorumlar kurallarla üretildi' });
+    },
+  });
+
   const kapasiteAra = betaZodTool({
     name: 'kapasite_ara',
     description:
@@ -401,5 +431,5 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele], calls, suggestions, watchSuggestions };
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi], calls, suggestions, watchSuggestions };
 }

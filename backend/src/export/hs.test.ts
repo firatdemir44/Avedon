@@ -53,3 +53,22 @@ test('pazar puanı: engelli ülke puanlanmaz; Türkiye payı ve birim fiyat hesa
   assert.ok(row.growthPct! < 0);
   assert.ok(row.score! > 30 && row.score! < 100, String(row.score));
 });
+
+test('yorum: yükselen pazar, kazanılabilir pazar, fiyat verisi tutarsızsa kullanılmaz', async () => {
+  const { insightFor, referenceShare, overview } = await import('./insight');
+  const eg = TARGET_COUNTRIES.find((c) => c.iso2 === 'EG')!;
+  const cur = { year: 2025, total: 62_000_000, totalKg: 6_800_000, partners: [{ partner: 0, value: 62_000_000, kg: 6_800_000 }, { partner: 156, value: 30_000_000, kg: 2_450_000 }, { partner: 792, value: 1_180_000, kg: 97_000 }] };
+  const prev = { ...cur, year: 2024, total: 30_000_000 };
+  const row = scoreMarket(eg, cur, prev);
+  const ins = insightFor(row, 10);
+  assert.equal(ins.type, 'yukselen');
+  assert.ok(ins.winnableUsd! > 5_000_000);
+  assert.match(ins.summary, /Mısır bu üründen yılda 62 milyon \$ ithal ediyor/);
+  // Türk kg fiyatı ortalamanın 5 katı → güvenilmez: konum yok, rakip önerilmez.
+  const bad = scoreMarket(eg, { ...cur, partners: [cur.partners[0], { partner: 792, value: 1_000_000, kg: 20_000 }, { partner: 380, value: 10_000_000, kg: 100_000 }] }, prev);
+  const bi = insightFor(bad, 10);
+  assert.equal(bi.pricePosition, null);
+  assert.equal(bi.displaceable, null);
+  assert.equal(referenceShare([row]), 3);
+  assert.equal(overview([{ ...row, insight: ins }]).top[0].name, 'Mısır');
+});
