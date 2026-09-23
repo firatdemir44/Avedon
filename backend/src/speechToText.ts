@@ -7,9 +7,19 @@
 const API_BASE = process.env.CLOUDFLARE_API_BASE || 'https://api.cloudflare.com/client/v4';
 const MODEL = '@cf/openai/whisper-large-v3-turbo';
 
+// Panelden yanlışlıkla örnek komutun tamamı yapıştırılırsa içinden yalnızca anahtar alınır.
+function cleanToken(raw?: string) {
+  const v = raw?.trim();
+  if (!v) return undefined;
+  const m = v.match(/Bearers+([A-Za-z0-9_-]{20,})/);
+  return m ? m[1] : /^[A-Za-z0-9_-]+$/.test(v) ? v : undefined;
+}
+// Sağlık çıktısı herkese açık: hata metnindeki anahtar benzeri parçalar gizlenir.
+const redact = (t: string) => t.replace(/[A-Za-z0-9_-]{24,}/g, '***').slice(0, 160);
+
 const creds = () => {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const token = process.env.CLOUDFLARE_AI_TOKEN?.trim();
+  const token = cleanToken(process.env.CLOUDFLARE_AI_TOKEN);
   return accountId && token ? { accountId, token } : null;
 };
 
@@ -33,7 +43,7 @@ export async function transcribe(audio: Buffer): Promise<string> {
   });
   const body = (await res.json().catch(() => null)) as { success?: boolean; result?: { text?: string }; errors?: { message: string }[] } | null;
   if (!res.ok || !body?.success) {
-    lastError = body?.errors?.[0]?.message ?? `HTTP ${res.status}`;
+    lastError = redact(body?.errors?.[0]?.message ?? `HTTP ${res.status}`);
     throw new Error(`Ses yazıya çevrilemedi: ${lastError}`);
   }
   lastOkAt = new Date().toISOString();
@@ -64,9 +74,9 @@ export async function speechStatus() {
         }
         detail = b?.errors?.[0]?.message ?? `HTTP ${r.status}`;
       }
-      tokenCheck = { at: Date.now(), ok, detail: ok ? undefined : detail };
+      tokenCheck = { at: Date.now(), ok, detail: ok ? undefined : detail && redact(detail) };
     } catch (err) {
-      tokenCheck = { at: Date.now(), ok: false, detail: (err as Error).message };
+      tokenCheck = { at: Date.now(), ok: false, detail: redact((err as Error).message) };
     }
   }
   return { configured: true, tokenActive: tokenCheck.ok, tokenDetail: tokenCheck.detail, lastOkAt, lastError };

@@ -209,7 +209,7 @@ export async function checkTextileRelevance(input: { body: string; imageDataUrl?
     return { ...out, checked: true };
   } catch (err) {
     console.warn('[feedRules] içerik denetimi yapılamadı:', (err as Error).message);
-    lastRelevanceError = (err as Error).message.slice(0, 200);
+    lastRelevanceError = (err as Error).message.replace(/[A-Za-z0-9_-]{24,}/g, "***").slice(0, 200);
     return { textile: true, reason: 'hata', checked: false };
   }
 }
