@@ -7,6 +7,8 @@ import { useTheme } from '../theme/ThemeContext';
 export interface SegmentOption<T extends string> {
   value: T;
   label: string;
+  /** Seçilemez (soluk gösterilir, dokunulunca bir şey olmaz). */
+  disabled?: boolean;
 }
 
 export interface SegmentControlProps<T extends string> {
@@ -50,9 +52,12 @@ export function SegmentControl<T extends string>({
           <Pressable
             key={o.value}
             hitSlop={{ top: (t.size.touchMin - t.size.chip) / 2, bottom: (t.size.touchMin - t.size.chip) / 2 }}
-            onPress={() => onChange(o.value)}
+            onPress={() => {
+              if (!o.disabled) onChange(o.value);
+            }}
+            disabled={o.disabled}
             accessibilityRole="radio"
-            accessibilityState={{ checked: on }}
+            accessibilityState={{ checked: on, disabled: !!o.disabled }}
             accessibilityLabel={accessibilityLabel ? `${accessibilityLabel}: ${o.label}` : o.label}
             style={{
               flex: stretch ? 1 : undefined,
@@ -66,7 +71,7 @@ export function SegmentControl<T extends string>({
               backgroundColor: on ? t.colors.surface1 : 'transparent',
             }}
           >
-            <Text numberOfLines={1} style={[t.type.label14, { color: on ? t.colors.ink : t.colors.ink2 }]}>
+            <Text numberOfLines={1} style={[t.type.label14, { color: on ? t.colors.ink : o.disabled ? t.colors.ink3 : t.colors.ink2 }]}>
               {o.label}
             </Text>
           </Pressable>

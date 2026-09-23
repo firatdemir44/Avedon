@@ -57,7 +57,10 @@ export type RootStackParamList = {
   // Üst başlıktaki "Arama Yap" kutusu: tek kutudan firma, kumaş ve iplik
   // (GET /api/search). Oturumsuz da çalışır.
   GlobalSearch: undefined;
-  Admin: undefined;
+  // tab: 'reports' — akış şikâyeti bildiriminden gelindiğinde "Şikâyetler" sekmesi açık gelir.
+  Admin: { tab?: 'requests' | 'companies' | 'reports' } | undefined;
+  // Kullanıcının akışında gizlediği firmalar (2026-09-23).
+  FeedMutes: undefined;
   // Firma doğrulama başvurusu (firma tarafı, 2026-09-22): durum + belge yükleme.
   // Yönetici tarafı "Admin" ekranının "Başvurular" sekmesinde.
   Verification: undefined;

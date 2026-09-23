@@ -24,6 +24,7 @@ import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../fea
 import { haptics } from '../../features/haptics';
 import { setProductFavorite, type FeedPost } from '../../api/client';
 import { useTheme } from '../../theme/ThemeContext';
+import { ReportPostSheet } from './ReportPostSheet';
 import { Avatar, Badge, Card, Icon, type AnyIconName } from '../../ui';
 
 interface Props {
@@ -40,6 +41,8 @@ interface Props {
   onEdit: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
   onRequestQuote?: (post: FeedPost) => void;
+  /** Başkasının gönderisinde "Bu firmayı akışımda gizle" (yalnızca ana akış verir). */
+  onMuteCompany?: (post: FeedPost) => void;
 }
 
 const BODY_LINES = 3;
@@ -57,6 +60,7 @@ function PostCardComponent({
   onEdit,
   onDelete,
   onRequestQuote,
+  onMuteCompany,
 }: Props) {
   const t = useTheme();
   // Açık talep gönderisi: kart iki çağıran ekranda da (akış, firma sayfası)
@@ -70,6 +74,7 @@ function PostCardComponent({
     post.imageUrl ?? getCachedPostImage(post.id) ?? null
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -257,7 +262,31 @@ function PostCardComponent({
           {isMine ? (
             <MenuAction icon="trash-outline" label="Sil" danger onPress={() => onDelete(post)} />
           ) : null}
+          {!isMine && company && company.id !== myCompanyId && onMuteCompany ? (
+            <MenuAction
+              icon="eye-off-outline"
+              label="Bu firmayı akışımda gizle"
+              onPress={() => {
+                setMenuOpen(false);
+                onMuteCompany(post);
+              }}
+            />
+          ) : null}
+          {!isMine ? (
+            <MenuAction
+              icon="flag-outline"
+              label="Şikâyet et"
+              danger
+              onPress={() => {
+                setMenuOpen(false);
+                setReportOpen(true);
+              }}
+            />
+          ) : null}
         </View>
+      ) : null}
+      {!isMine ? (
+        <ReportPostSheet postId={post.id} visible={reportOpen} onClose={() => setReportOpen(false)} />
       ) : null}
 
       {/* Açık talep: gönderi metni yerine talep özeti */}

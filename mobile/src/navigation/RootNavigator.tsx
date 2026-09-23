@@ -63,6 +63,7 @@ import { TenderDetailScreen } from '../screens/tenders/TenderDetailScreen';
 import { GarmentVisualCostScreen } from '../screens/visualCosting/GarmentVisualCostScreen';
 import { LoginScreen } from '../screens/onboarding/LoginScreen';
 import { AdminScreen } from '../screens/admin/AdminScreen';
+import { FeedMutesScreen } from '../screens/feed/FeedMutesScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
@@ -435,7 +436,12 @@ export function RootNavigator() {
             <Stack.Screen
               name="Admin"
               component={AdminScreen}
-              options={{ headerShown: true, title: 'Firma Doğrulama' }}
+              options={{ headerShown: true, title: 'Yönetim' }}
+            />
+            <Stack.Screen
+              name="FeedMutes"
+              component={FeedMutesScreen}
+              options={{ headerShown: true, title: 'Gizlediğim Firmalar' }}
             />
             {/* Firma tarafı doğrulama başvurusu. */}
             <Stack.Screen

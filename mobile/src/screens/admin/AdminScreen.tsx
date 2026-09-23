@@ -12,6 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSession } from '../../context/SessionContext';
 import { fetchAdminCompanies, updateCompanyVerification } from '../../api/client';
 import { AdminVerificationRequests } from './AdminVerificationRequests';
+import { AdminFeedReports } from './AdminFeedReports';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
@@ -54,7 +56,7 @@ function statusBadge(status: VerificationStatus) {
   return { kind: 'cancelled' as const, label: 'Doğrulanmamış' };
 }
 
-type Tab = 'requests' | 'companies';
+type Tab = 'requests' | 'companies' | 'reports';
 
 /**
  * Yönetici ekranı ("Firma Doğrulama"). İki sekme: gelen doğrulama başvuruları
@@ -62,11 +64,15 @@ type Tab = 'requests' | 'companies';
  * duran yol, kaldırılmadı). Ekran yalnızca `user.isAdmin` olanlara açılır;
  * yöneticinin kim olduğu firmaya hiçbir yerde gösterilmez.
  */
-export function AdminScreen() {
+export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
   const t = useTheme();
   const { user } = useSession();
   const isAdmin = !!user?.isAdmin;
-  const [tab, setTab] = useState<Tab>('requests');
+  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'requests');
+  // Bildirimden aynı ekran açıkken tekrar gelinirse sekme güncellensin.
+  React.useEffect(() => {
+    if (route.params?.tab) setTab(route.params.tab);
+  }, [route.params?.tab]);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
 
   if (!isAdmin) {
@@ -95,11 +101,14 @@ export function AdminScreen() {
               label: pendingCount === null ? 'Başvurular' : `Başvurular (${pendingCount})`,
             },
             { value: 'companies', label: 'Firmalar' },
+            { value: 'reports', label: 'Şikâyetler' },
           ]}
         />
       </View>
       {tab === 'requests' ? (
         <AdminVerificationRequests onPendingCount={setPendingCount} />
+      ) : tab === 'reports' ? (
+        <AdminFeedReports />
       ) : (
         <AdminCompanies />
       )}

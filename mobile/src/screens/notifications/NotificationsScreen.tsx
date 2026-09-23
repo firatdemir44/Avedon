@@ -55,6 +55,7 @@ function iconFor(kind: string): AnyIconName {
   if (kind === 'verification_approved') return 'shield-checkmark-outline';
   if (kind === 'verification_rejected') return 'shield-outline';
   if (kind === 'verification_request') return 'shield-half-outline';
+  if (kind === 'feed_moderation') return 'flag-outline';
   return 'bell';
 }
 
@@ -160,7 +161,12 @@ export function NotificationsScreen({ navigation }: Props) {
       // Firma doğrulama (2026-09-22): yöneticiye gelen başvuru → yönetici
       // ekranı; firmaya gelen sonuç → kendi doğrulama ekranı.
       if (item.kind === 'verification_request') {
-        navigation.navigate('Admin');
+        navigation.navigate('Admin', { tab: 'requests' });
+        return;
+      }
+      // Akış şikâyeti (2026-09-23): yöneticiye → "Şikâyetler" sekmesi.
+      if (item.kind === 'feed_moderation') {
+        navigation.navigate('Admin', { tab: 'reports' });
         return;
       }
       if (item.kind === 'verification_approved' || item.kind === 'verification_rejected') {

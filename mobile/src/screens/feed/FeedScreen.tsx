@@ -16,6 +16,8 @@ import {
   fetchFeed,
   fetchToday,
   likePost,
+  muteCompanyInFeed,
+  unmuteCompanyInFeed,
   unlikePost,
   type FeedCursor,
   type FeedPost,
@@ -34,12 +36,14 @@ import {
   AppBar,
   Button,
   Card,
+  Chip,
   EmptyState,
   Icon,
   QuickAction,
   Screen,
   SearchBox,
   SectionTitle,
+  SegmentControl,
   Skeleton,
   StatBox,
 } from '../../ui';
@@ -49,6 +53,8 @@ type Props = MainTabScreenProps<'Feed'>;
 // Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
 const REFRESH_THROTTLE_MS = 30000;
 const SCOPE_KEY = 'avedon.feedScope';
+const FOR_ME_KEY = 'avedon.feedForMe';
+const NOTICE_MS = 6000;
 
 export function FeedScreen({ navigation }: Props) {
   const t = useTheme();
@@ -63,7 +69,23 @@ export function FeedScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [scope, setScope] = useState<FeedScope>('all');
+  // Varsayılan "Bağlantılarım" (akış düzeni 2026-09-23); seçim hatırlanır.
+  const [scope, setScope] = useState<FeedScope>('connections');
+  // "Sektör" sekmesinde "Benim için" süzgeci: varsayılan açık, hatırlanır.
+  const [forMe, setForMe] = useState(true);
+  const forMeRef = useRef(true);
+  forMeRef.current = forMe;
+  // Firma gizlendikten sonra kısa bildirim + geri al.
+  const [notice, setNotice] = useState<{ text: string; undo?: () => void } | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showNotice = useCallback((text: string, undo?: () => void) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setNotice({ text, undo });
+    noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  }, []);
+  useEffect(() => () => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+  }, []);
   const [scopeReady, setScopeReady] = useState(false);
   const [today, setToday] = useState<TodaySummary | null>(null);
   const loadingMoreRef = useRef(false);
@@ -74,9 +96,18 @@ export function FeedScreen({ navigation }: Props) {
   scopeRef.current = scope;
 
   useEffect(() => {
-    AsyncStorage.getItem(SCOPE_KEY)
-      .then((saved) => {
-        if (saved === 'connections') setScope('connections');
+    AsyncStorage.multiGet([SCOPE_KEY, FOR_ME_KEY])
+      .then((pairs) => {
+        const saved = pairs[0]?.[1];
+        const savedForMe = pairs[1]?.[1];
+        if (saved === 'all' || saved === 'connections') {
+          scopeRef.current = saved;
+          setScope(saved);
+        }
+        if (savedForMe === '0') {
+          forMeRef.current = false;
+          setForMe(false);
+        }
       })
       .catch(() => {})
       .finally(() => setScopeReady(true));
@@ -93,16 +124,18 @@ export function FeedScreen({ navigation }: Props) {
   const loadFirstPage = useCallback((silent = false) => {
     if (!silent) setLoading(true);
     const requested = scopeRef.current;
-    return fetchFeed(null, 10, requested)
+    const requestedForMe = forMeRef.current;
+    const stale = () => scopeRef.current !== requested || forMeRef.current !== requestedForMe;
+    return fetchFeed(null, 10, requested, { forMe: requestedForMe })
       .then(({ posts: fetched, nextCursor }) => {
-        if (scopeRef.current !== requested) return;
+        if (stale()) return;
         setPosts(fetched);
         setCursor(nextCursor);
         setError(null);
         lastLoadedAtRef.current = Date.now();
       })
       .catch((err) => {
-        if (scopeRef.current !== requested) return;
+        if (stale()) return;
         setError(friendlyMessage(err, 'Akış alınamadı'));
       })
       .finally(() => {
@@ -111,19 +144,65 @@ export function FeedScreen({ navigation }: Props) {
       });
   }, []);
 
-  const changeScope = (next: FeedScope) => {
-    if (next === scope) return;
-    haptics.selection();
-    scopeRef.current = next;
-    setScope(next);
+  const resetAndLoad = () => {
     setPosts([]);
     setCursor(null);
     setError(null);
     lastLoadedAtRef.current = 0;
     hasPostsRef.current = false;
-    AsyncStorage.setItem(SCOPE_KEY, next).catch(() => {});
     setLoading(true);
     loadFirstPage();
+  };
+
+  const changeScope = (next: FeedScope) => {
+    if (next === scope) return;
+    haptics.selection();
+    scopeRef.current = next;
+    setScope(next);
+    AsyncStorage.setItem(SCOPE_KEY, next).catch(() => {});
+    resetAndLoad();
+  };
+
+  const changeForMe = (next: boolean) => {
+    if (next === forMe) return;
+    haptics.selection();
+    forMeRef.current = next;
+    setForMe(next);
+    AsyncStorage.setItem(FOR_ME_KEY, next ? '1' : '0').catch(() => {});
+    resetAndLoad();
+  };
+
+  // "Bu firmayı akışımda gizle": onay → sunucu → listeden çıkar, geri al seçeneği.
+  const handleMuteCompany = async (post: FeedPost) => {
+    const company = post.author.company;
+    if (!company) return;
+    const confirmed = await confirmAction({
+      title: 'Firmayı gizle',
+      message: `${company.name} firmasının paylaşımları akışınızda görünmeyecek. Firma bundan haberdar olmaz; Profilim > Gizlediğim Firmalar bölümünden geri alabilirsiniz.`,
+      confirmLabel: 'Gizle',
+    });
+    if (!confirmed) return;
+    try {
+      await muteCompanyInFeed(company.id);
+      haptics.success();
+      const removed = posts.filter((p) => p.author.company?.id === company.id);
+      setPosts((prev) => prev.filter((p) => p.author.company?.id !== company.id));
+      showNotice(`${company.name} akışınızda gizlendi.`, async () => {
+        setNotice(null);
+        try {
+          await unmuteCompanyInFeed(company.id);
+          setPosts((prev) => {
+            const merged = [...prev, ...removed.filter((r) => !prev.some((p) => p.id === r.id))];
+            return merged.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
+          });
+        } catch (err) {
+          setError(friendlyMessage(err, 'Geri alınamadı'));
+        }
+      });
+    } catch (err) {
+      haptics.error();
+      setError(friendlyMessage(err, 'Firma gizlenemedi'));
+    }
   };
 
   // Odaklanmada sessiz yenileme; 30 saniyeden yeni yükleme varsa atlanır
@@ -143,9 +222,10 @@ export function FeedScreen({ navigation }: Props) {
     if (!cursor || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     const requested = scopeRef.current;
+    const requestedForMe = forMeRef.current;
     try {
-      const { posts: older, nextCursor } = await fetchFeed(cursor, 10, requested);
-      if (scopeRef.current !== requested) return;
+      const { posts: older, nextCursor } = await fetchFeed(cursor, 10, requested, { forMe: requestedForMe });
+      if (scopeRef.current !== requested || forMeRef.current !== requestedForMe) return;
       setPosts((prev) => {
         const seen = new Set(prev.map((p) => p.id));
         return [...prev, ...older.filter((p) => !seen.has(p.id))];
@@ -290,14 +370,9 @@ export function FeedScreen({ navigation }: Props) {
         </View>
       </Card>
 
-      {/* Sektörden */}
+      {/* Akış: Bağlantılarım | Sektör */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-        <SectionTitle
-          style={{ flex: 1 }}
-          title="Sektörden"
-          linkLabel={scope === 'all' ? 'Bağlantılarım' : 'Tümü'}
-          onLinkPress={() => changeScope(scope === 'all' ? 'connections' : 'all')}
-        />
+        <SectionTitle style={{ flex: 1 }} title="Akış" />
         {/* "+" bant ikonuna sığmadı (bantta en fazla 2 ikon); paylaşma
             eylemi bölüm başlığının sağında sessiz düğme olarak duruyor. */}
         <Button
@@ -307,6 +382,28 @@ export function FeedScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('CreatePost')}
         />
       </View>
+
+      <SegmentControl<FeedScope>
+        stretch
+        accessibilityLabel="Akışta ne görünsün"
+        value={scope}
+        onChange={changeScope}
+        options={[
+          { value: 'connections', label: 'Bağlantılarım' },
+          { value: 'all', label: 'Sektör' },
+        ]}
+      />
+      {scope === 'all' ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space[2] }}>
+          <Chip label="Benim için" icon="sparkles-outline" selected={forMe} onPress={() => changeForMe(true)} />
+          <Chip label="Tümü" selected={!forMe} onPress={() => changeForMe(false)} />
+          <Text style={[t.type.caption12, { color: t.colors.ink3, flexBasis: '100%' }]}>
+            {forMe
+              ? 'Firmanızın işiyle ilgili tedarik zincirindeki paylaşımlar.'
+              : 'Sektördeki tüm herkese açık paylaşımlar.'}
+          </Text>
+        </View>
+      ) : null}
 
       {error && posts.length > 0 ? (
         <View
@@ -386,13 +483,34 @@ export function FeedScreen({ navigation }: Props) {
                 actionLabel="Tekrar dene"
                 onAction={() => loadFirstPage()}
               />
+            ) : scope === 'connections' ? (
+              <View style={{ gap: t.space[3] }}>
+                <EmptyState
+                  icon="people-outline"
+                  title="Bağlantılarınızdan henüz paylaşım yok"
+                  description="Bağlantı kurduğunuz firmaların paylaşımları burada görünür. Bu arada sektördeki paylaşımlara bakabilir ya da firma rehberinden bağlantı kurabilirsiniz."
+                  actionLabel="Sektör akışına bak"
+                  onAction={() => changeScope('all')}
+                />
+                <Button
+                  kind="secondary"
+                  icon="business-outline"
+                  label="Firma rehberi"
+                  onPress={() => navigation.navigate('CompaniesDirectory')}
+                  fullWidth
+                />
+              </View>
             ) : (
               <EmptyState
                 icon="home"
-                title="Firmaları takip et, yenilikleri burada gör"
-                description="Bağlantı kurduğun firmaların paylaşımları bu akışta listelenir."
-                actionLabel="Firmaları keşfet"
-                onAction={() => navigation.navigate('Connections')}
+                title={forMe ? 'Size uygun paylaşım bulunamadı' : 'Henüz paylaşım yok'}
+                description={
+                  forMe
+                    ? 'Firmanızın işiyle ilgili paylaşım yok. Tüm sektör paylaşımlarına bakabilirsiniz.'
+                    : 'Sektörde henüz herkese açık paylaşım yok.'
+                }
+                actionLabel={forMe ? 'Tümünü göster' : 'Firmaları keşfet'}
+                onAction={() => (forMe ? changeForMe(false) : navigation.navigate('CompaniesDirectory'))}
               />
             )
           }
@@ -430,9 +548,49 @@ export function FeedScreen({ navigation }: Props) {
               onShare={handleShare}
               onEdit={(post) => navigation.navigate('CreatePost', { postId: post.id })}
               onDelete={handleDelete}
+              onMuteCompany={handleMuteCompany}
             />
           )}
         />
+        {notice ? (
+          <View
+            accessibilityLiveRegion="polite"
+            style={[
+              {
+                position: 'absolute',
+                left: t.space[4],
+                right: t.space[4],
+                bottom: showTop ? t.space[4] + t.size.touchMin + t.space[3] : t.space[4],
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space[3],
+                paddingLeft: t.space[4],
+                paddingRight: t.space[2],
+                minHeight: t.size.touchMin,
+                borderRadius: t.radius.md,
+                backgroundColor: t.colors.ink,
+              },
+              t.shadowRaised,
+            ]}
+          >
+            <Text style={[t.type.body14, { color: t.colors.surface1, flex: 1, minWidth: 0 }]}>{notice.text}</Text>
+            {notice.undo ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Geri al"
+                onPress={notice.undo}
+                style={({ pressed }) => ({
+                  minHeight: t.size.touchMin,
+                  justifyContent: 'center',
+                  paddingHorizontal: t.space[3],
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text style={[t.type.label14, { color: t.colors.surface1 }]}>Geri al</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
         {showTop ? (
           <Pressable
             accessibilityRole="button"

@@ -9,12 +9,15 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
+  ApiError,
   createPost,
   fetchMyProducts,
   fetchPost,
   fetchProduct,
+  fetchPublicPostRule,
   updatePost,
   type PostVisibility,
+  type PublicPostRule,
 } from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
 import { markFeedStale } from '../../features/feed/feedRefresh';
@@ -81,6 +84,12 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const [usingProductPhoto, setUsingProductPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Herkese açık paylaşım hakkı (akış düzeni 2026-09-23): ekran açılınca ve ürün değişince sorulur.
+  const [rule, setRule] = useState<PublicPostRule | null>(null);
+  // Düzenlenen gönderinin ilk görünürlüğü: zaten herkese açık olan gönderi öyle kalabilir (sunucu da izin verir).
+  const [originalVisibility, setOriginalVisibility] = useState<PostVisibility | null>(null);
+  // Sunucu herkese açık paylaşımı reddettiyse (403/422) tek dokunuşla "Bağlantılarımla paylaş".
+  const [offerConnections, setOfferConnections] = useState(false);
 
   // Seçme, yükleme, ilerleme ve paylaşılmadan çıkılınca temizleme ortak
   // kancada (ürün sayfası ve sohbet de aynısını kullanıyor).
@@ -100,6 +109,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         if (cancelled) return;
         setBody(post.body);
         setVisibility(post.visibility);
+        setOriginalVisibility(post.visibility);
         setProductId(post.product?.id ?? null);
         setExistingMedia(post.video ? 'video' : post.hasImage ? 'image' : null);
       })
@@ -198,6 +208,31 @@ export function CreatePostScreen({ navigation, route }: Props) {
     }, [user?.companyId])
   );
 
+  // Herkese açık hak: düzenlemede gönderi yüklendikten sonra (ürün bilinsin diye).
+  useEffect(() => {
+    if (loadingPost) return;
+    let cancelled = false;
+    fetchPublicPostRule({ productId, postId: editingPostId })
+      .then(({ rule: next }) => {
+        if (!cancelled) setRule(next);
+      })
+      .catch(() => {
+        // Hak bilgisi gelmezse seçenek açık kalır; sunucu gönderimde yine denetler.
+        if (!cancelled) setRule(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, editingPostId, loadingPost]);
+
+  const keepsPublic = isEditing && originalVisibility === 'public';
+  const publicLocked = !!rule && !rule.allowed && !keepsPublic;
+
+  // Kilitliyse "Bağlantılarım" kendiliğinden seçilir.
+  useEffect(() => {
+    if (publicLocked) setVisibility('connections');
+  }, [publicLocked]);
+
   const pickImage = async () => {
     setPickingImage(true);
     setError(null);
@@ -251,6 +286,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
     setProductId(null);
   };
 
+  const visibilityChoice: PostVisibility = publicLocked ? 'connections' : visibility;
   const uploadingVideo = videoUpload.uploading;
   const videoRef = videoUpload.uploadedRef;
   const hasMedia = !!imageDataUrl || !!video;
@@ -258,10 +294,13 @@ export function CreatePostScreen({ navigation, route }: Props) {
     ? (body.trim().length > 0 || !!existingMedia) && !submitting && !loadingPost
     : (body.trim().length > 0 || !!imageDataUrl || !!videoRef) && !submitting && !uploadingVideo;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideVisibility?: PostVisibility) => {
     if (!canSubmit) return;
+    const visibility = overrideVisibility ?? visibilityChoice;
+    if (overrideVisibility) setVisibility(overrideVisibility);
     setSubmitting(true);
     setError(null);
+    setOfferConnections(false);
     try {
       if (editingPostId) {
         await updatePost(editingPostId, { body: body.trim(), visibility, productId });
@@ -285,6 +324,21 @@ export function CreatePostScreen({ navigation, route }: Props) {
       if (post.imageUrl) setCachedPostImage(post.id, post.imageUrl);
       navigation.goBack();
     } catch (err) {
+      // Herkese açık reddi: sunucunun açıklaması + "Bağlantılarımla paylaş".
+      if (
+        err instanceof ApiError &&
+        (err.code === 'public_not_allowed' || err.code === 'not_textile') &&
+        visibility === 'public'
+      ) {
+        const message = typeof err.body?.message === 'string' ? err.body.message : 'Bu gönderi herkese açık paylaşılamıyor.';
+        setError(message);
+        setOfferConnections(true);
+        if (err.code === 'public_not_allowed' && err.body?.rule && typeof err.body.rule === 'object') {
+          setRule(err.body.rule as PublicPostRule);
+        }
+        haptics.error();
+        return;
+      }
       setError(err instanceof Error ? err.message : isEditing ? 'Değişiklikler kaydedilemedi' : 'Gönderi paylaşılamadı');
     } finally {
       setSubmitting(false);
@@ -528,7 +582,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
             label={submitLabel}
             loading={submitting}
             disabled={!canSubmit}
-            onPress={handleSubmit}
+            onPress={() => handleSubmit()}
           />
         }
       >
@@ -551,13 +605,40 @@ export function CreatePostScreen({ navigation, route }: Props) {
           <SegmentControl<PostVisibility>
             stretch
             accessibilityLabel="Görünürlük"
-            value={visibility}
-            onChange={setVisibility}
+            value={visibilityChoice}
+            onChange={(v) => {
+              haptics.selection();
+              setVisibility(v);
+              setOfferConnections(false);
+            }}
             options={[
-              { value: 'public', label: 'Herkese açık' },
+              { value: 'public', label: publicLocked ? 'Herkese açık (kapalı)' : 'Herkese açık', disabled: publicLocked },
               { value: 'connections', label: 'Bağlantılarım' },
             ]}
           />
+          {publicLocked && rule?.message ? (
+            <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'flex-start' }}>
+              <Icon name="lock-closed-outline" size={t.size.iconSm} color="ink3" />
+              <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{rule.message}</Text>
+            </View>
+          ) : null}
+          {publicLocked && rule?.reason === 'not_verified' ? (
+            <Button
+              kind="secondary"
+              icon="shield-checkmark-outline"
+              label="Firma doğrulama başvurusu"
+              onPress={() => navigation.navigate('Verification')}
+              fullWidth
+            />
+          ) : null}
+          {!publicLocked && rule?.allowed && !keepsPublic && user?.companyId ? (
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              Bugün kalan herkese açık paylaşım: {Math.max(0, rule.limitPerDay - rule.usedToday)}/{rule.limitPerDay}
+            </Text>
+          ) : null}
+          <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
+            Herkese açık akış yalnızca tekstille ilgili paylaşımlara açıktır.
+          </Text>
         </View>
 
         {error ? (
@@ -574,6 +655,17 @@ export function CreatePostScreen({ navigation, route }: Props) {
             <Icon name="warning" size={t.size.iconSm} color="danger" />
             <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
           </View>
+        ) : null}
+        {offerConnections ? (
+          <Button
+            kind="secondary"
+            icon="people-outline"
+            label="Bağlantılarımla paylaş"
+            loading={submitting}
+            disabled={!canSubmit}
+            onPress={() => handleSubmit('connections')}
+            fullWidth
+          />
         ) : null}
       </Screen>
     </View>

@@ -206,6 +206,7 @@ export function MyProfileScreen({ navigation }: Props) {
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
     { key: 'watchRules', title: 'İzlediklerim', icon: 'eye-outline' as AnyIconName, onPress: () => navigation.navigate('WatchRules') },
     { key: 'recentlyViewed', title: 'Son Baktıklarım', icon: 'clock' as AnyIconName, onPress: () => navigation.navigate('RecentlyViewedProducts') },
+    { key: 'feedMutes', title: 'Gizlediğim Firmalar', icon: 'eye-off-outline' as AnyIconName, onPress: () => navigation.navigate('FeedMutes') },
     { key: 'connections', title: 'Bağlantılarım', icon: 'people-outline' as AnyIconName, onPress: () => navigation.navigate('Connections') },
     // Faz 2, Adım 4: tedarikçi/müşteri daveti (hazır metin, WhatsApp'tan paylaşılır).
     { key: 'invites', title: 'Davet Et', icon: 'share' as AnyIconName, onPress: () => navigation.navigate('Invites') },
@@ -217,7 +218,7 @@ export function MyProfileScreen({ navigation }: Props) {
       badge: pendingRequests,
     },
     user?.isAdmin
-      ? { key: 'admin', title: 'Firma Doğrulama', icon: 'shield-checkmark-outline' as AnyIconName, onPress: () => navigation.navigate('Admin') }
+      ? { key: 'admin', title: 'Yönetim (doğrulama, şikâyetler)', icon: 'shield-checkmark-outline' as AnyIconName, onPress: () => navigation.navigate('Admin') }
       : null,
   ].filter((item): item is MenuItem => item !== null);
 

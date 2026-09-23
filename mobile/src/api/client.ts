@@ -546,13 +546,21 @@ export type FeedCursor = { before: string; beforeId: string };
 // firmalarındaki kişilerin gönderileri (bağlantı yoksa boş liste).
 export type FeedScope = 'all' | 'connections';
 
-export function fetchFeed(cursor?: FeedCursor | null, limit = 10, scope: FeedScope = 'all') {
+// forMe: "Sektör" sekmesindeki "Benim için" süzgeci (firma türüne göre ilgili
+// tedarik zinciri); yalnızca scope 'all' iken anlamlı.
+export function fetchFeed(
+  cursor?: FeedCursor | null,
+  limit = 10,
+  scope: FeedScope = 'all',
+  opts: { forMe?: boolean } = {}
+) {
   const params = new URLSearchParams({ limit: String(limit) });
   if (cursor) {
     params.set('before', cursor.before);
     params.set('beforeId', cursor.beforeId);
   }
   if (scope !== 'all') params.set('scope', scope);
+  else if (opts.forMe) params.set('forMe', '1');
   return request<{ posts: FeedPost[]; nextCursor: FeedCursor | null }>(`/posts?${params.toString()}`);
 }
 
@@ -599,6 +607,63 @@ export function updatePost(id: string, input: UpdatePostInput) {
 
 export function deletePost(id: string) {
   return request<void>(`/posts/${id}`, { method: 'DELETE' });
+}
+
+// --- Akış düzeni (2026-09-23) -------------------------------------------------
+// Herkese açık paylaşım hakkı. POST/PATCH 'public' 403 public_not_allowed ya da
+// 422 not_textile ile reddedilebilir (ikisinde de body.message kullanıcıya gösterilir).
+export type PublicPostRuleReason = null | 'no_company' | 'not_verified' | 'blocked' | 'daily_limit' | 'same_product';
+export interface PublicPostRule {
+  allowed: boolean;
+  reason: PublicPostRuleReason;
+  message: string | null;
+  usedToday: number;
+  limitPerDay: number;
+  blockedUntil: string | null;
+  nextAllowedAt: string | null;
+}
+
+export function fetchPublicPostRule(opts: { productId?: string | null; postId?: string | null } = {}) {
+  const params = new URLSearchParams();
+  if (opts.productId) params.set('productId', opts.productId);
+  if (opts.postId) params.set('postId', opts.postId);
+  const q = params.toString();
+  return request<{ rule: PublicPostRule }>(`/posts/public-rule${q ? `?${q}` : ''}`);
+}
+
+export type PostReportReason = 'tekrar' | 'alakasiz' | 'yaniltici' | 'uygunsuz' | 'diger';
+export const POST_REPORT_REASONS: { key: PostReportReason; label: string }[] = [
+  { key: 'tekrar', label: 'Sürekli aynı paylaşım (tekrar)' },
+  { key: 'alakasiz', label: 'Tekstille ilgisiz' },
+  { key: 'yaniltici', label: 'Yanıltıcı / sahte bilgi' },
+  { key: 'uygunsuz', label: 'Uygunsuz içerik' },
+  { key: 'diger', label: 'Diğer' },
+];
+
+// 400 own_post: kendi gönderinizi şikâyet edemezsiniz. already: daha önce şikâyet edilmiş.
+export function reportPost(postId: string, reason: PostReportReason, note?: string) {
+  return request<{ ok: true; already: boolean }>(`/posts/${postId}/report`, {
+    method: 'POST',
+    body: JSON.stringify(note ? { reason, note } : { reason }),
+  });
+}
+
+export interface FeedMute {
+  companyId: string;
+  name: string;
+  createdAt: string;
+}
+
+export function fetchFeedMutes() {
+  return request<{ mutes: FeedMute[] }>('/posts/mutes');
+}
+
+export function muteCompanyInFeed(companyId: string) {
+  return request<{ ok: true }>('/posts/mutes', { method: 'POST', body: JSON.stringify({ companyId }) });
+}
+
+export function unmuteCompanyInFeed(companyId: string) {
+  return request<{ ok: true }>(`/posts/mutes/${companyId}`, { method: 'DELETE' });
 }
 
 export function fetchPostImage(id: string) {
@@ -1436,7 +1501,10 @@ export type NotificationKind =
   | 'tender_new'
   | 'tender_offer'
   | 'tender_awarded'
-  | 'tender_closed';
+  | 'tender_closed'
+  // Akış şikâyetleri (2026-09-23): yalnızca yöneticilere; yönetici
+  // "Akış şikâyetleri" ekranına gider.
+  | 'feed_moderation';
 
 export interface NotificationData {
   productId?: string;
@@ -2625,6 +2693,42 @@ export function decideVerificationRequest(
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+// --- Akış şikâyetleri (yönetici) ---------------------------------------------
+export interface AdminReportedPost {
+  id: string;
+  body: string;
+  hiddenAt: string | null;
+  visibility: PostVisibility;
+  createdAt: string;
+  author: { firstName: string; lastName: string; company: { id: string; name: string } | null } | null;
+  reportCount: number;
+  reasons: string[];
+  notes: string[];
+  lastReportAt: string | null;
+}
+
+export interface AdminBlockedCompany {
+  id: string;
+  name: string;
+  publicPostBlockedUntil: string | null;
+}
+
+export function fetchAdminFeedReports() {
+  return request<{ posts: AdminReportedPost[]; blockedCompanies: AdminBlockedCompany[] }>('/admin/feed-reports');
+}
+
+export function adminRestorePost(id: string) {
+  return request<{ ok: true }>(`/admin/posts/${id}/restore`, { method: 'POST' });
+}
+
+export function adminHidePost(id: string) {
+  return request<{ ok: true }>(`/admin/posts/${id}/hide`, { method: 'POST' });
+}
+
+export function adminUnblockCompanyPublic(id: string) {
+  return request<{ ok: true }>(`/admin/companies/${id}/unblock-public`, { method: 'POST' });
 }
 
 // --- Anlık bildirim (Web Push) ---------------------------------------------
