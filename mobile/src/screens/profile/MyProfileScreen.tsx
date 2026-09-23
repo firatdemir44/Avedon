@@ -27,7 +27,7 @@ import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { ExperienceSection } from './ExperienceSection';
 import { useTheme } from '../../theme/ThemeContext';
-import { Button, Icon, ListRow, Screen, SectionTitle, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
+import { BottomSheet, Button, Icon, ListRow, Screen, SectionTitle, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
 
 type Props = RootStackScreenProps<'MyProfile'>;
 
@@ -140,28 +140,18 @@ export function MyProfileScreen({ navigation }: Props) {
     }
   };
 
-  // Fotoğraf eylemleri: hepsi kenarlıklı (ekranın tek dolu düğmesi harcanmaz).
-  const photoActions = (
+  // Fotoğraf eylemleri (Fırat 2026-09-23): düğmeler yerine kalem simgeleri; avatarın ve
+  // kapağın kalemi kendi seçeneklerini alt sayfada açar.
+  const [sheet, setSheet] = useState<null | 'avatar' | 'cover'>(null);
+  const closeThen = (fn: () => void) => () => {
+    setSheet(null);
+    fn();
+  };
+  const photoActions = !photoBusy && !photoError ? null : (
     <View style={{ gap: t.space[2] }}>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
-        <Button
-          kind="secondary"
-          icon="camera"
-          label={hasPhoto ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
-          loading={photoBusy}
-          onPress={() => changePhoto('gallery')}
-        />
-        {/* Web'de tarayıcı kamerası yok (bkz. features/imagePicker). */}
-        {Platform.OS !== 'web' ? (
-          <Button kind="secondary" label="Kamera" disabled={photoBusy} onPress={() => changePhoto('camera')} />
-        ) : null}
-        {hasPhoto ? (
-          <Button kind="secondary" label="Kaldır" disabled={photoBusy} onPress={removePhoto} />
-        ) : null}
-        {hasCover ? (
-          <Button kind="secondary" label="Kapağı kaldır" disabled={photoBusy} onPress={removeCover} />
-        ) : null}
-      </View>
+      {photoBusy ? (
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Fotoğraf yükleniyor…</Text>
+      ) : null}
       {photoError ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
           <Icon name="warning" size={t.size.iconSm} color="danger" />
@@ -224,6 +214,22 @@ export function MyProfileScreen({ navigation }: Props) {
 
   return (
     <Screen>
+      <BottomSheet visible={sheet === 'avatar'} onClose={() => setSheet(null)} title="Profil fotoğrafı">
+        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasPhoto ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'} onPress={closeThen(() => changePhoto('gallery'))} />
+        {/* Web'de tarayıcı kamerası yok (bkz. features/imagePicker). */}
+        {Platform.OS !== 'web' ? (
+          <ListRow left={<Icon name="camera" color="brand" />} title="Fotoğraf çek" onPress={closeThen(() => changePhoto('camera'))} />
+        ) : null}
+        {hasPhoto ? (
+          <ListRow left={<Icon name="trash-outline" color="danger" />} title="Fotoğrafı kaldır" divider={false} onPress={closeThen(removePhoto)} />
+        ) : null}
+      </BottomSheet>
+      <BottomSheet visible={sheet === 'cover'} onClose={() => setSheet(null)} title="Kapak fotoğrafı">
+        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasCover ? 'Kapağı değiştir' : 'Kapak ekle'} divider={hasCover} onPress={closeThen(changeCover)} />
+        {hasCover ? (
+          <ListRow left={<Icon name="trash-outline" color="danger" />} title="Kapağı kaldır" divider={false} onPress={closeThen(removeCover)} />
+        ) : null}
+      </BottomSheet>
       {/* Menü, profil yüklenirken ya da yüklenemese de hep erişilebilir
           (özellikle Çıkış): eskiden yükleme sürerken ekran tamamen boştu. */}
       {loading ? (
@@ -240,7 +246,8 @@ export function MyProfileScreen({ navigation }: Props) {
             belowIdentity={photoActions}
             isSelf
             coverUpdatedAt={coverUpdatedAt}
-            onEditCover={changeCover}
+            onEditCover={() => setSheet('cover')}
+            onEditAvatar={() => setSheet('avatar')}
             onEditProfile={() =>
               navigation.navigate('ProfileEdit', {
                 headline: profile.headline,

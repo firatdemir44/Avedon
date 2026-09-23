@@ -28,6 +28,8 @@ interface Props {
   // Kapak yüklendikten sonra profil yeniden çekilmeden tazelemek için.
   coverUpdatedAt?: string | null;
   onEditCover?: () => void;
+  // Kendi profilim: avatarın köşesindeki kalem, fotoğraf seçeneklerini açar.
+  onEditAvatar?: () => void;
   onEditProfile?: () => void;
   onOpenConnections?: () => void;
 }
@@ -41,6 +43,7 @@ export function ProfileIdentity({
   isSelf = false,
   coverUpdatedAt,
   onEditCover,
+  onEditAvatar,
   onEditProfile,
   onOpenConnections,
 }: Props) {
@@ -97,11 +100,9 @@ export function ProfileIdentity({
       </View>
 
       <View style={{ paddingHorizontal: t.space[4], paddingBottom: t.space[4], minWidth: 0 }}>
+        <View style={{ alignSelf: 'flex-start', marginTop: -(avatar / 2), marginBottom: t.space[2] }}>
         <View
           style={{
-            alignSelf: 'flex-start',
-            marginTop: -(avatar / 2),
-            marginBottom: t.space[2],
             borderRadius: t.radius.full,
             borderWidth: t.space[1] / 2,
             borderColor: t.colors.surface1,
@@ -117,6 +118,29 @@ export function ProfileIdentity({
             avatarUpdatedAt={avatarUpdatedAt !== undefined ? avatarUpdatedAt : profile.avatarUpdatedAt}
             size={avatar}
           />
+        </View>
+        {isSelf && onEditAvatar ? (
+          <Pressable
+            onPress={onEditAvatar}
+            accessibilityRole="button"
+            accessibilityLabel="Profil fotoğrafını düzenle"
+            style={({ pressed }) => ({
+              position: 'absolute',
+              right: -t.space[3],
+              bottom: -t.space[1],
+              width: t.size.touchMin,
+              height: t.size.touchMin,
+              borderRadius: t.radius.full,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: t.colors.line,
+              backgroundColor: pressed ? t.colors.surface2 : t.colors.surface1,
+            })}
+          >
+            <Icon name="create-outline" size={t.size.iconSm} color="brand" />
+          </Pressable>
+        ) : null}
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
