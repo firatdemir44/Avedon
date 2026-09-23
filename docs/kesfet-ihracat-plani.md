@@ -84,3 +84,45 @@ Mısır (en hızlı büyüyen; Türk konfeksiyoncular orada) · Fas · İtalya (
 Rakipler ve veri: dupple.com/reviews/volza · volza.com/global-trade-data/country-list · tendata.com/blogs/provider/6792.html · softwareadvice.com/bi/importyeti-profile · suppliers.ai/blog/importgenius-vs-panjiva · uncomtrade.org/docs/un-comtrade-api · ec.europa.eu/eurostat (API) · info.opensupplyhub.org/api · foursource.com/for-buyers · ihk.de/stuttgart (UWG) · uwg-onlinekommentar.de/kommentierung-7-uwg
 
 Devlet ve pazar: ticaret.gov.tr/destekler/ihracat-destekleri/pazara-giriste-dijital-faaliyetlerin-desteklenmesi · ticaret.gov.tr/destekler/e-ihracat-destekleri/genelge-ekleri · itkib.org.tr (e-ihracat destekleri, URGE ihaleleri) · yatirimadestek.gov.tr (URGE özeti) · matriksdata.com (2025 tekstil ihracatı) · textilegence.com (Mısır 2025) · knittingindustry.com · seller.alibaba.com/pages/price.html · gso.org.tr (TradeAtlas kampanyası) · passportcraft.com (ESPR takvimi) · carbonfact.com (AB düzenlemeleri)
+
+## 9. Ek araştırma: Amerika, Orta Doğu, Afrika (2026-09-23)
+
+Fırat'ın isteği: yalnızca AB değil, ABD başta olmak üzere Amerika kıtası, Orta Doğu ve Afrika.
+
+### Firma bazında alım verisi
+- **ABD: en güçlü kaynak.** Deniz konşimentoları yasal olarak açık (19 CFR 103.31); ithalatçı adı görünür, bazı markalar gizletebilir. ImportYeti (ücretsiz/ucuz) → ImportGenius/Panjiva. Türkiye'den alan ve rakip ülkeden (Çin, Pakistan) 6004/6006/61/62 alan alıcılar doğrudan listelenir.
+- **Latin Amerika (Kolombiya, Peru, Şili, Meksika, Orta Amerika):** gümrük beyannameleri firma adıyla açık; Veritrade, Datasur (ülke başına yıllık abonelik).
+- **Orta Doğu ve Afrika:** güvenilir firma verisi büyük ölçüde yok; TÜİK/TİM ülke verisi + dizin + fuar + ticaret müşavirliği + konfeksiyon fabrikası listeleri (EPZ, Open Supply Hub).
+
+### Ticaret rejimi ve menşe kuralları (eşleştirmede uyarı olarak gösterilecek)
+- **ABD:** MFN + ek vergi (Türkiye 2025-26 döneminde %10; Temmuz 2026 sonrası Section 301 listesindeki yeri doğrulanacak). Rakiplere göre düşük ek vergi Türkiye lehine.
+- **Meksika:** 2026'da STA'sız ülkelere tekstilde ~%35'e varan vergi. **USMCA ve CAFTA-DR "yarn-forward":** Türk kumaşıyla Meksika/Orta Amerika'da dikilen giysi ABD'ye gümrüksüz giremez → uyarı.
+- **AGOA (Kenya, Etiyopya vb.):** üçüncü ülke kumaşı kuralı sürüyor (en az 2026 sonu) → Türk kumaşıyla Afrika'da dikilen giysi ABD'ye gümrüksüz → "AGOA uyumlu kumaş tedarikçisi" fırsatı.
+- **STA'lı pazarlar:** BAE (CEPA), Mısır, Fas, Tunus, Katar, Gürcistan, Birleşik Krallık; KİK ile müzakere sürüyor. Fas ve Tunus'un Türk tekstiline ek vergileri (güncel oran doğrulanacak).
+- **Ürdün:** STA 2018'de feshedildi, %20-30 vergi.
+- **Engellenecek/uyarılacak:** İsrail (Mayıs 2024'ten beri ticaret tamamen askıda), İran (yaptırım ve ödeme riski), Rusya'ya aktarma.
+
+### Güncellenmiş öncelik (ilk 12 ay, 10 ülke)
+1 Almanya · 2 İtalya · 3 İspanya · 4 Hollanda/Belçika · 5 Birleşik Krallık · **6 ABD** · **7 BAE** (Körfez, Afrika ve yeniden ihracat merkezi) · **8 Mısır** · **9 Irak** · **10 Fas veya Kolombiya**.
+Gerekçe: ABD en güçlü veri + en büyük pazar; BAE yeniden ihracat merkezi; Mısır ve Fas STA'lı konfeksiyon üsleri; Irak mevcut güçlü talep; Kolombiya en iyi Latin Amerika verisi.
+
+### Bölge bazında yöntem
+| Bölge | Eşleştirme yöntemi | Veri maliyeti |
+| --- | --- | --- |
+| ABD | Konşimento × HS × Türk/rakip tedarikçi geçmişi | Başlangıçta ücretsiz/~50 $, sonra 250-500 $/ay |
+| Latin Amerika | Veritrade/Datasur beyannameleri; tek ülkeyle başla (Kolombiya) | Ülke başına yıllık birkaç bin $ (doğrulanacak) |
+| AB | Comext pazar puanı + dizin + OS Hub + karşı ülke verisi | Ücretsiz |
+| Orta Doğu | TÜİK/TİM + dizin + fuar + müşavirlik; BAE için Tendata/Volza denemesi | Düşük; asıl maliyet araştırma emeği |
+| Afrika | Konfeksiyon fabrikası listeleri (EPZ, OS Hub) × kumaş ihtiyacı + toptancı dizinleri | Düşük |
+
+### Plana eklenen özellikler
+- **Menşe kuralı ve vergi uyarısı:** "Bu alıcı Meksika'da dikip ABD'ye satıyor; Türk kumaşı USMCA muafiyetini bozar." / ülke bazında vergi hesaplayıcısı (MFN + ek vergi).
+- **AGOA uyumlu kumaş tedarikçisi** rozeti.
+- **Yaptırım/ambargo filtresi** (İsrail, İran, Rusya aktarma).
+- **Ödeme riski uyarısı** (Nijerya, Mısır, Arjantin…): akreditif ve Türk Eximbank alacak sigortası önerisi.
+- **Temas asistanı dilleri:** İngilizce, Almanca, İtalyanca, İspanyolca, Portekizce, Arapça, Fransızca.
+
+### Doğrulanamayanlar (uygulamadan önce resmi kaynaktan)
+ABD tekstil ithalatında Türkiye payı; HTS 6004/6006 MFN oranları; Türkiye'nin Section 301 listesindeki yeri; Fas/Tunus ek vergi oranları; Mısır QIZ İsrail girdisi şartı ile Türk ambargosunun çelişmesi; Brezilya/Arjantin anti-damping; Orta Doğu/Afrika veri kalitesi; Kolombiya/Peru STA durumu.
+
+Kaynaklar: ecfr.gov (19 CFR 103.31) · help.cbp.gov · globaltradealert.org (S122) · strtrade.com (Section 122) · tariffstool.com (Türkiye) · congress.gov CRS IF10149 (AGOA) · allafrica.com (AGOA 2026) · clarkhill.com ve deminimislaw.com (Meksika 2026 vergileri) · aa.com.tr ve agbi.com (KİK STA) · fdd.org ve bakermckenzie.com (İsrail ambargosu) · jordantimes.com (Ürdün STA feshi) · veritradecorp.com · datasur.com · ustr.gov · trade.gov/otexa
