@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, Image, Pressable, StatusBar } from 'react-native';
+import { Modal, View, Image, Pressable, StatusBar, Text } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
 
@@ -7,6 +7,8 @@ interface Props {
   imageUrl: string | null;
   visible: boolean;
   onClose: () => void;
+  /** İsteğe bağlı açıklama: fotoğrafın altında gösterilir. */
+  caption?: string | null;
 }
 
 // Fotoğrafı tam ekran, kırpmadan gösterir. Yakınlaştırma (pinch-zoom) henüz yok:
@@ -14,7 +16,7 @@ interface Props {
 // zaten karşılıyor — gerekirse buraya eklenir, çağıran taraf değişmez.
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
-export function ImageViewerModal({ imageUrl, visible, onClose }: Props) {
+export function ImageViewerModal({ imageUrl, visible, onClose, caption }: Props) {
   const t = useTheme();
 
   return (
@@ -42,6 +44,33 @@ export function ImageViewerModal({ imageUrl, visible, onClose }: Props) {
       >
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+        ) : null}
+        {caption ? (
+          <View
+            style={{
+              position: 'absolute',
+              bottom: t.space[10],
+              left: t.space[5],
+              right: t.space[5],
+              alignItems: 'center',
+            }}
+          >
+            <Text
+              style={[
+                t.type.body16Strong,
+                {
+                  color: t.colors.ink,
+                  backgroundColor: t.colors.surface1,
+                  paddingHorizontal: t.space[3],
+                  paddingVertical: t.space[2],
+                  borderRadius: t.radius.md,
+                  overflow: 'hidden',
+                },
+              ]}
+            >
+              {caption}
+            </Text>
+          </View>
         ) : null}
         <View
           style={{

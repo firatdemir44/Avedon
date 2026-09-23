@@ -528,6 +528,9 @@ export type FeedTender = {
   status: TenderStatus;
   offerCount: number;
   deadline: string | null;
+  coverMediaId?: string | null;
+  mediaCount?: number;
+  videoCount?: number;
 };
 
 export type FeedPostComment = {
@@ -2658,7 +2661,7 @@ export function sendTestPush() {
 // Alıcı ihtiyacını yayınlar (örn. "96 filament 7 ton polyester iplik"),
 // kategoriye uyan satıcı firmalar teklif verir, alıcı birini seçer.
 
-export type TenderCategory = 'iplik' | 'kumas' | 'diger';
+export type TenderCategory = 'iplik' | 'kumas' | 'konfeksiyon' | 'aksesuar' | 'diger';
 export type TenderStatus = 'open' | 'closed' | 'awarded';
 export type TenderUnit = 'kg' | 'm' | 'ton' | 'adet';
 export type TenderScope = 'open' | 'mine' | 'offered';
@@ -2682,6 +2685,44 @@ export interface TenderFabricSpec {
   color?: string;
 }
 
+export type GarmentType =
+  | 'tisort' | 'sweatshirt' | 'gomlek' | 'pantolon' | 'etek' | 'elbise'
+  | 'mont' | 'ceket' | 'esofman' | 'ic_giyim' | 'bebek_cocuk' | 'diger';
+export type GarmentDelivery = 'kesim' | 'dikim' | 'utu' | 'etiket' | 'paket' | 'poset' | 'koli' | 'tam_teslim';
+
+// Konfeksiyon (fason) talebi: ürün tipi, beden dağılımı, teslim kapsamı.
+export interface TenderGarmentSpec {
+  garmentType?: GarmentType;
+  sizes?: string;
+  fabric?: string;
+  fabricSupplied?: 'alici' | 'uretici';
+  delivery?: GarmentDelivery[];
+  colors?: string;
+}
+
+export type AccessoryType =
+  | 'dugme' | 'fermuar' | 'etiket' | 'aski' | 'lastik' | 'kordon' | 'baski_nakis' | 'ambalaj' | 'diger';
+
+// Aksesuar talebi (düğme, fermuar, etiket...).
+export interface TenderAccessorySpec {
+  accessoryType?: AccessoryType;
+  material?: string;
+  size?: string;
+  color?: string;
+}
+
+export interface TenderMedia {
+  id: string;
+  kind: 'image' | 'pdf';
+  caption: string | null;
+  position: number;
+}
+
+export interface TenderMediaInput {
+  dataUrl: string;
+  caption?: string;
+}
+
 export interface TenderBuyer {
   id: string;
   name: string;
@@ -2693,7 +2734,7 @@ export interface Tender {
   category: TenderCategory;
   categoryLabel: string;
   title: string;
-  spec: (TenderYarnSpec & TenderFabricSpec) | null;
+  spec: (TenderYarnSpec & TenderFabricSpec & TenderGarmentSpec & TenderAccessorySpec) | null;
   summary: string;
   quantity: number;
   unit: TenderUnit;
@@ -2710,6 +2751,13 @@ export interface Tender {
   buyer: TenderBuyer;
   isMine: boolean;
   myCompanyOffered: boolean;
+  // Liste satırları: kapak fotoğrafı ve ek sayıları.
+  coverMediaId?: string | null;
+  mediaCount?: number;
+  videoCount?: number;
+  // Yalnızca detayda (GET /tenders/:id) dolu.
+  media?: TenderMedia[];
+  videos?: VideoRef[];
 }
 
 export type TenderOfferStatus = 'sent' | 'accepted' | 'declined' | 'withdrawn';
@@ -2742,13 +2790,15 @@ export function fetchTenders(scope: TenderScope = 'open', category?: TenderCateg
 export interface CreateTenderInput {
   category: TenderCategory;
   title: string;
-  spec?: TenderYarnSpec | TenderFabricSpec;
+  spec?: TenderYarnSpec | TenderFabricSpec | TenderGarmentSpec | TenderAccessorySpec;
   quantity: number;
   unit: TenderUnit;
   targetDate?: string | null;
   deadline?: string | null;
   note?: string;
   shareToFeed?: boolean;
+  media?: TenderMediaInput[];
+  videoIds?: string[];
 }
 
 export function createTender(input: CreateTenderInput) {
@@ -2756,6 +2806,10 @@ export function createTender(input: CreateTenderInput) {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function fetchTenderMedia(tenderId: string, mediaId: string) {
+  return request<{ dataUrl: string; kind: 'image' | 'pdf' }>(`/tenders/${tenderId}/media/${mediaId}`);
 }
 
 export function fetchTender(id: string) {

@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { tenderBadge, tenderMetaLine } from '../../features/tenders/format';
+import { TenderAttachmentLine, TenderCoverThumb } from '../../components/TenderCover';
 import { PostVideo } from '../../components/PostVideo';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
@@ -282,15 +283,21 @@ function PostCardComponent({
                 <Badge kind="new" label="Açık talep" />
                 {tender.status !== 'open' ? <Badge {...tenderBadge(tender)} /> : null}
               </View>
-              <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink }]}>
-                {tender.title}
-              </Text>
-              {tender.summary ? (
-                <Text numberOfLines={2} style={[t.type.mono14, { color: t.colors.ink2 }]}>
-                  {tender.summary}
-                </Text>
-              ) : null}
-              <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{tenderMetaLine(tender)}</Text>
+              <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+                {tender.coverMediaId ? <TenderCoverThumb tenderId={tender.id} mediaId={tender.coverMediaId} /> : null}
+                <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                  <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink }]}>
+                    {tender.title}
+                  </Text>
+                  {tender.summary ? (
+                    <Text numberOfLines={2} style={[t.type.mono14, { color: t.colors.ink2 }]}>
+                      {tender.summary}
+                    </Text>
+                  ) : null}
+                  <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{tenderMetaLine(tender)}</Text>
+                  <TenderAttachmentLine mediaCount={tender.mediaCount} videoCount={tender.videoCount} />
+                </View>
+              </View>
             </View>
           )}
         </Pressable>

@@ -3,28 +3,48 @@
 // teklif versin; kumaş için de aynısı." Talep yayınlanınca sunucu kategoriye
 // uyan satıcı firmalara bildirim gönderir (yanıttaki `notified`).
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
-import React, { useEffect, useMemo, useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Image, Platform, Pressable, Switch, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
   createTender,
+  type AccessoryType,
+  type GarmentDelivery,
+  type GarmentType,
   type TenderCategory,
+  type TenderAccessorySpec,
   type TenderFabricSpec,
+  type TenderGarmentSpec,
+  type TenderMediaInput,
   type TenderUnit,
   type TenderYarnSpec,
 } from '../../api/client';
 import { friendlyMessage } from '../../components/StateView';
-import { parseNumber } from '../../features/calculators/parse';
+import { formatMeasure, parseNumber } from '../../features/calculators/parse';
 import { optionLabel, useYarnOptions } from '../../features/yarns/catalog';
 import { PRODUCT_TYPES, SUBTYPES, TYPE_LABELS, type ProductType } from '../../features/products/catalog';
 import {
+  ACCESSORY_TYPES,
+  FABRIC_SUPPLIERS,
+  GARMENT_DELIVERY,
+  GARMENT_TYPES,
+  MEDIA_CAPTIONS,
+  TENDER_CAPTION_MAX,
   TENDER_CATEGORIES,
+  TENDER_MAX_IMAGES,
+  TENDER_MAX_PDFS,
+  TENDER_MAX_VIDEOS,
   TENDER_UNITS,
   dateInputToIso,
+  accessoryTypeLabel,
+  garmentTypeLabel,
   isValidDateInput,
   tenderUnitShort,
 } from '../../features/tenders/format';
+import { captureCompressedImage, fitDataUrl, pickCompressedImages } from '../../features/imagePicker';
+import { pickDocPdf } from '../../components/passport/rows';
+import { formatVideoDuration, useVideoUpload, type VideoUploadState } from '../../features/useVideoUpload';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Button, Card, Chip, ChipRow, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
@@ -45,6 +65,12 @@ const COLOR_STATES: { key: ColorState; label: string }[] = [
 function shortFamily(label: string): string {
   return label.split(/[/(]/)[0].trim();
 }
+
+// Sunucu sınırı: fotoğraf data URL'i en çok 700 bin karakter.
+const MAX_IMAGE_CHARS = 700_000;
+
+type Attachment = { key: string; kind: 'image' | 'pdf'; dataUrl: string; caption: string };
+let attachmentSeq = 0;
 
 function Label({ text }: { text: string }) {
   const t = useTheme();
@@ -69,6 +95,25 @@ export function TenderFormScreen({ navigation }: Props) {
   const [width, setWidth] = useState('');
   const [content, setContent] = useState('');
   // Ortak
+  // Konfeksiyon
+  const [garmentType, setGarmentType] = useState<GarmentType | ''>('');
+  const [garmentFabric, setGarmentFabric] = useState('');
+  const [fabricSupplied, setFabricSupplied] = useState<'alici' | 'uretici'>('uretici');
+  const [sizes, setSizes] = useState('');
+  const [colors, setColors] = useState('');
+  const [delivery, setDelivery] = useState<GarmentDelivery[]>([]);
+  // Aksesuar
+  const [accessoryType, setAccessoryType] = useState<AccessoryType | ''>('');
+  const [material, setMaterial] = useState('');
+  const [accSize, setAccSize] = useState('');
+  // Ekler (fotoğraf + PDF) ve en çok iki video
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [picking, setPicking] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const onVideoError = useCallback((m: string) => setMediaError(m), []);
+  const video1 = useVideoUpload({ onError: onVideoError });
+  const video2 = useVideoUpload({ onError: onVideoError });
+  const videoSlots = [video1, video2];
   const [color, setColor] = useState('');
   const [title, setTitle] = useState('');
   const [titleEdited, setTitleEdited] = useState(false);
@@ -107,8 +152,19 @@ export function TenderFormScreen({ navigation }: Props) {
       if (content.trim()) parts.push(content.trim());
       return parts.join(' · ');
     }
+    if (category === 'konfeksiyon') {
+      const parts = [`${garmentType ? garmentTypeLabel(garmentType) : 'Konfeksiyon'} fason üretim`];
+      if (parseNumber(quantity) > 0) parts.push(`${formatMeasure(parseNumber(quantity))} ${tenderUnitShort(unit)}`);
+      return parts.join(' · ');
+    }
+    if (category === 'aksesuar') {
+      const parts = [accessoryType ? accessoryTypeLabel(accessoryType) : 'Aksesuar'];
+      if (material.trim()) parts.push(material.trim());
+      if (accSize.trim()) parts.push(accSize.trim());
+      return parts.join(' · ');
+    }
     return '';
-  }, [category, family, filaments, count, countUnit, fabricType, subtype, weight, content, yarnOptions]);
+  }, [accessoryType, material, accSize, category, family, filaments, count, countUnit, fabricType, subtype, weight, content, yarnOptions, garmentType, quantity, unit]);
 
   const effectiveTitle = titleEdited ? title : suggestedTitle;
 
@@ -116,9 +172,112 @@ export function TenderFormScreen({ navigation }: Props) {
   const targetInvalid = !isValidDateInput(targetDate);
   const deadlineInvalid = !isValidDateInput(deadline);
   const titleInvalid = effectiveTitle.trim().length < 3;
-  const canSubmit = quantityValue > 0 && !titleInvalid && !targetInvalid && !deadlineInvalid && !submitting;
+  const videoUploading = videoSlots.some((v) => v.uploading);
+  const uploadedVideoIds = videoSlots.map((v) => v.uploadedRef?.id).filter((id): id is string => !!id);
+  const busyMedia = picking || videoUploading;
+  const canSubmit =
+    quantityValue > 0 && !titleInvalid && !targetInvalid && !deadlineInvalid && !submitting && !busyMedia;
 
-  const buildSpec = (): TenderYarnSpec | TenderFabricSpec | undefined => {
+  const imageCount = attachments.filter((a) => a.kind === 'image').length;
+  const pdfCount = attachments.filter((a) => a.kind === 'pdf').length;
+  const imageRoom = TENDER_MAX_IMAGES - imageCount;
+
+  const addImages = async (dataUrls: string[]) => {
+    const added: Attachment[] = [];
+    let tooLarge = false;
+    for (const url of dataUrls.slice(0, imageRoom)) {
+      const fitted = await fitDataUrl(url, MAX_IMAGE_CHARS);
+      if (!fitted) {
+        tooLarge = true;
+        continue;
+      }
+      added.push({ key: `img-${++attachmentSeq}`, kind: 'image', dataUrl: fitted.dataUrl, caption: '' });
+    }
+    if (added.length) setAttachments((prev) => [...prev, ...added]);
+    if (tooLarge) setMediaError('Bir fotoğraf çok büyük olduğu için eklenemedi.');
+  };
+
+  const pickPhotos = async (camera: boolean) => {
+    if (imageRoom <= 0 || picking) return;
+    setMediaError(null);
+    setPicking(true);
+    try {
+      // Web'de tarayıcı kamerası yok: galeri açılır (telefon tarayıcısı zaten "kamera" seçeneği sunar).
+      if (camera && Platform.OS !== 'web') {
+        const shot = await captureCompressedImage();
+        if (shot) await addImages([shot.dataUrl]);
+      } else {
+        const picked = await pickCompressedImages(imageRoom);
+        await addImages(picked.map((i) => i.dataUrl));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      setMediaError(
+        msg === 'camera_permission_denied'
+          ? 'Kameraya erişim izni verilmedi.'
+          : msg === 'permission_denied'
+            ? 'Galeriye erişim izni verilmedi.'
+            : 'Fotoğraf eklenemedi, tekrar deneyin.'
+      );
+    } finally {
+      setPicking(false);
+    }
+  };
+
+  const pickPdf = async () => {
+    if (pdfCount >= TENDER_MAX_PDFS || picking) return;
+    setMediaError(null);
+    setPicking(true);
+    try {
+      const res = await pickDocPdf();
+      if (!res) return;
+      if ('error' in res) {
+        setMediaError(res.error);
+        return;
+      }
+      const picked = res.image;
+      if (picked.kind !== 'new') return;
+      setAttachments((prev) => [
+        ...prev,
+        { key: `pdf-${++attachmentSeq}`, kind: 'pdf', dataUrl: picked.dataUrl, caption: 'Teknik föy' },
+      ]);
+    } finally {
+      setPicking(false);
+    }
+  };
+
+  const addVideo = () => {
+    const slot = videoSlots.find((v) => !v.video);
+    if (!slot) return;
+    setMediaError(null);
+    slot.pickAndUpload();
+  };
+
+  const setCaption = (key: string, caption: string) =>
+    setAttachments((prev) => prev.map((a) => (a.key === key ? { ...a, caption: caption.slice(0, TENDER_CAPTION_MAX) } : a)));
+  const removeAttachment = (key: string) => setAttachments((prev) => prev.filter((a) => a.key !== key));
+
+  const toggleDelivery = (d: GarmentDelivery) =>
+    setDelivery((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+
+  const buildSpec = (): TenderYarnSpec | TenderFabricSpec | TenderGarmentSpec | TenderAccessorySpec | undefined => {
+    if (category === 'aksesuar') {
+      const spec: TenderAccessorySpec = {};
+      if (accessoryType) spec.accessoryType = accessoryType;
+      if (material.trim()) spec.material = material.trim();
+      if (accSize.trim()) spec.size = accSize.trim();
+      if (color.trim()) spec.color = color.trim();
+      return spec;
+    }
+    if (category === 'konfeksiyon') {
+      const spec: TenderGarmentSpec = { fabricSupplied };
+      if (garmentType) spec.garmentType = garmentType;
+      if (garmentFabric.trim()) spec.fabric = garmentFabric.trim();
+      if (sizes.trim()) spec.sizes = sizes.trim().slice(0, 200);
+      if (colors.trim()) spec.colors = colors.trim();
+      if (delivery.length) spec.delivery = GARMENT_DELIVERY.map((d) => d.value).filter((v) => delivery.includes(v));
+      return spec;
+    }
     if (category === 'iplik') {
       const spec: TenderYarnSpec = {};
       if (family) spec.family = family;
@@ -159,7 +318,12 @@ export function TenderFormScreen({ navigation }: Props) {
         deadline: dateInputToIso(deadline, true),
         note: note.trim() || undefined,
         shareToFeed,
+        media: attachments.length
+          ? attachments.map<TenderMediaInput>((a) => ({ dataUrl: a.dataUrl, caption: a.caption.trim() || undefined }))
+          : undefined,
+        videoIds: uploadedVideoIds.length ? uploadedVideoIds : undefined,
       });
+      videoSlots.forEach((v) => v.markAttached());
       haptics.success();
       navigation.replace('TenderDetail', { tenderId: tender.id, notified });
     } catch (err) {
@@ -167,6 +331,12 @@ export function TenderFormScreen({ navigation }: Props) {
       const apiError = err instanceof ApiError ? err : null;
       if (apiError?.code === 'daily_limit') {
         setError('Bugün en fazla 10 açık talep yayınlanabilir. Yarın tekrar deneyin.');
+      } else if (apiError?.code === 'too_many_images') {
+        setError(`En fazla ${TENDER_MAX_IMAGES} fotoğraf eklenebilir.`);
+      } else if (apiError?.code === 'too_many_pdfs') {
+        setError(`En fazla ${TENDER_MAX_PDFS} PDF eklenebilir.`);
+      } else if (apiError?.code?.startsWith('video_')) {
+        setError('Videolardan biri eklenemedi. Videoyu kaldırıp yeniden deneyin.');
       } else if (apiError?.code === 'invalid_spec' || apiError?.code === 'invalid_body') {
         setError('Bazı bilgiler geçersiz. Sayıları ve tarihleri kontrol edin.');
       } else {
@@ -183,7 +353,13 @@ export function TenderFormScreen({ navigation }: Props) {
       <AppBar title="Açık talep yayınla" leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
-          <Button size="lg" label="Talebi yayınla" loading={submitting} disabled={!canSubmit} onPress={submit} />
+          <Button
+            size="lg"
+            label={busyMedia ? 'Ekler yükleniyor…' : 'Talebi yayınla'}
+            loading={submitting}
+            disabled={!canSubmit}
+            onPress={submit}
+          />
         }
       >
         <Card>
@@ -194,13 +370,12 @@ export function TenderFormScreen({ navigation }: Props) {
 
         <View style={{ gap: t.space[4] }}>
           <SectionTitle title="Ne arıyorsunuz?" />
-          <SegmentControl<TenderCategory>
-            stretch
-            accessibilityLabel="Kategori"
-            value={category}
-            onChange={changeCategory}
-            options={TENDER_CATEGORIES}
-          />
+          {/* Dört seçenek 375 px'te segmente sığmıyor: çip satırı. */}
+          <ChipRow>
+            {TENDER_CATEGORIES.map((c) => (
+              <Chip key={c.value} label={c.label} selected={category === c.value} onPress={() => changeCategory(c.value)} />
+            ))}
+          </ChipRow>
 
           {category === 'iplik' ? (
             <>
@@ -327,10 +502,104 @@ export function TenderFormScreen({ navigation }: Props) {
             </>
           ) : null}
 
-          {category !== 'diger' ? (
+          {category === 'konfeksiyon' ? (
+            <>
+              <View style={{ gap: t.space[2] }}>
+                <Label text="Ürün" />
+                <ChipRow>
+                  {GARMENT_TYPES.map((g) => (
+                    <Chip
+                      key={g.value}
+                      label={g.label}
+                      selected={garmentType === g.value}
+                      onPress={() => setGarmentType(garmentType === g.value ? '' : g.value)}
+                    />
+                  ))}
+                </ChipRow>
+              </View>
+              <Input
+                label="Kumaş (isteğe bağlı)"
+                value={garmentFabric}
+                onChangeText={setGarmentFabric}
+                placeholder="Örn. 30/1 penye süprem, 160 gr"
+              />
+              <View style={{ gap: t.space[2] }}>
+                <Label text="Kumaşı kim sağlar?" />
+                <SegmentControl<'alici' | 'uretici'>
+                  stretch
+                  accessibilityLabel="Kumaşı kim sağlar"
+                  value={fabricSupplied}
+                  onChange={setFabricSupplied}
+                  options={FABRIC_SUPPLIERS}
+                />
+              </View>
+              <Input
+                label="Beden dağılımı (isteğe bağlı)"
+                value={sizes}
+                onChangeText={setSizes}
+                placeholder="S:1000 M:2000 L:1500"
+                helper="Örn. S:1000 M:2000 L:1500"
+                autoCapitalize="characters"
+              />
+              <Input label="Renkler (isteğe bağlı)" value={colors} onChangeText={setColors} placeholder="Örn. Siyah, beyaz, lacivert" />
+              <View style={{ gap: t.space[2] }}>
+                <Label text="Teslim kapsamı" />
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                  {GARMENT_DELIVERY.map((d) => (
+                    <Chip
+                      key={d.value}
+                      label={d.label}
+                      selected={delivery.includes(d.value)}
+                      onPress={() => toggleDelivery(d.value)}
+                    />
+                  ))}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          {category === 'aksesuar' ? (
+            <>
+              <View style={{ gap: t.space[2] }}>
+                <Label text="Aksesuar türü" />
+                <ChipRow>
+                  {ACCESSORY_TYPES.map((a) => (
+                    <Chip
+                      key={a.value}
+                      label={a.label}
+                      selected={accessoryType === a.value}
+                      onPress={() => setAccessoryType(accessoryType === a.value ? '' : a.value)}
+                    />
+                  ))}
+                </ChipRow>
+              </View>
+              <Input label="Malzeme (isteğe bağlı)" value={material} onChangeText={setMaterial} placeholder="Örn. Polyester, metal, dokuma" />
+              <Input label="Ölçü (isteğe bağlı)" value={accSize} onChangeText={setAccSize} placeholder="Örn. 18 mm, 20 cm" />
+            </>
+          ) : null}
+
+          {category === 'iplik' || category === 'kumas' || category === 'aksesuar' ? (
             <Input label="Renk (isteğe bağlı)" value={color} onChangeText={setColor} placeholder="Örn. Siyah" />
           ) : null}
         </View>
+
+        <MediaSection
+          category={category}
+          attachments={attachments}
+          videos={videoSlots.map((v) => v.video)}
+          imageRoom={imageRoom}
+          pdfRoom={TENDER_MAX_PDFS - pdfCount}
+          videoRoom={TENDER_MAX_VIDEOS - videoSlots.filter((v) => v.video).length}
+          busy={picking}
+          error={mediaError}
+          onCamera={() => pickPhotos(true)}
+          onGallery={() => pickPhotos(false)}
+          onVideo={addVideo}
+          onPdf={pickPdf}
+          onCaption={setCaption}
+          onRemove={removeAttachment}
+          onRemoveVideo={(i) => videoSlots[i].remove()}
+        />
 
         <View style={{ gap: t.space[4] }}>
           <SectionTitle title="Talep bilgileri" />
@@ -341,7 +610,13 @@ export function TenderFormScreen({ navigation }: Props) {
               setTitleEdited(true);
               setTitle(v);
             }}
-            placeholder={category === 'diger' ? 'Örn. Etiket baskısı' : 'Örn. Polyester iplik · 96 filament'}
+            placeholder={
+              category === 'diger'
+                ? 'Örn. Etiket baskısı'
+                : category === 'konfeksiyon'
+                  ? 'Örn. Tişört fason üretim · 5000 adet'
+                  : 'Örn. Polyester iplik · 96 filament'
+            }
             helper={titleEdited ? undefined : 'Seçtiklerinize göre önerildi; değiştirebilirsiniz.'}
             error={titleEdited && titleInvalid ? 'Başlık en az 3 harf olmalı.' : null}
           />
@@ -425,5 +700,196 @@ export function TenderFormScreen({ navigation }: Props) {
         ) : null}
       </Screen>
     </View>
+  );
+}
+
+// --- Fotoğraf, video ve PDF ekleri ------------------------------------------
+
+function MediaSection(props: {
+  category: TenderCategory;
+  attachments: Attachment[];
+  videos: (VideoUploadState | null)[];
+  imageRoom: number;
+  pdfRoom: number;
+  videoRoom: number;
+  busy: boolean;
+  error: string | null;
+  onCamera: () => void;
+  onGallery: () => void;
+  onVideo: () => void;
+  onPdf: () => void;
+  onCaption: (key: string, caption: string) => void;
+  onRemove: (key: string) => void;
+  onRemoveVideo: (index: number) => void;
+}) {
+  const t = useTheme();
+  const { category, attachments, videos, imageRoom, pdfRoom, videoRoom, busy } = props;
+  const images = attachments.filter((a) => a.kind === 'image');
+  const pdfs = attachments.filter((a) => a.kind === 'pdf');
+  const hint =
+    category === 'kumas'
+      ? "Kumaşın yakından (doku), 30 cm'den ve uzaktan (genel görünüm) fotoğrafını çekin."
+      : category === 'konfeksiyon'
+        ? "Ön, arka ve detay fotoğrafı; varsa teknik föy PDF'i ekleyin."
+        : 'Numune ya da ürün fotoğrafı teklif verenlerin işini kolaylaştırır.';
+  const rowStyle = {
+    flexDirection: 'row' as const,
+    gap: t.space[3],
+    paddingTop: t.space[3],
+    borderTopWidth: 1,
+    borderTopColor: t.colors.line,
+  };
+
+  return (
+    <View style={{ gap: t.space[4] }}>
+      <SectionTitle title="Fotoğraf ve video" />
+      <Card>
+        <View style={{ gap: t.space[3] }}>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{hint}</Text>
+          <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+            <Button
+              kind="secondary"
+              icon="camera"
+              label="Fotoğraf çek"
+              disabled={imageRoom <= 0 || busy}
+              onPress={props.onCamera}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <Button
+              kind="secondary"
+              icon="images-outline"
+              label="Galeriden"
+              accessibilityLabel="Galeriden seç"
+              disabled={imageRoom <= 0 || busy}
+              onPress={props.onGallery}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+          </View>
+          <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+            <Button
+              kind="secondary"
+              icon="videocam-outline"
+              label="Video ekle"
+              disabled={videoRoom <= 0 || busy}
+              onPress={props.onVideo}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+            <Button
+              kind="secondary"
+              icon="document-attach-outline"
+              label="PDF ekle"
+              accessibilityLabel="Dosya ekle (PDF): teknik föy, ölçü tablosu"
+              disabled={pdfRoom <= 0 || busy}
+              onPress={props.onPdf}
+              style={{ flex: 1, minWidth: 0 }}
+            />
+          </View>
+          <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
+            {`En çok ${TENDER_MAX_IMAGES} fotoğraf, ${TENDER_MAX_VIDEOS} video ve ${TENDER_MAX_PDFS} PDF (teknik föy, ölçü tablosu).`}
+          </Text>
+
+          {images.map((a, i) => (
+            <View key={a.key} style={rowStyle}>
+              <Image
+                source={{ uri: a.dataUrl }}
+                accessibilityLabel={`Fotoğraf ${i + 1}`}
+                style={{ width: t.size.thumb, height: t.size.thumb, borderRadius: t.radius.md, backgroundColor: t.colors.surface2 }}
+              />
+              <View style={{ flex: 1, minWidth: 0, gap: t.space[2] }}>
+                <ChipRow>
+                  {MEDIA_CAPTIONS.map((c) => (
+                    <Chip
+                      key={c}
+                      label={c}
+                      selected={a.caption === c}
+                      onPress={() => props.onCaption(a.key, a.caption === c ? '' : c)}
+                    />
+                  ))}
+                </ChipRow>
+                <Input
+                  label="Açıklama"
+                  value={a.caption}
+                  onChangeText={(v) => props.onCaption(a.key, v)}
+                  placeholder="Örn. Yakın çekim, doku"
+                  maxLength={TENDER_CAPTION_MAX}
+                />
+              </View>
+              <RemoveButton label={`Fotoğraf ${i + 1} kaldır`} onPress={() => props.onRemove(a.key)} />
+            </View>
+          ))}
+
+          {pdfs.map((a, i) => (
+            <View key={a.key} style={[rowStyle, { alignItems: 'center' }]}>
+              <Icon name="document-text-outline" size={t.size.icon} color="ink2" />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Input
+                  label="PDF açıklaması"
+                  value={a.caption}
+                  onChangeText={(v) => props.onCaption(a.key, v)}
+                  placeholder="Örn. Teknik föy, ölçü tablosu"
+                  maxLength={TENDER_CAPTION_MAX}
+                />
+              </View>
+              <RemoveButton label={`PDF ${i + 1} kaldır`} onPress={() => props.onRemove(a.key)} />
+            </View>
+          ))}
+
+          {videos.map((v, i) =>
+            v ? (
+              <View key={`video-${i}`} style={[rowStyle, { alignItems: 'center' }]}>
+                <Icon name="videocam-outline" size={t.size.icon} color="ink2" />
+                <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
+                  <Text style={[t.type.body14, { color: t.colors.ink }]}>
+                    {v.phase === 'uploading'
+                      ? `Video yükleniyor · %${Math.round(v.progress * 100)}`
+                      : `Video eklendi${v.durationSeconds != null ? ` · ${formatVideoDuration(v.durationSeconds)}` : ''}`}
+                  </Text>
+                  {v.phase === 'uploading' ? (
+                    <View style={{ height: t.space[1], borderRadius: t.radius.full, backgroundColor: t.colors.surface2, overflow: 'hidden' }}>
+                      <View
+                        style={{
+                          height: '100%',
+                          width: `${Math.max(2, Math.round(v.progress * 100))}%`,
+                          backgroundColor: t.colors.brand,
+                        }}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+                <RemoveButton label={`Video ${i + 1} kaldır`} onPress={() => props.onRemoveVideo(i)} />
+              </View>
+            ) : null
+          )}
+
+          {props.error ? (
+            <View accessibilityRole="alert" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+              <Icon name="warning" size={t.size.iconSm} color="danger" />
+              <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{props.error}</Text>
+            </View>
+          ) : null}
+        </View>
+      </Card>
+    </View>
+  );
+}
+
+function RemoveButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => ({
+        width: t.size.touchMin,
+        height: t.size.touchMin,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: t.radius.full,
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Icon name="x" size={t.size.iconSm} color="ink2" />
+    </Pressable>
   );
 }

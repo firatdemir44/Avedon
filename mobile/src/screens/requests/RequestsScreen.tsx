@@ -29,6 +29,7 @@ import { friendlyMessage } from '../../components/StateView';
 import { formatRelativeTime } from '../../features/time';
 import { formatQuantity } from '../../features/quotes/format';
 import { haptics } from '../../features/haptics';
+import { TenderAttachmentLine, TenderCoverThumb } from '../../components/TenderCover';
 import { TENDER_CATEGORIES, formatTenderDate, formatTenderQuantity, tenderBadge } from '../../features/tenders/format';
 import { useTheme } from '../../theme/ThemeContext';
 import {
@@ -233,7 +234,9 @@ export function RequestsScreen({ navigation }: Props) {
     const company = item.buyer.company;
     return (
       <Card onPress={() => navigation.navigate('TenderDetail', { tenderId: item.id })} style={{ marginBottom: t.space[3] }}>
-        <View style={{ gap: t.space[1] }}>
+        <View style={{ flexDirection: 'row', gap: t.space[3] }}>
+        {item.coverMediaId ? <TenderCoverThumb tenderId={item.id} mediaId={item.coverMediaId} /> : null}
+        <View style={{ gap: t.space[1], flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
             <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
               {item.title}
@@ -255,6 +258,8 @@ export function RequestsScreen({ navigation }: Props) {
           <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
             {item.deadline ? `Son teklif: ${formatTenderDate(item.deadline)}` : `Yayın: ${formatRelativeTime(item.createdAt)}`}
           </Text>
+          <TenderAttachmentLine mediaCount={item.mediaCount} videoCount={item.videoCount} />
+        </View>
         </View>
       </Card>
     );

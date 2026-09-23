@@ -7,7 +7,7 @@
 // Satıcı yalnızca kendi teklifini görür (sunucu öyle döndürüyor).
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -18,6 +18,7 @@ import {
   withdrawTenderOffer,
   type Tender,
   type TenderCurrency,
+  type TenderMedia,
   type TenderOffer,
   type TenderUnit,
 } from '../../api/client';
@@ -30,8 +31,15 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { formatMeasure, parseNumber } from '../../features/calculators/parse';
 import { toDateInput } from '../../features/quotes/format';
+import { ImageViewerModal } from '../../components/ImageViewerModal';
+import { PostVideo } from '../../components/PostVideo';
+import { loadTenderMedia, useTenderMedia } from '../../components/TenderCover';
+import { openPdfDataUrl } from '../../features/docViewer';
 import {
   TENDER_UNITS,
+  accessoryTypeLabel,
+  garmentDeliveryLabel,
+  garmentTypeLabel,
   dateInputToIso,
   formatTenderDate,
   formatTenderQuantity,
@@ -95,6 +103,176 @@ function InfoRow({ label, value, mono }: { label: string; value: string; mono?: 
       <Text style={[mono ? t.type.mono14 : t.type.body14, { color: t.colors.ink, flexShrink: 1, textAlign: 'right' }]}>
         {value}
       </Text>
+    </View>
+  );
+}
+
+// --- Konfeksiyon / aksesuar özellikleri -------------------------------------
+
+function SpecCard({ tender }: { tender: Tender }) {
+  const t = useTheme();
+  const spec = tender.spec;
+  if (!spec) return null;
+  if (tender.category === 'konfeksiyon') {
+    const rows: [string, string | undefined][] = [
+      ['Ürün', garmentTypeLabel(spec.garmentType) || undefined],
+      ['Kumaş', spec.fabric],
+      ['Kumaşı sağlayan', spec.fabricSupplied === 'alici' ? 'Alıcı' : spec.fabricSupplied === 'uretici' ? 'Üretici' : undefined],
+      ['Bedenler', spec.sizes],
+      ['Renkler', spec.colors],
+    ];
+    const delivery = spec.delivery ?? [];
+    if (!rows.some(([, v]) => v) && !delivery.length) return null;
+    return (
+      <Card>
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>Ürün bilgileri</Text>
+          {rows.map(([label, value]) => (value ? <InfoRow key={label} label={label} value={value} /> : null))}
+          {delivery.length ? (
+            <View style={{ gap: t.space[2], paddingTop: t.space[1] }}>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Teslim kapsamı</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+                {delivery.map((d) => (
+                  <Badge key={d} kind="info" label={garmentDeliveryLabel(d)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Card>
+    );
+  }
+  if (tender.category === 'aksesuar') {
+    const rows: [string, string | undefined][] = [
+      ['Tür', accessoryTypeLabel(spec.accessoryType) || undefined],
+      ['Malzeme', spec.material],
+      ['Ölçü', spec.size],
+      ['Renk', spec.color],
+    ];
+    if (!rows.some(([, v]) => v)) return null;
+    return (
+      <Card>
+        <View style={{ gap: t.space[2] }}>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>Aksesuar bilgileri</Text>
+          {rows.map(([label, value]) => (value ? <InfoRow key={label} label={label} value={value} /> : null))}
+        </View>
+      </Card>
+    );
+  }
+  return null;
+}
+
+// --- Galeri: fotoğraf, PDF, video ------------------------------------------
+
+function GalleryThumb({
+  tenderId,
+  media,
+  onOpen,
+}: {
+  tenderId: string;
+  media: TenderMedia;
+  onOpen: (url: string, caption: string | null) => void;
+}) {
+  const t = useTheme();
+  const url = useTenderMedia(tenderId, media.id);
+  return (
+    <Pressable
+      onPress={() => url && onOpen(url, media.caption)}
+      disabled={!url}
+      accessibilityRole="button"
+      accessibilityLabel={media.caption ? `Fotoğraf: ${media.caption}, büyüt` : 'Fotoğrafı büyüt'}
+      style={({ pressed }) => ({ width: t.size.thumb, gap: t.space[1], opacity: pressed ? 0.7 : 1 })}
+    >
+      <View
+        style={{
+          width: t.size.thumb,
+          height: t.size.thumb,
+          borderRadius: t.radius.md,
+          overflow: 'hidden',
+          backgroundColor: t.colors.surface2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {url ? (
+          <Image source={{ uri: url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+        ) : (
+          <Icon name="image-outline" size={t.size.iconSm} color="ink3" />
+        )}
+      </View>
+      {media.caption ? (
+        <Text numberOfLines={1} style={[t.type.caption12, { color: t.colors.ink2, textAlign: 'center' }]}>
+          {media.caption}
+        </Text>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function TenderGallery({ tender }: { tender: Tender }) {
+  const t = useTheme();
+  const [viewer, setViewer] = useState<{ url: string; caption: string | null } | null>(null);
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const media = [...(tender.media ?? [])].sort((a, b) => a.position - b.position);
+  const images = media.filter((m) => m.kind === 'image');
+  const pdfs = media.filter((m) => m.kind === 'pdf');
+  const videos = tender.videos ?? [];
+  if (!images.length && !pdfs.length && !videos.length) return null;
+
+  const openPdf = async (m: TenderMedia) => {
+    setPdfBusy(m.id);
+    setPdfError(null);
+    try {
+      const dataUrl = await loadTenderMedia(tender.id, m.id);
+      if (!dataUrl) throw new Error('pdf');
+      await openPdfDataUrl(dataUrl, 'teknik-foy.pdf');
+    } catch {
+      setPdfError('PDF açılamadı, tekrar deneyin.');
+    } finally {
+      setPdfBusy(null);
+    }
+  };
+
+  return (
+    <View style={{ gap: t.space[4] }}>
+      <SectionTitle title="Fotoğraf ve ekler" />
+      <Card>
+        <View style={{ gap: t.space[4] }}>
+          {images.length ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
+              {images.map((m) => (
+                <GalleryThumb key={m.id} tenderId={tender.id} media={m} onOpen={(url, caption) => setViewer({ url, caption })} />
+              ))}
+            </View>
+          ) : null}
+          {pdfs.map((m) => (
+            <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+              <Icon name="document-text-outline" size={t.size.icon} color="ink2" />
+              <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+                {m.caption || 'Belge'}
+              </Text>
+              <Button
+                kind="secondary"
+                label="PDF'i aç"
+                accessibilityLabel={`${m.caption || 'Belge'}, PDF'i aç`}
+                loading={pdfBusy === m.id}
+                onPress={() => openPdf(m)}
+              />
+            </View>
+          ))}
+          {pdfError ? <Notice tone="danger" text={pdfError} /> : null}
+          {videos.map((v) => (
+            <PostVideo key={v.id} video={v} />
+          ))}
+        </View>
+      </Card>
+      <ImageViewerModal
+        visible={viewer !== null}
+        imageUrl={viewer?.url ?? null}
+        caption={viewer?.caption}
+        onClose={() => setViewer(null)}
+      />
     </View>
   );
 }
@@ -244,6 +422,21 @@ function OffersTable({
 
   const rows: { key: string; label: string; height: number; render: (o: TenderOffer) => React.ReactNode }[] = [
     { key: 'price', label: 'Fiyat', height: ROW_SINGLE, render: (o) => mono(priceText(o)) },
+    ...(tender.category === 'konfeksiyon'
+      ? [
+          {
+            key: 'total',
+            label: 'Toplam',
+            height: ROW_SINGLE,
+            render: (o: TenderOffer) =>
+              mono(
+                o.price.unit === tender.unit
+                  ? `${formatMeasure(o.price.value * tender.quantity)} ${o.price.currency}`
+                  : null
+              ),
+          },
+        ]
+      : []),
     {
       key: 'moq',
       label: 'En az sipariş',
@@ -368,7 +561,8 @@ function OfferForm({
   const [editing, setEditing] = useState(!active);
   const [price, setPrice] = useState(active ? String(active.price.value).replace('.', ',') : '');
   const [currency, setCurrency] = useState<TenderCurrency>(active?.price.currency ?? 'USD');
-  const [priceUnit, setPriceUnit] = useState<TenderUnit>(active?.price.unit ?? tender.unit);
+  const garment = tender.category === 'konfeksiyon';
+  const [priceUnit, setPriceUnit] = useState<TenderUnit>(active?.price.unit ?? (garment ? 'adet' : tender.unit));
   const [moq, setMoq] = useState(active?.moq != null ? String(active.moq) : '');
   const [lead, setLead] = useState(active?.leadTimeDays != null ? String(active.leadTimeDays) : '');
   const [validUntil, setValidUntil] = useState(active?.validUntil ? toDateInput(active.validUntil) : '');
@@ -481,7 +675,8 @@ function OfferForm({
       <View style={{ gap: t.space[4] }}>
         <Text style={[t.type.title18, { color: t.colors.ink }]}>{active ? 'Teklifi güncelle' : 'Teklif ver'}</Text>
         <Input
-          label="Birim fiyat"
+          label={garment && priceUnit === 'adet' ? 'Adet başı paket fiyat' : 'Birim fiyat'}
+          helper={garment ? 'Alıcının istediği teslim kapsamı (ütü, paket, poşet...) dahil adet fiyatı.' : undefined}
           value={price}
           onChangeText={setPrice}
           inputMode="decimal"
@@ -491,6 +686,16 @@ function OfferForm({
         />
         <SegmentControl<TenderCurrency> stretch accessibilityLabel="Para birimi" value={currency} onChange={setCurrency} options={CURRENCIES} />
         <SegmentControl<TenderUnit> stretch accessibilityLabel="Fiyat birimi" value={priceUnit} onChange={setPriceUnit} options={TENDER_UNITS} />
+        {priceValue > 0 && priceUnit === tender.unit ? (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[3] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
+              {`Toplam: ${formatTenderQuantity(tender.quantity, tender.unit)} × ${formatMeasure(priceValue)} ${currency}`}
+            </Text>
+            <Text style={[t.type.mono14, { color: t.colors.ink }]}>
+              {`${formatMeasure(priceValue * tender.quantity)} ${currency}`}
+            </Text>
+          </View>
+        ) : null}
         <View style={{ flexDirection: 'row', gap: t.space[3] }}>
           <Input
             containerStyle={{ flex: 1, minWidth: 0 }}
@@ -663,6 +868,8 @@ export function TenderDetailScreen({ route, navigation }: Props) {
         ) : null}
 
         <TenderSummaryCard tender={tender} onOpenBuyer={openBuyer} />
+        <SpecCard tender={tender} />
+        <TenderGallery tender={tender} />
 
         {actionError ? <Notice tone="danger" text={actionError} /> : null}
         {error ? <Notice tone="danger" text={friendlyMessage(error, 'Talep yenilenemedi')} /> : null}
