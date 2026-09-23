@@ -732,6 +732,26 @@ export interface GlobalSearchResult {
   companies: { items: GlobalSearchCompany[]; hasMore: boolean };
   fabrics: { items: Product[]; hasMore: boolean };
   yarns: { items: Product[]; hasMore: boolean };
+  /** Fason makine: yalnızca sorguda tür / ölçü / "müsait" varsa dolu gelir. */
+  machines?: { items: GlobalSearchMachine[]; hasMore: boolean };
+}
+
+export interface GlobalSearchMachine {
+  id: string;
+  group: string;
+  kind: string;
+  typeLabel: string;
+  brand: string;
+  model: string;
+  diameterInch: number | null;
+  gauge: number | null;
+  feeders: number | null;
+  needles: number | null;
+  count: number;
+  dailyCapacityKg: number | null;
+  busyUntil: string | null;
+  availabilityUpdatedAt: string | null;
+  company: { id: string; name: string; verification: VerificationStatus; logoUpdatedAt: string | null };
 }
 
 export function globalSearch(q: string, limit = 5) {
@@ -2107,6 +2127,11 @@ export interface Machine {
   workingWidthCm: number | null;
   feature: string;
   count: number;
+  /** Günlük kapasite (kg) */
+  dailyCapacityKg: number | null;
+  /** Bu tarihe kadar dolu (ISO); boş ya da geçmiş = müsait. */
+  busyUntil: string | null;
+  availabilityUpdatedAt: string | null;
   note: string;
 }
 
@@ -2147,7 +2172,13 @@ export interface MachineInput {
   workingWidthCm?: number | null;
   feature?: string;
   count?: number;
+  dailyCapacityKg?: number | null;
   note?: string;
+}
+
+// Makine başına fason müsaitlik (sahibi hızlı günceller). null = müsait.
+export function setMachineAvailability(id: string, busyUntil: string | null) {
+  return request<{ machine: Machine }>(`/machines/${id}/availability`, { method: "PUT", body: JSON.stringify({ busyUntil }) });
 }
 
 // 403 no_company · 409 too_many_machines · 400 invalid_body.

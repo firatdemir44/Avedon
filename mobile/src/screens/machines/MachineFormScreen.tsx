@@ -93,6 +93,7 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const [needles, setNeedles] = useState('');
   const [workingWidthCm, setWorkingWidthCm] = useState('');
   const [feature, setFeature] = useState('');
+  const [dailyCapacityKg, setDailyCapacityKg] = useState('');
   const [note, setNote] = useState('');
 
   const [saving, setSaving] = useState(false);
@@ -118,6 +119,7 @@ export function MachineFormScreen({ navigation, route }: Props) {
     setNeedles(toText(machine.needles));
     setWorkingWidthCm(toText(machine.workingWidthCm));
     setFeature(machine.feature);
+    setDailyCapacityKg(toText(machine.dailyCapacityKg));
     setNote(machine.note);
   }, []);
 
@@ -166,8 +168,9 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const feedersValue = readNumber(feeders);
   const needlesValue = readNumber(needles);
   const widthValue = readNumber(workingWidthCm);
+  const dailyValue = readNumber(dailyCapacityKg);
 
-  const numbersInvalid = [yearValue, countValue, diameterValue, gaugeValue, feedersValue, needlesValue, widthValue].some(
+  const numbersInvalid = [yearValue, countValue, diameterValue, gaugeValue, feedersValue, needlesValue, widthValue, dailyValue].some(
     (n) => n.invalid
   );
 
@@ -197,6 +200,7 @@ export function MachineFormScreen({ navigation, route }: Props) {
       needles: knit && needlesValue.value ? Math.round(needlesValue.value) : null,
       workingWidthCm: width ? widthValue.value ?? null : null,
       feature: feature.trim(),
+      dailyCapacityKg: dailyValue.value ?? null,
       count: countValue.value ? Math.max(1, Math.round(countValue.value)) : 1,
       note: note.trim(),
     };
@@ -206,7 +210,8 @@ export function MachineFormScreen({ navigation, route }: Props) {
       if (machineId) await updateMachine(machineId, input);
       else await createMachine(input);
       haptics.success();
-      navigation.popTo('MachinePark');
+      // Firma sayfasının Makineler sekmesinden de açılabildiği için geldiği yere döner.
+      navigation.goBack();
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'too_many_machines') {
@@ -457,6 +462,16 @@ export function MachineFormScreen({ navigation, route }: Props) {
           <SectionTitle title="Özellik ve not" />
           <Card>
             <View style={{ gap: t.space[3] }}>
+              <Input
+                label="Günlük kapasite"
+                unit="kg"
+                value={dailyCapacityKg}
+                onChangeText={setDailyCapacityKg}
+                placeholder="Örn. 450"
+                inputMode="decimal"
+                keyboardType="decimal-pad"
+                error={dailyValue.invalid ? 'Yalnızca rakam' : null}
+              />
               <Input
                 label="Özellik"
                 value={feature}

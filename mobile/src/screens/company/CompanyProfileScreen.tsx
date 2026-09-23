@@ -37,7 +37,8 @@ import {
   type Machine,
   type ReferenceRelation,
 } from '../../api/client';
-import { groupMachines, machineSummary, monthlyCapacityText } from '../../features/machines/catalog';
+import { monthlyCapacityText } from '../../features/machines/catalog';
+import { MachineCard } from '../../components/MachineCard';
 import { formatMonthYear, formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { friendlyMessage, isNotFound } from '../../components/StateView';
@@ -77,14 +78,15 @@ import type { Product } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 
-// Sekmeler (tasarım incelemesi 2026-09-23): Ürünler · Hakkında · Kişiler · Belgeler.
-// Makine parkı artık Hakkında sekmesinin içinde; initialTab: 'machines'
-// Hakkında'yı açar. "Firma akışı" şeritte yok ama initialTab: 'feed' ile
+// Sekmeler (2026-09-23): Ürünler · Makineler · Hakkında · Kişiler · Belgeler.
+// Şerit yatay kaydırılır, sekme adı kısaltılmaz. Eski initialTab: 'machines'
+// bağlantıları (kapasite araması, asistan) doğrudan Makineler sekmesini açar. "Firma akışı" şeritte yok ama initialTab: 'feed' ile
 // açılan eski bağlantılar kırılmasın diye içerik korunuyor.
 type CompanyTab = 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
 
 const TABS: { key: CompanyTab; label: string }[] = [
   { key: 'products', label: 'Ürünler' },
+  { key: 'machines', label: 'Makineler' },
   { key: 'about', label: 'Hakkında' },
   { key: 'people', label: 'Kişiler' },
   { key: 'docs', label: 'Belgeler' },
@@ -97,7 +99,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const viewedCompanyId = route.params?.companyId ?? user?.companyId ?? null;
   const isOwnCompany = !!user?.companyId && viewedCompanyId === user.companyId;
   const [tab, setTab] = useState<CompanyTab>(
-    route.params?.initialTab === 'machines' ? 'about' : route.params?.initialTab ?? 'about'
+    route.params?.initialTab ?? 'about'
   );
   const [typeFilter, setTypeFilter] = useState<ProductType | null>(null);
   const [usageFilter, setUsageFilter] = useState<string | null>(null);
@@ -194,7 +196,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   // güncel hali gelsin. Elde veri varsa ekranda kalır (iskelet yerine sessiz).
   useFocusEffect(
     useCallback(() => {
-      if (tab === 'about') loadPark();
+      if (tab === 'machines') loadPark();
     }, [tab, loadPark])
   );
 
@@ -232,9 +234,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [unclaimed, user?.companyId])
   );
   // Sahipsiz firmada ürün/kişi sekmeleri yok.
-  const visibleTabs = unclaimed ? TABS.filter((item) => item.key !== 'products' && item.key !== 'people') : TABS;
+  const visibleTabs = unclaimed ? TABS.filter((item) => item.key !== 'products' && item.key !== 'people' && item.key !== 'machines') : TABS;
   useEffect(() => {
-    if (unclaimed && (tab === 'products' || tab === 'people')) setTab('about');
+    if (unclaimed && (tab === 'products' || tab === 'people' || tab === 'machines')) setTab('about');
   }, [unclaimed, tab]);
 
   const loadReferences = useCallback(() => {
@@ -682,11 +684,6 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         icon="requests"
         onPress={() => navigation.navigate('IncomingSampleRequests')}
         style={{ flex: 1 }}
-      />
-      <SquareButton
-        icon="create-outline"
-        label="Firmayı düzenle"
-        onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
       />
     </View>
   ) : (
@@ -1239,12 +1236,18 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </View>
   );
 
-  // --- Makine parkı sekmesi ---------------------------------------------
-  const parkSections = groupMachines(park?.machines ?? []);
+  // --- Makineler sekmesi ------------------------------------------------
+  // Her makine bir kart (MachineCard): başlık tür + marka/model, mono-14 değerler,
+  // sağda müsaitlik durumu. Sahibi karta dokununca düzenler, duruma dokununca
+  // alt sayfadan hızlı günceller.
   const capacityTons = monthlyCapacityText(park?.capacity.monthlyCapacityTons ?? null);
+  const updateParkMachine = (updated: Machine) =>
+    setPark((prev) =>
+      prev ? { ...prev, machines: prev.machines.map((m) => (m.id === updated.id ? updated : m)) } : prev
+    );
 
   const machinesContent = (
-    <View style={{ gap: t.space[4] }}>
+    <View style={{ gap: t.space[3] }}>
       {parkLoading && !park ? (
         <Card>
           <SkeletonRow />
@@ -1255,7 +1258,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Card>
           <EmptyState
             icon="cloud-offline-outline"
-            title="Makine parkı alınamadı"
+            title="Makineler alınamadı"
             description="Bağlantınızı kontrol edip tekrar deneyin."
             actionLabel="Tekrar dene"
             onAction={loadPark}
@@ -1265,66 +1268,63 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
       {park ? (
         <>
-          <Card>
-            <View style={{ gap: t.space[2] }}>
-              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Aylık kapasite</Text>
-              <Text style={[t.type.mono20, { color: t.colors.ink }]}>{capacityTons ?? 'Bildirilmedi'}</Text>
-              <Badge
-                kind={park.capacity.contractOpen ? 'verified' : 'info'}
-                label={park.capacity.contractOpen ? 'Fason kapasitesi açık' : 'Fason almıyor'}
+          {isOwnCompany && park.machines.length ? (
+            <ButtonRow>
+              <Button kind="secondary" label="Makine ekle" icon="plus" onPress={() => navigation.navigate('MachineForm')} />
+              <Button
+                kind="secondary"
+                label="Kapasite"
+                icon="create-outline"
+                accessibilityLabel="Aylık kapasiteyi ve makine listesini düzenle"
+                onPress={() => navigation.navigate('MachinePark')}
               />
-              {park.capacity.note ? (
-                <Text style={[t.type.body16, { color: t.colors.ink }]}>{park.capacity.note}</Text>
-              ) : null}
-              {park.capacity.updatedAt ? (
-                <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-                  güncellendi: {formatRelativeTime(park.capacity.updatedAt)}
-                </Text>
-              ) : null}
-              {isOwnCompany ? (
-                <Button
-                  kind="secondary"
-                  label="Düzenle"
-                  icon="create-outline"
-                  onPress={() => navigation.navigate('MachinePark')}
-                  accessibilityLabel="Makine parkını ve kapasiteyi düzenle"
-                />
-              ) : null}
-            </View>
-          </Card>
+            </ButtonRow>
+          ) : null}
 
-          {parkSections.length ? (
-            parkSections.map((section) => (
-              <View key={section.group} style={{ gap: t.space[3] }}>
-                <SectionTitle title={`${section.label} (${section.count})`} />
-                <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
-                  {section.items.map((machine, index) => (
-                    <ListRow
-                      key={machine.id}
-                      title={`${machine.kind} × ${machine.count}`}
-                      subtitle={[machineSummary(machine), machine.note].filter(Boolean).join(' · ') || undefined}
-                      left={<Icon name="machine" color="brand" />}
-                      divider={index < section.items.length - 1}
-                    />
-                  ))}
-                </Card>
-              </View>
-            ))
-          ) : (
+          {park.machines.length && (capacityTons || park.capacity.note) ? (
             <Card>
-              <EmptyState
-                icon="machine"
-                title={isOwnCompany ? 'Makine parkınız boş' : 'Makine parkı yok'}
-                description={
-                  isOwnCompany
-                    ? 'Makinelerinizi girdiğinizde fason iş arayanlar sizi pus, fayn ve çalışma enine göre bulabilir.'
-                    : 'Bu firma makine parkını henüz girmedi.'
-                }
-                actionLabel={isOwnCompany ? 'Makine ekle' : undefined}
-                onAction={isOwnCompany ? () => navigation.navigate('MachineForm') : undefined}
-              />
+              <View style={{ gap: t.space[1] }}>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Aylık kapasite</Text>
+                {capacityTons ? <Text style={[t.type.mono14, { color: t.colors.ink }]}>{capacityTons}</Text> : null}
+                {park.capacity.note ? (
+                  <Text style={[t.type.body16, { color: t.colors.ink }]}>{park.capacity.note}</Text>
+                ) : null}
+                {park.capacity.updatedAt ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
+                    güncellendi: {formatRelativeTime(park.capacity.updatedAt)}
+                  </Text>
+                ) : null}
+              </View>
             </Card>
-          )}
+          ) : null}
+
+          {park.machines.map((machine) => (
+            <MachineCard
+              key={machine.id}
+              machine={machine}
+              isOwner={isOwnCompany}
+              onEdit={() => navigation.navigate('MachineForm', { machineId: machine.id })}
+              onChanged={updateParkMachine}
+            />
+          ))}
+
+          {!park.machines.length ? (
+            <Card>
+              {isOwnCompany ? (
+                <EmptyState
+                  icon="machine"
+                  title="Makine parkurunu ekle, fason iş alan firmalar arasında görün"
+                  description="Tür, çap, fine ve günlük kapasiteyi girin; fason iş arayanlar sizi aramada bulsun."
+                  actionLabel="Makine ekle"
+                  onAction={() => navigation.navigate('MachineForm')}
+                />
+              ) : (
+                <Text style={[t.type.body16, { color: t.colors.ink2, textAlign: 'center' }]}>
+                  Bu firma henüz makine eklemedi.
+                </Text>
+              )}
+            </Card>
+          ) : null}
         </>
       ) : null}
     </View>
@@ -1420,12 +1420,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {tabStrip}
       {tab === 'about' ? aboutContent : null}
       {tab === 'docs' ? docsContent : null}
-      {tab === 'about' ? (
-        <View style={{ gap: t.space[4] }}>
-          <SectionTitle title="Makineler" />
-          {machinesContent}
-        </View>
-      ) : null}
+      {tab === 'machines' ? machinesContent : null}
       {tab === 'products' ? (
         <View style={{ gap: t.space[3] }}>
           {productFilters}
@@ -1527,7 +1522,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             refresh();
             loadTrust();
             if (tab === 'feed') loadPosts();
-            if (tab === 'about') loadPark();
+            if (tab === 'machines') loadPark();
           })}
           ListHeaderComponent={listHeader}
           ListHeaderComponentStyle={{ paddingBottom: t.space[4] }}

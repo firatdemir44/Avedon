@@ -121,6 +121,7 @@ export const size = {
   counter: 20, // okunmamış sayacı (pill)
   sheetHandleWidth: 36,
   sheetHandleHeight: 4,
+  statusColumn: 112, // makine kartının sağındaki müsaitlik sütunu (dar ekranda sabit)
 } as const;
 
 // Yazı stilleri. Kalınlık ayrı yazı tipi dosyasıyla (theme/index.ts fonts).

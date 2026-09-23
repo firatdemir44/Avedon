@@ -50,6 +50,7 @@ const machineSchema = z
     workingWidthCm: z.number().positive().max(1000).nullable().optional(),
     feature: z.string().trim().max(120).optional(),
     count: z.number().int().min(1).max(999).optional(),
+    dailyCapacityKg: z.number().positive().max(1000000).nullable().optional(),
     note: z.string().trim().max(300).optional(),
   })
   .strict();
@@ -71,6 +72,9 @@ function toMachineRow(m: MachineRow) {
     workingWidthCm: m.workingWidthCm,
     feature: m.feature,
     count: m.count,
+    dailyCapacityKg: m.dailyCapacityKg,
+    busyUntil: m.busyUntil,
+    availabilityUpdatedAt: m.availabilityUpdatedAt,
     note: m.note,
   };
 }
@@ -155,6 +159,28 @@ machinesRouter.delete(
     if (!own) return res.status(404).json({ error: 'machine_not_found' });
     await prisma.machine.delete({ where: { id: own.id } });
     res.status(204).end();
+  })
+);
+
+// Makine başına fason müsaitlik: sahibi tek dokunuşla "2 hafta dolu" vb. yazar.
+// busyUntil null ya da geçmiş = müsait; görünen metin istemcide bugüne göre hesaplanır.
+const availabilitySchema = z.object({ busyUntil: z.string().datetime({ offset: true }).nullable() }).strict();
+
+machinesRouter.put(
+  '/:id/availability',
+  requireAuth,
+  handle(async (req, res) => {
+    const companyId = req.user!.companyId;
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = availabilitySchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const own = await prisma.machine.findFirst({ where: { id: req.params.id, companyId } });
+    if (!own) return res.status(404).json({ error: 'machine_not_found' });
+    const busyUntil = parsed.data.busyUntil ? new Date(parsed.data.busyUntil) : null;
+    // En fazla 1 yıl ileri (yanlış tarih girişine karşı).
+    if (busyUntil && busyUntil.getTime() > Date.now() + 366 * 24 * 3600 * 1000) return res.status(400).json({ error: 'busy_until_too_far' });
+    const machine = await prisma.machine.update({ where: { id: own.id }, data: { busyUntil, availabilityUpdatedAt: new Date() } });
+    res.json({ machine: toMachineRow(machine) });
   })
 );
 

@@ -11,7 +11,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RootStackScreenProps } from '../../navigation/types';
-import { globalSearch, type GlobalSearchCompany, type GlobalSearchResult } from '../../api/client';
+import { globalSearch, type GlobalSearchCompany, type GlobalSearchMachine, type GlobalSearchResult } from '../../api/client';
+import { AvailabilityIndicator } from '../../components/MachineCard';
+import { machineCardTitle, machineSpecRows } from '../../features/machines/catalog';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { friendlyMessage } from '../../components/StateView';
 import { categoryLabel, companyTypeLabel, isYarnType } from '../../features/products/catalog';
@@ -49,13 +51,14 @@ const MAX_RECENT = 5;
 
 // Sonuç türü süzgeci yalnızca GÖRÜNÜMDE çalışır: istek yine tek sefer atılır,
 // gelen üç grup burada gizlenir/gösterilir (fazladan ağ trafiği yok).
-type Kind = 'all' | 'companies' | 'fabrics' | 'yarns';
+type Kind = 'all' | 'companies' | 'fabrics' | 'yarns' | 'machines';
 
 const KIND_OPTIONS: { value: Kind; label: string }[] = [
   { value: 'all', label: 'Tümü' },
   { value: 'companies', label: 'Firma' },
   { value: 'fabrics', label: 'Kumaş' },
   { value: 'yarns', label: 'İplik' },
+  { value: 'machines', label: 'Makine' },
 ];
 
 // Kart özellik satırı: "165 gr/m² · 160 cm · %94 PES %6 EA" (DESIGN.md §3).
@@ -172,7 +175,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
 
   const trimmed = query.trim();
   const hasResults =
-    !!result && (result.companies.items.length > 0 || result.fabrics.items.length > 0 || result.yarns.items.length > 0);
+    !!result && (result.companies.items.length > 0 || result.fabrics.items.length > 0 || result.yarns.items.length > 0 || (result.machines?.items.length ?? 0) > 0);
 
   // Segmentte hangi türlerin çizileceği.
   const show = useMemo(
@@ -180,6 +183,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
       companies: kind === 'all' || kind === 'companies',
       fabrics: kind === 'all' || kind === 'fabrics',
       yarns: kind === 'all' || kind === 'yarns',
+      machines: kind === 'all' || kind === 'machines',
     }),
     [kind]
   );
@@ -188,7 +192,8 @@ export function GlobalSearchScreen({ navigation }: Props) {
   const visibleCount =
     (show.companies ? result?.companies.items.length ?? 0 : 0) +
     (show.fabrics ? result?.fabrics.items.length ?? 0 : 0) +
-    (show.yarns ? result?.yarns.items.length ?? 0 : 0);
+    (show.yarns ? result?.yarns.items.length ?? 0 : 0) +
+    (show.machines ? result?.machines?.items.length ?? 0 : 0);
 
   return (
     <Screen scroll={false} noPadding>
@@ -240,7 +245,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
         {trimmed.length < MIN_QUERY ? (
           <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Firma adı, kumaş kodu, çeşit ya da iplik yazın. Örn. süprem, 30/1, Bursa
+              Firma adı, kumaş kodu, çeşit, iplik ya da makine yazın. Örn. süprem, 30/1, Bursa, raschel 28 fine
             </Text>
             {recent.length ? (
               <View style={{ gap: t.space[2] }}>
@@ -316,6 +321,28 @@ export function GlobalSearchScreen({ navigation }: Props) {
                       onPress={() => go(() => navigation.navigate('ProductDetail', { productId: product.id }))}
                     />
                   ))}
+                </View>
+              ) : null}
+
+              {show.machines && result.machines?.items.length ? (
+                <View style={{ gap: t.space[2] }}>
+                  <View style={{ paddingHorizontal: t.space[4] }}>
+                    <SectionTitle title="Fason makine" />
+                  </View>
+                  <View>
+                    {result.machines.items.map((machine, index) => (
+                      <MachineResultRow
+                        key={machine.id}
+                        machine={machine}
+                        divider={index < result.machines!.items.length - 1}
+                        onPress={() =>
+                          go(() =>
+                            navigation.navigate('CompanyProfile', { companyId: machine.company.id, initialTab: 'machines' })
+                          )
+                        }
+                      />
+                    ))}
+                  </View>
                 </View>
               ) : null}
 
@@ -410,6 +437,45 @@ function CompanyResultRow({
           size={t.size.avatar}
         />
       }
+      divider={divider}
+      onPress={onPress}
+      style={{ paddingHorizontal: t.space[4] }}
+    />
+  );
+}
+
+// Fason makine sonucu: başlık (tür + marka/model), firma adı ve ölçüler solda;
+// müsaitlik durumu sağda sabit genişlikte. Dokununca firmanın Makineler sekmesi.
+function MachineResultRow({
+  machine,
+  divider,
+  onPress,
+}: {
+  machine: GlobalSearchMachine;
+  divider: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  const { title } = machineCardTitle(machine);
+  // Alt satır: "Örnek Tekstil · 28 fine · 30 inç · 4 adet"
+  const unitOf: Record<string, string> = { Fine: ' fine', Sistem: ' sistem', İğne: ' iğne', Adet: ' adet' };
+  const specs = machineSpecRows(machine)
+    .map((row) => row.value + (unitOf[row.label] ?? ''))
+    .join(' · ');
+  return (
+    <ListRow
+      title={title}
+      subtitle={[machine.company.name, specs].filter(Boolean).join(' · ')}
+      left={
+        <CompanyAvatar
+          name={machine.company.name}
+          verification={machine.company.verification}
+          companyId={machine.company.id}
+          logoUpdatedAt={machine.company.logoUpdatedAt}
+          size={t.size.avatar}
+        />
+      }
+      right={<AvailabilityIndicator machine={machine} />}
       divider={divider}
       onPress={onPress}
       style={{ paddingHorizontal: t.space[4] }}

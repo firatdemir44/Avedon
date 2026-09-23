@@ -101,6 +101,7 @@
   --icon: 24px;
   --icon-sm: 20px;
   --icon-xs: 14px; /* rozet ve doğrulanmış ikonu */
+  --status-column: 112px; /* makine kartı müsaitlik sütunu */
   --avatar: 40px;
   --thumb: 72px;
   --appbar: 56px;

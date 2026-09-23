@@ -5,6 +5,7 @@ import { optionalAuth } from '../middleware/auth';
 import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
 import { buildYarnWhere } from '../yarns';
 import { makeHandle } from './handle';
+import { buildMachineWhere, machineTypeLabel, parseMachineQuery } from '../machines/query';
 
 // Üst başlıktaki "Arama Yap" kutusu (Fırat 2026-09-21): tek kutudan firma, kumaş ve iplik.
 // Her gruptan az sayıda sonuç döner; "tümünü gör" ilgili listeye (ürünler / iplik dizini) gider.
@@ -24,7 +25,10 @@ searchRouter.get(
     const limit = parsed.data.limit ?? 5;
     const viewerCompanyId = req.user?.companyId ?? null;
 
-    const [companies, fabrics, yarns] = await Promise.all([
+    // Fason makine: sorguda tür sözcüğü / birimli ölçü / "müsait" varsa aranır.
+    const machineQuery = parseMachineQuery(q);
+
+    const [companies, fabrics, yarns, machines] = await Promise.all([
       prisma.company.findMany({
         where: { OR: [{ name: { contains: q } }, { city: { contains: q } }, { companyType: { contains: q } }] },
         select: { id: true, name: true, city: true, companyType: true, verification: true, logoUpdatedAt: true, _count: { select: { products: true } } },
@@ -33,6 +37,14 @@ searchRouter.get(
       }),
       prisma.product.findMany({ where: buildProductWhere({ search: q }), select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: limit + 1 }),
       prisma.product.findMany({ where: buildYarnWhere({ search: q }), select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: limit + 1 }),
+      machineQuery
+        ? prisma.machine.findMany({
+            where: buildMachineWhere(machineQuery),
+            orderBy: [{ busyUntil: 'asc' }, { updatedAt: 'desc' }],
+            take: limit + 1,
+            select: { id: true, group: true, kind: true, brand: true, model: true, diameterInch: true, gauge: true, feeders: true, needles: true, count: true, dailyCapacityKg: true, busyUntil: true, availabilityUpdatedAt: true, company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } } },
+          })
+        : Promise.resolve([]),
     ]);
 
     res.json({
@@ -41,6 +53,7 @@ searchRouter.get(
       companies: { items: [...companies].sort((a, b) => Number(b.verification === 'dogrulanmis') - Number(a.verification === 'dogrulanmis')).slice(0, limit).map(({ _count, ...c }) => ({ ...c, productCount: _count.products })), hasMore: companies.length > limit },
       fabrics: { items: fabrics.slice(0, limit).map((p) => toProductRow(p, viewerCompanyId)), hasMore: fabrics.length > limit },
       yarns: { items: yarns.slice(0, limit).map((p) => toProductRow(p, viewerCompanyId)), hasMore: yarns.length > limit },
+      machines: { items: machines.slice(0, limit).map((m) => ({ ...m, typeLabel: machineTypeLabel(m) })), hasMore: machines.length > limit },
     });
   })
 );

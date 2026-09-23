@@ -764,6 +764,11 @@ model Machine {
   // Serbest özellik: tek plaka, çift plaka, jakar, elektronik...
   feature      String   @default("")
   count        Int      @default(1)
+  // Günlük üretim kapasitesi (kg), makine başına beyan.
+  dailyCapacityKg Float?
+  // Fason müsaitlik: bu tarihe kadar dolu (boş/geçmiş = müsait). Metin her gün yeniden hesaplanır.
+  busyUntil    DateTime?
+  availabilityUpdatedAt DateTime?
   note         String   @default("")
   position     Int      @default(0)
   createdAt    DateTime @default(now())
