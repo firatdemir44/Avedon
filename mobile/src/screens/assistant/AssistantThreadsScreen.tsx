@@ -63,7 +63,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
       title="Sohbetler"
       leading="back"
       onBack={() => navigation.goBack()}
-      actions={[{ icon: 'plus', label: 'Yeni sohbet', onPress: () => void openThread(null) }]}
+      actions={[{ icon: 'stats-chart-outline', label: 'Asistan raporu', onPress: () => navigation.navigate('AssistantReport') }, { icon: 'plus', label: 'Yeni sohbet', onPress: () => void openThread(null) }]}
     />
   );
 

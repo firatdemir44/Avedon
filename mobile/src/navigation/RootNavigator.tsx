@@ -33,6 +33,7 @@ import { WatchRulesScreen } from '../screens/notifications/WatchRulesScreen';
 import { AssistantThreadsScreen } from '../screens/assistant/AssistantThreadsScreen';
 import { AssistantMemoryScreen } from '../screens/assistant/AssistantMemoryScreen';
 import { SellerAssistantScreen } from '../screens/assistant/SellerAssistantScreen';
+import { AssistantReportScreen } from '../screens/assistant/AssistantReportScreen';
 import { CompanyQuestionsScreen } from '../screens/assistant/CompanyQuestionsScreen';
 import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
 import { MachineParkScreen } from '../screens/machines/MachineParkScreen';
@@ -295,6 +296,7 @@ export function RootNavigator() {
               component={SellerAssistantScreen}
               options={{ headerShown: true, title: 'Firma asistanı' }}
             />
+            <Stack.Screen name="AssistantReport" component={AssistantReportScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CompanyQuestions"
               component={CompanyQuestionsScreen}

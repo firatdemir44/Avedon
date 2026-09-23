@@ -183,6 +183,9 @@ export function MyProfileScreen({ navigation }: Props) {
     user?.companyId
       ? { key: 'company', title: 'Firmam', icon: 'business-outline' as AnyIconName, onPress: () => navigation.navigate('CompanyProfile') }
       : null,
+    user?.companyId
+      ? { key: 'assistantReport', title: 'Asistan raporu', icon: 'stats-chart-outline' as AnyIconName, onPress: () => navigation.navigate('AssistantReport') }
+      : null,
     { key: 'sampleRequests', title: 'Taleplerim', icon: 'sample' as AnyIconName, onPress: () => navigation.navigate('MySampleRequests') },
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
     { key: 'quoteRequests', title: 'Tekliflerim', icon: 'quote' as AnyIconName, onPress: () => navigation.navigate('QuoteRequests') },

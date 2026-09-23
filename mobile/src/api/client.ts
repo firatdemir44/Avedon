@@ -1527,7 +1527,9 @@ export type NotificationKind =
   | 'tender_closed'
   // Akış şikâyetleri (2026-09-23): yalnızca yöneticilere; yönetici
   // "Akış şikâyetleri" ekranına gider.
-  | 'feed_moderation';
+  | 'feed_moderation'
+  // Haftalık asistan raporu (pazartesi): data.companyId; "Asistan raporu"na gider.
+  | 'assistant_digest';
 
 export interface NotificationData {
   productId?: string;
@@ -1675,6 +1677,24 @@ export interface AssistantTurn {
   message: AssistantMessage;
   usage: { inputTokens: number; outputTokens: number; iterations: number; mock: boolean };
   thread: AssistantThread | null;
+}
+
+// Asistan raporu: son 7 ya da 30 günde asistana gelen sorular (satıcı tarafı).
+export interface AssistantReport {
+  days: number;
+  since: string;
+  questions: number;
+  conversations: number;
+  askerCompanies: number;
+  forwarded: number;
+  forwardedOpen: number;
+  answeredByAssistant: number;
+  askers: { companyName: string; questions: number; lastAt: string }[];
+  topProducts: { code: string; mentions: number }[];
+}
+
+export function fetchAssistantReport(days: 7 | 30) {
+  return request<{ report: AssistantReport }>(`/assistant/report?days=${days}`);
 }
 
 export function fetchAssistantThreads() {

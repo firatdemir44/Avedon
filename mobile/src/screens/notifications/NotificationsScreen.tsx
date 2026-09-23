@@ -56,6 +56,7 @@ function iconFor(kind: string): AnyIconName {
   if (kind === 'verification_rejected') return 'shield-outline';
   if (kind === 'verification_request') return 'shield-half-outline';
   if (kind === 'feed_moderation') return 'flag-outline';
+  if (kind === 'assistant_digest') return 'stats-chart-outline';
   return 'bell';
 }
 
@@ -177,6 +178,10 @@ export function NotificationsScreen({ navigation }: Props) {
       // Faz 2, Adım 3: satıcıya gelen soru → gelen sorular listesi; alıcıya
       // gelen cevap → o firmanın asistanı (firma adı bildirimde yok, ekran
       // iplik açılınca sunucudan alır).
+      if (item.kind === 'assistant_digest') {
+        navigation.navigate('AssistantReport');
+        return;
+      }
       if (item.kind === 'company_question_new') {
         navigation.navigate('CompanyQuestions');
         return;

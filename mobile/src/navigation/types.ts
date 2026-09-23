@@ -120,6 +120,8 @@ export type RootStackParamList = {
   SellerAssistant: { companyId: string; companyName?: string; productCode?: string };
   // Satıcı tarafı: asistana gelen sorular ve sık sorulanlar yönetimi.
   CompanyQuestions: undefined;
+  // Asistan raporu: son 7/30 günde asistana gelen sorular.
+  AssistantReport: undefined;
   CompanyFaq: undefined;
   // Makine parkı ve fason kapasite (Faz 2, Adım 5). MachinePark: kendi firmanın
   // parkuru + aylık tonaj; MachineForm: tek makine ekle/düzenle;
