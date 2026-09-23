@@ -72,8 +72,8 @@ export function FeedScreen({ navigation }: Props) {
   // Varsayılan "Bağlantılarım" (akış düzeni 2026-09-23); seçim hatırlanır.
   const [scope, setScope] = useState<FeedScope>('connections');
   // "Sektör" sekmesinde "Benim için" süzgeci: varsayılan açık, hatırlanır.
-  const [forMe, setForMe] = useState(true);
-  const forMeRef = useRef(true);
+  const [forMe, setForMe] = useState(false);
+  const forMeRef = useRef(false);
   forMeRef.current = forMe;
   // Firma gizlendikten sonra kısa bildirim + geri al.
   const [notice, setNotice] = useState<{ text: string; undo?: () => void } | null>(null);
@@ -104,7 +104,7 @@ export function FeedScreen({ navigation }: Props) {
           scopeRef.current = saved;
           setScope(saved);
         }
-        if (savedForMe === '0') {
+        if (false as boolean && savedForMe === '0') {
           forMeRef.current = false;
           setForMe(false);
         }
@@ -370,40 +370,22 @@ export function FeedScreen({ navigation }: Props) {
         </View>
       </Card>
 
-      {/* Akış: Bağlantılarım | Sektör */}
+      {/* Akış: Bağlantılarım | Genel akış + Paylaş (Fırat 2026-09-23: başlık ve süzgeç kaldırıldı, sade tek satır) */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-        <SectionTitle style={{ flex: 1 }} title="Akış" />
-        {/* "+" bant ikonuna sığmadı (bantta en fazla 2 ikon); paylaşma
-            eylemi bölüm başlığının sağında sessiz düğme olarak duruyor. */}
-        <Button
-          kind="quiet"
-          icon="plus"
-          label="Paylaş"
-          onPress={() => navigation.navigate('CreatePost')}
-        />
-      </View>
-
-      <SegmentControl<FeedScope>
-        stretch
-        accessibilityLabel="Akışta ne görünsün"
-        value={scope}
-        onChange={changeScope}
-        options={[
-          { value: 'connections', label: 'Bağlantılarım' },
-          { value: 'all', label: 'Sektör' },
-        ]}
-      />
-      {scope === 'all' ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space[2] }}>
-          <Chip label="Benim için" icon="sparkles-outline" selected={forMe} onPress={() => changeForMe(true)} />
-          <Chip label="Tümü" selected={!forMe} onPress={() => changeForMe(false)} />
-          <Text style={[t.type.caption12, { color: t.colors.ink3, flexBasis: '100%' }]}>
-            {forMe
-              ? 'Firmanızın işiyle ilgili tedarik zincirindeki paylaşımlar.'
-              : 'Sektördeki tüm herkese açık paylaşımlar.'}
-          </Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <SegmentControl<FeedScope>
+            stretch
+            accessibilityLabel="Akışta ne görünsün"
+            value={scope}
+            onChange={changeScope}
+            options={[
+              { value: 'connections', label: 'Bağlantılarım' },
+              { value: 'all', label: 'Genel akış' },
+            ]}
+          />
         </View>
-      ) : null}
+        <Button kind="quiet" icon="plus" label="Paylaş" onPress={() => navigation.navigate('CreatePost')} />
+      </View>
 
       {error && posts.length > 0 ? (
         <View
