@@ -112,6 +112,9 @@ Bu kod **yeniden yazılmaz, genişletilir**.
 - AB Dijital Ürün Pasaportu dışa aktarımı
 - Web sürümü
 
+### Faz 3b — Keşfet: İhracat Radarı (Fırat 2026-09-23, öncelikli)
+Platinum üyelere yapay zekâlı ihracat alıcı eşleştirme: kumaş pasaportundan HS kodu → ülke pazar puanı (Comtrade/Comext/TÜİK) → kanıtlı aday alıcı listesi → çok dilli temas asistanı. Ayrıntı, veri kaynakları, hukuk (UWG/GDPR), devlet desteği ve fiyat: `kesfet-ihracat-plani.md`.
+
 ### Faz 4 — Sektör genişlemesi
 2021 belgesindeki plana uygun olarak tekstil dışı kategoriler (üst kategori seçimi).
 
