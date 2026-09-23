@@ -2960,10 +2960,33 @@ export interface ExportMarketRow {
   score: number | null;
   scoreParts: { label: string; points: number }[];
   blocked: boolean;
+  // Yorum katmanı (backend/src/export/insight.ts).
+  insight?: ExportMarketInsight;
+}
+export interface ExportMarketInsight {
+  type: 'yukselen' | 'buyuk_rekabetci' | 'premium' | 'fiyat' | 'turk_guclu' | 'kucuk' | 'riskli' | 'engelli' | 'veri_yok';
+  typeLabel: string;
+  verdict: 'guclu' | 'degerlendirilebilir' | 'zayif' | 'yok';
+  verdictLabel: string;
+  winnableUsd: number | null;
+  pricePosition: 'ucuz' | 'ortalama' | 'pahali' | null;
+  pricePositionText: string | null;
+  displaceable: { m49: number; name: string; sharePct: number; priceGapPct: number } | null;
+  summary: string;
+  action: string;
+}
+export interface ExportMarketsOverview {
+  top: { m49: number; name: string; score: number | null; typeLabel: string; reason: string }[];
+  totalImportUsd: number;
+  turkeySharePct: number;
+  winnableUsd: number;
+  headline: string;
 }
 export interface ExportMarketsResult {
   hs6: string;
   markets: ExportMarketRow[];
+  overview?: ExportMarketsOverview;
+  referenceSharePct?: number;
   pending: number[];
   source: string;
   note: string;

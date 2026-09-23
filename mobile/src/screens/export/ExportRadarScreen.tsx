@@ -14,7 +14,9 @@ import {
   fetchExportProducts,
   type ExportCommonHs,
   type ExportCountry,
+  type ExportMarketInsight,
   type ExportMarketRow,
+  type ExportMarketsOverview,
   type ExportMarketsResult,
   type ExportProduct,
   type ExportRegion,
@@ -99,6 +101,13 @@ function scoreColor(score: number): keyof ColorTokens {
 
 const isBlocked = (row: ExportMarketRow, c?: ExportCountry) => row.blocked || c?.access === 'engelli';
 
+const VERDICT_KIND: Record<ExportMarketInsight['verdict'], 'verified' | 'info' | 'pending' | 'cancelled'> = {
+  guclu: 'verified',
+  degerlendirilebilir: 'info',
+  zayif: 'pending',
+  yok: 'cancelled',
+};
+
 export function ExportRadarScreen({ navigation }: Props) {
   const t = useTheme();
   const [countries, setCountries] = useState<ExportCountry[]>([]);
@@ -116,6 +125,7 @@ export function ExportRadarScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<ExportMarketRow | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const seq = useRef(0);
 
   const byM49 = useMemo(() => new Map(countries.map((c) => [c.m49, c])), [countries]);
@@ -332,7 +342,8 @@ export function ExportRadarScreen({ navigation }: Props) {
     <Card>{body('Sonuçları görmek için bir ürün seçin ya da kodu elle seçin.')}</Card>
   ) : (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="3. Pazarlar" />
+      <SectionTitle title="3. Pazarlar" linkLabel="Bu ekran nasıl okunur?" onLinkPress={() => setHelpOpen(true)} />
+      {result?.overview && result.overview.top.length ? <OverviewCard overview={result.overview} /> : null}
       {pendingCount > 0 ? (
         <View
           accessibilityLiveRegion="polite"
@@ -438,6 +449,7 @@ export function ExportRadarScreen({ navigation }: Props) {
       <BottomSheet visible={!!detail} onClose={() => setDetail(null)} title={detail?.country.name}>
         {detail ? (
           <View style={{ gap: t.space[4] }}>
+            {detail.insight ? <InsightBlock insight={detail.insight} /> : null}
             {detail.score != null && detail.scoreParts.length ? (
               <View style={{ gap: t.space[2] }}>
                 <Text style={[t.type.label14, { color: t.colors.ink }]}>Puan: {detail.score} / 100</Text>
@@ -493,6 +505,146 @@ export function ExportRadarScreen({ navigation }: Props) {
           </View>
         ) : null}
       </BottomSheet>
+
+      <BottomSheet visible={helpOpen} onClose={() => setHelpOpen(false)} title="Bu ekran nasıl okunur?">
+        <View style={{ gap: t.space[4] }}>
+          {HELP.map((h) => (
+            <View key={h.title} style={{ gap: t.space[1] }}>
+              <Text style={[t.type.label14, { color: t.colors.ink }]}>{h.title}</Text>
+              {h.lines.map((l, i) => (
+                <Text key={i} style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  {l}
+                </Text>
+              ))}
+            </View>
+          ))}
+          <Button kind="secondary" label="Anladım" onPress={() => setHelpOpen(false)} fullWidth />
+        </View>
+      </BottomSheet>
+    </View>
+  );
+}
+
+const HELP: { title: string; lines: string[] }[] = [
+  {
+    title: 'Puan nedir?',
+    lines: [
+      '0–100 arası bir özet not. Ülkenin bu üründen ne kadar aldığı, alımının büyüyüp büyümediği, Türkiye\'nin orada ne kadar tuttuğu, gümrük avantajı ve risk birlikte hesaba katılır.',
+      '70 ve üstü güçlü, 50–69 değerlendirilebilir, altı zayıf aday demektir. Karta dokunursanız puanın nereden geldiğini görürsünüz.',
+    ],
+  },
+  {
+    title: 'Pazar tipleri',
+    lines: [
+      'Yükselen fırsat: alımı hızla artan ülke. Büyük ama rekabetçi: çok alan ama çok satıcının olduğu ülke. Premium pazar: kilo başına yüksek fiyat ödeyen ülke. Fiyat pazarı: ucuz ürün arayan ülke.',
+      'Türk ürünü güçlü: Türkiye zaten iyi satıyor. Küçük / niş pazar: az ama seçici alım. Riskli ya da ticaret engelli: ödeme, yaptırım veya yasak riski var.',
+    ],
+  },
+  {
+    title: 'Kazanılabilir pazar',
+    lines: [
+      'Türkiye\'nin benzer pazarlarda tuttuğu ortalama paya bu ülkede de ulaşırsanız, yılda ek olarak satılabilecek tahmini tutardır. Bu tutarın tamamı sizin olmaz; pazarın büyüklüğünü gösterir.',
+    ],
+  },
+  {
+    title: 'Kg fiyatı karşılaştırması',
+    lines: [
+      'Ülkenin bu ürünü Türkiye\'den, Çin\'den ve ortalamada kilosu kaça aldığını gösterir. Türk ürünü ortalamadan ucuzsa fiyatla, pahalıysa kaliteyle rekabet ediyorsunuz demektir.',
+      'Kilo verisi bazı ülkelerde eksik ya da hatalı bildirilir; ekranda uyarı görürseniz bu rakama fazla güvenmeyin.',
+    ],
+  },
+  {
+    title: 'Veri nereden geliyor?',
+    lines: [
+      'Rakamlar Birleşmiş Milletler ticaret veritabanından (UN Comtrade) gelir; ülkelerin resmi gümrük bildirimleridir. Ülkeler veriyi 6–18 ay gecikmeyle yayımlar, bu yüzden en son yıl bir iki yıl öncesi olabilir.',
+    ],
+  },
+  {
+    title: 'Önemli',
+    lines: ['Bu ekran yol gösterir; yatırım veya ticari tavsiye değildir. Karar vermeden önce alıcı, fiyat ve gümrük koşullarını ayrıca doğrulayın.'],
+  },
+];
+
+function OverviewCard({ overview }: { overview: ExportMarketsOverview }) {
+  const t = useTheme();
+  return (
+    <Card>
+      <View style={{ gap: t.space[3] }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+          <Icon name="trophy-outline" color="brand" />
+          <Text style={[t.type.title18, { color: t.colors.ink, flex: 1 }]}>Sizin için en iyi 3 pazar</Text>
+        </View>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{overview.headline}</Text>
+        {overview.top.map((m, i) => (
+          <View key={m.m49} style={{ flexDirection: 'row', gap: t.space[3] }}>
+            <Text style={[t.type.title18, { color: t.colors.brand }]}>{i + 1}</Text>
+            <View style={{ flex: 1, gap: t.space[1] }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space[2] }}>
+                <Text style={[t.type.label14, { color: t.colors.ink }]}>{m.name}</Text>
+                {m.score != null ? (
+                  <Text style={[t.type.caption12, { color: t.colors[scoreColor(m.score)] }]}>{m.score} puan</Text>
+                ) : null}
+                <Badge kind="new" label={m.typeLabel} />
+              </View>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{m.reason}</Text>
+            </View>
+          </View>
+        ))}
+        {overview.winnableUsd >= 1e6 ? (
+          <View
+            style={{
+              backgroundColor: t.colors.successSoft,
+              borderRadius: t.radius.md,
+              padding: t.space[3],
+              gap: t.space[1],
+            }}
+          >
+            <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>TOPLAM KAZANILABİLİR PAZAR</Text>
+            <Text style={[t.type.title18, { color: t.colors.success }]}>~{formatUsd(overview.winnableUsd)} / yıl</Text>
+          </View>
+        ) : null}
+      </View>
+    </Card>
+  );
+}
+
+function InsightBlock({ insight }: { insight: ExportMarketInsight }) {
+  const t = useTheme();
+  const section = (icon: 'bulb-outline' | 'pricetag-outline' | 'swap-horizontal-outline', title: string, text: string) => (
+    <View style={{ gap: t.space[1] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
+        <Icon name={icon} size={t.size.iconSm} color="brand" />
+        <Text style={[t.type.label14, { color: t.colors.ink }]}>{title}</Text>
+      </View>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>
+    </View>
+  );
+  const d = insight.displaceable;
+  return (
+    <View style={{ gap: t.space[4] }}>
+      <View style={{ gap: t.space[2] }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+          <Badge kind="new" label={insight.typeLabel} />
+          <Badge kind={VERDICT_KIND[insight.verdict]} label={insight.verdictLabel} />
+        </View>
+        <Text style={[t.type.body14, { color: t.colors.ink }]}>{insight.summary}</Text>
+        {insight.winnableUsd ? (
+          <Text style={[t.type.label14, { color: t.colors.success }]}>
+            Kazanılabilir pazar: ~{formatUsd(insight.winnableUsd)} / yıl
+          </Text>
+        ) : null}
+      </View>
+      <View style={{ backgroundColor: t.colors.brandSoft, borderRadius: t.radius.md, padding: t.space[3] }}>
+        {section('bulb-outline', 'Önerilen hamle', insight.action)}
+      </View>
+      {insight.pricePositionText ? section('pricetag-outline', 'Fiyat konumunuz', insight.pricePositionText) : null}
+      {d
+        ? section(
+            'swap-horizontal-outline',
+            'Yerini alabileceğiniz rakip',
+            `${d.name} (pazar payı ${pct(d.sharePct)}) Türk ürününden ${pct(d.priceGapPct)} pahalı satıyor. Onun alıcılarına daha uygun fiyatla gidebilirsiniz.`
+          )
+        : null}
     </View>
   );
 }
@@ -596,6 +748,22 @@ function MarketCard({
     <Card onPress={onPress} accessibilityLabel={`${name}, ayrıntı`} testID={`market-${row.country.m49}`}>
       <View style={{ gap: t.space[2] }}>
         {header}
+        {row.insight ? (
+          <View style={{ gap: t.space[2] }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+              <Badge kind="new" label={row.insight.typeLabel} />
+              <Badge kind={VERDICT_KIND[row.insight.verdict]} label={row.insight.verdictLabel} />
+            </View>
+            <Text style={[t.type.body14, { color: t.colors.ink }]} numberOfLines={2}>
+              {row.insight.summary}
+            </Text>
+            {row.insight.winnableUsd ? (
+              <Text style={[t.type.label14, { color: t.colors.success }]}>
+                Kazanılabilir pazar ~{formatUsd(row.insight.winnableUsd)}/yıl
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
         {noData ? (
           line('Bu ülke bu kod için veri yayımlamamış.')
         ) : (
