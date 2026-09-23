@@ -216,7 +216,8 @@ const MAX_REC_MS = 120_000;
 export const canRecord = () =>
   Platform.OS === 'web' && typeof window !== 'undefined' && typeof (window as unknown as { MediaRecorder?: unknown }).MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
 
-export async function startRecording(opts: { onDone: (audio: Blob | null) => void; onError: (e: ListenError) => void }): Promise<() => void> {
+// onLevel: kayıt sırasında ses seviyesi (0-1), ekranda "sizi duyuyorum" göstergesi için.
+export async function startRecording(opts: { onDone: (audio: Blob | null) => void; onError: (e: ListenError) => void; onLevel?: (level: number) => void }): Promise<() => void> {
   let stream: MediaStream;
   try {
     stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -232,8 +233,34 @@ export async function startRecording(opts: { onDone: (audio: Blob | null) => voi
     if (e.data.size) chunks.push(e.data);
   };
   const timer = setTimeout(() => stop(), MAX_REC_MS);
+  // Ses seviyesi ölçümü (Web Audio); desteklenmezse gösterge yalnızca süreyi gösterir.
+  let levelTimer: ReturnType<typeof setInterval> | null = null;
+  let audioCtx: AudioContext | null = null;
+  if (opts.onLevel) {
+    try {
+      const Ctx = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext ??
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) {
+        audioCtx = new Ctx();
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 512;
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        const buf = new Uint8Array(analyser.fftSize);
+        levelTimer = setInterval(() => {
+          analyser.getByteTimeDomainData(buf);
+          let sum = 0;
+          for (const v of buf) sum += ((v - 128) / 128) ** 2;
+          opts.onLevel?.(Math.min(1, Math.sqrt(sum / buf.length) * 4));
+        }, 120);
+      }
+    } catch {
+      // gösterge olmadan devam
+    }
+  }
   rec.onstop = () => {
     clearTimeout(timer);
+    if (levelTimer) clearInterval(levelTimer);
+    audioCtx?.close().catch(() => undefined);
     stream.getTracks().forEach((tr) => tr.stop());
     opts.onDone(chunks.length ? new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' }) : null);
   };

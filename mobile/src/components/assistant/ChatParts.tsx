@@ -152,6 +152,7 @@ export function AssistantComposer({
 }) {
   const t = useTheme();
   const [micError, setMicError] = useState<string | null>(null);
+  const [micStatus, setMicStatus] = useState<MicStatus | null>(null);
   return (
     <View
       style={[
@@ -167,7 +168,8 @@ export function AssistantComposer({
         t.shadowRaised,
       ]}
     >
-      {chips?.length ? (
+      {micStatus ? <MicStatusBar status={micStatus} /> : null}
+      {chips?.length && !micStatus ? (
         <ChipRow>
           {chips.map((chip) => (
             <Chip
@@ -218,7 +220,7 @@ export function AssistantComposer({
           ]}
         />
         {(canListen() || canRecord()) && !value.trim() ? (
-          <MicButton onText={onChangeText} onError={setMicError} />
+          <MicButton onText={onChangeText} onError={setMicError} onStatus={setMicStatus} />
         ) : (
           <SendButton onPress={onSend} canSend={canSend} />
         )}
@@ -242,7 +244,52 @@ const MIC_ERRORS: Record<ListenError, string> = {
 // Sunucu ses tanıma durumu uygulama boyunca bir kez sorulur.
 let serverSpeech: boolean | null = null;
 
-function MicButton({ onText, onError }: { onText: (t: string) => void; onError: (m: string | null) => void }) {
+// Kayıt sırasında kullanıcı "beni duyuyor mu?" diye şüphelenmesin: süre, ses seviyesi ve
+// ne yapacağı yazılır; durdurunca "Yazıya çevriliyor…" (Fırat 2026-09-23 geri bildirimi).
+type MicStatus = { phase: 'recording'; seconds: number; level: number } | { phase: 'transcribing' };
+
+function MicStatusBar({ status }: { status: MicStatus }) {
+  const t = useTheme();
+  const bars = [0.35, 0.6, 1, 0.6, 0.35];
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], alignSelf: 'center', width: '100%', maxWidth: t.size.maxContentWidth, minHeight: t.size.touchMin }}
+    >
+      {status.phase === 'recording' ? (
+        <>
+          <View style={{ width: t.size.dot, height: t.size.dot, borderRadius: t.radius.full, backgroundColor: t.colors.danger }} />
+          <Text style={[t.type.label14, { color: t.colors.ink }]}>
+            Dinliyorum · {Math.floor(status.seconds / 60)}:{String(status.seconds % 60).padStart(2, '0')}
+          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], height: t.size.iconSm }}>
+            {bars.map((w, i) => (
+              <View
+                key={i}
+                style={{
+                  width: t.space[1],
+                  height: Math.max(t.space[1], t.size.iconSm * Math.min(1, status.level * w * 1.6)),
+                  borderRadius: t.radius.full,
+                  backgroundColor: status.level > 0.04 ? t.colors.brand : t.colors.line,
+                }}
+              />
+            ))}
+          </View>
+          <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]} numberOfLines={2}>
+            Bitince kırmızı düğmeye dokunun; yazı sonra gelir.
+          </Text>
+        </>
+      ) : (
+        <>
+          <ActivityIndicator color={t.colors.brand} />
+          <Text style={[t.type.label14, { color: t.colors.ink }]}>Yazıya çevriliyor…</Text>
+        </>
+      )}
+    </View>
+  );
+}
+
+function MicButton({ onText, onError, onStatus }: { onText: (t: string) => void; onError: (m: string | null) => void; onStatus?: (s: MicStatus | null) => void }) {
   const t = useTheme();
   const [listening, setListening] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -270,12 +317,25 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
     if (useRecorder) {
       // Kullanıcı durdurana kadar kayıt; sonra sunucuda yazıya çevrilir.
       onText('');
+      const started = Date.now();
+      let level = 0;
+      const tickStatus = () => onStatus?.({ phase: 'recording', seconds: Math.floor((Date.now() - started) / 1000), level });
+      tickStatus();
+      const clock = setInterval(tickStatus, 250);
       stopRef.current = await startRecording({
         onError: (e) => onError(MIC_ERRORS[e]),
+        onLevel: (l) => {
+          level = l;
+        },
         onDone: async (audio) => {
+          clearInterval(clock);
           setListening(false);
           stopRef.current = null;
-          if (!audio) return;
+          if (!audio) {
+            onStatus?.(null);
+            return;
+          }
+          onStatus?.({ phase: 'transcribing' });
           setBusy(true);
           try {
             const text = await transcribeAudio(audio);
@@ -285,6 +345,7 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
             onError(err instanceof Error ? err.message : MIC_ERRORS.other);
           } finally {
             setBusy(false);
+            onStatus?.(null);
           }
         },
       });
