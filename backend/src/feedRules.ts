@@ -184,6 +184,7 @@ const RELEVANCE_SYSTEM = `Bir B2B tekstil platformunun herkese açık akışı i
 İlgisiz: evcil hayvan, yemek, manzara, siyaset, spor, kişisel fotoğraf, tekstille ilgisiz ürün satışı, şaka/mizah.
 Emin değilsen ilgili say (textile=true). Yalnızca açıkça ilgisizse false.`;
 
+let lastRelevanceError: string | null = null;
 export type RelevanceResult = { textile: boolean; reason: string; checked: boolean };
 
 export async function checkTextileRelevance(input: { body: string; imageDataUrl?: string | null; productAttached?: boolean }): Promise<RelevanceResult> {
@@ -208,6 +209,7 @@ export async function checkTextileRelevance(input: { body: string; imageDataUrl?
     return { ...out, checked: true };
   } catch (err) {
     console.warn('[feedRules] içerik denetimi yapılamadı:', (err as Error).message);
+    lastRelevanceError = (err as Error).message.slice(0, 200);
     return { textile: true, reason: 'hata', checked: false };
   }
 }
@@ -220,7 +222,7 @@ let selfTest: { at: number; ok: boolean; detail: string } | null = null;
 export async function relevanceStatus() {
   if (!selfTest || Date.now() - selfTest.at > 6 * 3_600_000) {
     const r = await checkTextileRelevance({ body: 'Kedimiz bugün 3 yaşında oldu, doğum günü pastası yaptık.' });
-    selfTest = { at: Date.now(), ok: r.checked && !r.textile, detail: r.checked ? r.reason : `denetim çalışmadı (${r.reason})` };
+    selfTest = { at: Date.now(), ok: r.checked && !r.textile, detail: r.checked ? r.reason : `denetim çalışmadı (${lastRelevanceError ?? r.reason})` };
   }
   return { working: selfTest.ok, detail: selfTest.detail, checkedAt: new Date(selfTest.at).toISOString() };
 }
