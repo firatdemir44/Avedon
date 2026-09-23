@@ -1,5 +1,5 @@
 // Kumaş kataloğu (Aşama A, 2026-09-15): çeşit → alt çeşit ve kullanım amaçları.
-// Kaynak: orijinal Avedon tasarımı (docs/orijinal-proje-plani.md, "Ürün Kategorileri").
+// Kaynak: orijinal Takyon tasarımı (docs/orijinal-proje-plani.md, "Ürün Kategorileri").
 //
 // Veritabanında yalnızca ANAHTARLAR saklanır; etiketler gösterim içindir, bir
 // etiketi düzeltmek veriye dokunmaz. Bir anahtarı silmek/yeniden adlandırmak ise

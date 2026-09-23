@@ -89,7 +89,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
               <View style={{ gap: t.space[3], minWidth: 0 }}>
                 <Badge kind="pending" label="İnceleniyor" />
                 <Text style={[t.type.body16, { color: t.colors.ink }]}>
-                  Başvurunuz alındı. Avedon ekibi belgenizi inceliyor; sonuç bildirimle gelecek.
+                  Başvurunuz alındı. Takyon ekibi belgenizi inceliyor; sonuç bildirimle gelecek.
                 </Text>
                 <Button kind="secondary" label="Firma sayfasına dön" onPress={() => navigation.goBack()} fullWidth />
               </View>
@@ -98,7 +98,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
             <Card>
               <View style={{ gap: t.space[4], minWidth: 0 }}>
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Vergi levhası ya da faaliyet belgesi yükleyin; Avedon ekibi inceler, onaylanınca sayfa size bağlanır
+                  Vergi levhası ya da faaliyet belgesi yükleyin; Takyon ekibi inceler, onaylanınca sayfa size bağlanır
                   ve ürün ekleyebilirsiniz.
                 </Text>
                 <DocField

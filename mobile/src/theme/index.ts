@@ -1,4 +1,4 @@
-// Avedon tasarım dili — 2026-09-22 onaylı tasarım sistemi (DESIGN.md, design/tokens.json).
+// Takyon tasarım dili — 2026-09-22 onaylı tasarım sistemi (DESIGN.md, design/tokens.json).
 // Kaynak token'lar theme/tokens.ts'te; temaya duyarlı ekranlar `useTheme()` kullanır.
 // Aşağıdaki ESKİ adlar geçiş köprüsüdür: değerleri yeni açık temanın token'larına eşlendi,
 // böylece henüz taşınmamış ekranlar da yeni renklerle çizilir. Yeni kodda kullanılmaz.

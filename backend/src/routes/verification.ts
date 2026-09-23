@@ -7,7 +7,7 @@ import { makeHandle } from './handle';
 
 // Firma doğrulama başvurusu (Fırat 2026-09-22). Firma tarafı: /api/verification
 // (başvur, durumunu gör). Yönetici tarafı: /api/admin/verification-requests (liste, belge, karar).
-// Yöneticinin kimliği hiçbir yanıtta yer almaz (bildirimler "Avedon" adına gider).
+// Yöneticinin kimliği hiçbir yanıtta yer almaz (bildirimler "Takyon" adına gider).
 const MAX_DOC_CHARS = 2_100_000; // ~1,5 MB PDF ya da sıkıştırılmış fotoğraf
 
 const handle = makeHandle('verification');

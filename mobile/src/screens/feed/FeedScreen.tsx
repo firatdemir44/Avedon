@@ -1,7 +1,7 @@
 // Ana sayfa (yeni tasarım, 3. adım — DESIGN.md §8, artboard 1).
 //
 // Rota adı `Feed` DEĞİŞMEDİ (başka ekranlar oraya navigate ediyor); sekme
-// etiketi "Ana sayfa". Düzen: AppBar (logo + Avedon + zil + profil) → 48px
+// etiketi "Ana sayfa". Düzen: AppBar (logo + Takyon + zil + profil) → 48px
 // arama kutusu → "Bugün" sayaçları → 4 kısayol → "Sektörden" akışı.
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
@@ -264,7 +264,7 @@ export function FeedScreen({ navigation }: Props) {
 
   const handleShare = (post: FeedPost) => {
     const author = `${post.author.firstName} ${post.author.lastName}`;
-    Share.share({ message: `${author} (Avedon):\n\n${post.body}` }).catch(() => {});
+    Share.share({ message: `${author} (Takyon):\n\n${post.body}` }).catch(() => {});
   };
 
   const handleDelete = async (post: FeedPost) => {
@@ -393,7 +393,7 @@ export function FeedScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
         leading="logo"
-        title="Avedon"
+        title="Takyon"
         actions={[
           {
             icon: 'bell',

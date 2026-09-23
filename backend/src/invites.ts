@@ -29,7 +29,7 @@ export function inviteShareText(inviterName: string, companyName: string | null,
       : relation === 'musteri'
         ? 'Ürünlerimi, stoklarımı ve yeni kalitelerimi oradan görebilir, numune ve teklif isteyebilirsiniz.'
         : 'Tekstil firmalarının ürün, numune ve teklif işlerini yürüttüğü bir platform.';
-  return `Merhaba, ben ${who}. Sizi Avedon'a davet ediyorum. ${why}\n\nKayıt: ${inviteUrl(code)}\nDavet kodu: ${code}`;
+  return `Merhaba, ben ${who}. Sizi Takyon'a davet ediyorum. ${why}\n\nKayıt: ${inviteUrl(code)}\nDavet kodu: ${code}`;
 }
 
 // Kayıt tamamlanınca çağrılır (register.ts). Hata kaydı bozmaz; çağıran yutar.

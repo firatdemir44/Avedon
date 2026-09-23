@@ -2050,7 +2050,7 @@ export function extractPassport(input: PassportExtractInput) {
 }
 
 // --- WhatsApp'tan ürün taslakları -------------------------------------------
-// Kullanıcı WhatsApp'taki Avedon asistanına etiket FOTOĞRAFI gönderince sunucu
+// Kullanıcı WhatsApp'taki Takyon asistanına etiket FOTOĞRAFI gönderince sunucu
 // etiketi okuyup bir taslak kaydeder (ürün OLUŞTURMAZ) ve 'product_draft'
 // bildirimi düşer. Uygulama taslağı açar, onay ekranında gösterir, kullanıcı
 // normal ürün kaydıyla kaydeder. Sunucu: backend/src/routes/productDrafts.ts.
@@ -2701,7 +2701,7 @@ export function updateCompanyVerification(
 }
 
 // --- Firma doğrulama başvurusu (2026-09-22) ----------------------------------
-// Firma belge yükleyip doğrulama ister; "Avedon ekibi" inceler. Yöneticinin
+// Firma belge yükleyip doğrulama ister; "Takyon ekibi" inceler. Yöneticinin
 // kimliği hiçbir yanıtta geçmez, bu yüzden istemcide de hiçbir yerde
 // gösterilmez. Belge karar verildikten sonra sunucuda silinir.
 

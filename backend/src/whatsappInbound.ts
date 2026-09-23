@@ -55,7 +55,7 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
 }
 
 export const REPLY_UNKNOWN_USER =
-  'Merhaba, ben Avedon asistanı. Bu numara Avedon\'da kayıtlı değil. Uygulamaya aynı numarayla kayıt olursanız buradan hesap sorabilir, etiket metni gönderebilir ve kataloğunuzu sorabilirsiniz.';
+  'Merhaba, ben Takyon asistanı. Bu numara Takyon\'da kayıtlı değil. Uygulamaya aynı numarayla kayıt olursanız buradan hesap sorabilir, etiket metni gönderebilir ve kataloğunuzu sorabilirsiniz.';
 export const REPLY_NON_TEXT =
   "WhatsApp'tan yazılı mesaj ve etiket FOTOĞRAFI okuyabiliyorum. Ses, video ve belge şimdilik okunmuyor; etiket metnini yazarsanız onu da okurum.";
 export const REPLY_PHOTO_NO_COMPANY = 'Fotoğraftan ürün taslağı hazırlayabilmem için uygulamada bir firmaya bağlı olmanız gerekiyor.';

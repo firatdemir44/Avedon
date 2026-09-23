@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Avedon Ürün Pasaportu</title>
+<title>Takyon Ürün Pasaportu</title>
 <style>
   body { margin: 0; background: #EEF1F4; color: #111A22; font-family: 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.5; }
   header { background: #133C5F; color: #fff; padding: 20px 16px; }
@@ -72,7 +72,7 @@
     return r.json();
   }).then(function (data) {
     var p = data.passport;
-    document.title = p.identifier.code + ' · Avedon Ürün Pasaportu';
+    document.title = p.identifier.code + ' · Takyon Ürün Pasaportu';
     document.getElementById('code').textContent = p.identifier.code;
 
     if (p.product.hasPhoto) {
@@ -107,7 +107,7 @@
     row(op, 'Web', p.economicOperator.website);
     if (p.economicOperator.verified) {
       op.appendChild(el('dt', 'Doğrulama / Verification'));
-      var v = el('dd', 'Avedon tarafından doğrulandı' + (p.economicOperator.verificationLevel === 'ziyaret' ? ' (yerinde ziyaret)' : p.economicOperator.verificationLevel === 'belge' ? ' (belge ile)' : ''));
+      var v = el('dd', 'Takyon tarafından doğrulandı' + (p.economicOperator.verificationLevel === 'ziyaret' ? ' (yerinde ziyaret)' : p.economicOperator.verificationLevel === 'belge' ? ' (belge ile)' : ''));
       v.className = 'ok'; op.appendChild(v);
     }
 

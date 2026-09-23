@@ -134,8 +134,8 @@ export function InvitesScreen({ navigation }: Props) {
         setAlreadyMember(user);
         setFormError(
           user
-            ? `Bu numara zaten Avedon'da: ${user.firstName} ${user.lastName}. Profiline gidip bağlantı isteği gönderebilirsiniz.`
-            : "Bu numara zaten Avedon'da. Kişiyi arayıp profilinden bağlantı isteği gönderebilirsiniz."
+            ? `Bu numara zaten Takyon'da: ${user.firstName} ${user.lastName}. Profiline gidip bağlantı isteği gönderebilirsiniz.`
+            : "Bu numara zaten Takyon'da. Kişiyi arayıp profilinden bağlantı isteği gönderebilirsiniz."
         );
       } else if (err instanceof ApiError && err.code === 'invalid_phone') {
         setFormError('Telefon numarasını 05XX XXX XX XX biçiminde yazın.');

@@ -147,7 +147,7 @@ export function PushSettingsCard() {
 
   const description =
     support === 'needs-install'
-      ? "iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Avedon'u ana ekrandan açın."
+      ? "iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Takyon'u ana ekrandan açın."
       : permission === 'denied'
         ? 'Bildirim izni tarayıcıda kapalı. Tarayıcı ayarlarından bu site için bildirimlere izin verin.'
         : subscribed

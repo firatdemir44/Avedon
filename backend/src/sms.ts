@@ -118,7 +118,7 @@ export async function sendSms(phone: string, text: string): Promise<SendSmsResul
 }
 
 export async function sendOtpSms(phone: string, code: string): Promise<SendSmsResult> {
-  return sendSms(phone, `Avedon dogrulama kodunuz: ${code}. Kod 5 dakika gecerlidir. Kimseyle paylasmayin.`);
+  return sendSms(phone, `Takyon dogrulama kodunuz: ${code}. Kod 5 dakika gecerlidir. Kimseyle paylasmayin.`);
 }
 
 // /api/health için: anahtarları sızdırmadan kurulumun doğruluğunu gösterir. Bakiye sorgusu

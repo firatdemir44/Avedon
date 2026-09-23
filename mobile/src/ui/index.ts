@@ -1,4 +1,4 @@
-// Avedon ortak bileşenleri (DESIGN.md §3). Tek kaynak: ekranlar buradan alır.
+// Takyon ortak bileşenleri (DESIGN.md §3). Tek kaynak: ekranlar buradan alır.
 // Kural: bileşenlerin içinde ham hex / ham px yok; her değer useTheme() token'ı.
 export { AppBar } from './AppBar';
 export type { AppBarProps, AppBarAction } from './AppBar';

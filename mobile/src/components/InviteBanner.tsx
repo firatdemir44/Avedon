@@ -50,7 +50,7 @@ export function InviteBanner() {
       <Icon name="person-add-outline" size={t.size.iconSm} color="brand" />
       {/* Uzun firma adlarında 375 px'te taşmasın. */}
       <Text style={[t.type.body14, { color: t.colors.brand, flex: 1, minWidth: 0 }]}>
-        {who} sizi Avedon'a davet etti.
+        {who} sizi Takyon'a davet etti.
       </Text>
     </View>
   );

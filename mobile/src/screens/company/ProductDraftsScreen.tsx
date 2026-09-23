@@ -1,6 +1,6 @@
 // WhatsApp taslakları (yeni tasarım, 4. adım — DESIGN.md §2/§3).
 //
-// WhatsApp'taki Avedon asistanına gönderilen etiket fotoğrafından hazırlanan,
+// WhatsApp'taki Takyon asistanına gönderilen etiket fotoğrafından hazırlanan,
 // henüz ürüne çevrilmemiş taslaklar. Satıra dokununca ürün formu taslakla
 // açılır (onay ekranı → forma aktarım); ürün kaydedilince taslak listeden
 // düşer. "Sil" eylemi satırın ALTINDA ayrı bir düğme (iç içe düğme olmaz).
@@ -122,7 +122,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
               <EmptyState
                 icon="whatsapp"
                 title="Bekleyen taslak yok"
-                description="WhatsApp'tan Avedon asistanına bir etiket fotoğrafı gönderin; taslağı burada hazır bulursunuz."
+                description="WhatsApp'tan Takyon asistanına bir etiket fotoğrafı gönderin; taslağı burada hazır bulursunuz."
               />
             }
             renderItem={({ item, index }) => {

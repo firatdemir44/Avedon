@@ -130,7 +130,7 @@ export function ensureManifestLink(): void {
 
     addLink('manifest', '/manifest.webmanifest');
     addMeta('apple-mobile-web-app-capable', 'yes');
-    addMeta('apple-mobile-web-app-title', 'Avedon');
+    addMeta('apple-mobile-web-app-title', 'Takyon');
     addLink('apple-touch-icon', '/apple-touch-icon.png');
   } catch {
     // Sessiz: manifest eklenememesi uygulamayı etkilemez.

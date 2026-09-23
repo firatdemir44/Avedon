@@ -6,7 +6,7 @@
 // renkli şerit YOK, DESIGN.md §7), not `ui/Input`, gönder `ui/Button`.
 //
 // GİZLİLİK: kararı kimin verdiği hiçbir yerde yazmaz; metinlerde yalnızca
-// "Avedon ekibi" geçer (sunucu da yönetici kimliğini döndürmüyor).
+// "Takyon ekibi" geçer (sunucu da yönetici kimliğini döndürmüyor).
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useState } from 'react';
@@ -154,7 +154,7 @@ export function VerificationScreen(_props: Props) {
               {verified
                 ? `${levelText(state.level)}${state.verifiedAt ? ` · ${formatMonthYear(state.verifiedAt)}` : ''}`
                 : pending
-                  ? 'Avedon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.'
+                  ? 'Takyon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.'
                   : 'Firma sayfanızda doğrulanmış rozeti yok.'}
             </Text>
           </View>
@@ -242,7 +242,7 @@ export function VerificationScreen(_props: Props) {
         ) : null}
 
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Doğrulamayı Avedon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.
+          Doğrulamayı Takyon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.
         </Text>
       </View>
     </ScrollView>

@@ -127,7 +127,7 @@ export function LoginScreen({ navigation }: Props) {
             }}
           >
             <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, alignSelf: 'center' }}>
-              {/* Orijinal Avedon logosu; lacivert zemin için harfleri beyaz sürüm
+              {/* Orijinal Takyon logosu; lacivert zemin için harfleri beyaz sürüm
                   (assets/brand, kaynak docs/orijinal-tasarim/logo). */}
               <Image
                 source={require('../../../assets/brand/avedon-logo-light.png')}
@@ -135,7 +135,7 @@ export function LoginScreen({ navigation }: Props) {
                 resizeMode="contain"
                 accessible
                 accessibilityRole="header"
-                accessibilityLabel="Avedon"
+                accessibilityLabel="Takyon"
               />
               <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>
                 Kaliteli kumaş aramanın yenilikçi yolu

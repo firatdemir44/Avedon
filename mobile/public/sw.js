@@ -1,4 +1,4 @@
-// Avedon servis çalışanı: yalnızca anlık bildirim (Web Push). Önbellekleme YAPMAZ; uygulama
+// Takyon servis çalışanı: yalnızca anlık bildirim (Web Push). Önbellekleme YAPMAZ; uygulama
 // dosyaları her zaman ağdan gelir (eski paket sunma riski olmasın).
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
@@ -8,9 +8,9 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data ? event.data.json() : {};
   } catch (e) {
-    payload = { title: 'Avedon', body: event.data ? event.data.text() : '' };
+    payload = { title: 'Takyon', body: event.data ? event.data.text() : '' };
   }
-  const title = payload.title || 'Avedon';
+  const title = payload.title || 'Takyon';
   const options = {
     body: payload.body || '',
     icon: '/bildirim-simge.png',

@@ -345,7 +345,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const sharePost = (post: FeedPost) => {
     const author = `${post.author.firstName} ${post.author.lastName}`;
-    Share.share({ message: `${author} (Avedon):\n\n${post.body}` }).catch(() => {});
+    Share.share({ message: `${author} (Takyon):\n\n${post.body}` }).catch(() => {});
   };
 
   const submitReference = async () => {
@@ -497,7 +497,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const people = company.users;
 
   const shareCompany = () => {
-    Share.share({ message: `${company.name} (Avedon)` }).catch(() => {});
+    Share.share({ message: `${company.name} (Takyon)` }).catch(() => {});
   };
 
   const appBar = bar(
@@ -607,7 +607,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           {verifyInfoOpen && company.verification === 'dogrulanmis' ? (
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
               {verificationLevelText(company)}. Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı
-              incelendi. Yerinde ziyaretle doğrulama: Avedon ekibi tesisi yerinde gördü.
+              incelendi. Yerinde ziyaretle doğrulama: Takyon ekibi tesisi yerinde gördü.
             </Text>
           ) : null}
         </View>
@@ -637,7 +637,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       >
         <Icon name="info" size={t.size.iconSm} color="brand" />
         <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-          Bu firma dernek listesinden eklendi, henüz Avedon'a katılmadı.
+          Bu firma dernek listesinden eklendi, henüz Takyon'a katılmadı.
         </Text>
       </View>
       {claimPending ? (

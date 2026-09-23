@@ -36,7 +36,7 @@ function ViewedCard({ product, onOpen }: { product: RecentlyViewedProduct; onOpe
   );
 }
 
-// Orijinal tasarımdaki "Son Bakılan Ürünler" (Avedon Geçmişi): güne göre
+// Orijinal tasarımdaki "Son Bakılan Ürünler" (Takyon Geçmişi): güne göre
 // gruplu, en son bakılan üstte. Kayıt sunucuda (her cihazda aynı); kendi
 // firmanın ürünleri tutulmuyor.
 export function RecentlyViewedProductsScreen({ navigation }: Props) {

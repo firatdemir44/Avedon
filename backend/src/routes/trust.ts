@@ -85,7 +85,7 @@ export async function companyTrustSummary(companyId: string) {
         : null,
     thresholds: { deals: MIN_DEALS_FOR_RATES, reviews: MIN_REVIEWS_FOR_AVERAGE, requests: MIN_REQUESTS_FOR_RESPONSE },
     method:
-      'Bileşenler platformdaki kayıtlardan hesaplanır: doğrulama (Avedon), karşılıklı onaylı referanslar, iki tarafın beyan ettiği teslimler, karşılıklı açılan değerlendirmeler ve tekliflere yanıt süresi. Tek bir puan üretilmez; hiçbir bileşen ücretle değiştirilemez. Yeterli veri yoksa oran ve ortalama gösterilmez.',
+      'Bileşenler platformdaki kayıtlardan hesaplanır: doğrulama (Takyon), karşılıklı onaylı referanslar, iki tarafın beyan ettiği teslimler, karşılıklı açılan değerlendirmeler ve tekliflere yanıt süresi. Tek bir puan üretilmez; hiçbir bileşen ücretle değiştirilemez. Yeterli veri yoksa oran ve ortalama gösterilmez.',
   };
 }
 

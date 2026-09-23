@@ -133,7 +133,7 @@ app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
-  console.log(`Avedon API listening on http://localhost:${port}`);
+  console.log(`Takyon API listening on http://localhost:${port}`);
   void ensureWabaSubscription();
   // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();

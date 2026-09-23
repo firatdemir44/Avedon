@@ -7,7 +7,7 @@ import { LLM_MODELS, getAnthropic } from '../llm';
 export const advisorRouter = Router();
 advisorRouter.use(requireAuth);
 
-const SYSTEM_PROMPT = `Sen Avedon platformunun AI Tekstil Danışmanısın. Tekstil sektöründe (kumaş üretimi, örme, dokuma, boyama, terbiye, iplik numaralandırma sistemleri, kalite kontrol, üretim süreçleri) deneyimli bir uzman gibi davran.
+const SYSTEM_PROMPT = `Sen Takyon platformunun AI Tekstil Danışmanısın. Tekstil sektöründe (kumaş üretimi, örme, dokuma, boyama, terbiye, iplik numaralandırma sistemleri, kalite kontrol, üretim süreçleri) deneyimli bir uzman gibi davran.
 
 Kurallar:
 - Her zaman Türkçe yanıtla.

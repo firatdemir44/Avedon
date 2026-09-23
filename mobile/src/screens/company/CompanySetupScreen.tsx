@@ -280,7 +280,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
   };
 
   const shareCode = async () => {
-    const message = `Avedon'da ${name} firmasına katılmak için şirket kodu: ${companyCode}`;
+    const message = `Takyon'da ${name} firmasına katılmak için şirket kodu: ${companyCode}`;
     if (Platform.OS === 'web') {
       // Web'de paylaşım penceresi yok: kod panoya kopyalanır.
       const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })

@@ -76,7 +76,7 @@ pushRouter.post(
     if (!isPushConfigured()) return res.status(503).json({ error: 'push_not_configured' });
     const count = await prisma.pushSubscription.count({ where: { userId: req.user!.id } });
     if (!count && process.env.PUSH_MOCK !== '1') return res.status(409).json({ error: 'no_subscription' });
-    await sendPush([req.user!.id], { title: 'Avedon', body: 'Bildirimler açık. Yeni mesaj ve tekliflerde haber vereceğiz.', kind: 'test', tag: 'test' });
+    await sendPush([req.user!.id], { title: 'Takyon', body: 'Bildirimler açık. Yeni mesaj ve tekliflerde haber vereceğiz.', kind: 'test', tag: 'test' });
     res.json({ ok: true, devices: count });
   })
 );

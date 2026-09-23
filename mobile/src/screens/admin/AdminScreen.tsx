@@ -82,7 +82,7 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
         <EmptyState
           icon="lock-closed-outline"
           title="Erişim yetkiniz yok"
-          description="Bu ekran yalnızca Avedon ekibine açık."
+          description="Bu ekran yalnızca Takyon ekibine açık."
         />
       </SafeAreaView>
     );
