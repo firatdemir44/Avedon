@@ -1,3 +1,4 @@
+import { prisma } from './db';
 import { buyersHealth } from './export/buyers/sync';
 import 'dotenv/config';
 import express from 'express';
@@ -24,6 +25,7 @@ import { assistantRouter } from './routes/assistant';
 import { speechStatus } from './speechToText';
 import { relevanceStatus } from './feedRules';
 import { startDigestScheduler } from './assistantReport';
+import { seedDirectoryFromFiles } from './directorySeed';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
@@ -86,6 +88,8 @@ app.get('/api/health', async (_req, res) => {
     push: await pushStatus(),
     // Asistana sesli soru: Workers AI (Whisper) anahtarı girilmiş mi, token geçerli mi.
     speech: await speechStatus(),
+    // Firma rehberi: toplam ve sahipsiz (birlik listelerinden) firma sayısı.
+    directory: { companies: await prisma.company.count(), unclaimed: await prisma.company.count({ where: { claimed: false } }) },
     // Akış içerik denetimi (tekstille ilgisiz genel paylaşımı engeller).
     feedModeration: await relevanceStatus(),
     // Dünyayı Keşfet B: aday alıcı kayıt sayıları, son eşitleme, BK anahtarı var mı (değeri dönmez).
@@ -142,5 +146,7 @@ app.listen(port, () => {
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
   // Haftalık asistan raporu bildirimi (pazartesi 09:00 sonrası, firma başına bir kez).
   startDigestScheduler();
-  backfillNormalizedNames().catch((err) => console.error('[directory] backfill', err));
+  backfillNormalizedNames()
+    .then(() => seedDirectoryFromFiles())
+    .catch((err) => console.error('[directory] backfill/seed', err));
 });
