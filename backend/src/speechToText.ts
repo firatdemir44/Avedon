@@ -11,7 +11,7 @@ const MODEL = '@cf/openai/whisper-large-v3-turbo';
 function cleanToken(raw?: string) {
   const v = raw?.trim();
   if (!v) return undefined;
-  const m = v.match(/Bearers+([A-Za-z0-9_-]{20,})/);
+  const m = v.match(/Bearer\s+([A-Za-z0-9_-]{20,})/);
   return m ? m[1] : /^[A-Za-z0-9_-]+$/.test(v) ? v : undefined;
 }
 // Sağlık çıktısı herkese açık: hata metnindeki anahtar benzeri parçalar gizlenir.
