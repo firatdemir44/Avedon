@@ -22,6 +22,7 @@ datasource db {
 
 model Company {
   id                String    @id @default(cuid())
+  buyerLeads        BuyerLead[]
   name              String
   taxId             String
   about             String    @default("")
@@ -1178,4 +1179,59 @@ model AssistantDigest {
   sentAt    DateTime @default(now())
 
   @@unique([companyId, weekKey])
+}
+
+// Dünyayı Keşfet B aşaması: aday alıcılar (açık kaynaklardan; kişi adı saklanmaz).
+model BuyerCompany {
+  id              String      @id @default(cuid())
+  source          String // sirene | wikidata | companies_house
+  sourceId        String
+  name            String
+  normalizedName  String      @default("")
+  countryIso2     String
+  city            String      @default("")
+  postalCode      String      @default("")
+  website         String      @default("")
+  industryCode    String      @default("")
+  segment         String      @default("diger")
+  sizeCode        String      @default("")
+  sizeLabel       String      @default("")
+  revenueEur      Float?
+  foundedYear     Int?
+  sourceUpdatedAt DateTime?
+  fetchedAt       DateTime    @default(now())
+  raw             String      @default("")
+  leads           BuyerLead[]
+
+  @@unique([source, sourceId])
+  @@index([countryIso2, segment])
+}
+
+model BuyerSync {
+  id          String    @id @default(cuid())
+  source      String
+  countryIso2 String
+  key         String
+  status      String    @default("running") // running | ok | error
+  count       Int       @default(0)
+  error       String    @default("")
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([source, countryIso2, key])
+}
+
+model BuyerLead {
+  id        String       @id @default(cuid())
+  companyId String
+  company   Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  buyerId   String
+  buyer     BuyerCompany @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  status    String       @default("yeni")
+  note      String       @default("")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([companyId, buyerId])
+  @@index([companyId, status])
 }

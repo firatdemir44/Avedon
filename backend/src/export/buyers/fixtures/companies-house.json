@@ -1,0 +1,5 @@
+{"items":[
+ {"company_name":"ACME FABRICS LIMITED","company_number":"01234567","company_status":"active","date_of_creation":"1999-03-04","sic_codes":["47910","46410"],"registered_office_address":{"locality":"Manchester","postal_code":"M1 1AA"}},
+ {"company_name":"OLD LTD","company_number":"07654321","company_status":"dissolved","sic_codes":["46410"]},
+ {"company_name":"STITCH & CO LTD","company_number":"SC123456","company_status":"active","date_of_creation":"2015-06-01","sic_codes":["14132"],"registered_office_address":{"locality":"Glasgow"}}
+],"hits":3}

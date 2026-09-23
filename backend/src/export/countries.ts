@@ -66,3 +66,4 @@ export const TARGET_COUNTRIES: TargetCountry[] = [
 export const TURKEY_M49 = 792;
 export const CHINA_M49 = 156;
 export const countryByM49 = (m: number) => TARGET_COUNTRIES.find((c) => c.m49 === m);
+export const countryByIso2 = (iso2: string) => TARGET_COUNTRIES.find((c) => c.iso2 === iso2);

@@ -7,6 +7,8 @@ import { COMMON_HS, suggestHs } from '../export/hs';
 import { TARGET_COUNTRIES } from '../export/countries';
 import { rankMarkets, rankMarketsProgressive } from '../export/trade';
 import { insightFor, overview, referenceShare } from '../export/insight';
+import { countryByIso2 } from '../export/countries';
+import { LEAD_STATUSES, listBuyers, listLeads } from '../export/buyers/list';
 
 // Dünyayı Keşfet / İhracat Radarı — A aşaması (docs/kesfet-ihracat-plani.md §7):
 // ürün → HS6 önerisi, ülke listesi ve pazar puanı. Aday alıcı listesi B aşamasında.
@@ -93,5 +95,58 @@ exportRadarRouter.get(
       source: 'UN Comtrade (ithalat, USD, CIF)',
       note: 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir. Yorumlar veriden kurallarla üretilir; yatırım tavsiyesi değildir.',
     });
+  })
+);
+
+// ---- B aşaması: aday alıcılar (docs/kesfet-ihracat-plani.md §2.3) ----
+// Pilot: firması olan her kullanıcıya açık (access: 'pilot'); Platinum kısıtı ödemeyle gelecek.
+const buyersSchema = z
+  .object({
+    hs6: z.string().regex(/^\d{6}$/),
+    country: z.string().regex(/^[A-Z]{2}$/),
+    segment: z.enum(['konfeksiyon', 'kumas_toptan', 'giyim_toptan', 'ev_tekstili', 'kumas_uretici', 'marka', 'diger']).optional(),
+    page: z.coerce.number().int().min(1).max(200).optional(),
+  })
+  .strict();
+
+exportRadarRouter.get(
+  '/buyers',
+  handle(async (req, res) => {
+    const parsed = buyersSchema.safeParse(req.query);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_query' });
+    const c = countryByIso2(parsed.data.country);
+    if (!c) return res.status(400).json({ error: 'unknown_country' });
+    if (c.access === 'engelli') return res.status(400).json({ error: 'blocked_country' });
+    res.json(await listBuyers({ ...parsed.data, page: parsed.data.page ?? 1, companyId: req.user!.companyId ?? null }));
+  })
+);
+
+const leadSchema = z.object({ status: z.enum(LEAD_STATUSES), note: z.string().max(1000).optional() }).strict();
+
+exportRadarRouter.post(
+  '/buyers/:id/lead',
+  handle(async (req, res) => {
+    const companyId = req.user!.companyId;
+    if (!companyId) return res.status(400).json({ error: 'no_company' });
+    const parsed = leadSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body' });
+    const buyer = await prisma.buyerCompany.findUnique({ where: { id: String(req.params.id) }, select: { id: true } });
+    if (!buyer) return res.status(404).json({ error: 'not_found' });
+    const note = parsed.data.note?.trim();
+    const lead = await prisma.buyerLead.upsert({
+      where: { companyId_buyerId: { companyId, buyerId: buyer.id } },
+      create: { companyId, buyerId: buyer.id, status: parsed.data.status, note: note ?? '' },
+      update: { status: parsed.data.status, ...(note !== undefined ? { note } : {}) },
+    });
+    res.json({ lead: { status: lead.status, note: lead.note } });
+  })
+);
+
+exportRadarRouter.get(
+  '/leads',
+  handle(async (req, res) => {
+    const companyId = req.user!.companyId;
+    if (!companyId) return res.status(400).json({ error: 'no_company' });
+    res.json({ leads: await listLeads(companyId) });
   })
 );

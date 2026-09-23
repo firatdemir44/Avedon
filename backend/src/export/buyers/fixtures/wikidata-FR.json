@@ -1,0 +1,5 @@
+{"head":{"vars":["c","name","website","employees","inception","industry"]},"results":{"bindings":[
+ {"c":{"type":"uri","value":"http://www.wikidata.org/entity/Q1000"},"name":{"type":"literal","value":"Maison Exemple"},"website":{"type":"uri","value":"https://example.fr"},"employees":{"type":"literal","value":"1200"},"inception":{"type":"literal","value":"1925-01-01T00:00:00Z"},"industry":{"type":"uri","value":"http://www.wikidata.org/entity/Q1618899"}},
+ {"c":{"type":"uri","value":"http://www.wikidata.org/entity/Q2000"},"name":{"type":"literal","value":"Q2000"}},
+ {"c":{"type":"uri","value":"http://www.wikidata.org/entity/Q3000"},"name":{"type":"literal","value":"Textiles Sans Site"},"industry":{"type":"uri","value":"http://www.wikidata.org/entity/Q607081"}}
+]}}

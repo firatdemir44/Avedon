@@ -1,3 +1,4 @@
+import { buyersHealth } from './export/buyers/sync';
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -87,6 +88,8 @@ app.get('/api/health', async (_req, res) => {
     speech: await speechStatus(),
     // Akış içerik denetimi (tekstille ilgisiz genel paylaşımı engeller).
     feedModeration: await relevanceStatus(),
+    // Dünyayı Keşfet B: aday alıcı kayıt sayıları, son eşitleme, BK anahtarı var mı (değeri dönmez).
+    buyers: await buyersHealth().catch(() => null),
   });
 });
 app.use('/api/register', registerRouter);

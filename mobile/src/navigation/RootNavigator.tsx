@@ -17,6 +17,8 @@ import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { VerificationScreen } from '../screens/company/VerificationScreen';
 import { CalculatorsListScreen } from '../screens/calculators/CalculatorsListScreen';
 import { ExportRadarScreen } from '../screens/export/ExportRadarScreen';
+import { BuyerListScreen } from '../screens/export/BuyerListScreen';
+import { LeadsScreen } from '../screens/export/LeadsScreen';
 import { ClaimCompanyScreen } from '../screens/companies/ClaimCompanyScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
@@ -215,6 +217,8 @@ export function RootNavigator() {
             />
             <Stack.Screen name="Calculators" component={CalculatorsListScreen} />
             <Stack.Screen name="ExportRadar" component={ExportRadarScreen} />
+            <Stack.Screen name="ExportBuyers" component={BuyerListScreen} />
+            <Stack.Screen name="ExportLeads" component={LeadsScreen} />
             <Stack.Screen name="ClaimCompany" component={ClaimCompanyScreen} />
             <Stack.Screen
               name="EditCompany"

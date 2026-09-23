@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { requireAdminAuth } from '../middleware/auth';
 import { makeHandle } from './handle';
+import { enqueue, jobsFor } from '../export/buyers/sync';
+import { hsGroup, type HsGroup } from '../export/buyers/segments';
+import { companiesHouseKeySet } from '../export/buyers/sources/companiesHouse';
 import { parseComposition } from '../domain/glossary';
 import { COMPOSITION_AUTOPARSE_MIN_CONFIDENCE } from '../passport';
 
@@ -143,5 +146,23 @@ adminRouter.post(
       written,
       report,
     });
+  })
+);
+
+// Aday alıcı eşitlemesi elle (Dünyayı Keşfet B). Arka planda sıraya alınır.
+const buyerSyncSchema = z.object({ source: z.enum(['sirene', 'wikidata', 'companies_house']), country: z.string().regex(/^[A-Z]{2}$/), hs6: z.string().regex(/^\d{6}$/).optional() }).strict();
+adminRouter.post(
+  '/buyers/sync',
+  handle(async (req, res) => {
+    const parsed = buyerSyncSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body' });
+    const { source, country, hs6 } = parsed.data;
+    if (source === 'companies_house' && !companiesHouseKeySet()) return res.status(400).json({ error: 'companies_house_key_missing' });
+    const groups: HsGroup[] = hs6 ? [hsGroup(hs6)] : ['iplik', 'kumas', 'giyim', 'ev'];
+    const jobs = groups.flatMap((g) => jobsFor(country, g)).filter((j) => j.source === source);
+    const unique = [...new Map(jobs.map((j) => [`${j.source}|${j.key}`, j])).values()];
+    if (!unique.length) return res.status(400).json({ error: 'no_source_for_country' });
+    enqueue(unique);
+    res.json({ queued: unique.map((j) => j.key) });
   })
 );

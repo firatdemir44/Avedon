@@ -1,7 +1,7 @@
 // Dünyayı Keşfet — İhracat Radarı (A aşaması, docs/kesfet-ihracat-plani.md §2):
 // 1) ürün → tahmini GTİP (ya da elle seçim), 2) bölge, 3) ülke kartları pazar puanına göre.
 // Sunucu eksik ülke verisini arka planda çeker; `pending` doluysa 5 sn'de bir yeniden sorulur.
-// Aday alıcı listesi sonraki aşama (Platinum): yalnızca kilitli yer tutucu.
+// Ülke ayrıntısından aday alıcı listesine (B aşaması, pilot erişim) geçilir; üst banttan takip listesi.
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -398,7 +398,12 @@ export function ExportRadarScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Dünyayı Keşfet" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar
+        title="Dünyayı Keşfet"
+        leading="back"
+        onBack={() => navigation.goBack()}
+        actions={[{ icon: 'bookmark-outline', label: 'Takip listem', onPress: () => navigation.navigate('ExportLeads') }]}
+      />
       <Screen>
         <View style={{ gap: t.space[1], paddingTop: t.space[4] }}>
           <Text style={[t.type.title22, { color: t.colors.ink }]}>İhracat Radarı</Text>
@@ -411,7 +416,6 @@ export function ExportRadarScreen({ navigation }: Props) {
             {step1}
             {step2}
             {step3}
-            <LockedBuyers title="Alıcı listesi yakında (Platinum)" />
           </>
         )}
       </Screen>
@@ -500,7 +504,25 @@ export function ExportRadarScreen({ navigation }: Props) {
                 ))}
               </View>
             ) : null}
-            <LockedBuyers title="Bu ülkedeki aday alıcılar — Platinum ile yakında" />
+            {hs && detailCountry && !isBlocked(detail, detailCountry) ? (
+              <View style={{ gap: t.space[2] }}>
+                <Text style={[t.type.label14, { color: t.colors.ink }]}>Aday alıcılar</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  Bu ülkede ürününüzü alabilecek firmalar: açık ticaret sicilleri ve Wikidata kayıtlarından, ürününüze uyumuna göre puanlanır.
+                </Text>
+                <Button
+                  kind="primary"
+                  icon="people-outline"
+                  label="Aday alıcıları gör"
+                  fullWidth
+                  onPress={() => {
+                    const c = detailCountry;
+                    setDetail(null);
+                    navigation.navigate('ExportBuyers', { hs6: hs.hs6, hsLabel: hs.label, country: c.iso2, countryName: c.name });
+                  }}
+                />
+              </View>
+            ) : null}
             <Button kind="secondary" label="Kapat" onPress={() => setDetail(null)} fullWidth />
           </View>
         ) : null}
@@ -646,34 +668,6 @@ function InsightBlock({ insight }: { insight: ExportMarketInsight }) {
             `${d.name} (pazar payı ${pct(d.sharePct)}) Türk ürününden ${pct(d.priceGapPct)} pahalı satıyor. Onun alıcılarına daha uygun fiyatla gidebilirsiniz.`
           )
         : null}
-    </View>
-  );
-}
-
-function LockedBuyers({ title }: { title: string }) {
-  const t = useTheme();
-  return (
-    <View
-      accessibilityLabel={`${title}, kilitli`}
-      style={{
-        flexDirection: 'row',
-        gap: t.space[3],
-        alignItems: 'center',
-        padding: t.space[4],
-        borderRadius: t.radius.lg,
-        borderWidth: 1,
-        borderStyle: 'dashed',
-        borderColor: t.colors.lineStrong,
-        backgroundColor: t.colors.surface2,
-      }}
-    >
-      <Icon name="lock-closed-outline" color="ink3" />
-      <View style={{ flex: 1, gap: t.space[1] }}>
-        <Text style={[t.type.label14, { color: t.colors.ink }]}>{title}</Text>
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Ülkedeki ithalatçı firmaların adı, aldığı ürün ve iletişim bilgisi.
-        </Text>
-      </View>
     </View>
   );
 }

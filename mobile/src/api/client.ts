@@ -3194,3 +3194,61 @@ export async function transcribeAudio(blob: Blob): Promise<string> {
   if (!res.ok) throw new ApiError(body?.error ?? `İstek başarısız (${res.status})`, res.status, body?.error);
   return (body as { text: string }).text;
 }
+
+// ---- Dünyayı Keşfet B: aday alıcılar ----
+export type BuyerLeadStatus = 'yeni' | 'inceleniyor' | 'iletisim' | 'numune' | 'siparis' | 'ilgisiz';
+export type BuyerSegment = 'konfeksiyon' | 'kumas_toptan' | 'giyim_toptan' | 'ev_tekstili' | 'kumas_uretici' | 'marka' | 'diger';
+export interface ExportBuyer {
+  id: string;
+  name: string;
+  city: string;
+  countryIso2: string;
+  website: string | null;
+  segment: BuyerSegment;
+  segmentLabel: string;
+  industryLabel: string | null;
+  sizeLabel: string | null;
+  foundedYear: number | null;
+  score: number;
+  scoreParts: { label: string; points: number }[];
+  reasons: string[];
+  source: string;
+  sourceLabel: string;
+  sourceUrl: string;
+  lead: { status: BuyerLeadStatus; note: string } | null;
+}
+export interface ExportBuyersResult {
+  hs6: string;
+  groupLabel: string;
+  buyers: ExportBuyer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  segments: { key: BuyerSegment; label: string; count: number }[];
+  pending: boolean;
+  coverage: { registry: boolean; sources: string[] };
+  note: string;
+  access: 'pilot';
+}
+export function fetchExportBuyers(hs6: string, country: string, opts: { segment?: BuyerSegment | null; page?: number } = {}) {
+  const qs = new URLSearchParams({ hs6, country });
+  if (opts.segment) qs.set('segment', opts.segment);
+  if (opts.page && opts.page > 1) qs.set('page', String(opts.page));
+  return request<ExportBuyersResult>(`/export/buyers?${qs.toString()}`);
+}
+export function saveBuyerLead(buyerId: string, status: BuyerLeadStatus, note?: string) {
+  return request<{ lead: { status: BuyerLeadStatus; note: string } }>(`/export/buyers/${encodeURIComponent(buyerId)}/lead`, {
+    method: 'POST',
+    body: JSON.stringify(note === undefined ? { status } : { status, note }),
+  });
+}
+export interface BuyerLeadItem {
+  id: string;
+  status: BuyerLeadStatus;
+  note: string;
+  updatedAt: string;
+  buyer: { id: string; name: string; city: string; countryIso2: string; countryName: string; website: string | null; segmentLabel: string; sizeLabel: string | null; sourceLabel: string; sourceUrl: string };
+}
+export function fetchBuyerLeads() {
+  return request<{ leads: BuyerLeadItem[] }>('/export/leads');
+}

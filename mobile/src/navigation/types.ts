@@ -78,6 +78,10 @@ export type RootStackParamList = {
     | undefined;
   // Dünyayı Keşfet — İhracat Radarı (ürün → GTİP → pazar puanı).
   ExportRadar: undefined;
+  // Aday alıcı listesi (B aşaması): ürün kodu + ülke.
+  ExportBuyers: { hs6: string; hsLabel?: string; country: string; countryName: string };
+  // Aday alıcı takip listesi (durumlara göre).
+  ExportLeads: undefined;
   // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
   ClaimCompany: { companyId: string; companyName: string };
   EditCompany: { companyId: string };
