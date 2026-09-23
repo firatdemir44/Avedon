@@ -33,6 +33,7 @@ import { UserAvatar } from '../../components/UserAvatar';
 import {
   AppBar,
   Button,
+  Card,
   EmptyState,
   Icon,
   QuickAction,
@@ -263,6 +264,26 @@ export function FeedScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('AssistantTab')}
         />
       </View>
+      <Card onPress={() => navigation.navigate('ExportRadar')} accessibilityLabel="Dünyayı Keşfet" testID="feed-export-radar">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+          <View
+            style={{
+              width: t.size.avatar,
+              height: t.size.avatar,
+              borderRadius: t.radius.md,
+              backgroundColor: t.colors.brandSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="globe-outline" color="brand" />
+          </View>
+          <View style={{ flex: 1, gap: t.space[1] }}>
+            <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Dünyayı Keşfet</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Ürününüzü hangi ülkelere satabilirsiniz?</Text>
+          </View>
+        </View>
+      </Card>
 
       {/* Sektörden */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>

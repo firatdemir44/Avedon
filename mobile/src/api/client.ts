@@ -2911,3 +2911,75 @@ export function claimCompany(companyId: string, input: { document: string; note?
 export function fetchMyClaim() {
   return request<{ claim: CompanyClaim | null }>('/directory/my-claim');
 }
+
+// ---- Dünyayı Keşfet — İhracat Radarı (A aşaması) ----
+export type ExportRegion = 'AB' | 'Avrupa' | 'Kuzey Amerika' | 'Latin Amerika' | 'Orta Doğu' | 'Afrika' | 'Asya';
+export interface ExportCountry {
+  m49: number;
+  iso2: string;
+  name: string;
+  region: ExportRegion;
+  access: 'gumruk_birligi' | 'sta' | 'mfn' | 'engelli';
+  buyerData: 'acik' | 'dolayli' | 'zayif';
+  notes: string[];
+  risk?: 'yaptirim' | 'odeme' | 'kur';
+  verify?: boolean;
+}
+export interface ExportCommonHs {
+  hs6: string;
+  label: string;
+  group: string;
+}
+export interface ExportHsGuess {
+  hs6: string;
+  hs4: string;
+  label: string;
+  confidence: 'yuksek' | 'orta' | 'dusuk';
+  reasons: string[];
+  alternatives: { hs6: string; label: string }[];
+}
+export interface ExportProduct {
+  id: string;
+  code: string;
+  type: string;
+  subtype: string;
+  content: string;
+  hs: ExportHsGuess;
+}
+export interface ExportMarketRow {
+  // Sunucu hedef ülkenin tamamını döndürür.
+  country: ExportCountry;
+  year: number | null;
+  importUsd: number | null;
+  growthPct: number | null;
+  turkeyUsd: number | null;
+  turkeySharePct: number | null;
+  turkeyRank: number | null;
+  unitUsdKg: { turkey: number | null; world: number | null; china: number | null };
+  topSuppliers: { m49: number; sharePct: number }[];
+  score: number | null;
+  scoreParts: { label: string; points: number }[];
+  blocked: boolean;
+}
+export interface ExportMarketsResult {
+  hs6: string;
+  markets: ExportMarketRow[];
+  pending: number[];
+  source: string;
+  note: string;
+}
+
+export function fetchExportCountries() {
+  return request<{ countries: ExportCountry[]; commonHs: ExportCommonHs[] }>('/export/countries');
+}
+
+export function fetchExportProducts() {
+  return request<{ products: ExportProduct[] }>('/export/products');
+}
+
+export function fetchExportMarkets(hs6: string, opts: { region?: string | null; countries?: number[] } = {}) {
+  const qs = new URLSearchParams({ hs6 });
+  if (opts.region) qs.set('region', opts.region);
+  if (opts.countries?.length) qs.set('countries', opts.countries.join(','));
+  return request<ExportMarketsResult>(`/export/markets?${qs.toString()}`);
+}

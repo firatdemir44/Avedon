@@ -16,6 +16,7 @@ import { CompanyCodeScreen } from '../screens/onboarding/CompanyCodeScreen';
 import { CompanyProfileScreen } from '../screens/company/CompanyProfileScreen';
 import { VerificationScreen } from '../screens/company/VerificationScreen';
 import { CompaniesDirectoryScreen } from '../screens/companies/CompaniesDirectoryScreen';
+import { ExportRadarScreen } from '../screens/export/ExportRadarScreen';
 import { ClaimCompanyScreen } from '../screens/companies/ClaimCompanyScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
 import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
@@ -210,6 +211,7 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Firma' }}
             />
             <Stack.Screen name="CompaniesDirectory" component={CompaniesDirectoryScreen} />
+            <Stack.Screen name="ExportRadar" component={ExportRadarScreen} />
             <Stack.Screen name="ClaimCompany" component={ClaimCompanyScreen} />
             <Stack.Screen
               name="EditCompany"

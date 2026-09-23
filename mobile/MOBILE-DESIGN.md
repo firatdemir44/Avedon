@@ -432,3 +432,10 @@ Sıra: **Ana sayfa · Katalog · Talepler · Mesajlar · Hesap**.
 - **"Fotoğraf ve video" kartı (tüm kategoriler):** iki satır ikişer kenarlıklı düğme (Fotoğraf çek · Galeriden / Video ekle · PDF ekle). Web'de "Fotoğraf çek" galeriyi açar. Fotoğraf satırı: 72 px görsel + açıklama çipleri (Yakın · Orta · Uzak · Etiket · Ön · Arka · Detay) + serbest açıklama (≤40) + 44 px kaldır. Sınırlar 8 fotoğraf / 3 PDF / 2 video; video yüklenirken ilerleme çubuğu ve gönder düğmesi pasif ("Ekler yükleniyor…"). Kumaş ve konfeksiyonda kısa çekim ipucu.
 - **Detay:** özet kartının altında "Ürün bilgileri"/"Aksesuar bilgileri" kartı, ardından "Fotoğraf ve ekler" galerisi (72 px görsel → tam ekran + açıklama, PDF satırı "PDF'i aç", video `PostVideo`). Konfeksiyonda satıcı fiyat etiketi "Adet başı paket fiyat" ve canlı "Toplam: miktar × fiyat"; alıcının karşılaştırma tablosunda "Toplam" satırı (birim talep birimiyle aynıysa).
 - **Liste ve akış kartı:** kapak fotoğrafı varsa solda 72 px görsel (`components/TenderCover.tsx`, bellek önbelleği), ek varsa `attach-outline` ikonlu "N ek" satırı.
+
+## Dünyayı Keşfet — İhracat Radarı (2026-09-23)
+`screens/export/ExportRadarScreen.tsx` (rota `ExportRadar`), giriş: Ana sayfada kısayol ızgarasının altında tam genişlik `Card`.
+Üç adım tek sayfada: ürün → tahmini GTİP (güven rozeti, "Neden bu kod?", alternatif çipler, elle seçim `BottomSheet`),
+bölge çipleri, puana göre sıralı ülke kartları (puan `display28`: 70+ `success`, 50–69 `warning`, altı `ink2`; engelli ülkeler
+sonda gri, puansız). Karta dokununca detay alt sayfası (puan çubukları, ilk 5 tedarikçi, notlar). Sunucu `pending` döndükçe
+5 sn'de bir yeniden sorulur (en çok ~3 dk). Aday alıcılar kilitli yer tutucu (Platinum, sonraki aşama). Bayrak emojisi yok, iso2 rozet.

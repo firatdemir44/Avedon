@@ -76,6 +76,8 @@ export type RootStackParamList = {
     | undefined;
   // Firma rehberi: kategori + arama; sahipsiz firmalar da listelenir.
   CompaniesDirectory: undefined;
+  // Dünyayı Keşfet — İhracat Radarı (ürün → GTİP → pazar puanı).
+  ExportRadar: undefined;
   // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
   ClaimCompany: { companyId: string; companyName: string };
   EditCompany: { companyId: string };
