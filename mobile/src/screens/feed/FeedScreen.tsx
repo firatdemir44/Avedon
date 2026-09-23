@@ -455,22 +455,13 @@ export function FeedScreen({ navigation }: Props) {
                 onAction={() => loadFirstPage()}
               />
             ) : scope === 'connections' ? (
-              <View style={{ gap: t.space[3] }}>
-                <EmptyState
-                  icon="people-outline"
-                  title="Bağlantılarınızdan henüz paylaşım yok"
-                  description="Bağlantı kurduğunuz firmaların paylaşımları burada görünür. Bu arada sektördeki paylaşımlara bakabilir ya da firma rehberinden bağlantı kurabilirsiniz."
-                  actionLabel="Sektör akışına bak"
-                  onAction={() => changeScope('all')}
-                />
-                <Button
-                  kind="secondary"
-                  icon="business-outline"
-                  label="Firma rehberi"
-                  onPress={() => navigation.navigate('CompaniesDirectory')}
-                  fullWidth
-                />
-              </View>
+              <EmptyState
+                icon="people-outline"
+                title="Firmaları takip et, yenilikleri burada gör"
+                description="Bağlantı kurduğun firmaların yeni ürünleri ve duyuruları bu akışta çıkar."
+                actionLabel="Firmaları keşfet"
+                onAction={() => navigation.navigate('CompaniesDirectory')}
+              />
             ) : (
               <EmptyState
                 icon="home"

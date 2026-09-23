@@ -708,7 +708,8 @@ export function ProductListScreen({ navigation, route }: Props) {
         ...(user
           ? [
               {
-                icon: (selection.active ? 'x' : 'check') as 'check',
+                // Metinli sessiz düğme (tasarım incelemesi): ikon anlamı belirsizdi.
+                text: selection.active ? 'Vazgeç' : 'Seç',
                 label: selection.active ? 'Seçmeyi bırak' : 'Teklif için seç',
                 onPress: () => {
                   haptics.selection();

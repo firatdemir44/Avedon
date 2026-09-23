@@ -100,6 +100,7 @@
   --control-lg: 52px;
   --icon: 24px;
   --icon-sm: 20px;
+  --icon-xs: 14px; /* rozet ve doğrulanmış ikonu */
   --avatar: 40px;
   --thumb: 72px;
   --appbar: 56px;

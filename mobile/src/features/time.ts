@@ -13,11 +13,16 @@ export function formatRelativeTime(iso: string, now: Date = new Date()): string 
   if (hours < 24) return `${hours} sa`;
 
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'dün';
+  if (days === 1) return 'Dün';
   if (days < 7) return `${days} gün`;
 
-  return date.toLocaleDateString('tr-TR');
+  // 7 günden eski: "14 Eyl"; başka yıldaysa "14 Eyl 2025" (DESIGN.md §5).
+  const base = `${date.getDate()} ${TR_MONTHS_SHORT[date.getMonth()]}`;
+  return date.getFullYear() === now.getFullYear() ? base : `${base} ${date.getFullYear()}`;
 }
+
+// Türkçe ay kısaltmaları; Intl'e bağlı kalmamak için elle.
+const TR_MONTHS_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 
 // Numune takibinde tasarımdaki "03/09/20 · 10:00" biçimi.
 export function formatDateTime(iso: string): string {

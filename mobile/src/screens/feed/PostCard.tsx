@@ -22,7 +22,7 @@ import { getCachedPostImage, loadPostImage } from '../../features/feed/postImage
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../features/companies/companyLogoCache';
 import { haptics } from '../../features/haptics';
-import { setProductFavorite, type FeedPost } from '../../api/client';
+import { setProductFavorite, startConversation, type FeedPost } from '../../api/client';
 import { useTheme } from '../../theme/ThemeContext';
 import { ReportPostSheet } from './ReportPostSheet';
 import { Avatar, Badge, Card, Icon, type AnyIconName } from '../../ui';
@@ -168,10 +168,40 @@ function PostCardComponent({
   const isOwnProduct = !!product && !!myCompanyId && product.companyId === myCompanyId;
   const canRequestQuote = !!product && !isOwnProduct && !!onRequestQuote;
 
+  // "Mesaj gönder": yazarla sohbeti açar (yoksa oluşturur). Profil ekranıyla aynı uç.
+  const [messageBusy, setMessageBusy] = useState(false);
+  const openMessage = async () => {
+    if (messageBusy) return;
+    setMessageBusy(true);
+    try {
+      const { conversation } = await startConversation(post.author.id);
+      navigation.navigate('Chat', {
+        conversationId: conversation.id,
+        title: authorName,
+        userId: post.author.id,
+        avatarUpdatedAt: post.author.avatarUpdatedAt,
+      });
+    } catch {
+      haptics.error();
+    } finally {
+      setMessageBusy(false);
+    }
+  };
+
+  // Gövde 3 satırdan uzunsa kısaltılır. Kesilip kesilmediği, görünmez tam
+  // metnin yüksekliği kısaltılmış metninkiyle karşılaştırılarak ölçülür
+  // (onLayout web ve native'de aynı çalışır; onTextLayout web'de yok).
+  const [clampedH, setClampedH] = useState(0);
+  const [fullH, setFullH] = useState(0);
+  const truncated = fullH > 0 && clampedH > 0 && fullH > clampedH + 1;
+  useEffect(() => {
+    setExpanded(false);
+  }, [post.body]);
+
+  // İkinci satır: solda "Kişi · Görev", sağda göreli zaman (DESIGN.md §3).
   const meta = [
     authorName,
     post.author.position,
-    formatRelativeTime(post.createdAt),
     post.visibility === 'connections' ? 'Bağlantılarım' : null,
     post.editedAt ? 'düzenlendi' : null,
   ]
@@ -217,14 +247,22 @@ function PostCardComponent({
           )}
           <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-              <Text numberOfLines={1} style={[t.type.body16Strong, { color: t.colors.ink, flexShrink: 1 }]}>
+              {/* Firma adı kısaltılmaz: sığmazsa alt satıra kırılır. */}
+              <Text style={[t.type.body16Strong, { color: t.colors.ink, flexShrink: 1 }]}>
                 {company?.name ?? authorName}
               </Text>
-              {company?.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
+              {company?.verification === 'dogrulanmis' ? (
+                <View accessible accessibilityRole="image" accessibilityLabel="Doğrulanmış firma">
+                  <Icon name="shield-checkmark" size={t.size.iconXs} color="success" />
+                </View>
+              ) : null}
             </View>
-            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3 }]}>
-              {meta}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+              <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flex: 1, minWidth: 0 }]}>
+                {meta}
+              </Text>
+              <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{formatRelativeTime(post.createdAt)}</Text>
+            </View>
           </View>
         </Pressable>
         <Pressable
@@ -334,20 +372,40 @@ function PostCardComponent({
 
       {/* Metin */}
       {post.body && !tender ? (
-        <Pressable
-          hitSlop={{ top: t.space[1], bottom: t.space[1] }}
-          onPress={() => setExpanded((v) => !v)}
-          accessibilityRole="button"
-          accessibilityLabel={expanded ? 'Metni kısalt' : 'Devamını oku'}
-          style={[pad, { paddingTop: t.space[3] }]}
-        >
-          <Text numberOfLines={expanded ? undefined : BODY_LINES} style={[t.type.body16, { color: t.colors.ink }]}>
-            {post.body}
-          </Text>
-          {!expanded && post.body.length > 140 ? (
-            <Text style={[t.type.label14, { color: t.colors.brand, paddingTop: t.space[1] }]}>…devamı</Text>
+        <View style={[pad, { paddingTop: t.space[3] }]}>
+          <View>
+            {/* Ölçüm kopyası: görünmez, tam metin, aynı genişlik. */}
+            {!expanded ? (
+              <Text
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                pointerEvents="none"
+                onLayout={(e) => setFullH(e.nativeEvent.layout.height)}
+                style={[t.type.body16, { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 }]}
+              >
+                {post.body}
+              </Text>
+            ) : null}
+            <Text
+              numberOfLines={expanded ? undefined : BODY_LINES}
+              onLayout={expanded ? undefined : (e) => setClampedH(e.nativeEvent.layout.height)}
+              style={[t.type.body16, { color: t.colors.ink }]}
+            >
+              {post.body}
+            </Text>
+          </View>
+          {!expanded && truncated ? (
+            <Pressable
+              onPress={() => setExpanded(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Metnin devamını oku"
+              hitSlop={{ top: t.space[2], bottom: t.space[2], right: t.space[4] }}
+              style={({ pressed }) => [{ alignSelf: 'flex-start', paddingTop: t.space[1] }, pressed && { opacity: 0.6 }]}
+            >
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>…devamı</Text>
+            </Pressable>
           ) : null}
-        </Pressable>
+        </View>
       ) : null}
 
       {/* Görsel */}
@@ -450,8 +508,16 @@ function PostCardComponent({
             brand
             onPress={() => onRequestSample(post)}
           />
-        ) : (
+        ) : isMine ? (
           <BarAction icon="share" label="Paylaş" text="Paylaş" brand onPress={() => onShare(post)} />
+        ) : (
+          <BarAction
+            icon="message"
+            label={`${authorName} kişisine mesaj gönder`}
+            text="Mesaj gönder"
+            brand
+            onPress={openMessage}
+          />
         )}
       </View>
     </Card>

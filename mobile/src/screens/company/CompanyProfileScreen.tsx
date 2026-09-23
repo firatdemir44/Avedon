@@ -613,7 +613,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     </View>
   );
 
-  const whatsappPhone = company.contactPhone?.replace(/[^0-9]/g, '') ?? '';
+  // WhatsApp yalnızca firmanın kayıtlı iletişim telefonu (contactPhone) varsa.
+  // Kullanıcıların kişisel telefonu gizli, burada kullanılmaz. wa.me ülke
+  // koduyla ister: "0532…" / "532…" → "90532…"; geçersiz numarada düğme yok.
+  const whatsappPhone = toWhatsappNumber(company.contactPhone);
 
   // Eylem sırası: tek dolu düğme + kenarlıklı düğme + 48px kare ikon düğmesi.
   const claimPending = !!myClaim && myClaim.companyId === company.id && myClaim.status === 'pending';
@@ -1805,4 +1808,15 @@ function referenceErrorMessage(err: unknown): string {
     if (err.code === 'reference_not_found') return 'Bu referans artık yok, liste yenilendiğinde düşecek.';
   }
   return friendlyMessage(err, 'İşlem tamamlanamadı, tekrar deneyin.');
+}
+
+// Kayıtlı telefonu wa.me biçimine çevirir (yalnız rakam, ülke koduyla).
+// Türkiye numaraları: "0532 …" → "90532…", "532 …" → "90532…". Tanınmayan
+// ya da çok kısa numarada boş döner (düğme gösterilmez).
+function toWhatsappNumber(phone: string | null | undefined): string {
+  let digits = (phone ?? '').replace(/[^0-9]/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  else if (digits.startsWith('0')) digits = `90${digits.slice(1)}`;
+  else if (digits.length === 10 && digits.startsWith('5')) digits = `90${digits}`;
+  return digits.length >= 11 ? digits : '';
 }

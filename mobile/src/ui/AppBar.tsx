@@ -1,6 +1,6 @@
 // Üst bant (DESIGN.md §2): 56px, surface-brand zemin, on-brand metin.
 // Sol: geri oku (44px) | logo | özel node. Başlık title-18, tek satır kısaltılır.
-// Sağda en fazla 2 ikon düğmesi (44px). Üstte güvenli alan boşluğu.
+// Sağda en fazla 2 ikon ya da sessiz metin düğmesi (44px). Üstte güvenli alan boşluğu.
 import React from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,10 @@ import { Icon, type AnyIconName } from './Icon';
 import { Logo } from './Logo';
 
 export interface AppBarAction {
-  icon: AnyIconName;
+  /** Metinli düğmede (text) verilmeyebilir. */
+  icon?: AnyIconName;
+  /** Verilirse ikon yerine sessiz metin düğmesi çizilir (ör. "Seç"), on-brand. */
+  text?: string;
   /** İkon-yalnız düğme: erişilebilirlik adı zorunlu (DESIGN.md §6). */
   label: string;
   onPress: () => void;
@@ -39,15 +42,23 @@ function BarButton({ action }: { action: AppBarAction }) {
       accessibilityRole="button"
       accessibilityLabel={action.label}
       style={({ pressed }) => ({
-        width: t.size.touchMin,
+        minWidth: t.size.touchMin,
         height: t.size.touchMin,
+        paddingHorizontal: action.text ? t.space[3] : 0,
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: t.radius.md,
         backgroundColor: pressed ? t.colors.brandStrong : 'transparent',
       })}
     >
-      {action.content ?? <Icon name={action.icon} colorValue={t.colors.onBrand} />}
+      {action.content ??
+        (action.text ? (
+          <Text numberOfLines={1} style={[t.type.button16, { color: t.colors.onBrand }]}>
+            {action.text}
+          </Text>
+        ) : action.icon ? (
+          <Icon name={action.icon} colorValue={t.colors.onBrand} />
+        ) : null)}
       {action.dot ? (
         <View
           style={{
