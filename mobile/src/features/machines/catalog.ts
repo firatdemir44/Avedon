@@ -1,5 +1,6 @@
 import type { Machine, MachineGroup } from '../../api/client';
 import { formatMeasure } from '../calculators/parse';
+import { rangeDisplay } from './range';
 
 // Faz 2, Adım 5: makine parkı. Grup etiketleri ve makine satırı özetleri tek
 // yerde; hem firma sayfası, hem yönetim ekranı, hem de kapasite arama sonuçları
@@ -59,10 +60,11 @@ export function machineSummary(machine: Machine): string {
   const parts: string[] = [];
   const diameter = num(machine.diameterInch);
   if (diameter) parts.push(`${diameter} pus`);
-  const gauge = num(machine.gauge);
+  const gauge = rangeDisplay(machine.gaugeText, machine.gauge);
   if (gauge) parts.push(`${gauge} fayn`);
   if (machine.feeders) parts.push(`${machine.feeders} sistem`);
-  if (machine.needles) parts.push(`${formatMeasure(machine.needles)} iğne`);
+  const needles = rangeDisplay(machine.needlesText, machine.needles);
+  if (needles) parts.push(`${needles} iğne`);
   const width = num(machine.workingWidthCm);
   if (width) parts.push(`${width} cm en`);
   const brandModel = [machine.brand, machine.model].filter(Boolean).join(' ');
@@ -132,13 +134,14 @@ export function machineCardTitle(machine: { kind: string; group: string; brand: 
 // Kartın mono-14 değerleri: yalnızca dolu olanlar.
 export function machineSpecRows(
   machine: Pick<Machine, 'diameterInch' | 'gauge' | 'feeders' | 'needles' | 'count' | 'dailyCapacityKg'> &
-    Partial<Pick<Machine, 'workingWidthCm'>>
+    Partial<Pick<Machine, 'workingWidthCm' | 'machineNo' | 'gaugeText' | 'needlesText'>>
 ): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
+  if (machine.machineNo != null) rows.push({ label: 'No', value: String(machine.machineNo) });
   if (machine.diameterInch != null) rows.push({ label: 'Çap', value: `${formatMeasure(machine.diameterInch)} inç` });
-  if (machine.gauge != null) rows.push({ label: 'Fine', value: formatMeasure(machine.gauge) });
+  if (machine.gauge != null || machine.gaugeText) rows.push({ label: 'Fine', value: rangeDisplay(machine.gaugeText, machine.gauge) });
   if (machine.feeders != null) rows.push({ label: 'Sistem', value: String(machine.feeders) });
-  if (machine.needles != null) rows.push({ label: 'İğne', value: formatMeasure(machine.needles) });
+  if (machine.needles != null || machine.needlesText) rows.push({ label: 'İğne', value: rangeDisplay(machine.needlesText, machine.needles) });
   if (machine.workingWidthCm != null) rows.push({ label: 'Çalışma eni', value: `${formatMeasure(machine.workingWidthCm)} cm` });
   rows.push({ label: 'Adet', value: String(machine.count) });
   if (machine.dailyCapacityKg != null) rows.push({ label: 'Günlük kapasite', value: `${formatMeasure(machine.dailyCapacityKg)} kg` });

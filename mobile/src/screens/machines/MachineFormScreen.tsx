@@ -30,6 +30,7 @@ import {
   groupHasKnitFields,
   groupHasWidthField,
 } from '../../features/machines/catalog';
+import { parseRange } from '../../features/machines/range';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   AppBar,
@@ -95,6 +96,8 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const [feature, setFeature] = useState('');
   const [dailyCapacityKg, setDailyCapacityKg] = useState('');
   const [note, setNote] = useState('');
+  const [machineNo, setMachineNo] = useState('');
+  const [fabricType, setFabricType] = useState('');
 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -114,13 +117,15 @@ export function MachineFormScreen({ navigation, route }: Props) {
     setYear(machine.year ? String(machine.year) : '');
     setCount(String(machine.count));
     setDiameterInch(toText(machine.diameterInch));
-    setGauge(toText(machine.gauge));
+    setGauge(machine.gaugeText || toText(machine.gauge));
     setFeeders(toText(machine.feeders));
-    setNeedles(toText(machine.needles));
+    setNeedles(machine.needlesText || toText(machine.needles));
     setWorkingWidthCm(toText(machine.workingWidthCm));
     setFeature(machine.feature);
     setDailyCapacityKg(toText(machine.dailyCapacityKg));
     setNote(machine.note);
+    setMachineNo(machine.machineNo != null ? String(machine.machineNo) : '');
+    setFabricType(machine.fabricType);
   }, []);
 
   // Form yalnızca bir kez dolduruluyor: öneriler ve (düzenlemede) makine.
@@ -164,13 +169,17 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const yearValue = readNumber(year);
   const countValue = readNumber(count);
   const diameterValue = readNumber(diameterInch);
-  const gaugeValue = readNumber(gauge);
+  // Fine ve iğne aralık olabilir (dönüştürülebilir makine): "28-22", "2808-2210".
+  const gaugeRange = parseRange(gauge);
+  const gaugeValue = { value: gaugeRange?.first ?? undefined, invalid: gaugeRange === null };
   const feedersValue = readNumber(feeders);
-  const needlesValue = readNumber(needles);
+  const needlesRange = parseRange(needles);
+  const needlesValue = { value: needlesRange?.first ?? undefined, invalid: needlesRange === null };
+  const machineNoValue = readNumber(machineNo);
   const widthValue = readNumber(workingWidthCm);
   const dailyValue = readNumber(dailyCapacityKg);
 
-  const numbersInvalid = [yearValue, countValue, diameterValue, gaugeValue, feedersValue, needlesValue, widthValue, dailyValue].some(
+  const numbersInvalid = [machineNoValue, yearValue, countValue, diameterValue, gaugeValue, feedersValue, needlesValue, widthValue, dailyValue].some(
     (n) => n.invalid
   );
 
@@ -196,8 +205,12 @@ export function MachineFormScreen({ navigation, route }: Props) {
       year: yearValue.value ? Math.round(yearValue.value) : null,
       diameterInch: knit ? diameterValue.value ?? null : null,
       gauge: knit ? gaugeValue.value ?? null : null,
+      gaugeText: knit ? gaugeRange?.text ?? '' : '',
       feeders: knit && feedersValue.value ? Math.round(feedersValue.value) : null,
       needles: knit && needlesValue.value ? Math.round(needlesValue.value) : null,
+      needlesText: knit ? needlesRange?.text ?? '' : '',
+      fabricType: knit ? fabricType.trim() : '',
+      machineNo: machineNoValue.value != null ? Math.round(machineNoValue.value) : null,
       workingWidthCm: width ? widthValue.value ?? null : null,
       feature: feature.trim(),
       dailyCapacityKg: dailyValue.value ?? null,
@@ -340,6 +353,15 @@ export function MachineFormScreen({ navigation, route }: Props) {
           <SectionTitle title="Makine bilgisi" />
           <Card>
             <View style={{ gap: t.space[3] }}>
+              <Input
+                label="Makine no"
+                value={machineNo}
+                onChangeText={setMachineNo}
+                placeholder="Örn. 12 (tablonuzdaki Mak No)"
+                inputMode="numeric"
+                keyboardType="number-pad"
+                error={machineNoValue.invalid ? 'Yalnızca rakam' : null}
+              />
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                 <Input
                   containerStyle={{ flex: 1 }}
@@ -407,10 +429,9 @@ export function MachineFormScreen({ navigation, route }: Props) {
                     label="Fayn"
                     value={gauge}
                     onChangeText={setGauge}
-                    placeholder="Örn. 28"
-                    inputMode="decimal"
-                    keyboardType="decimal-pad"
-                    error={gaugeValue.invalid ? 'Yalnızca rakam' : null}
+                    placeholder="Örn. 28 ya da 28-22"
+                    keyboardType="numbers-and-punctuation"
+                    error={gaugeValue.invalid ? 'Sayı ya da aralık (28-22)' : null}
                   />
                 </View>
                 <View style={{ flexDirection: 'row', gap: t.space[2] }}>
@@ -429,12 +450,18 @@ export function MachineFormScreen({ navigation, route }: Props) {
                     label="İğne sayısı"
                     value={needles}
                     onChangeText={setNeedles}
-                    placeholder="Örn. 2640"
-                    inputMode="numeric"
-                    keyboardType="number-pad"
-                    error={needlesValue.invalid ? 'Yalnızca rakam' : null}
+                    placeholder="Örn. 2640 ya da 2808-2210"
+                    keyboardType="numbers-and-punctuation"
+                    error={needlesValue.invalid ? 'Sayı ya da aralık' : null}
                   />
                 </View>
+                <Input
+                  label="Örgü cinsi"
+                  value={fabricType}
+                  onChangeText={setFabricType}
+                  placeholder="Örn. Süprem tüp, İnter-ribana"
+                  maxLength={80}
+                />
               </View>
             </Card>
           </View>

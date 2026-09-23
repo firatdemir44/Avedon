@@ -751,6 +751,8 @@ model Machine {
   group        String
   kind         String
   kindKey      String
+  // Firmanın kendi makine numarası (parkur tablosundaki "Mak No").
+  machineNo    Int?
   brand        String   @default("")
   model        String   @default("")
   year         Int?
@@ -759,6 +761,12 @@ model Machine {
   gauge        Float?
   feeders      Int?
   needles      Int?
+  // Dönüştürülebilir makinelerde aralık metni ("28-22", "2808-2210"); sayısal
+  // gauge/needles ilk sayıdır (arama için), metin tüm değerleri taşır.
+  gaugeText    String   @default("")
+  needlesText  String   @default("")
+  // Örgü cinsi: "SÜPREM. TÜP", "İNTER-RİBANA", "AÇIK EN SÜPREM".
+  fabricType   String   @default("")
   // Çalışma eni (cm): dokuma, raschel, ram vb.
   workingWidthCm Float?
   // Serbest özellik: tek plaka, çift plaka, jakar, elektronik...

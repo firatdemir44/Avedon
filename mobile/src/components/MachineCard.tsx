@@ -79,9 +79,9 @@ export function MachineCard({
         <View style={{ flex: 1, minWidth: 0, gap: t.space[2] }}>
           <View style={{ gap: t.space[1] }}>
             <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{title}</Text>
-            {kindDetail || machine.feature ? (
+            {kindDetail || machine.feature || machine.fabricType ? (
               <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                {[kindDetail, machine.feature].filter(Boolean).join(' · ')}
+                {[machine.fabricType, kindDetail, machine.feature].filter(Boolean).join(' · ')}
               </Text>
             ) : null}
           </View>
@@ -113,8 +113,8 @@ export function MachineCard({
   );
 }
 
-// Sahibin tek dokunuşla müsaitlik güncellemesi.
-function AvailabilitySheet({
+// Sahibin tek dokunuşla müsaitlik güncellemesi (makine tablosu da kullanır).
+export function AvailabilitySheet({
   machine,
   title,
   visible,

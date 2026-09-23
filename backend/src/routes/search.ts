@@ -42,7 +42,7 @@ searchRouter.get(
             where: buildMachineWhere(machineQuery),
             orderBy: [{ busyUntil: 'asc' }, { updatedAt: 'desc' }],
             take: limit + 1,
-            select: { id: true, group: true, kind: true, brand: true, model: true, diameterInch: true, gauge: true, feeders: true, needles: true, count: true, dailyCapacityKg: true, busyUntil: true, availabilityUpdatedAt: true, company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } } },
+            select: { id: true, group: true, kind: true, brand: true, model: true, diameterInch: true, gauge: true, gaugeText: true, needlesText: true, fabricType: true, feeders: true, needles: true, count: true, dailyCapacityKg: true, busyUntil: true, availabilityUpdatedAt: true, company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } } },
           })
         : Promise.resolve([]),
     ]);

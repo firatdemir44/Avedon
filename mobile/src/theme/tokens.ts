@@ -122,6 +122,13 @@ export const size = {
   sheetHandleWidth: 36,
   sheetHandleHeight: 4,
   statusColumn: 112, // makine kartının sağındaki müsaitlik sütunu (dar ekranda sabit)
+  // Makine tablosu (Makineler sekmesi, toplu aktarım önizlemesi): satır ve sütun genişlikleri.
+  tableRow: 44,
+  tableColNo: 48,
+  tableColShort: 64,
+  tableColMid: 96,
+  tableColWide: 144,
+  tableColStatus: 96,
 } as const;
 
 // Yazı stilleri. Kalınlık ayrı yazı tipi dosyasıyla (theme/index.ts fonts).

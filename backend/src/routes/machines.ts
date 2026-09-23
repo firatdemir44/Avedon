@@ -5,6 +5,9 @@ import { prisma } from '../db';
 import { fold } from '../domain/glossary';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { makeHandle } from './handle';
+import { LlmNotConfiguredError, LlmOutputError, isLlmConfigured } from '../llm';
+import { parseRange, rangeMatch } from '../machines/range';
+import { KIND_GUESSES, extractMachineSheet, kindFromGuess, splitSheetDataUrl } from '../machines/importSheet';
 
 // Faz 2, Adım 5: makine parkı (parkur) ve fason kapasite araması.
 // Makine türü serbest metin (Fırat 2026-09-17); öneriler başlangıç listesi +
@@ -49,11 +52,36 @@ const machineSchema = z
     needles: z.number().int().positive().max(20000).nullable().optional(),
     workingWidthCm: z.number().positive().max(1000).nullable().optional(),
     feature: z.string().trim().max(120).optional(),
+    machineNo: z.number().int().min(0).max(99999).nullable().optional(),
+    gaugeText: z.string().trim().max(40).optional(),
+    needlesText: z.string().trim().max(40).optional(),
+    fabricType: z.string().trim().max(80).optional(),
     count: z.number().int().min(1).max(999).optional(),
     dailyCapacityKg: z.number().positive().max(1000000).nullable().optional(),
     note: z.string().trim().max(300).optional(),
   })
   .strict();
+
+type MachineInput = z.infer<typeof machineSchema>;
+
+// Aralık metinleri normalize edilir ("28 / 22" → "28-22"); sayısal alan ilk
+// sayıdır (arama ve eski istemciler için). Geçersiz aralık null döner.
+function normalizeRanges(data: MachineInput): MachineInput | null {
+  const out = { ...data };
+  if (data.gaugeText !== undefined) {
+    const g = parseRange(data.gaugeText);
+    if (!g) return null;
+    out.gaugeText = g.text;
+    if (g.first != null) out.gauge = g.first;
+  } else if (data.gauge !== undefined) out.gaugeText = '';
+  if (data.needlesText !== undefined) {
+    const n = parseRange(data.needlesText);
+    if (!n) return null;
+    out.needlesText = n.text;
+    if (n.first != null) out.needles = Math.round(n.first);
+  } else if (data.needles !== undefined) out.needlesText = '';
+  return out;
+}
 
 type MachineRow = Prisma.MachineGetPayload<Record<string, never>>;
 
@@ -62,6 +90,7 @@ function toMachineRow(m: MachineRow) {
     id: m.id,
     group: m.group,
     kind: m.kind,
+    machineNo: m.machineNo,
     brand: m.brand,
     model: m.model,
     year: m.year,
@@ -69,6 +98,9 @@ function toMachineRow(m: MachineRow) {
     gauge: m.gauge,
     feeders: m.feeders,
     needles: m.needles,
+    gaugeText: m.gaugeText,
+    needlesText: m.needlesText,
+    fabricType: m.fabricType,
     workingWidthCm: m.workingWidthCm,
     feature: m.feature,
     count: m.count,
@@ -127,9 +159,11 @@ machinesRouter.post(
     if (!companyId) return res.status(403).json({ error: 'no_company' });
     const parsed = machineSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const data = normalizeRanges(parsed.data);
+    if (!data) return res.status(400).json({ error: 'invalid_range' });
     const existing = await prisma.machine.count({ where: { companyId } });
     if (existing >= MAX_MACHINES) return res.status(409).json({ error: 'too_many_machines', max: MAX_MACHINES });
-    const machine = await prisma.machine.create({ data: { ...parsed.data, companyId, kindKey: fold(parsed.data.kind), position: existing } });
+    const machine = await prisma.machine.create({ data: { ...data, companyId, kindKey: fold(data.kind), position: existing } });
     res.status(201).json({ machine: toMachineRow(machine) });
   })
 );
@@ -142,9 +176,11 @@ machinesRouter.put(
     if (!companyId) return res.status(403).json({ error: 'no_company' });
     const parsed = machineSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const data = normalizeRanges(parsed.data);
+    if (!data) return res.status(400).json({ error: 'invalid_range' });
     const own = await prisma.machine.findFirst({ where: { id: req.params.id, companyId } });
     if (!own) return res.status(404).json({ error: 'machine_not_found' });
-    const machine = await prisma.machine.update({ where: { id: own.id }, data: { ...parsed.data, kindKey: fold(parsed.data.kind) } });
+    const machine = await prisma.machine.update({ where: { id: own.id }, data: { ...data, kindKey: fold(data.kind) } });
     res.json({ machine: toMachineRow(machine) });
   })
 );
@@ -234,9 +270,10 @@ export async function searchCapacity(query: MachineSearch, excludeCompanyId?: st
   const machineWhere: Prisma.MachineWhereInput = {
     ...(query.group ? { group: query.group } : {}),
     ...(query.kind ? { kindKey: { contains: fold(query.kind) } } : {}),
-    ...(query.gauge ? { gauge: query.gauge } : {}),
     ...(query.diameterInch ? { diameterInch: query.diameterInch } : {}),
     ...(query.widthMin ? { workingWidthCm: { gte: query.widthMin } } : {}),
+    // Fine aralıklı olabilir ("28-22" → 28 ve 22 aramasında da çıkar).
+    ...(query.gauge ? { AND: [rangeMatch('gauge', 'gaugeText', query.gauge)] } : {}),
   };
   const companies = await prisma.company.findMany({
     where: {
@@ -269,5 +306,111 @@ machinesRouter.get(
     const rows = await searchCapacity({ ...parsed.data, limit: Math.min(50, limit + 1) }, req.user!.companyId);
     const hasMore = rows.length > limit;
     res.json({ results: rows.slice(0, limit), hasMore, nextOffset: hasMore ? (parsed.data.offset ?? 0) + limit : null });
+  })
+);
+
+// --- Toplu aktarım: makine parkı tablosunun fotoğrafı/PDF'i -------------------
+// 1) extract: model satırları okur (kayıt yok). 2) commit: sahibin gözden
+// geçirdiği satırlar tek seferde eklenir. Aynı Mak No'lu makine varsa istemci
+// uyarır; skipDuplicates ile atlanır.
+const MAX_SHEET_CHARS = 14_000_000; // ~10 MB base64
+const MAX_EXTRACTS_PER_DAY = 20;
+const extractCounts = new Map<string, { day: string; n: number }>();
+
+const extractSchema = z.object({ file: z.string().max(MAX_SHEET_CHARS) }).strict();
+
+machinesRouter.post(
+  '/import/extract',
+  requireAuth,
+  handle(async (req, res) => {
+    const companyId = req.user!.companyId;
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = extractSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+    const input = splitSheetDataUrl(parsed.data.file);
+    if (!input) return res.status(400).json({ error: 'unsupported_file' });
+    if (!isLlmConfigured()) return res.status(503).json({ error: 'llm_not_configured' });
+
+    const day = new Date().toISOString().slice(0, 10);
+    const used = extractCounts.get(req.user!.id);
+    const n = used && used.day === day ? used.n : 0;
+    if (n >= MAX_EXTRACTS_PER_DAY) return res.status(429).json({ error: 'daily_limit', max: MAX_EXTRACTS_PER_DAY });
+
+    try {
+      const { rows, recognized } = await extractMachineSheet(input);
+      extractCounts.set(req.user!.id, { day, n: n + 1 });
+      const existing = await prisma.machine.findMany({ where: { companyId, machineNo: { not: null } }, select: { machineNo: true } });
+      res.json({ rows, recognized, existingMachineNos: [...new Set(existing.map((m) => m.machineNo!))].sort((a, b) => a - b) });
+    } catch (err) {
+      if (err instanceof LlmNotConfiguredError) return res.status(503).json({ error: 'llm_not_configured' });
+      if (err instanceof LlmOutputError) return res.status(502).json({ error: 'extract_failed' });
+      throw err;
+    }
+  })
+);
+
+const importRowSchema = z
+  .object({
+    machineNo: z.number().int().min(0).max(99999).nullable(),
+    diameterInch: z.number().positive().max(100).nullable(),
+    gaugeText: z.string().trim().max(40),
+    brand: z.string().trim().max(60),
+    needlesText: z.string().trim().max(40),
+    feeders: z.number().int().positive().max(500).nullable(),
+    fabricType: z.string().trim().max(80),
+    kindGuess: z.enum(KIND_GUESSES),
+  })
+  .strict();
+
+const commitSchema = z
+  .object({ rows: z.array(importRowSchema).min(1).max(MAX_MACHINES), skipDuplicates: z.boolean().optional() })
+  .strict();
+
+machinesRouter.post(
+  '/import/commit',
+  requireAuth,
+  handle(async (req, res) => {
+    const companyId = req.user!.companyId;
+    if (!companyId) return res.status(403).json({ error: 'no_company' });
+    const parsed = commitSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
+
+    const existing = await prisma.machine.findMany({ where: { companyId }, select: { machineNo: true } });
+    const takenNos = new Set(existing.map((m) => m.machineNo).filter((n): n is number => n != null));
+    let skipped = 0;
+    const data: Prisma.MachineCreateManyInput[] = [];
+    for (const [index, row] of parsed.data.rows.entries()) {
+      if (parsed.data.skipDuplicates && row.machineNo != null && takenNos.has(row.machineNo)) {
+        skipped++;
+        continue;
+      }
+      const gauge = parseRange(row.gaugeText);
+      const needles = parseRange(row.needlesText);
+      if (!gauge || !needles) return res.status(400).json({ error: 'invalid_range', row: index });
+      const { group, kind } = kindFromGuess(row.kindGuess, row.fabricType);
+      data.push({
+        companyId,
+        group,
+        kind,
+        kindKey: fold(kind),
+        machineNo: row.machineNo,
+        brand: row.brand,
+        diameterInch: row.diameterInch,
+        gauge: gauge.first,
+        gaugeText: gauge.text,
+        needles: needles.first != null ? Math.round(needles.first) : null,
+        needlesText: needles.text,
+        feeders: row.feeders,
+        fabricType: row.fabricType,
+        count: 1,
+        position: existing.length + data.length,
+      });
+      if (row.machineNo != null) takenNos.add(row.machineNo);
+    }
+    if (existing.length + data.length > MAX_MACHINES) {
+      return res.status(409).json({ error: 'too_many_machines', max: MAX_MACHINES });
+    }
+    const created = data.length ? (await prisma.machine.createMany({ data })).count : 0;
+    res.status(201).json({ created, skipped });
   })
 );

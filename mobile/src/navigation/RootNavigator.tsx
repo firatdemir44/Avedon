@@ -37,6 +37,7 @@ import { CompanyQuestionsScreen } from '../screens/assistant/CompanyQuestionsScr
 import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
 import { MachineParkScreen } from '../screens/machines/MachineParkScreen';
 import { MachineFormScreen } from '../screens/machines/MachineFormScreen';
+import { MachineImportScreen } from '../screens/machines/MachineImportScreen';
 import { CapacitySearchScreen } from '../screens/machines/CapacitySearchScreen';
 import { YarnDirectoryScreen } from '../screens/yarns/YarnDirectoryScreen';
 import { YarnFormScreen } from '../screens/yarns/YarnFormScreen';
@@ -316,6 +317,7 @@ export function RootNavigator() {
               component={MachineFormScreen}
               options={{ headerShown: true, title: 'Makine Ekle' }}
             />
+            <Stack.Screen name="MachineImport" component={MachineImportScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CapacitySearch"
               component={CapacitySearchScreen}

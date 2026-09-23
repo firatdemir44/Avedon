@@ -26,7 +26,16 @@ test('birimsiz sayı fayn ya da pus olarak tutulur', () => {
   assert.deepEqual(q?.bare, [12]);
   assert.deepEqual(buildMachineWhere(q!).AND, [
     { OR: [{ kindKey: { contains: 'duz orme' } }] },
-    { OR: [{ gauge: 12 }, { diameterInch: 12 }] },
+    {
+      OR: [
+        { gauge: 12 },
+        { gaugeText: '12' },
+        { gaugeText: { startsWith: '12-' } },
+        { gaugeText: { endsWith: '-12' } },
+        { gaugeText: { contains: '-12-' } },
+        { diameterInch: 12 },
+      ],
+    },
   ]);
 });
 

@@ -105,3 +105,20 @@ export function parseBusyDate(text: string, now: Date = new Date()): { iso: stri
   if (d.getTime() - now.getTime() > 365 * DAY_MS) return { iso: null, error: 'En fazla bir yıl sonrası seçilebilir' };
   return { iso: d.toISOString(), error: null };
 }
+
+// Tablo hücresi için kısa durum: "Müsait" · "5 gün" (14 güne kadar) · "12 Eki"
+// (DESIGN.md §5 ay kısaltması; başka yılda yıl eklenir). Renk availabilityStatus ile aynı.
+const MONTHS_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+
+export function availabilityShort(
+  busyUntil: string | null,
+  now: Date = new Date()
+): { tone: AvailabilityTone; label: string; available: boolean } {
+  const days = busyDays(busyUntil, now);
+  if (days <= 0) return { tone: 'success', label: 'Müsait', available: true };
+  const tone: AvailabilityTone = days <= 7 ? 'warning' : 'danger';
+  if (days <= 14) return { tone, label: `${days} gün`, available: false };
+  const until = new Date(busyUntil!);
+  const label = `${until.getDate()} ${MONTHS_SHORT[until.getMonth()]}${until.getFullYear() !== now.getFullYear() ? ` ${until.getFullYear()}` : ''}`;
+  return { tone, label, available: false };
+}

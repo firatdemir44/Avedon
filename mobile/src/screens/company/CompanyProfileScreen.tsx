@@ -38,7 +38,7 @@ import {
   type ReferenceRelation,
 } from '../../api/client';
 import { monthlyCapacityText } from '../../features/machines/catalog';
-import { MachineCard } from '../../components/MachineCard';
+import { MachineParkView } from '../../components/MachineParkView';
 import { formatMonthYear, formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { friendlyMessage, isNotFound } from '../../components/StateView';
@@ -1237,9 +1237,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   );
 
   // --- Makineler sekmesi ------------------------------------------------
-  // Her makine bir kart (MachineCard): başlık tür + marka/model, mono-14 değerler,
-  // sağda müsaitlik durumu. Sahibi karta dokununca düzenler, duruma dokununca
-  // alt sayfadan hızlı günceller.
+  // Varsayılan görünüm firmanın parkur tablosu gibi bir TABLO (MachineParkView →
+  // MachineTable); "Kart" seçilirse eski makine kartları. Sahibi satıra dokununca
+  // düzenler, Durum hücresine dokununca alt sayfadan müsaitliği günceller.
   const capacityTons = monthlyCapacityText(park?.capacity.monthlyCapacityTons ?? null);
   const updateParkMachine = (updated: Machine) =>
     setPark((prev) =>
@@ -1271,6 +1271,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           {isOwnCompany && park.machines.length ? (
             <ButtonRow>
               <Button kind="secondary" label="Makine ekle" icon="plus" onPress={() => navigation.navigate('MachineForm')} />
+              <Button kind="secondary" label="Fotoğraftan aktar" icon="camera-outline" onPress={() => navigation.navigate('MachineImport')} />
               <Button
                 kind="secondary"
                 label="Kapasite"
@@ -1298,19 +1299,19 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             </Card>
           ) : null}
 
-          {park.machines.map((machine) => (
-            <MachineCard
-              key={machine.id}
-              machine={machine}
+          {park.machines.length ? (
+            <MachineParkView
+              machines={park.machines}
               isOwner={isOwnCompany}
-              onEdit={() => navigation.navigate('MachineForm', { machineId: machine.id })}
+              onEdit={(machine) => navigation.navigate('MachineForm', { machineId: machine.id })}
               onChanged={updateParkMachine}
             />
-          ))}
+          ) : null}
 
           {!park.machines.length ? (
             <Card>
               {isOwnCompany ? (
+                <View style={{ gap: t.space[2] }}>
                 <EmptyState
                   icon="machine"
                   title="Makine parkurunu ekle, fason iş alan firmalar arasında görün"
@@ -1318,6 +1319,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                   actionLabel="Makine ekle"
                   onAction={() => navigation.navigate('MachineForm')}
                 />
+                <Button
+                  kind="quiet"
+                  label="Tablonuzu fotoğraftan aktarın"
+                  icon="camera-outline"
+                  fullWidth
+                  onPress={() => navigation.navigate('MachineImport')}
+                />
+                </View>
               ) : (
                 <Text style={[t.type.body16, { color: t.colors.ink2, textAlign: 'center' }]}>
                   Bu firma henüz makine eklemedi.

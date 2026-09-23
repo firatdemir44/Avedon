@@ -102,6 +102,12 @@
   --icon-sm: 20px;
   --icon-xs: 14px; /* rozet ve doğrulanmış ikonu */
   --status-column: 112px; /* makine kartı müsaitlik sütunu */
+  --table-row: 44px; /* makine tablosu satırı */
+  --table-col-no: 48px;
+  --table-col-short: 64px;
+  --table-col-mid: 96px;
+  --table-col-wide: 144px;
+  --table-col-status: 96px;
   --avatar: 40px;
   --thumb: 72px;
   --appbar: 56px;

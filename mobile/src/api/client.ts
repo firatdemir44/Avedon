@@ -745,6 +745,9 @@ export interface GlobalSearchMachine {
   model: string;
   diameterInch: number | null;
   gauge: number | null;
+  gaugeText?: string;
+  needlesText?: string;
+  fabricType?: string;
   feeders: number | null;
   needles: number | null;
   count: number;
@@ -2113,6 +2116,8 @@ export interface Machine {
   id: string;
   group: MachineGroup;
   kind: string;
+  /** Firmanın kendi makine numarası (Mak No). */
+  machineNo: number | null;
   brand: string;
   model: string;
   year: number | null;
@@ -2124,6 +2129,12 @@ export interface Machine {
   feeders: number | null;
   /** İğne sayısı */
   needles: number | null;
+  /** Aralık metni ("28-22"); boşsa gauge geçerli. */
+  gaugeText: string;
+  /** Aralık metni ("2808-2210"); boşsa needles geçerli. */
+  needlesText: string;
+  /** Örgü cinsi ("SÜPREM. TÜP"). */
+  fabricType: string;
   workingWidthCm: number | null;
   feature: string;
   count: number;
@@ -2169,6 +2180,10 @@ export interface MachineInput {
   gauge?: number | null;
   feeders?: number | null;
   needles?: number | null;
+  machineNo?: number | null;
+  gaugeText?: string;
+  needlesText?: string;
+  fabricType?: string;
   workingWidthCm?: number | null;
   feature?: string;
   count?: number;
@@ -2188,6 +2203,36 @@ export function createMachine(input: MachineInput) {
 
 export function updateMachine(id: string, input: MachineInput) {
   return request<{ machine: Machine }>(`/machines/${id}`, { method: 'PUT', body: JSON.stringify(input) });
+}
+
+// Toplu aktarım: makine parkı tablosunun fotoğrafı/PDF'i (data URL) okunur,
+// sahibi gözden geçirip onaylar. 429 daily_limit · 503 llm_not_configured ·
+// 502 extract_failed · 400 unsupported_file.
+export type MachineKindGuess = 'yuvarlak' | 'raschel' | 'duz_orme' | 'dokuma' | 'diger';
+
+export interface MachineImportRow {
+  machineNo: number | null;
+  diameterInch: number | null;
+  gaugeText: string;
+  brand: string;
+  needlesText: string;
+  feeders: number | null;
+  fabricType: string;
+  kindGuess: MachineKindGuess;
+}
+
+export function extractMachineSheet(file: string) {
+  return request<{ rows: MachineImportRow[]; recognized: boolean; existingMachineNos: number[] }>('/machines/import/extract', {
+    method: 'POST',
+    body: JSON.stringify({ file }),
+  });
+}
+
+export function commitMachineImport(rows: MachineImportRow[], skipDuplicates: boolean) {
+  return request<{ created: number; skipped: number }>('/machines/import/commit', {
+    method: 'POST',
+    body: JSON.stringify({ rows, skipDuplicates }),
+  });
 }
 
 export function deleteMachine(id: string) {

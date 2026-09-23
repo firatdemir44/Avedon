@@ -1,5 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { fold } from '../domain/glossary/normalize';
+import { rangeMatch } from './range';
 
 // Genel aramada "Fason makine" grubu: serbest metinden makine türü ve ölçüleri
 // ayıklanır. Örn. "raschel 28 fine" → Raschel, fayn 28; "yuvarlak 30 inç 24 fayn".
@@ -51,7 +52,13 @@ export function parseMachineQuery(input: string): MachineQuery | null {
       if (!result.types.includes(type.key)) result.types.push(type.key);
       continue;
     }
-    const n = /^\d+([.,]\d+)?$/.test(token) ? Number(token.replace(',', '.')) : NaN;
+    // "28-22" gibi aralık: ilk sayı alınır (dönüştürülebilir makine).
+    const rangeHead = /^(\d+(?:[.,]\d+)?)[-/]\d+(?:[.,]\d+)?$/.exec(token);
+    const n = rangeHead
+      ? Number(rangeHead[1].replace(',', '.'))
+      : /^\d+([.,]\d+)?$/.test(token)
+        ? Number(token.replace(',', '.'))
+        : NaN;
     if (Number.isNaN(n) || n <= 0) continue;
     const next = tokens[i + 1];
     if (next && GAUGE_UNITS.has(next)) {
@@ -88,11 +95,14 @@ export function buildMachineWhere(q: MachineQuery, now = new Date()): Prisma.Mac
       }),
     });
   }
-  if (q.gauge != null) and.push({ gauge: q.gauge });
+  // Fine aralıklı olabilir ("28-22"): sayısal alan ya da aralığın herhangi bir parçası.
+  if (q.gauge != null) and.push(rangeMatch('gauge', 'gaugeText', q.gauge));
   if (q.diameterInch != null) and.push({ diameterInch: q.diameterInch });
   if (q.feeders != null) and.push({ feeders: q.feeders });
   // Birimsiz sayı: fayn ya da pus tutsun.
-  for (const n of q.bare) and.push({ OR: [{ gauge: n }, { diameterInch: n }] });
+  for (const n of q.bare) {
+    and.push({ OR: [...(rangeMatch('gauge', 'gaugeText', n).OR as Prisma.MachineWhereInput[]), { diameterInch: n }] });
+  }
   return { AND: and };
 }
 

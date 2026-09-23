@@ -126,6 +126,8 @@ export type RootStackParamList = {
   // CapacitySearch: "28 fayn 30 pus süprem örecek fason" araması.
   MachinePark: undefined;
   MachineForm: { machineId?: string } | undefined;
+  // Parkur tablosunun fotoğrafından/PDF'inden toplu makine aktarımı.
+  MachineImport: undefined;
   CapacitySearch: undefined;
   // İplik dizini (Faz 2, Adım 6). preset: kumaş pasaportundaki "Kim satıyor?"
   // bağlantısı dizini o numara/birimle ön dolu açar; presetKey her açılışta
