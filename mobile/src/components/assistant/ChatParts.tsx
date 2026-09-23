@@ -13,7 +13,8 @@ import { View, Text, TextInput, Pressable, ActivityIndicator, type ViewStyle } f
 import { formatClockTime, formatDayLabel } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import { Chip, ChipRow, Icon, type AnyIconName } from '../../ui';
-import { canListen, canSpeak, markVoiceTurn, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, unlockSpeech, type ListenError } from '../../features/speech';
+import { fetchSpeechAvailable, transcribeAudio } from '../../api/client';
+import { canListen, canRecord, startRecording, canSpeak, markVoiceTurn, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, unlockSpeech, type ListenError } from '../../features/speech';
 
 export function ChatDayChip({ createdAt }: { createdAt: string }) {
   const t = useTheme();
@@ -216,7 +217,7 @@ export function AssistantComposer({
             } as never,
           ]}
         />
-        {canListen() && !value.trim() ? (
+        {(canListen() || canRecord()) && !value.trim() ? (
           <MicButton onText={onChangeText} onError={setMicError} />
         ) : (
           <SendButton onPress={onSend} canSend={canSend} />
@@ -238,12 +239,25 @@ const MIC_ERRORS: Record<ListenError, string> = {
 
 // Mikrofon: dokun, konuş; konuşma bitince metin kutuya yazılır, gönder düğmesi çıkar.
 // Metin göndermeden önce görülür ve düzeltilebilir.
+// Sunucu ses tanıma durumu uygulama boyunca bir kez sorulur.
+let serverSpeech: boolean | null = null;
+
 function MicButton({ onText, onError }: { onText: (t: string) => void; onError: (m: string | null) => void }) {
   const t = useTheme();
   const [listening, setListening] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [server, setServer] = useState<boolean | null>(serverSpeech);
   const stopRef = useRef<(() => void) | null>(null);
   useEffect(() => () => stopRef.current?.(), []);
-  const toggle = () => {
+  useEffect(() => {
+    if (serverSpeech !== null || !canRecord()) return;
+    fetchSpeechAvailable()
+      .then((r) => setServer((serverSpeech = r.available)))
+      .catch(() => setServer((serverSpeech = false)));
+  }, []);
+  const useRecorder = canRecord() && server === true;
+  const toggle = async () => {
+    if (busy) return;
     if (listening) {
       stopRef.current?.();
       return;
@@ -253,6 +267,29 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
     unlockSpeech();
     markVoiceTurn();
     setListening(true);
+    if (useRecorder) {
+      // Kullanıcı durdurana kadar kayıt; sonra sunucuda yazıya çevrilir.
+      onText('');
+      stopRef.current = await startRecording({
+        onError: (e) => onError(MIC_ERRORS[e]),
+        onDone: async (audio) => {
+          setListening(false);
+          stopRef.current = null;
+          if (!audio) return;
+          setBusy(true);
+          try {
+            const text = await transcribeAudio(audio);
+            if (text) onText(text);
+            else onError(MIC_ERRORS['no-speech']);
+          } catch (err) {
+            onError(err instanceof Error ? err.message : MIC_ERRORS.other);
+          } finally {
+            setBusy(false);
+          }
+        },
+      });
+      return;
+    }
     stopRef.current = startListening({
       onText: (text) => onText(text),
       onEnd: () => setListening(false),
@@ -264,7 +301,7 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
       <Pressable
         onPress={toggle}
         accessibilityRole="button"
-        accessibilityLabel={listening ? 'Dinlemeyi durdur' : 'Konuşarak sor'}
+        accessibilityLabel={busy ? 'Yazıya çevriliyor' : listening ? 'Dinlemeyi durdur' : 'Konuşarak sor'}
         style={({ pressed }) => ({
           width: t.size.touchMin,
           height: t.size.touchMin,
@@ -274,7 +311,11 @@ function MicButton({ onText, onError }: { onText: (t: string) => void; onError: 
           backgroundColor: listening ? t.colors.danger : pressed ? t.colors.brandStrong : t.colors.brand,
         })}
       >
-        <Icon name={listening ? 'stop' : 'mic-outline'} size={t.size.iconSm} colorValue={t.colors.onBrand} />
+        {busy ? (
+          <ActivityIndicator color={t.colors.onBrand} />
+        ) : (
+          <Icon name={listening ? 'stop' : 'mic-outline'} size={t.size.iconSm} colorValue={t.colors.onBrand} />
+        )}
       </Pressable>
     </View>
   );

@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import express, { Router } from 'express';
+import { SpeechNotConfiguredError, isSpeechConfigured, transcribe } from '../speechToText';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { LlmNotConfiguredError, isLlmConfigured } from '../llm';
@@ -16,6 +17,22 @@ import { makeHandle } from './handle';
 // onayıyla yazılır. Eski POST /api/advisor/ask bir sürüm daha kalır.
 export const assistantRouter = Router();
 assistantRouter.use(requireAuth);
+
+// Sesli soru: telefonun kaydettiği ses (webm/mp4, en çok ~2 dk) yazıya çevrilir.
+assistantRouter.get('/speech', (_req, res) => {
+  res.json({ available: isSpeechConfigured() });
+});
+assistantRouter.post('/transcribe', express.raw({ type: () => true, limit: '8mb' }), async (req, res) => {
+  const audio = req.body as Buffer;
+  if (!Buffer.isBuffer(audio) || audio.length < 1000) return res.status(400).json({ error: 'Ses kaydı çok kısa' });
+  try {
+    res.json({ text: await transcribe(audio) });
+  } catch (err) {
+    if (err instanceof SpeechNotConfiguredError) return res.status(503).json({ error: 'Sesli soru şu an kullanılamıyor' });
+    console.error('[transcribe]', (err as Error).message);
+    res.status(502).json({ error: 'Ses yazıya çevrilemedi, lütfen tekrar deneyin' });
+  }
+});
 const handle = makeHandle('assistant');
 
 const THREAD_SELECT = { id: true, title: true, channel: true, createdAt: true, updatedAt: true } as const;

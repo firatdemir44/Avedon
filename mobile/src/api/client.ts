@@ -3006,3 +3006,18 @@ export function fetchExportMarkets(hs6: string, opts: { region?: string | null; 
   if (opts.countries?.length) qs.set('countries', opts.countries.join(','));
   return request<ExportMarketsResult>(`/export/markets?${qs.toString()}`);
 }
+
+// Sesli soru: kaydedilen ses sunucuda (Whisper) yazıya çevrilir.
+export function fetchSpeechAvailable() {
+  return request<{ available: boolean }>('/assistant/speech');
+}
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/assistant/transcribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': blob.type || 'application/octet-stream', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+    body: blob,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(body?.error ?? `İstek başarısız (${res.status})`, res.status, body?.error);
+  return (body as { text: string }).text;
+}

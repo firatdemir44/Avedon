@@ -209,3 +209,37 @@ export function toggleSpeak(id: string, text: string) {
   emit();
   window.speechSynthesis.speak(u);
 }
+
+// Kayıt yolu (2026-09-23): tarayıcı tanıması telefonda kısa sürede kapandığı için ses kaydedilir,
+// kullanıcı durdurunca sunucuda (Whisper) yazıya çevrilir. En çok MAX_REC_MS kayıt.
+const MAX_REC_MS = 120_000;
+export const canRecord = () =>
+  Platform.OS === 'web' && typeof window !== 'undefined' && typeof (window as unknown as { MediaRecorder?: unknown }).MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+
+export async function startRecording(opts: { onDone: (audio: Blob | null) => void; onError: (e: ListenError) => void }): Promise<() => void> {
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+  } catch (err) {
+    opts.onError((err as Error)?.name === 'NotAllowedError' ? 'not-allowed' : 'other');
+    opts.onDone(null);
+    return () => undefined;
+  }
+  const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'].find((m) => MediaRecorder.isTypeSupported?.(m));
+  const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined);
+  const chunks: Blob[] = [];
+  rec.ondataavailable = (e) => {
+    if (e.data.size) chunks.push(e.data);
+  };
+  const timer = setTimeout(() => stop(), MAX_REC_MS);
+  rec.onstop = () => {
+    clearTimeout(timer);
+    stream.getTracks().forEach((tr) => tr.stop());
+    opts.onDone(chunks.length ? new Blob(chunks, { type: rec.mimeType || type || 'audio/webm' }) : null);
+  };
+  const stop = () => {
+    if (rec.state !== 'inactive') rec.stop();
+  };
+  rec.start(1000);
+  return stop;
+}

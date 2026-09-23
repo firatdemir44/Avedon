@@ -20,6 +20,7 @@ import { videosRouter } from './routes/videos';
 import { passportRouter } from './routes/passport';
 import { skillsRouter } from './routes/skills';
 import { assistantRouter } from './routes/assistant';
+import { speechStatus } from './speechToText';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
@@ -80,6 +81,8 @@ app.get('/api/health', async (_req, res) => {
     // SMS ile doğrulama kodu (Adım 8): anahtarlar, başlık, hesap erişimi ve kalan kredi, son gönderim.
     sms: await smsStatus(),
     push: await pushStatus(),
+    // Asistana sesli soru: Workers AI (Whisper) anahtarı girilmiş mi, token geçerli mi.
+    speech: await speechStatus(),
   });
 });
 app.use('/api/register', registerRouter);
