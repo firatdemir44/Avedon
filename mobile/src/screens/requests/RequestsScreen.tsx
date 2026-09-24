@@ -14,7 +14,7 @@
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useMemo, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
-import type { MainTabScreenProps } from '../../navigation/types';
+import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
   fetchIncomingSampleRequests,
@@ -52,7 +52,7 @@ import {
   type BadgeKind,
 } from '../../ui';
 
-type Props = MainTabScreenProps<'Requests'>;
+type Props = RootStackScreenProps<'Requests'>;
 
 type Kind = 'sample' | 'quote' | 'tender';
 type Side = 'outgoing' | 'incoming';
@@ -274,7 +274,7 @@ export function RequestsScreen({ navigation }: Props) {
         title="İlk talebini gönder"
         description='Katalogdan bir kumaş seçip "Numune talep et" ya da teklif iste; gönderdiğin talepler burada listelenir.'
         actionLabel="Kataloğa git"
-        onAction={() => navigation.navigate('ProductList')}
+        onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
       />
     );
 
@@ -353,6 +353,8 @@ export function RequestsScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
         title="Talepler"
+        leading="back"
+        onBack={() => navigation.goBack()}
         actions={[
           {
             icon: 'filter',

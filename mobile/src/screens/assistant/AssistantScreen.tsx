@@ -517,8 +517,8 @@ export function AssistantScreen({ navigation }: Props) {
   const bar = (
     <AppBar
       title={subtitle}
-      leading="back"
-      onBack={() => navigation.goBack()}
+      // Alt çubukta orta sekme (2026-09-24): sekme ekranında geri oku yok.
+      leading="none"
       actions={[
         { icon: 'settings-outline', label: 'Firma hafızası', onPress: () => navigation.navigate('AssistantMemory') },
         { icon: 'clock', label: 'Sohbetler', onPress: () => navigation.navigate('AssistantThreads') },

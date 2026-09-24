@@ -11,11 +11,13 @@ export interface QuickActionProps {
   /** Hazır ikon yerine özel çizim (ör. TakyonMark); verilirse `icon` yok sayılır. */
   iconNode?: React.ReactNode;
   onPress: () => void;
+  /** İkon karesinin köşesinde 8px accent bildirim noktası (ör. bekleyen talep). */
+  dot?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
-export function QuickAction({ label, icon, iconNode, onPress, style, testID }: QuickActionProps) {
+export function QuickAction({ label, icon, iconNode, onPress, dot, style, testID }: QuickActionProps) {
   const t = useTheme();
   return (
     <Pressable
@@ -50,6 +52,20 @@ export function QuickAction({ label, icon, iconNode, onPress, style, testID }: Q
         }}
       >
         {iconNode ?? (icon ? <Icon name={icon} color="brand" /> : null)}
+        {dot ? (
+          <View
+            accessibilityLabel="Yeni"
+            style={{
+              position: 'absolute',
+              top: -t.space[1] / 2,
+              right: -t.space[1] / 2,
+              width: t.size.dot,
+              height: t.size.dot,
+              borderRadius: t.radius.full,
+              backgroundColor: t.colors.accent,
+            }}
+          />
+        ) : null}
       </View>
       <Text numberOfLines={2} style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
         {label}

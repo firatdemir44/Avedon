@@ -108,6 +108,8 @@ export const size = {
   controlLg: 52,
   icon: 24,
   iconSm: 20,
+  // Sekme çubuğunda Asistan sekmesinin Takyon işareti (~1.4× icon).
+  tabIconLg: 40,
   avatar: 40,
   thumb: 72,
   appbar: 56,

@@ -48,7 +48,6 @@ import {
   SegmentControl,
   Skeleton,
   StatBox,
-  TakyonMark,
 } from '../../ui';
 
 type Props = MainTabScreenProps<'Feed'>;
@@ -352,9 +351,10 @@ export function FeedScreen({ navigation }: Props) {
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
-          iconNode={<TakyonMark size={Math.round(t.size.avatar * 0.8)} />}
-          label="Tekstil asistanı"
-          onPress={() => navigation.navigate('AssistantTab')}
+          icon="sample"
+          label="Talepler"
+          dot={(today?.pendingSamples ?? 0) + (today?.newQuotes ?? 0) > 0}
+          onPress={() => navigation.navigate('Requests')}
         />
       </View>
 

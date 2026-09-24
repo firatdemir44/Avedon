@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import type { RootStackParamList } from './types';
 import { MainTabs } from './MainTabs';
+import { RequestsScreen } from '../screens/requests/RequestsScreen';
 import { useSession } from '../context/SessionContext';
 import { colors, typography } from '../theme';
 import { RoleSelectionScreen } from '../screens/onboarding/RoleSelectionScreen';
@@ -218,6 +219,7 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Firma' }}
             />
             <Stack.Screen name="Calculators" component={CalculatorsListScreen} />
+            <Stack.Screen name="Requests" component={RequestsScreen} />
             <Stack.Screen name="ExportRadar" component={ExportRadarScreen} />
             <Stack.Screen name="ExportBuyers" component={BuyerListScreen} />
             <Stack.Screen name="ExportLeads" component={LeadsScreen} />

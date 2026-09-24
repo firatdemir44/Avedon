@@ -1,5 +1,5 @@
 // Sekme çubuğu (DESIGN.md §3): 64px, surface-1, üst kenarlık line.
-// 5 öğe: 24px ikon + caption-12 etiket her zaman birlikte. Aktif brand, pasif ink-3.
+// 5 öğe (Asistan ortada, büyük TakyonMark — size.tabIconLg): 24px ikon + caption-12 etiket her zaman birlikte. Aktif brand, pasif ink-3.
 // 8px accent bildirim noktası. react-navigation ile: `tabBar={TabBarFromNavigation}`.
 import React from 'react';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
@@ -12,6 +12,8 @@ export interface TabItem {
   key: string;
   label: string;
   icon: AnyIconName;
+  /** Hazır ikon yerine özel çizim (ör. Asistan sekmesinde büyük TakyonMark). */
+  iconNode?: React.ReactNode;
   /** Bildirim noktası. */
   dot?: boolean;
 }
@@ -63,8 +65,10 @@ export function TabBar({ items, activeKey, onSelect, style }: TabBarProps) {
               borderTopColor: on ? t.colors.brand : 'transparent',
             })}
           >
-            <View>
-              <Icon name={item.icon} colorValue={color} />
+            {/* İkon kutusu hep size.icon yüksekliğinde: büyük özel çizim taşar ama
+                etiketin taban çizgisi diğer sekmelerle hizalı kalır. */}
+            <View style={{ height: t.size.icon, minWidth: t.size.icon, alignItems: 'center', justifyContent: 'center' }}>
+              {item.iconNode ?? <Icon name={item.icon} colorValue={color} />}
               {item.dot ? (
                 <View
                   style={{
@@ -93,7 +97,7 @@ export function TabBar({ items, activeKey, onSelect, style }: TabBarProps) {
 export const routeIcons: Record<string, AnyIconName> = {
   Feed: 'home',
   ProductList: 'catalog',
-  AssistantTab: 'message',
+  AssistantTab: 'message', // çubukta TakyonMark çiziliyor (MainTabs iconNodes)
   Conversations: 'messages',
   CompaniesDirectory: 'business-outline',
   QuoteRequests: 'requests',
@@ -108,6 +112,8 @@ export interface TabBarFromNavigationProps extends BottomTabBarProps {
    * sekme çubuğunda çizilmezler (DESIGN.md §2: çubukta tam 5 sekme).
    */
   hiddenRoutes?: string[];
+  /** Rota adı → özel ikon çizimi (verilirse `icons` yerine kullanılır). */
+  iconNodes?: Record<string, React.ReactNode>;
 }
 
 /** react-navigation bottom-tabs `tabBar` prop'u için sarmalayıcı. */
@@ -117,6 +123,7 @@ export function TabBarFromNavigation({
   navigation,
   icons,
   hiddenRoutes,
+  iconNodes,
 }: TabBarFromNavigationProps) {
   const map = { ...routeIcons, ...(icons ?? {}) };
   const hidden = new Set(hiddenRoutes ?? []);
@@ -132,6 +139,7 @@ export function TabBarFromNavigation({
         key: route.key,
         label,
         icon: map[route.name] ?? 'info',
+        iconNode: iconNodes?.[route.name],
         dot: options.tabBarBadge != null,
       };
     });
