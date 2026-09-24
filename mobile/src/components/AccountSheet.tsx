@@ -6,6 +6,8 @@ import { useSession } from '../context/SessionContext';
 import { useTheme } from '../theme/ThemeContext';
 import { BottomSheet, Button, Icon, ListRow } from '../ui';
 import { ThemeSwitch } from './ThemeSwitch';
+import { LanguageSwitch } from './LanguageSwitch';
+import { tr } from '../i18n';
 import { UserAvatar } from './UserAvatar';
 
 export interface AccountSheetProps {
@@ -20,9 +22,9 @@ export function AccountSheet({ visible, onClose, onOpenProfile }: AccountSheetPr
   const name = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '';
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Hesabım">
+    <BottomSheet visible={visible} onClose={onClose} title={tr('Hesabım')}>
       <ListRow
-        title="Profilim"
+        title={tr('Profilim')}
         subtitle={name || undefined}
         left={
           user ? (
@@ -43,11 +45,12 @@ export function AccountSheet({ visible, onClose, onOpenProfile }: AccountSheetPr
         }}
       />
       <ThemeSwitch />
+      <LanguageSwitch />
       <Button
         kind="danger"
         fullWidth
         icon="log-out-outline"
-        label="Çıkış yap"
+        label={tr('Çıkış yap')}
         onPress={() => {
           onClose();
           logout();

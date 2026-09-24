@@ -27,6 +27,11 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   req.user = user;
+  // Kullanıcının seçtiği dil kaydedilir (bildirimler ve arka plan işleri için); yalnızca değişince yazılır.
+  if (req.lang && user.language !== req.lang) {
+    prisma.user.update({ where: { id: user.id }, data: { language: req.lang } }).catch(() => undefined);
+    user.language = req.lang;
+  }
   next();
 }
 

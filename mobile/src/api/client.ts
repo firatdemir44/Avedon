@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { getLang } from '../i18n';
 import type {
   Company,
   CompositionItem,
@@ -72,6 +73,8 @@ async function request<T>(path: string, options?: RequestInit, timeoutMs = REQUE
     res = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
+        // Sunucu metinleri (hata açıklaması, asistan, bildirim) bu dilde üretir.
+        'X-Lang': getLang(),
         ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       },
       signal: controller.signal,

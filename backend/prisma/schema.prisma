@@ -116,6 +116,8 @@ model User {
   phoneVerified        Boolean         @default(false)
   // Asistan kişiliği: "" (seçilmedi) | ipek | mert (assistant/persona.ts).
   assistantPersona     String          @default("")
+  // Arayüz dili (tr | en): uygulama her istekte X-Lang gönderir; bildirim ve asistan bu dilde.
+  language             String          @default("tr")
   isAdmin              Boolean         @default(false)
   // Kişisel profil fotoğrafı (Fırat 2026-09-21). Fotoğrafın kendisi UserAvatar'da; burada yalnızca
   // "var mı / ne zaman değişti" bilgisi (istemci önbellek anahtarı; firma logosuyla aynı desen).

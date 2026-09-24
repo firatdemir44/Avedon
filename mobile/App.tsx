@@ -13,6 +13,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { RegistrationProvider } from './src/context/RegistrationContext';
 import { SessionProvider } from './src/context/SessionContext';
 import { ThemeProvider } from './src/theme/ThemeContext';
+import { I18nProvider, useI18n } from './src/i18n';
 import { installWebPullToRefresh } from './src/features/webPullToRefresh';
 import { captureInviteCodeFromUrl } from './src/features/invites/storedCode';
 import { ensureManifestLink } from './src/features/push/webPush';
@@ -60,10 +61,17 @@ export default function App() {
       <ThemeProvider>
         <SessionProvider>
           <RegistrationProvider>
-            <RootNavigator />
+            <LocalizedNavigator />
           </RegistrationProvider>
         </SessionProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
+}
+
+// Dil değişince gezinti ağacı yeniden kurulur; bileşen dışındaki tr() çağrıları da yeni dille çalışır.
+function LocalizedNavigator() {
+  const { lang, ready } = useI18n();
+  if (!ready) return null;
+  return <RootNavigator key={lang} />;
 }

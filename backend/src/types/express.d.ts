@@ -4,6 +4,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: User & { company: Company | null };
+      /** Arayüz dili (X-Lang); langMiddleware doldurur. */
+      lang?: 'tr' | 'en';
     }
   }
 }

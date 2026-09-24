@@ -27,6 +27,7 @@ import { speechStatus } from './speechToText';
 import { relevanceStatus } from './feedRules';
 import { startDigestScheduler } from './assistantReport';
 import { seedDirectoryFromFiles } from './directorySeed';
+import { langMiddleware } from './i18n';
 import { notificationsRouter, watchRulesRouter } from './routes/notifications';
 import { quotesRouter } from './routes/quotes';
 import { machinesRouter } from './routes/machines';
@@ -62,6 +63,8 @@ import { checkStreamAccess, isStreamConfigured } from './stream';
 
 const app = express();
 app.use(cors());
+// Dil: X-Lang başlığı → req.lang (hata açıklamaları ve asistan bu dilde).
+app.use(langMiddleware);
 // limit: fotoğraf yükleme (base64). verify: WhatsApp webhook imzası ham gövde
 // üzerinden doğrulanır (routes/whatsappWebhook.ts), o yüzden gövde saklanır.
 app.use(
