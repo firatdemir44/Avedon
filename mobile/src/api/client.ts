@@ -2684,7 +2684,7 @@ export function fetchPriceIndex(productId: string) {
 // Davette telefon yazılıysa ve kayıt olan numara aynıysa iki kişi DOĞRUDAN
 // bağlantılı olur; aksi halde davet edene bekleyen bağlantı isteği düşer.
 
-export type InviteRelation = '' | 'tedarikci' | 'musteri';
+export type InviteRelation = '' | 'ekip' | 'tedarikci' | 'musteri';
 
 export interface Invite {
   id: string;
@@ -3516,4 +3516,19 @@ export function registerAdminWhatsAppNumber(id: string, pin: string) {
 
 export function activateAdminWhatsAppNumber(id: string) {
   return request<{ ok: true; active: AdminWhatsAppActive; diagnostics: string[] }>(`/admin/whatsapp/numbers/${encodeURIComponent(id)}/activate`, { method: 'POST' });
+}
+
+// Kayıt öncesi davet önizlemesi (oturumsuz). kind 'team': ekip arkadaşı daveti, kayıt olan
+// davet edenin firmasına doğrudan katılır. usable false: davet dolmuş/kullanılmış.
+export interface InviteKindPreview {
+  code: string;
+  kind: 'team' | 'connection';
+  relation: InviteRelation;
+  inviterName: string;
+  companyName: string | null;
+  usable: boolean;
+}
+
+export function fetchInvitePreview(code: string) {
+  return request<{ preview: InviteKindPreview }>(`/invites/${encodeURIComponent(code)}/preview`);
 }

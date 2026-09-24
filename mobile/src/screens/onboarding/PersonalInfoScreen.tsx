@@ -20,7 +20,8 @@ export function PersonalInfoScreen({ navigation }: Props) {
   const canContinue = draft.firstName.trim().length > 0 && draft.lastName.trim().length > 0 && draft.phone.trim().length >= 10;
 
   const handleContinue = () => {
-    if (draft.accountType === 'bireysel') {
+    // Ekip davetinde firma adımı yok: doğrudan doğrulamaya.
+    if (draft.accountType === 'bireysel' || draft.teamCompanyName) {
       navigation.navigate('PhoneVerification');
     } else {
       navigation.navigate('CompanyInfo');
@@ -29,10 +30,14 @@ export function PersonalInfoScreen({ navigation }: Props) {
 
   return (
     <OnboardingLayout
-      step={3}
-      totalSteps={6}
+      step={draft.teamCompanyName ? 1 : 3}
+      totalSteps={draft.teamCompanyName ? 2 : 6}
       title={tr('Kişisel bilgileriniz')}
-      subtitle={tr('Doğrulama kodunu bu numaraya göndereceğiz.')}
+      subtitle={
+        draft.teamCompanyName
+          ? tr('{company} ekibine katılıyorsunuz. Doğrulama kodunu bu numaraya göndereceğiz.', { company: draft.teamCompanyName })
+          : tr('Doğrulama kodunu bu numaraya göndereceğiz.')
+      }
       footer={<Button size="lg" label={tr('Devam Et')} disabled={!canContinue} onPress={handleContinue} />}
     >
       <View style={{ gap: t.space[4], minWidth: 0 }}>

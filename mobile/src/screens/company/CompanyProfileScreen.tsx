@@ -1065,6 +1065,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate('CompanyQuestions')}
         />
         <ListRow
+          title={tr('Ekip arkadaşı davet et')}
+          left={<Icon name="people-outline" color="brand" />}
+          onPress={() => navigation.navigate('Invites', { relation: 'ekip' })}
+        />
+        <ListRow
           title={tr('Tedarikçi ya da müşteri davet et')}
           left={<Icon name="person-add-outline" color="brand" />}
           onPress={() => navigation.navigate('Invites')}
@@ -1470,7 +1475,20 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           ) : null}
         </View>
       ) : null}
-      {tab === 'people' ? <SectionTitle title={tr('Yetkililer')} /> : null}
+      {tab === 'people' ? (
+        <View style={{ gap: t.space[3] }}>
+          {isOwnCompany ? (
+            <Button
+              kind="secondary"
+              label={tr('Ekip arkadaşı davet et')}
+              icon="person-add-outline"
+              onPress={() => navigation.navigate('Invites', { relation: 'ekip' })}
+              fullWidth
+            />
+          ) : null}
+          <SectionTitle title={tr('Yetkililer')} />
+        </View>
+      ) : null}
       {tab === 'feed' && postsLoading ? (
         <Card>
           <SkeletonRow />

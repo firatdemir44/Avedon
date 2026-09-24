@@ -11,10 +11,29 @@ import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, registerUser, requestOtp, verifyOtp } from '../../api/client';
 import { tr } from '../../i18n';
+import { clearStoredInviteCode } from '../../features/invites/storedCode';
+import { setTeamLanding } from '../../features/invites/teamLanding';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Icon } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PhoneVerification'>;
+
+// Ekip davetiyle kayıtta sunucunun döndürdüğü hatalar (backend/src/invites.ts resolveTeamInvite).
+function teamErrorMessage(code: string | undefined): string | null {
+  switch (code) {
+    case 'already_registered_team_invite':
+      return tr('Bu numarayla zaten bir hesap var; firmanız kendiliğinden değişmez. Giriş yapın ya da firmanızdan yardım isteyin.');
+    case 'invite_used':
+    case 'invite_not_found':
+      return tr('Bu ekip daveti artık geçerli değil. Firmanızdan yeni bir davet isteyin.');
+    case 'invite_phone_mismatch':
+      return tr('Bu ekip daveti başka bir telefon numarası için. Davet edilen numarayla kayıt olun.');
+    case 'inviter_has_no_company':
+      return tr('Davet eden kişinin firması bulunamadı. Firmanızdan yeni bir davet isteyin.');
+    default:
+      return null;
+  }
+}
 
 export function PhoneVerificationScreen({ navigation }: Props) {
   const t = useTheme();
@@ -64,17 +83,28 @@ export function PhoneVerificationScreen({ navigation }: Props) {
 
       updateDraft({ verificationToken: result.verificationToken });
 
-      if (draft.accountType !== 'bireysel') {
+      // Ekip davetinde firma kodu adımı yok: kişi davet edenin firmasına katılır.
+      if (draft.accountType !== 'bireysel' && !draft.teamCompanyName) {
         navigation.navigate('CompanyCode');
         return;
       }
 
       const { token, user } = await registerUser({ ...draft, verificationToken: result.verificationToken });
+      if (draft.teamCompanyName) {
+        await clearStoredInviteCode();
+        setTeamLanding(user.companyId ?? null);
+      }
       setSubmitting(false);
       // Gezinme çağrısı yok: user dolunca RootNavigator ana sekmelere geçiyor.
       login(token, user);
     } catch (err) {
       const errCode = err instanceof ApiError ? err.code : undefined;
+      const teamMsg = teamErrorMessage(errCode);
+      if (teamMsg) {
+        setError(teamMsg);
+        if (errCode === 'already_registered_team_invite') setAlreadyRegistered(true);
+        return;
+      }
       setError(
         errCode === 'mismatch'
           ? tr('Kod hatalı, tekrar deneyin.')
@@ -93,8 +123,8 @@ export function PhoneVerificationScreen({ navigation }: Props) {
 
   return (
     <OnboardingLayout
-      step={5}
-      totalSteps={6}
+      step={draft.teamCompanyName ? 2 : 5}
+      totalSteps={draft.teamCompanyName ? 2 : 6}
       title={tr('Telefonunuzu doğrulayın')}
       subtitle={draft.phone ? tr('{phone} numarasına gönderilen 6 haneli kodu girin.', { phone: draft.phone }) : tr('Telefon numaranıza gönderilen 6 haneli kodu girin')}
       footer={

@@ -15,6 +15,9 @@ export interface RegistrationDraft {
   // cihazdan dolu gelir, kullanıcı elle de yazabilir. Geçersiz kod kaydı
   // ENGELLEMEZ, sunucu yok sayar.
   inviteCode: string;
+  // Ekip arkadaşı davetiyle geliniyorsa davet eden firmanın adı (dolu = rol, pozisyon ve firma
+  // adımları atlanır; kişi o firmaya çalışan olarak katılır).
+  teamCompanyName: string;
 }
 
 const initialDraft: RegistrationDraft = {
@@ -28,6 +31,7 @@ const initialDraft: RegistrationDraft = {
   companyCode: '',
   verificationToken: '',
   inviteCode: '',
+  teamCompanyName: '',
 };
 
 interface RegistrationContextValue {

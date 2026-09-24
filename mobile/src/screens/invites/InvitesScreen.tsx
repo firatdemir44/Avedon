@@ -9,7 +9,7 @@
 // kendi WhatsApp'ından yollar.
 //
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, ScrollView, Linking, Platform, Share } from 'react-native';
 import { canPickContact, pickContact } from '../../features/contactPicker';
 import type { RootStackScreenProps } from '../../navigation/types';
@@ -29,6 +29,7 @@ import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { tr } from '../../i18n';
+import { useSession } from '../../context/SessionContext';
 import {
   Badge,
   Button,
@@ -47,13 +48,14 @@ import {
 type Props = RootStackScreenProps<'Invites'>;
 
 const RELATION_OPTIONS: { value: InviteRelation; label: string }[] = [
+  { value: 'ekip', label: 'Ekip arkadaşı' },
   { value: 'tedarikci', label: 'Tedarikçim' },
   { value: 'musteri', label: 'Müşterim' },
   { value: '', label: 'Belirtme' },
 ];
 
 const relationLabel = (relation: InviteRelation) =>
-  relation === 'tedarikci' ? tr('Tedarikçi') : relation === 'musteri' ? tr('Müşteri') : '';
+  relation === 'ekip' ? tr('Ekip arkadaşı') : relation === 'tedarikci' ? tr('Tedarikçi') : relation === 'musteri' ? tr('Müşteri') : '';
 
 // Rehberden kopyalanan numara her biçimde gelebilir; wa.me uluslararası
 // biçim ister (90 5XX...). Çevrilemezse boş döner ve bağlantı numarasız açılır.
@@ -72,14 +74,22 @@ interface AlreadyMember {
   lastName: string;
 }
 
-export function InvitesScreen({ navigation }: Props) {
+export function InvitesScreen({ navigation, route }: Props) {
   const t = useTheme();
+  // Ekip arkadaşı daveti yalnızca firması olan kullanıcıya açık (firmasız davet sunucuda da reddedilir).
+  const hasCompany = !!useSession().user?.companyId;
+  const relationOptions = RELATION_OPTIONS.filter((o) => o.value !== 'ekip' || hasCompany);
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchInvites);
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [relation, setRelation] = useState<InviteRelation>('tedarikci');
+  const [relation, setRelation] = useState<InviteRelation>(route.params?.relation === 'ekip' && hasCompany ? 'ekip' : 'tedarikci');
   const [submitting, setSubmitting] = useState(false);
+  // Ekran açıkken firma sayfasından yeniden gelinirse de Ekip arkadaşı seçilsin.
+  const wantTeam = route.params?.relation === 'ekip' && hasCompany;
+  useEffect(() => {
+    if (wantTeam) setRelation('ekip');
+  }, [wantTeam]);
   const [formError, setFormError] = useState<string | null>(null);
   const [alreadyMember, setAlreadyMember] = useState<AlreadyMember | null>(null);
   // Yeni oluşturulan (ya da yeniden paylaşılmak istenen) davetin kartı.
@@ -139,6 +149,8 @@ export function InvitesScreen({ navigation }: Props) {
             ? tr('Bu numara zaten Takyon\'da: {name}. Profiline gidip bağlantı isteği gönderebilirsiniz.', { name: `${user.firstName} ${user.lastName}` })
             : tr('Bu numara zaten Takyon\'da. Kişiyi arayıp profilinden bağlantı isteği gönderebilirsiniz.')
         );
+      } else if (err instanceof ApiError && err.code === 'no_company') {
+        setFormError(tr('Ekip arkadaşı davet etmek için önce firmanızı ekleyin.'));
       } else if (err instanceof ApiError && err.code === 'invalid_phone') {
         setFormError(tr('Telefon numarasını 05XX XXX XX XX biçiminde yazın.'));
       } else if (err instanceof ApiError && err.code === 'own_phone') {
@@ -271,7 +283,7 @@ export function InvitesScreen({ navigation }: Props) {
             <View style={{ gap: t.space[2], minWidth: 0 }}>
               <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('İlişki')}</Text>
               <ChipRow>
-                {RELATION_OPTIONS.map((option) => (
+                {relationOptions.map((option) => (
                   <Chip
                     key={option.value || 'bos'}
                     label={tr(option.label)}
@@ -280,6 +292,11 @@ export function InvitesScreen({ navigation }: Props) {
                   />
                 ))}
               </ChipRow>
+              {relation === 'ekip' ? (
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  {tr('Firmanıza çalışan olarak katılır; ürünleri ve talepleri birlikte yönetirsiniz.')}
+                </Text>
+              ) : null}
             </View>
 
             {formError ? <InlineBanner message={formError} /> : null}

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
-import { MAX_INVITES_PER_DAY, inviteShareText, inviteUrl, newInviteCode } from '../invites';
+import { MAX_INVITES_PER_DAY, MAX_JOINS_PER_OPEN_INVITE, TEAM_RELATION, inviteShareText, inviteUrl, newInviteCode } from '../invites';
 import { requireAuth } from '../middleware/auth';
 import { makeHandle } from './handle';
 
@@ -24,7 +24,7 @@ const createSchema = z
   .object({
     name: z.string().trim().max(80).optional(),
     phone: z.string().trim().max(20).optional(),
-    relation: z.enum(['', 'tedarikci', 'musteri']).optional(),
+    relation: z.enum(['', 'ekip', 'tedarikci', 'musteri']).optional(),
     note: z.string().trim().max(200).optional(),
   })
   .strict();
@@ -65,6 +65,19 @@ invitesRouter.get(
   })
 );
 
+// Kayıt ekranı için önizleme (oturumsuz): ekip davetinde "{Firma} ekibine katılıyorsunuz" gösterilir.
+invitesRouter.get(
+  '/:code/preview',
+  handle(async (req, res) => {
+    const row = await prisma.invite.findUnique({ where: { code: req.params.code.trim().toUpperCase() } });
+    if (!row || row.status === 'cancelled') return res.status(404).json({ error: 'invite_not_found' });
+    const inviter = await inviterOf(row.inviterId);
+    const kind = row.relation === TEAM_RELATION ? 'team' : 'connection';
+    const usable = row.inviteePhone ? row.status === 'pending' : row.joinCount < MAX_JOINS_PER_OPEN_INVITE;
+    res.json({ preview: { code: row.code, kind, relation: row.relation, inviterName: `${inviter.firstName} ${inviter.lastName}`, companyName: inviter.companyName, usable } });
+  })
+);
+
 invitesRouter.use(requireAuth);
 
 invitesRouter.get(
@@ -89,6 +102,7 @@ invitesRouter.post(
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
     const me = req.user!;
     const d = parsed.data;
+    if (d.relation === TEAM_RELATION && !me.companyId) return res.status(400).json({ error: 'no_company' });
 
     let phone = '';
     if (d.phone) {

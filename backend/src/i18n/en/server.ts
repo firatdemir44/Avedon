@@ -12,6 +12,8 @@ export const server: Record<string, string> = {
   "{n} farklı firmadan şikâyet. Yönetim > Akış şikâyetleri'nden inceleyebilirsiniz.": 'Reports from {n} different companies. Review them under Admin > Feed reports.',
   'Akış: bir gönderi şikâyetle gizlendi': 'Feed: a post was hidden after reports',
   'Yönetim > Akış şikâyetleri': 'Admin > Feed reports',
+  '{name} ekibinize katıldı': '{name} joined your team',
+  'Firmanıza çalışan olarak katıldı; ürünleri ve talepleri birlikte yönetebilirsiniz.': 'They joined your company as a teammate; you can manage products and requests together.',
   '{name} davetinizle katıldı': '{name} joined through your invitation',
   'Artık bağlantınız; ürünlerini görebilir, mesaj yazabilirsiniz.': "You're now connected; you can see their products and send messages.",
   'Bağlantı isteği gönderdi; onaylarsanız bağlantınız olur.': "They sent a connection request; accept it and you'll be connected.",

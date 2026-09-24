@@ -4,7 +4,7 @@ import { prisma } from '../db';
 import { registerSchema } from '../validation';
 import { normalizePhone } from '../phone';
 import { verifyRegistrationTicket, signSessionToken } from '../auth';
-import { applyInvitesOnRegistration } from '../invites';
+import { applyInvitesOnRegistration, resolveTeamInvite } from '../invites';
 import { isValidTaxId, normalizeTaxId } from '../taxId';
 
 export const registerRouter = Router();
@@ -29,14 +29,24 @@ registerRouter.post('/', async (req, res) => {
     return res.status(400).json({ error: 'invalid_verification_token' });
   }
 
+  const team = await resolveTeamInvite(data.inviteCode, phone);
+
   const existingPhone = await prisma.user.findUnique({ where: { phone } });
   if (existingPhone) {
+    // Ekip davetiyle gelen kayıtlı numara firmasını kendiliğinden değiştiremez.
+    if (team?.ok) return res.status(409).json({ error: 'already_registered_team_invite' });
     return res.status(409).json({ error: 'phone_already_registered' });
   }
+  if (team && !team.ok) return res.status(400).json({ error: team.error });
 
   let companyId: string | null = null;
+  let accountType = data.accountType;
 
-  if (data.accountType !== 'bireysel') {
+  if (team?.ok) {
+    // Ekip daveti: davet edenin firmasına doğrudan katılır; yeni firma açılmaz, firma bilgisi istenmez.
+    companyId = team.companyId;
+    accountType = team.accountType;
+  } else if (data.accountType !== 'bireysel') {
     if (data.companyCode) {
       const company = await prisma.company.findUnique({ where: { companyCode: data.companyCode } });
       if (!company) {
@@ -64,7 +74,7 @@ registerRouter.post('/', async (req, res) => {
   try {
     const user = await prisma.user.create({
       data: {
-        accountType: data.accountType,
+        accountType,
         position: data.position,
         firstName: data.firstName,
         lastName: data.lastName,

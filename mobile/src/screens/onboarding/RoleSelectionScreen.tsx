@@ -1,13 +1,15 @@
 // Kayıt 1. adım: hesap türü (yeni tasarım, 4. adım).
 // Veri katmanı aynı: seçim taslağa yazılır ve Position ekranına gidilir.
 // Görünüm `ui/Card` + token'lar; ham hex / ham px yok.
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { InviteBanner } from '../../components/InviteBanner';
 import { useRegistration } from '../../context/RegistrationContext';
+import { fetchInvitePreview, type InviteKindPreview } from '../../api/client';
+import { readStoredInviteCode } from '../../features/invites/storedCode';
 import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Card } from '../../ui';
@@ -38,8 +40,34 @@ export function RoleSelectionScreen({ navigation }: Props) {
   const t = useTheme();
   const { draft, updateDraft } = useRegistration();
 
+  // Ekip arkadaşı davetiyle gelindiyse (cihazda saklı kod) üstte "ekibe katıl" kartı çıkar.
+  const [team, setTeam] = useState<InviteKindPreview | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const code = await readStoredInviteCode();
+      if (!code) return;
+      try {
+        const { preview } = await fetchInvitePreview(code);
+        if (!cancelled && preview.kind === 'team' && preview.usable && preview.companyName) setTeam(preview);
+      } catch {
+        // Önizleme alınamazsa normal kayıt akışı sürer.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const joinTeam = () => {
+    if (!team?.companyName) return;
+    // Hesap türü sunucuda davet edenin firmasından alınır; burada yalnızca zorunlu alanlar dolar.
+    updateDraft({ accountType: 'uretici', position: 'Diğer', inviteCode: team.code, teamCompanyName: team.companyName, companyName: '', companyCode: '' });
+    navigation.navigate('PersonalInfo');
+  };
+
   const handleSelect = (value: AccountType) => {
-    updateDraft({ accountType: value });
+    updateDraft({ accountType: value, teamCompanyName: '' });
     navigation.navigate('Position');
   };
 
@@ -52,6 +80,23 @@ export function RoleSelectionScreen({ navigation }: Props) {
       banner={<InviteBanner />}
     >
       <View style={{ gap: t.space[3], minWidth: 0 }}>
+        {team ? (
+          <Card
+            onPress={joinTeam}
+            accessibilityLabel={tr('{company} ekibine davet edildiniz', { company: team.companyName ?? '' })}
+            style={{ minHeight: t.size.touchMin, borderColor: t.colors.brand, backgroundColor: t.colors.brandSoft }}
+          >
+            <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
+              {tr('{company} ekibine davet edildiniz', { company: team.companyName ?? '' })}
+            </Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: t.space[1] }]}>
+              {tr('{name} sizi firmasına ekip arkadaşı olarak çağırdı. Firma bilgisi gerekmez; yalnızca adınız ve telefonunuz.', { name: team.inviterName })}
+            </Text>
+            <View style={{ marginTop: t.space[3] }}>
+              <Button label={tr('Ekibe katıl')} onPress={joinTeam} />
+            </View>
+          </Card>
+        ) : null}
         {options().map((option) => {
           const selected = draft.accountType === option.value;
           return (

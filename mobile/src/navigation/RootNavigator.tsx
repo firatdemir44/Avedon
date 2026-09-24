@@ -81,6 +81,7 @@ import { UiGalleryScreen } from '../screens/dev/UiGalleryScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
 import { InvitesScreen } from '../screens/invites/InvitesScreen';
+import { takeTeamLanding } from '../features/invites/teamLanding';
 import { ChatScreen, ChatHeaderTitle } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
@@ -155,6 +156,17 @@ export function RootNavigator() {
     const unsubscribe = subscribeToPushOpen(goToTarget);
     const initial = readPushTargetFromUrl();
     if (initial) goToTarget(initial);
+    // Ekip davetiyle yeni kayıt: ana sekmeler kurulunca firmanın Kişiler sekmesi açılır.
+    const teamCompanyId = takeTeamLanding();
+    if (teamCompanyId) {
+      setTimeout(() => {
+        try {
+          if (navigationRef.isReady()) navigationRef.navigate('CompanyProfile', { companyId: teamCompanyId, initialTab: 'people' });
+        } catch {
+          // Sessiz: ana sayfada kalır.
+        }
+      }, 0);
+    }
     return unsubscribe;
   }, [user, goToTarget]);
 

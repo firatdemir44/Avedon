@@ -4,6 +4,7 @@ import { ApiError, fetchInviteByCode, type InvitePreview } from '../api/client';
 import { clearStoredInviteCode, readStoredInviteCode } from '../features/invites/storedCode';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { tr } from '../i18n';
 
 // Davet bağlantısıyla gelen kişiye ince karşılama şeridi (Faz 2, Adım 4).
 // Oturumsuz karşılama ve giriş ekranlarının üstünde durur. Kod yoksa ya da
@@ -50,7 +51,9 @@ export function InviteBanner() {
       <Icon name="person-add-outline" size={t.size.iconSm} color="brand" />
       {/* Uzun firma adlarında 375 px'te taşmasın. */}
       <Text style={[t.type.body14, { color: t.colors.brand, flex: 1, minWidth: 0 }]}>
-        {who} sizi Takyon'a davet etti.
+        {invite.relation === 'ekip' && invite.inviterCompany
+          ? tr('{company} ekibine davet edildiniz', { company: invite.inviterCompany })
+          : tr("{who} sizi Takyon'a davet etti.", { who })}
       </Text>
     </View>
   );
