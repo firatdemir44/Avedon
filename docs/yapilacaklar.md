@@ -17,6 +17,8 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 11. **Telefon kontrolleri:** sesli soru göstergesi, makine parkuru fotoğraftan aktarma (Melide listesi), asistandan asistana soru, tasarım düzeltmeleri, akış şikâyet/gizleme, Dünyayı Keşfet.
 11. ~~Dünyayı Keşfet B telefonda kontrol~~ **GEÇTİ 2026-09-23 (Fırat: "sonuçlar harika").** Eski not: ülke ayrıntısı → "Aday alıcıları gör" (Fransa: sicil + Wikidata; diğer ülkeler yalnız Wikidata markaları), ilk açılışta 1-2 dk "getiriliyor" yoklaması, takibe alma, Takip listem. BK sicili için `COMPANIES_HOUSE_KEY` (ücretsiz anahtar) Render ortamına girilince İngiltere de sicil kapsamına girer; girilince `/api/health` → `buyers.companiesHouseKeySet: true` olmalı.
 
+- 2026-09-24: **Cihaz uyumluluğu telefonda GEÇTİ (Fırat):** iOS 15 Safari, WhatsApp/Instagram iç tarayıcıları, büyük yazı boyutu sorunsuz. Tarayıcı otomatik çevirisi kapatıldı (Ad→Reklam hatası), vergi no kayıtta atlanabilir, İngilizce sürüm yayında.
+
 ## ASİSTANIN SIRADAKİ İŞLERİ (Fırat onayladı)
 
 - **Sektör gündemi: YAPILDI, sonra akıştan KALDIRILDI (2026-09-24, Fırat: gereksiz yoğunluk).** Haber altyapısı (backend/src/news, 2 saatte bir çekim), SectorNews ekranı ve asistan aracı duruyor; akış kartı kapalı. Yeniden açmak için FeedScreen içine SectorNewsCard geri eklenir. Eski plan: Türkiye ve dünya tekstil haber sitelerinin açık RSS/haber akışlarından günlük başlıklar; akışta günde bir "Sektör gündemi" kartı; firma türüne göre süzme (iplikçi: pamuk/polyester fiyatları; konfeksiyon: fuar/moda). Yalnızca başlık + kısa tanıtım + bağlantı (tam metin kopyalanmaz, telif). Kaynak listesi ve RSS kullanım koşulları uygulamadan önce doğrulanacak. Bağlantı paylaşma özelliğinin (önizleme kartı) üzerine kurulur.
