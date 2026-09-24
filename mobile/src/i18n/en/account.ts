@@ -762,4 +762,18 @@ export const account: Record<string, string> = {
   "Aksesuar": "Accessories",
   "Baskı": "Printing",
   "Toptancı": "Wholesaler",
+  // Vergi numarası kayıtta isteğe bağlı
+  "Firma adı yeterli. Vergi numarası doğrulanmış rozet için gerekir; şimdi ya da sonra ekleyebilirsiniz.": "Company name is enough. The tax number is needed for the verified badge; add it now or later.",
+  "Elinizde yoksa boş bırakabilirsiniz; daha sonra Firma bilgileri’nden eklersiniz. Doğrulanmış rozeti için gerekir.": "If you don't have it at hand, leave it blank; you can add it later in Company details. It is needed for the verified badge.",
+  "Vergi numarasını sonra ekleyeceğim": "I'll add the tax number later",
+  "Vergi numarası 10 haneli (VKN) ya da şahıs firmasında 11 haneli (TCKN) olmalı.": "The tax number must be 10 digits (tax ID) or 11 digits (national ID) for sole proprietors.",
+  "10 haneli VKN ya da 11 haneli TCKN": "10-digit tax ID or 11-digit national ID",
+  "Profilde görünmez, yalnızca doğrulama için.": "Not shown on your profile; used only for verification.",
+  "Vergi numarası değişiyor": "Tax number is changing",
+  "Doğrulanmış bir firmanın vergi numarası değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.": "When a verified company changes its tax number, verification goes back to review and the badge is removed until the review is done.",
+  "Vergi numarasını ekle": "Add tax number",
+  "Doğrulanmış rozeti için gerekir. Profilde görünmez.": "Needed for the verified badge. Not shown on your profile.",
+  "Önce vergi numaranızı ekleyin": "Add your tax number first",
+  "Doğrulama vergi numarasıyla yapılır. Kayıtta boş bıraktıysanız Firma bilgileri’nden ekleyip buraya dönün.": "Verification is based on your tax number. If you left it blank at sign-up, add it in Company details and come back here.",
+  "Doğrulama için önce vergi numaranızı ekleyin.": "Add your tax number before applying for verification.",
 };

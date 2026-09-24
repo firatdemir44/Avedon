@@ -160,6 +160,8 @@ export function fetchCompanyPhoto(companyId: string, kind: CompanyPhotoKind, pos
 
 export interface UpdateCompanyInput {
   name?: string;
+  // VKN 10 / TCKN 11 hane; yalnızca firmanın kendi çalışanları görür.
+  taxId?: string;
   about?: string;
   contactEmail?: string;
   contactPhone?: string;
@@ -2765,6 +2767,8 @@ export interface VerificationState {
   verification: VerificationStatus;
   level: '' | 'belge' | 'ziyaret';
   verifiedAt: string | null;
+  // Vergi numarası kayıtta atlanabilir; yoksa başvuru engellenir.
+  hasTaxId: boolean;
   // Firmanın EN SON başvurusu (hiç başvurmadıysa null).
   request: VerificationRequest | null;
 }

@@ -5,6 +5,7 @@ import { registerSchema } from '../validation';
 import { normalizePhone } from '../phone';
 import { verifyRegistrationTicket, signSessionToken } from '../auth';
 import { applyInvitesOnRegistration } from '../invites';
+import { isValidTaxId, normalizeTaxId } from '../taxId';
 
 export const registerRouter = Router();
 
@@ -42,11 +43,15 @@ registerRouter.post('/', async (req, res) => {
         return res.status(404).json({ error: 'company_code_not_found' });
       }
       companyId = company.id;
-    } else if (data.companyName && data.taxId) {
+    } else if (data.companyName && data.companyName.trim()) {
+      // Vergi numarası kayıtta isteğe bağlı: çoğu kişinin elinde olmuyor;
+      // sonradan Firma bilgileri'nden eklenir (doğrulama başvurusu için gerekir).
+      const taxId = normalizeTaxId(data.taxId ?? '');
+      if (taxId && !isValidTaxId(taxId)) return res.status(400).json({ error: 'invalid_tax_id' });
       const company = await prisma.company.create({
         data: {
-          name: data.companyName,
-          taxId: data.taxId,
+          name: data.companyName.trim(),
+          taxId,
           companyCode: generateCompanyCode(),
         },
       });

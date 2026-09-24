@@ -80,7 +80,8 @@ export interface Company {
   name: string;
   // Firma rehberi: dernek listesinden içe aktarılan firmalar false (sahipsiz).
   claimed?: boolean;
-  taxId: string;
+  // Yalnızca firmanın kendi çalışanlarına döner; kayıtta atlanmışsa ''.
+  taxId?: string;
   about: string;
   contactEmail: string;
   contactPhone: string;

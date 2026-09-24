@@ -27,6 +27,7 @@ import { haptics } from '../../features/haptics';
 import { formatMonthYear } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import { tr } from '../../i18n';
+import { useSession } from '../../context/SessionContext';
 import {
   Badge,
   Button,
@@ -49,8 +50,9 @@ function levelText(level: string): string {
   return tr('Doğrulandı');
 }
 
-export function VerificationScreen(_props: Props) {
+export function VerificationScreen({ navigation }: Props) {
   const t = useTheme();
+  const { user } = useSession();
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(fetchVerificationState);
   const [doc, setDoc] = useState<DocImage>({ kind: 'none' });
   const [note, setNote] = useState('');
@@ -79,7 +81,9 @@ export function VerificationScreen(_props: Props) {
           ? tr('Zaten inceleme bekleyen bir başvurunuz var.')
           : code === 'already_verified'
             ? tr('Firmanız zaten doğrulanmış.')
-            : code === 'no_company'
+            : code === 'tax_id_required'
+              ? tr('Doğrulama için önce vergi numaranızı ekleyin.')
+              : code === 'no_company'
               ? tr('Önce bir firmaya bağlı olmanız gerekiyor.')
               : friendlyMessage(err, tr('Başvuru gönderilemedi'))
       );
@@ -180,7 +184,28 @@ export function VerificationScreen(_props: Props) {
           </View>
         ) : null}
 
-        {!verified && !pending ? (
+        {!verified && !pending && !state.hasTaxId ? (
+          <View style={{ gap: t.space[3], minWidth: 0 }}>
+            <SectionTitle title={tr('Doğrulama iste')} />
+            <Card>
+              <View style={{ gap: t.space[4], minWidth: 0 }}>
+                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Önce vergi numaranızı ekleyin')}</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+                  {tr('Doğrulama vergi numarasıyla yapılır. Kayıtta boş bıraktıysanız Firma bilgileri’nden ekleyip buraya dönün.')}
+                </Text>
+                {user?.companyId ? (
+                  <Button
+                    size="lg"
+                    label={tr('Vergi numarasını ekle')}
+                    onPress={() => navigation.navigate('EditCompany', { companyId: user.companyId as string })}
+                  />
+                ) : null}
+              </View>
+            </Card>
+          </View>
+        ) : null}
+
+        {!verified && !pending && state.hasTaxId ? (
           <View style={{ gap: t.space[3], minWidth: 0 }}>
             <SectionTitle title={tr('Doğrulama iste')} />
             <Card>

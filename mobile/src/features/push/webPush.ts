@@ -132,6 +132,20 @@ export function ensureManifestLink(): void {
     addMeta('apple-mobile-web-app-capable', 'yes');
     addMeta('apple-mobile-web-app-title', 'Takyon');
     addLink('apple-touch-icon', '/apple-touch-icon.png');
+    addMeta('mobile-web-app-capable', 'yes');
+    // Çentikli ekranlarda içerik güvenli alan (env(safe-area-inset-*)) hesabıyla yerleşsin;
+    // yakınlaştırma (erişilebilirlik) kapatılmaz.
+    addMeta('apple-mobile-web-app-status-bar-style', 'default');
+    const viewport = doc.head.querySelector('meta[name="viewport"]');
+    const wanted = 'width=device-width, initial-scale=1, viewport-fit=cover';
+    if (viewport) {
+      const cur = viewport.getAttribute('content') || '';
+      if (!cur.includes('viewport-fit=cover') || /user-scalable\s*=\s*(no|0)|maximum-scale\s*=\s*1(\D|$)/i.test(cur)) {
+        viewport.setAttribute('content', wanted);
+      }
+    } else {
+      addMeta('viewport', wanted);
+    }
   } catch {
     // Sessiz: manifest eklenememesi uygulamayı etkilemez.
   }

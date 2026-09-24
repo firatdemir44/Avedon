@@ -80,6 +80,10 @@ export const server: Record<string, string> = {
   'Bu yorum kabul edilmedi. Yorumlar tekstille ve paylaşımın konusuyla ilgili olmalı; siyasi, dini ya da kırıcı içerik yayınlanmaz.':
     'This comment was not accepted. Comments must relate to textiles and the topic of the post; political, religious or offensive content is not published.',
 
+  // --- Firma doğrulama ---
+  'Doğrulama başvurusu için önce vergi numaranızı Firma bilgileri’nden ekleyin.':
+    'Add your tax number in Company details before applying for verification.',
+
   // --- Sesli soru ---
   'Ses kaydı çok kısa': 'The recording is too short',
   'Sesli soru şu an kullanılamıyor': 'Voice questions are not available right now',

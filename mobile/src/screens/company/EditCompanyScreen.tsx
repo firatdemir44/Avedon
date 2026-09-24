@@ -15,7 +15,7 @@ import { haptics } from '../../features/haptics';
 import { companyLogoKey, loadCompanyLogo, setCachedCompanyLogo } from '../../features/companies/companyLogoCache';
 import { useCompanyGalleries } from '../../features/companies/useCompanyGalleries';
 import { MAX_COMPANY_PHOTOS } from '../../features/companies/limits';
-import { MIN_COMPANY_NAME_LENGTH, foundedYearError, foundedYearPayload } from '../../features/companies/validation';
+import { MIN_COMPANY_NAME_LENGTH, foundedYearError, foundedYearPayload, normalizeTaxId, taxIdError } from '../../features/companies/validation';
 import { COMPANY_TYPES } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
 import { tr } from '../../i18n';
@@ -49,6 +49,9 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   const [originalName, setOriginalName] = useState('');
   const [verification, setVerification] = useState<VerificationStatus>('dogrulanmamis');
   const [name, setName] = useState('');
+  // Kayıtta atlanabilen vergi numarası burada sonradan eklenir.
+  const [originalTaxId, setOriginalTaxId] = useState('');
+  const [taxId, setTaxId] = useState('');
   const [about, setAbout] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -80,6 +83,8 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         setOriginalName(company.name);
         setVerification(company.verification);
         setName(company.name);
+        setOriginalTaxId(company.taxId ?? '');
+        setTaxId(company.taxId ?? '');
         setAbout(company.about ?? '');
         setContactEmail(company.contactEmail ?? '');
         setContactPhone(company.contactPhone ?? '');
@@ -125,6 +130,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     try {
       const { company } = await updateCompany(companyId, {
         name: name.trim(),
+        ...(taxIdChanged ? { taxId: normalizeTaxId(taxId) } : {}),
         about: about.trim(),
         contactEmail: contactEmail.trim(),
         contactPhone: contactPhone.trim(),
@@ -159,10 +165,13 @@ export function EditCompanyScreen({ route, navigation }: Props) {
   };
 
   const yearError = foundedYearError(foundedYear);
+  // Boş bırakılan alan gönderilmez (var olan numara silinmez); doluysa ve değiştiyse gönderilir.
+  const taxIdChanged = normalizeTaxId(taxId).length > 0 && normalizeTaxId(taxId) !== originalTaxId;
+  const taxIdProblem = taxIdError(taxId);
 
   const handleSave = async () => {
-    if (yearError) {
-      setError(yearError);
+    if (yearError || taxIdProblem) {
+      setError(yearError ?? taxIdProblem);
       haptics.error();
       return;
     }
@@ -170,12 +179,12 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     // Onaylı rozetin kaybolması kullanıcı açısından geri alınamaz bir sonuç;
     // kaydetmeden önce haber veriyoruz. (Alert.alert web'de hiçbir şey
     // göstermediği için bu uyarı web'de hiç çıkmıyor ve kayıt hiç yapılmıyordu.)
-    if (nameChanged && verification === 'dogrulanmis') {
+    if ((nameChanged || (taxIdChanged && originalTaxId !== '')) && verification === 'dogrulanmis') {
       const confirmed = await confirmAction({
-        title: tr('Firma adı değişiyor'),
-        message: tr(
-          'Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.'
-        ),
+        title: nameChanged ? tr('Firma adı değişiyor') : tr('Vergi numarası değişiyor'),
+        message: nameChanged
+          ? tr('Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.')
+          : tr('Doğrulanmış bir firmanın vergi numarası değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.'),
         confirmLabel: tr('Devam et'),
         destructive: true,
       });
@@ -251,6 +260,17 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               autoCapitalize="words"
               autoComplete="organization"
               textContentType="organizationName"
+            />
+            <Input
+              label={tr('Vergi numarası')}
+              value={taxId}
+              onChangeText={setTaxId}
+              placeholder={tr('10 haneli VKN ya da 11 haneli TCKN')}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              maxLength={14}
+              helper={tr('Profilde görünmez, yalnızca doğrulama için.')}
+              error={taxIdProblem ?? undefined}
             />
             <Input
               label={tr('Hakkında')}

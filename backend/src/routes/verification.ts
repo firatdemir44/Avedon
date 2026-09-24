@@ -4,6 +4,7 @@ import { prisma } from '../db';
 import { requireAdminAuth, requireAuth } from '../middleware/auth';
 import { notify } from '../notifications';
 import { makeHandle } from './handle';
+import { t } from '../i18n';
 
 // Firma doğrulama başvurusu (Fırat 2026-09-22). Firma tarafı: /api/verification
 // (başvur, durumunu gör). Yönetici tarafı: /api/admin/verification-requests (liste, belge, karar).
@@ -35,10 +36,10 @@ verificationRouter.get(
     const companyId = req.user!.companyId;
     if (!companyId) return res.status(400).json({ error: 'no_company' });
     const [company, latest] = await Promise.all([
-      prisma.company.findUnique({ where: { id: companyId }, select: { verification: true, verificationLevel: true, verifiedAt: true } }),
+      prisma.company.findUnique({ where: { id: companyId }, select: { verification: true, verificationLevel: true, verifiedAt: true, taxId: true } }),
       prisma.verificationRequest.findFirst({ where: { companyId }, orderBy: { createdAt: 'desc' }, select: REQUEST_SELECT }),
     ]);
-    res.json({ verification: company?.verification ?? 'dogrulanmamis', level: company?.verificationLevel ?? '', verifiedAt: company?.verifiedAt ?? null, request: latest });
+    res.json({ verification: company?.verification ?? 'dogrulanmamis', level: company?.verificationLevel ?? '', verifiedAt: company?.verifiedAt ?? null, hasTaxId: !!company?.taxId.trim(), request: latest });
   })
 );
 
@@ -49,8 +50,10 @@ verificationRouter.post(
     if (!companyId) return res.status(400).json({ error: 'no_company' });
     const parsed = applySchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
-    const company = await prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { name: true, verification: true } });
+    const company = await prisma.company.findUniqueOrThrow({ where: { id: companyId }, select: { name: true, taxId: true, verification: true } });
     if (company.verification === 'dogrulanmis') return res.status(409).json({ error: 'already_verified' });
+    // Kayıtta atlanabilen vergi numarası doğrulamanın dayanağı: önce eklenmeli.
+    if (!company.taxId.trim()) return res.status(400).json({ error: 'tax_id_required', message: t(req.lang, 'Doğrulama başvurusu için önce vergi numaranızı Firma bilgileri’nden ekleyin.') });
     const open = await prisma.verificationRequest.findFirst({ where: { companyId, status: 'pending' }, select: { id: true } });
     if (open) return res.status(409).json({ error: 'request_pending' });
 

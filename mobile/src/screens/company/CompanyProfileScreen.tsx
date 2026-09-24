@@ -530,6 +530,21 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       })
     : null;
 
+  // Kayıtta atlanan vergi numarası: kurulum adımı olarak ayrı bir satır
+  // (sihirbazda değil Firma bilgileri'nde eklenir; doğrulama başvurusu için gerekir).
+  // taxId yalnızca kendi firmasına döndüğü için undefined = bilinmiyor, '' = eksik.
+  const taxIdStep =
+    isOwnCompany && company.taxId === '' ? (
+      <Card>
+        <ListRow
+          title={tr('Vergi numarasını ekle')}
+          subtitle={tr('Doğrulanmış rozeti için gerekir. Profilde görünmez.')}
+          divider={false}
+          onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
+        />
+      </Card>
+    ) : null;
+
   const setupBanner =
     setup && setup.percent < 100 ? (
       <Card>
@@ -1428,6 +1443,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         </Card>
       ) : null}
       {setupBanner}
+      {taxIdStep}
       {identity}
       {actionRow}
       {unclaimed ? null : statsCard}

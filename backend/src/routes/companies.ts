@@ -5,6 +5,7 @@ import { makeHandle } from './handle';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { PRODUCT_SELECT, STOCK_FIRST_ORDER, toProductRow } from '../products';
 import { isValidCompanyType } from '../catalog';
+import { isValidTaxId, normalizeTaxId } from '../taxId';
 import {
   COMPANY_PHOTO_KINDS,
   CompanyPhotoError,
@@ -96,10 +97,13 @@ companiesRouter.get(
     if (!company) {
       return res.status(404).json({ error: 'company_not_found' });
     }
-    const { photos, ...rest } = company;
+    const { photos, taxId, ...rest } = company;
+    // Vergi numarası profilde görünmez; yalnızca firmanın kendi çalışanlarına döner.
+    const own = !!req.user?.companyId && req.user.companyId === company.id;
     res.json({
       company: {
         ...rest,
+        ...(own ? { taxId } : {}),
         products: company.products.map((p) => toProductRow(p, req.user?.companyId ?? null)),
         ...photoCounts(photos),
       },
@@ -107,11 +111,14 @@ companiesRouter.get(
   })
 );
 
-// Vergi numarası ve şirket kodu bilinçli olarak düzenlenemez: ilki doğrulamanın
-// dayanağı, ikincisi çalışanların firmaya katılma anahtarı.
+// Şirket kodu bilinçli olarak düzenlenemez (çalışanların firmaya katılma anahtarı).
+// Vergi numarası kayıtta atlanabildiği için sonradan eklenir/düzeltilir;
+// doğrulanmış firmada değişirse firma yeniden incelemeye düşer.
 const updateSchema = z
   .object({
     name: z.string().trim().min(2).max(120).optional(),
+    // VKN 10, TCKN 11 hane; boşluk/tire ayıklanır.
+    taxId: z.string().max(40).transform(normalizeTaxId).refine(isValidTaxId, 'invalid_tax_id').optional(),
     about: z.string().trim().max(2000).optional(),
     contactEmail: z.union([z.string().trim().email().max(200), z.literal('')]).optional(),
     contactPhone: z.string().trim().max(30).optional(),
@@ -152,7 +159,7 @@ companiesRouter.patch(
 
     const existing = await prisma.company.findUnique({
       where: { id: req.params.id },
-      select: { id: true, name: true, verification: true },
+      select: { id: true, name: true, taxId: true, verification: true },
     });
     if (!existing) {
       return res.status(404).json({ error: 'company_not_found' });
@@ -160,6 +167,8 @@ companiesRouter.patch(
 
     const { logo, officePhotos, certificatePhotos, ...fields } = parsed.data;
     const nameChanged = fields.name !== undefined && fields.name !== existing.name;
+    const taxIdChanged = fields.taxId !== undefined && fields.taxId !== existing.taxId;
+    const verificationReset = (nameChanged || taxIdChanged) && existing.verification === 'dogrulanmis';
 
     let company;
     try {
@@ -181,9 +190,9 @@ companiesRouter.patch(
           data: {
             ...fields,
             ...(logo === null ? { logoUpdatedAt: null } : logo !== undefined ? { logoUpdatedAt: new Date() } : {}),
-            // Doğrulanmış bir firma adını değiştirirse yeniden incelemeye düşer;
-            // yoksa onaylı rozet başka bir adla güven kazandırmaya devam ederdi.
-            ...(nameChanged && existing.verification === 'dogrulanmis' ? { verification: 'inceleniyor' } : {}),
+            // Doğrulanmış bir firma adını ya da vergi numarasını değiştirirse yeniden
+            // incelemeye düşer; yoksa onaylı rozet başka bir kimlikle güven kazandırırdı.
+            ...(verificationReset ? { verification: 'inceleniyor' } : {}),
           },
         });
       });
@@ -194,6 +203,6 @@ companiesRouter.patch(
       throw err;
     }
 
-    res.json({ company, verificationReset: nameChanged && existing.verification === 'dogrulanmis' });
+    res.json({ company, verificationReset });
   })
 );
