@@ -5,6 +5,7 @@ import { companyCountOf, type RfqSelectionItem } from '../../features/quotes/rfq
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Card, Icon } from '../../ui';
+import { tr } from '../../i18n';
 
 // Faz 3, Adım 2: asistanın teklif kartları. Hafıza / izleme kartlarının görsel
 // dili (Card: surface1, 1px line, radius.lg) ama içinde seçim var.
@@ -50,7 +51,7 @@ export function RfqCandidatesCard({
   return (
     <Card style={{ gap: t.space[2] }}>
       <Text style={[t.type.title18, { color: t.colors.ink }]} accessibilityRole="header">
-        Teklif toplama adayları
+        {tr('Teklif toplama adayları')}
       </Text>
 
       {view.candidates.map((candidate, index) => {
@@ -112,7 +113,7 @@ export function RfqCandidatesCard({
               onPress={() => onOpenProduct(candidate.id)}
               hitSlop={t.space[2]}
               accessibilityRole="button"
-              accessibilityLabel={`${candidate.code} ürününü aç`}
+              accessibilityLabel={tr('{code} ürününü aç', { code: candidate.code })}
               style={({ pressed }) => ({
                 minHeight: t.size.touchMin,
                 justifyContent: 'center',
@@ -120,7 +121,7 @@ export function RfqCandidatesCard({
                 opacity: pressed ? 0.6 : 1,
               })}
             >
-              <Text style={[t.type.label14, { color: t.colors.brand }]}>Ürünü aç</Text>
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Ürünü aç')}</Text>
             </Pressable>
           </View>
         );
@@ -128,14 +129,14 @@ export function RfqCandidatesCard({
 
       <Button
         kind="secondary"
-        label={`Seçilenlerden teklif iste (${companyCount} firma)`}
+        label={tr('Seçilenlerden teklif iste ({c} firma)', { c: companyCount })}
         disabled={!canRequest}
         fullWidth
         onPress={() => onRequest(items, view.request)}
       />
-      {!canRequest ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>En az 2 firma seçin.</Text> : null}
+      {!canRequest ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('En az 2 firma seçin.')}</Text> : null}
       <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-        İstek siz onaylamadan gitmez. Satıcılar başka kaç firmaya sorduğunuzu görmez.
+        {tr('İstek siz onaylamadan gitmez. Satıcılar başka kaç firmaya sorduğunuzu görmez.')}
       </Text>
     </Card>
   );
@@ -150,12 +151,12 @@ export function RfqSummaryCard({ view, onOpen }: { view: RfqSummaryView; onOpen:
         {view.title}
       </Text>
       <Text style={[t.type.body16, { color: t.colors.ink }]}>
-        {view.requestCount} firmaya soruldu · {view.quotedCount} teklif geldi
+        {tr('{r} firmaya soruldu · {q} teklif geldi', { r: view.requestCount, q: view.quotedCount })}
       </Text>
       <Pressable
         onPress={() => onOpen(view.rfqId)}
         accessibilityRole="button"
-        accessibilityLabel={`${view.title} karşılaştırmasını aç`}
+        accessibilityLabel={tr('{title} karşılaştırmasını aç', { title: view.title })}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -166,7 +167,7 @@ export function RfqSummaryCard({ view, onOpen }: { view: RfqSummaryView; onOpen:
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Text style={[t.type.label14, { color: t.colors.brand }]}>Karşılaştırmayı aç</Text>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Karşılaştırmayı aç')}</Text>
         <Icon name="chevron" size={t.size.iconSm} color="brand" />
       </Pressable>
     </Card>

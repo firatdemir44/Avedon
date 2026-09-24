@@ -30,6 +30,7 @@ import {
   SkeletonRow,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'IncomingSampleRequests'>;
 
@@ -70,13 +71,13 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
+      setActionError(friendlyMessage(err, tr('Durum güncellenemedi')));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const bar = <AppBar title="Gelen talepler" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Gelen talepler')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (!hasCompany) {
     return (
@@ -85,8 +86,8 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Bir firmaya bağlı değilsin"
-            description="Gelen numune talepleri firma hesaplarında görünür."
+            title={tr('Bir firmaya bağlı değilsin')}
+            description={tr('Gelen numune talepleri firma hesaplarında görünür.')}
           />
         </Screen>
       </View>
@@ -113,9 +114,9 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Talepler alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
-            actionLabel="Yeniden dene"
+            title={tr('Talepler alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip yeniden dene.'))}
+            actionLabel={tr('Yeniden dene')}
             onAction={reload}
           />
         </Screen>
@@ -123,7 +124,7 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
     );
   }
 
-  const banner = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
+  const banner = actionError ?? (error ? friendlyMessage(error, tr('Talepler alınamadı')) : null);
 
   const header = banner ? (
     <View style={{ paddingBottom: t.space[3] }}>
@@ -157,8 +158,8 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="sample"
-              title="Henüz gelen talep yok"
-              description="Ürünlerine numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsin."
+              title={tr('Henüz gelen talep yok')}
+              description={tr('Ürünlerine numune talebi geldiğinde burada görünür ve adımlarını buradan ilerletirsin.')}
             />
           }
           renderItem={({ item, index }) => {
@@ -188,7 +189,7 @@ export function IncomingSampleRequestsScreen({ navigation }: Props) {
                       kind="secondary"
                       fullWidth
                       loading={updatingId === item.id}
-                      label={`${item.nextStep.label} olarak işaretle`}
+                      label={tr('{step} olarak işaretle', { step: item.nextStep.label })}
                       onPress={() => handleAdvance(item)}
                     />
                   </View>

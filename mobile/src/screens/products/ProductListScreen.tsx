@@ -1,5 +1,5 @@
 // Katalog / arama ekranı — yeni tasarım sistemi (DESIGN.md, artboard 2).
-// Düzen: AppBar "Katalog" (sağda fotoğrafla ara + teklif için seç) · 48px arama kutusu ·
+// Düzen: AppBar {tr('Katalog')} (sağda fotoğrafla ara + teklif için seç) · 48px arama kutusu ·
 // tek satır çip (süzgeç · kapsam · çeşit) · "N sonuç" + sıralama · ProductCard listesi.
 // Veri/işlev katmanı (api çağrıları, süzgeç, izleme, teklif seçimi, iplik
 // dizini, sayfa parametreleri) eski sürümden aynen korunur; yalnızca görünüm
@@ -36,6 +36,7 @@ import { useRfqSelection, type RfqSelectionItem } from '../../features/quotes/rf
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { YarnDirectory } from '../yarns/YarnDirectoryScreen';
 import type { Company, Product } from '../../types';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import {
   useBottomPadding,
@@ -56,14 +57,14 @@ import {
 
 type Props = MainTabScreenProps<'ProductList'>;
 
-// Kullanıcı isteği (2026-09-15): ürünler ya tek akışta ("Tümü") ya da kumaş
+// Kullanıcı isteği (2026-09-15): ürünler ya tek akışta ({tr('Tümü')}) ya da kumaş
 // çeşidine göre ("Çeşitler") görülebilsin; seçim hatırlanır. Yeni tasarımda
 // klasör listesi yerine çeşit ÇİPLERİ var, mantık aynı.
 type ViewMode = 'all' | 'groups';
 const VIEW_MODE_KEY = 'avedon.productListViewMode';
 
-// Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. "Kumaş" mevcut katalog,
-// "İplik" iplik dizini. Seçim cihazda hatırlanır.
+// Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. {tr('Kumaş')} mevcut katalog,
+// {tr('İplik')} iplik dizini. Seçim cihazda hatırlanır.
 type Domain = 'kumas' | 'iplik';
 const DOMAIN_KEY = 'avedon.productListDomain';
 
@@ -203,7 +204,7 @@ export function ProductListScreen({ navigation, route }: Props) {
     AsyncStorage.setItem(VIEW_MODE_KEY, mode).catch(() => {});
   };
 
-  // Çeşit çipi: "Tümü" tek akış, bir çeşit seçilince o çeşidin klasörü açılır.
+  // Çeşit çipi: {tr('Tümü')} tek akış, bir çeşit seçilince o çeşidin klasörü açılır.
   const chooseType = (next: ProductType | null) => {
     haptics.selection();
     setOpenType(next);
@@ -295,7 +296,7 @@ export function ProductListScreen({ navigation, route }: Props) {
       .filter((g) => g.count > 0);
     const unspecified = inType.filter((p) => !p.subtype || !SUBTYPES[openType].some((s) => s.key === p.subtype)).length;
     return unspecified > 0 && known.length > 0
-      ? [...known, { key: '' as string | null, label: 'Belirtilmemiş', count: unspecified }]
+      ? [...known, { key: '' as string | null, label: tr('Belirtilmemiş'), count: unspecified }]
       : known;
   }, [products, openType]);
 
@@ -339,7 +340,7 @@ export function ProductListScreen({ navigation, route }: Props) {
     if (watchSaving) return;
     const watchQuery = watchQueryFromFilters(query, filters);
     if (!watchQuery) {
-      setWatchNote({ text: 'Bu süzgeç izlemeye çevrilemiyor. Çeşit, lif, gramaj ya da sertifika seçin.', tone: 'error' });
+      setWatchNote({ text: tr('Bu süzgeç izlemeye çevrilemiyor. Çeşit, lif, gramaj ya da sertifika seçin.'), tone: 'error' });
       return;
     }
     setWatchSaving(true);
@@ -348,7 +349,7 @@ export function ProductListScreen({ navigation, route }: Props) {
       haptics.success();
       const dropped = unsupportedWatchFilterLabels(filters);
       setWatchNote({
-        text: dropped.length ? `İzlemeye alındı (${dropped.join(', ')} izlemeye girmez).` : 'İzlemeye alındı.',
+        text: dropped.length ? tr('İzlemeye alındı ({list} izlemeye girmez).', { list: dropped.join(', ') }) : tr('İzlemeye alındı.'),
         tone: 'ok',
       });
     } catch (err) {
@@ -356,8 +357,8 @@ export function ProductListScreen({ navigation, route }: Props) {
       setWatchNote({
         text:
           err instanceof ApiError && err.code === 'too_many_rules'
-            ? 'İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.'
-            : 'İzleme kurulamadı, tekrar deneyin.',
+            ? tr('İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.')
+            : tr('İzleme kurulamadı, tekrar deneyin.'),
         tone: 'error',
       });
     } finally {
@@ -404,9 +405,9 @@ export function ProductListScreen({ navigation, route }: Props) {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Kod, içerik, çeşit, kullanım ara"
+          placeholder={tr('Kod, içerik, çeşit, kullanım ara')}
           placeholderTextColor={t.colors.ink3}
-          accessibilityLabel="Ürün ve firma ara"
+          accessibilityLabel={tr('Ürün ve firma ara')}
           returnKeyType="search"
           style={[t.type.body16, { flex: 1, minWidth: 0, color: t.colors.ink, paddingVertical: 0 }]}
         />
@@ -414,7 +415,7 @@ export function ProductListScreen({ navigation, route }: Props) {
           <Pressable
             onPress={() => setQuery('')}
             accessibilityRole="button"
-            accessibilityLabel="Aramayı temizle"
+            accessibilityLabel={tr('Aramayı temizle')}
             hitSlop={t.space[2]}
             style={{ width: t.space[6], height: t.space[6], alignItems: 'center', justifyContent: 'center' }}
           >
@@ -426,7 +427,7 @@ export function ProductListScreen({ navigation, route }: Props) {
           <Pressable
             onPress={() => navigation.navigate('SimilarSearch')}
             accessibilityRole="button"
-            accessibilityLabel="Fotoğrafla benzer kumaş ara"
+            accessibilityLabel={tr('Fotoğrafla benzer kumaş ara')}
             hitSlop={t.space[2]}
             style={({ pressed }) => ({ width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
           >
@@ -444,15 +445,15 @@ export function ProductListScreen({ navigation, route }: Props) {
   const scopeChips = (
     <ChipRow style={gutter}>
       <Chip
-        label={activeFilterCount ? `Süzgeç (${activeFilterCount})` : 'Süzgeç'}
+        label={activeFilterCount ? tr('Süzgeç ({n})', { n: activeFilterCount }) : tr('Süzgeç')}
         icon="filter"
         selected={activeFilterCount > 0}
         onPress={() => setFilterSheetOpen(true)}
       />
-      <Chip label="Kumaş" icon="fabric" selected={domain === 'kumas'} onPress={() => changeDomain('kumas')} />
-      <Chip label="İplik" icon="yarn" selected={domain === 'iplik'} onPress={() => changeDomain('iplik')} />
+      <Chip label={tr('Kumaş')} icon="fabric" selected={domain === 'kumas'} onPress={() => changeDomain('kumas')} />
+      <Chip label={tr('İplik')} icon="yarn" selected={domain === 'iplik'} onPress={() => changeDomain('iplik')} />
       {domain === 'kumas' && typeGroups.length > 0 ? (
-        <Chip label="Tümü" selected={!inOpenFolder} onPress={() => chooseType(null)} />
+        <Chip label={tr('Tümü')} selected={!inOpenFolder} onPress={() => chooseType(null)} />
       ) : null}
       {domain === 'kumas'
         ? typeGroups.map((g) => (
@@ -468,10 +469,10 @@ export function ProductListScreen({ navigation, route }: Props) {
   );
 
   const filterSheet = (
-    <BottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title="Süzgeçler">
+    <BottomSheet visible={filterSheetOpen} onClose={() => setFilterSheetOpen(false)} title={tr('Süzgeçler')}>
       {domain === 'kumas' && usageGroups.length > 0 ? (
         <View style={{ gap: t.space[2] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Kullanım alanı</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Kullanım alanı')}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
             {usageGroups.map((g) => (
               <Chip
@@ -488,7 +489,7 @@ export function ProductListScreen({ navigation, route }: Props) {
         kind="secondary"
         icon="filter"
         fullWidth
-        label="Tüm süzgeçler"
+        label={tr('Tüm süzgeçler')}
         onPress={() => {
           setFilterSheetOpen(false);
           openFilters();
@@ -496,7 +497,7 @@ export function ProductListScreen({ navigation, route }: Props) {
       />
       {user ? (
         <ListRow
-          title="Fason kapasite"
+          title={tr('Fason kapasite')}
           left={<Icon name="machine" color="brand" />}
           onPress={() => {
             setFilterSheetOpen(false);
@@ -506,7 +507,7 @@ export function ProductListScreen({ navigation, route }: Props) {
       ) : null}
       {user?.companyId ? (
         <ListRow
-          title="Firmam"
+          title={tr('Firmam')}
           left={<Icon name="user" color="brand" />}
           divider={false}
           onPress={() => {
@@ -521,7 +522,7 @@ export function ProductListScreen({ navigation, route }: Props) {
   const subtypeChips =
     inOpenFolder && subtypeGroups.length > 0 ? (
       <ChipRow style={gutter}>
-        {[{ key: null as string | null, label: 'Hepsi' }, ...subtypeGroups].map((g) => (
+        {[{ key: null as string | null, label: tr('Hepsi') }, ...subtypeGroups].map((g) => (
           <Chip
             key={g.key ?? 'hepsi'}
             label={g.label}
@@ -553,7 +554,7 @@ export function ProductListScreen({ navigation, route }: Props) {
         ))}
         {chips.length > 0 ? (
           <Chip
-            label="Temizle"
+            label={tr('Temizle')}
             onPress={() => {
               haptics.selection();
               setFilters(EMPTY_FILTERS);
@@ -561,7 +562,7 @@ export function ProductListScreen({ navigation, route }: Props) {
           />
         ) : null}
         <Chip
-          label={watchSaving ? 'Kuruluyor…' : 'Bu aramayı izle'}
+          label={watchSaving ? tr('Kuruluyor…') : tr('Bu aramayı izle')}
           icon="bookmark-outline"
           disabled={watchSaving}
           onPress={() => void watchCurrentSearch()}
@@ -608,13 +609,13 @@ export function ProductListScreen({ navigation, route }: Props) {
       ]}
     >
       <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]} numberOfLines={1}>
-        {`${visibleProducts.length} sonuç`}
-        {filters.stockMin !== undefined || filters.stockUnit ? ' · stokta olanlar' : ''}
+        {tr('{n} sonuç', { n: visibleProducts.length })}
+        {filters.stockMin !== undefined || filters.stockUnit ? tr(' · stokta olanlar') : ''}
       </Text>
       <Pressable
         onPress={() => setSortOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel={`Sıralama: ${SORT_LABELS[sort]}, değiştir`}
+        accessibilityLabel={tr('Sıralama: {s}, değiştir', { s: tr(SORT_LABELS[sort]) })}
         style={({ pressed }) => ({
           minHeight: t.size.touchMin,
           flexDirection: 'row',
@@ -626,7 +627,7 @@ export function ProductListScreen({ navigation, route }: Props) {
           backgroundColor: pressed ? t.colors.surface2 : 'transparent',
         })}
       >
-        <Text style={[t.type.label14, { color: t.colors.brand }]}>{SORT_LABELS[sort]}</Text>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr(SORT_LABELS[sort])}</Text>
         <Icon name="chevron-down-outline" size={t.size.iconSm} color="brand" />
       </Pressable>
     </View>
@@ -635,13 +636,13 @@ export function ProductListScreen({ navigation, route }: Props) {
   const companiesHeader =
     companies.length > 0 ? (
       <View style={{ gap: t.space[2], paddingBottom: t.space[4] }}>
-        <SectionTitle title="Firmalar" style={gutter} />
+        <SectionTitle title={tr('Firmalar')} style={gutter} />
         <View style={gutter}>
           {companies.map((c, index) => (
             <ListRow
               key={c.id}
               title={c.name}
-              subtitle={c.verification === 'dogrulanmis' ? 'Doğrulanmış firma' : undefined}
+              subtitle={c.verification === 'dogrulanmis' ? tr('Doğrulanmış firma') : undefined}
               avatarName={c.name}
               avatarKind="company"
               divider={index < companies.length - 1}
@@ -656,25 +657,25 @@ export function ProductListScreen({ navigation, route }: Props) {
   const emptyState = query.trim() ? (
     <EmptyState
       icon="search"
-      title="Sonuç bulunamadı"
+      title={tr('Sonuç bulunamadı')}
       description={
         companies.length > 0
-          ? `"${query.trim()}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.`
-          : `"${query.trim()}" ile eşleşen ürün ya da firma yok. İçerik, çeşit veya kullanım amacıyla deneyin.`
+          ? tr('"{q}" ile eşleşen ürün yok; yukarıdaki firmalara göz atabilirsiniz.', { q: query.trim() })
+          : tr('"{q}" ile eşleşen ürün ya da firma yok. İçerik, çeşit veya kullanım amacıyla deneyin.', { q: query.trim() })
       }
-      actionLabel="Aramayı temizle"
+      actionLabel={tr('Aramayı temizle')}
       onAction={() => setQuery('')}
     />
   ) : chips.length > 0 ? (
     <EmptyState
       icon="filter"
-      title="Filtreye uyan ürün yok"
-      description="Filtrelerden birkaçını kaldırarak tekrar deneyin."
-      actionLabel="Filtreleri temizle"
+      title={tr('Filtreye uyan ürün yok')}
+      description={tr('Filtrelerden birkaçını kaldırarak tekrar deneyin.')}
+      actionLabel={tr('Filtreleri temizle')}
       onAction={() => setFilters(EMPTY_FILTERS)}
     />
   ) : (
-    <EmptyState icon="sample" title="Henüz ürün yok" description="Üreticiler ürün ekledikçe katalog burada dolacak." />
+    <EmptyState icon="sample" title={tr('Henüz ürün yok')} description={tr('Üreticiler ürün ekledikçe katalog burada dolacak.')} />
   );
 
   const skeleton = (
@@ -705,15 +706,15 @@ export function ProductListScreen({ navigation, route }: Props) {
 
   const appBar = (
     <AppBar
-      title="Katalog"
+      title={tr('Katalog')}
       leading="none"
       actions={[
         ...(user
           ? [
               {
                 // Metinli sessiz düğme (tasarım incelemesi): ikon anlamı belirsizdi.
-                text: selection.active ? 'Vazgeç' : 'Seç',
-                label: selection.active ? 'Seçmeyi bırak' : 'Teklif için seç',
+                text: selection.active ? tr('Vazgeç') : tr('Seç'),
+                label: selection.active ? tr('Seçmeyi bırak') : tr('Teklif için seç'),
                 onPress: () => {
                   haptics.selection();
                   if (selection.active) selection.cancel();
@@ -731,19 +732,19 @@ export function ProductListScreen({ navigation, route }: Props) {
   const rfqBar = selection.active ? (
     <View style={{ gap: t.space[2] }}>
       <Text style={[t.type.label14, { color: t.colors.ink }]}>
-        {selection.items.length} ürün · {selection.companyCount} firma seçildi
+        {tr('{n} ürün · {c} firma seçildi', { n: selection.items.length, c: selection.companyCount })}
       </Text>
       {!canSubmitRfq ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>En az 2 farklı firmadan ürün seçin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('En az 2 farklı firmadan ürün seçin.')}</Text>
       ) : null}
       {selection.hasDuplicateCompany ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.
+          {tr('Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.')}
         </Text>
       ) : null}
       {selection.manyCompanies ? (
         <Text style={[t.type.body14, { color: t.colors.warning }]}>
-          5'ten fazla firmaya sorunca cevap oranı düşebilir.
+          {tr("5'ten fazla firmaya sorunca cevap oranı düşebilir.")}
         </Text>
       ) : null}
       {selection.limitNote ? (
@@ -752,11 +753,11 @@ export function ProductListScreen({ navigation, route }: Props) {
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-        <Button kind="secondary" label="Vazgeç" onPress={selection.cancel} />
+        <Button kind="secondary" label={tr('Vazgeç')} onPress={selection.cancel} />
         <Button
-          label="Teklif iste"
+          label={tr('Teklif iste')}
           disabled={!canSubmitRfq}
-          accessibilityLabel={`Teklif iste, ${selection.companyCount} firma`}
+          accessibilityLabel={tr('Teklif iste, {n} firma', { n: selection.companyCount })}
           onPress={() => navigation.navigate('RfqForm', { items: selection.items })}
           style={{ flex: 1 }}
         />
@@ -764,7 +765,7 @@ export function ProductListScreen({ navigation, route }: Props) {
     </View>
   ) : null;
 
-  // İplik dizini kısayolu: kapsam çipi "İplik" iken aynı ekranın içinde açılır.
+  // İplik dizini kısayolu: kapsam çipi {tr('İplik')} iken aynı ekranın içinde açılır.
   if (domain === 'iplik') {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
@@ -792,10 +793,10 @@ export function ProductListScreen({ navigation, route }: Props) {
         {subtypeChips}
         {filterChips}
         {selection.active
-          ? notice('Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.', 'info')
+          ? notice(tr('Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.'), 'info')
           : null}
         {watchNote ? notice(watchNote.text, watchNote.tone) : null}
-        {offline ? notice('Sunucuya ulaşılamadı, örnek veriler gösteriliyor.', 'error') : null}
+        {offline ? notice(tr('Sunucuya ulaşılamadı, örnek veriler gösteriliyor.'), 'error') : null}
         {resultBar}
         {loading && products.length === 0 ? (
           skeleton
@@ -821,7 +822,7 @@ export function ProductListScreen({ navigation, route }: Props) {
         )}
       </Screen>
 
-      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title="Sıralama">
+      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title={tr('Sıralama')}>
         {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
           <Pressable
             key={key}
@@ -842,7 +843,7 @@ export function ProductListScreen({ navigation, route }: Props) {
               backgroundColor: pressed ? t.colors.surface2 : 'transparent',
             })}
           >
-            <Text style={[t.type.body16, { color: t.colors.ink }]}>{SORT_LABELS[key]}</Text>
+            <Text style={[t.type.body16, { color: t.colors.ink }]}>{tr(SORT_LABELS[key])}</Text>
             {sort === key ? <Icon name="check" size={t.size.iconSm} color="brand" /> : null}
           </Pressable>
         ))}
@@ -907,7 +908,7 @@ export function toSelectionItem(product: Product): RfqSelectionItem {
     id: product.id,
     code: product.code,
     companyId: product.companyId,
-    companyName: product.company?.name ?? 'Firma',
+    companyName: product.company?.name ?? tr('Firma'),
     stockUnit: product.stockUnit,
     type: product.type,
   };

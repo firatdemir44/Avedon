@@ -40,6 +40,7 @@ connectionsRouter.post('/', async (req, res) => {
       kind: 'connection_request',
       title: 'Yeni bağlantı isteği',
       body: `${req.user!.firstName} ${req.user!.lastName}`,
+      rawBody: true,
       data: { userId: req.user!.id },
     });
     res.status(201).json({ connection });

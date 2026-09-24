@@ -1,6 +1,7 @@
 import React from 'react';
 import type { QuoteRequestStatus } from '../api/client';
 import { Badge, type BadgeKind } from '../ui';
+import { tr } from '../i18n';
 
 // Teklif isteğinin durum rozeti (Faz 2, Adım 2). İçi ui/Badge; metin sunucudan
 // gelmediği için eşleme burada.
@@ -13,10 +14,10 @@ const TONES: Record<QuoteRequestStatus, { label: string; kind: BadgeKind }> = {
 };
 
 export function quoteStatusLabel(status: QuoteRequestStatus): string {
-  return (TONES[status] ?? TONES.open).label;
+  return tr((TONES[status] ?? TONES.open).label);
 }
 
 export function QuoteStatusBadge({ status }: { status: QuoteRequestStatus }) {
   const tone = TONES[status] ?? TONES.open;
-  return <Badge kind={tone.kind} label={tone.label} />;
+  return <Badge kind={tone.kind} label={tr(tone.label)} />;
 }

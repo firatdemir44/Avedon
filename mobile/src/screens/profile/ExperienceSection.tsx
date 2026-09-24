@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import type { UserExperience } from '../../api/client';
 import { formatExperiencePeriod } from '../../features/users/experienceDates';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Icon, SectionTitle } from '../../ui';
 
@@ -24,9 +25,9 @@ export function ExperienceSection({ experiences, isSelf = false, onAdd, onEdit }
   return (
     <View style={{ gap: t.space[3], minWidth: 0 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-        <SectionTitle style={{ flex: 1 }} title="Deneyim" />
+        <SectionTitle style={{ flex: 1 }} title={tr('Deneyim')} />
         {/* "+" sessiz düğme: ekranın tek dolu düğmesini harcamıyor. */}
-        {isSelf && onAdd ? <Button kind="quiet" icon="plus" label="Ekle" onPress={onAdd} /> : null}
+        {isSelf && onAdd ? <Button kind="quiet" icon="plus" label={tr('Ekle')} onPress={onAdd} /> : null}
       </View>
 
       <View
@@ -50,7 +51,7 @@ export function ExperienceSection({ experiences, isSelf = false, onAdd, onEdit }
           ))
         ) : (
           <Text style={[t.type.body14, { color: t.colors.ink2, padding: t.space[4] }]}>
-            Henüz deneyim eklenmedi.
+            {tr('Henüz deneyim eklenmedi.')}
           </Text>
         )}
       </View>
@@ -101,7 +102,7 @@ function ExperienceRow({
             <Pressable
               onPress={() => setExpanded((value) => !value)}
               accessibilityRole="button"
-              accessibilityLabel={expanded ? 'Açıklamayı kısalt' : 'Açıklamanın devamını gör'}
+              accessibilityLabel={expanded ? tr('Açıklamayı kısalt') : tr('Açıklamanın devamını gör')}
               style={({ pressed }) => ({
                 alignSelf: 'flex-start',
                 minHeight: t.size.touchMin,
@@ -110,7 +111,7 @@ function ExperienceRow({
               })}
             >
               <Text style={[t.type.label14, { color: t.colors.brand }]}>
-                {expanded ? 'daha az' : 'daha fazla'}
+                {expanded ? tr('daha az') : tr('daha fazla')}
               </Text>
             </Pressable>
           </>
@@ -120,7 +121,7 @@ function ExperienceRow({
         <Pressable
           onPress={onEdit}
           accessibilityRole="button"
-          accessibilityLabel={`${experience.title} deneyimini düzenle`}
+          accessibilityLabel={tr('{title} deneyimini düzenle', { title: experience.title })}
           style={({ pressed }) => ({
             width: t.size.touchMin,
             height: t.size.touchMin,

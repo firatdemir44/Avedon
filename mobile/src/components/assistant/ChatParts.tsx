@@ -15,6 +15,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Chip, ChipRow, Icon, type AnyIconName } from '../../ui';
 import { fetchSpeechAvailable, transcribeAudio } from '../../api/client';
 import { canListen, canRecord, startRecording, canSpeak, markVoiceTurn, onSpeakingChange, startListening, stopSpeaking, toggleSpeak, unlockSpeech, type ListenError } from '../../features/speech';
+import { tr } from '../../i18n';
 
 export function ChatDayChip({ createdAt }: { createdAt: string }) {
   const t = useTheme();
@@ -51,7 +52,7 @@ export function UserBubble({ text, createdAt, local }: { text: string; createdAt
     >
       <Text style={[t.type.body16, { color: t.colors.onBrand }]}>{text}</Text>
       <Text style={[t.type.caption12, { color: t.colors.onBrand, textAlign: 'right' }]}>
-        {local ? 'Gönderiliyor' : formatClockTime(createdAt)}
+        {local ? tr('Gönderiliyor') : formatClockTime(createdAt)}
       </Text>
     </View>
   );
@@ -73,7 +74,7 @@ export function AssistantBubble({ text, createdAt }: { text: string; createdAt?:
           <Pressable
             onPress={() => toggleSpeak(id, text)}
             accessibilityRole="button"
-            accessibilityLabel={speaking ? 'Okumayı durdur' : 'Sesli oku'}
+            accessibilityLabel={speaking ? tr('Okumayı durdur') : tr('Sesli oku')}
             hitSlop={t.space[2]}
             style={({ pressed }) => ({
               minWidth: t.size.touchMin,
@@ -92,7 +93,7 @@ export function AssistantBubble({ text, createdAt }: { text: string; createdAt?:
 }
 
 // "Hesaplıyor..." göstergesi (yanıt beklenirken); avatarı çağıran ekran koyar.
-export function ThinkingBubble({ label = 'Hesaplıyor...' }: { label?: string }) {
+export function ThinkingBubble({ label = tr('Hesaplıyor...') }: { label?: string }) {
   const t = useTheme();
   return (
     <View
@@ -135,8 +136,8 @@ export function AssistantComposer({
   onChangeText,
   onSend,
   canSend,
-  placeholder = 'Sor, hesaplat, etiket yapıştır...',
-  accessibilityLabel = 'Asistana sorunuz',
+  placeholder = tr('Sor, hesaplat, etiket yapıştır...'),
+  accessibilityLabel = tr('Asistana sorunuz'),
   bottomInset,
   chips,
 }: {
@@ -260,7 +261,7 @@ function MicStatusBar({ status }: { status: MicStatus }) {
         <>
           <View style={{ width: t.size.dot, height: t.size.dot, borderRadius: t.radius.full, backgroundColor: t.colors.danger }} />
           <Text style={[t.type.label14, { color: t.colors.ink }]}>
-            Dinliyorum · {Math.floor(status.seconds / 60)}:{String(status.seconds % 60).padStart(2, '0')}
+            {tr('Dinliyorum')} · {Math.floor(status.seconds / 60)}:{String(status.seconds % 60).padStart(2, '0')}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], height: t.size.iconSm }}>
             {bars.map((w, i) => (
@@ -276,13 +277,13 @@ function MicStatusBar({ status }: { status: MicStatus }) {
             ))}
           </View>
           <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]} numberOfLines={2}>
-            Bitince kırmızı düğmeye dokunun; yazı sonra gelir.
+            {tr('Bitince kırmızı düğmeye dokunun; yazı sonra gelir.')}
           </Text>
         </>
       ) : (
         <>
           <ActivityIndicator color={t.colors.brand} />
-          <Text style={[t.type.label14, { color: t.colors.ink }]}>Yazıya çevriliyor…</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink }]}>{tr('Yazıya çevriliyor…')}</Text>
         </>
       )}
     </View>
@@ -323,7 +324,7 @@ function MicButton({ onText, onError, onStatus }: { onText: (t: string) => void;
       tickStatus();
       const clock = setInterval(tickStatus, 250);
       stopRef.current = await startRecording({
-        onError: (e) => onError(MIC_ERRORS[e]),
+        onError: (e) => onError(tr(MIC_ERRORS[e])),
         onLevel: (l) => {
           level = l;
         },
@@ -340,9 +341,9 @@ function MicButton({ onText, onError, onStatus }: { onText: (t: string) => void;
           try {
             const text = await transcribeAudio(audio);
             if (text) onText(text);
-            else onError(MIC_ERRORS['no-speech']);
+            else onError(tr(MIC_ERRORS['no-speech']));
           } catch (err) {
-            onError(err instanceof Error ? err.message : MIC_ERRORS.other);
+            onError(err instanceof Error ? err.message : tr(MIC_ERRORS.other));
           } finally {
             setBusy(false);
             onStatus?.(null);
@@ -354,7 +355,7 @@ function MicButton({ onText, onError, onStatus }: { onText: (t: string) => void;
     stopRef.current = startListening({
       onText: (text) => onText(text),
       onEnd: () => setListening(false),
-      onError: (e) => onError(MIC_ERRORS[e]),
+      onError: (e) => onError(tr(MIC_ERRORS[e])),
     });
   };
   return (
@@ -362,7 +363,7 @@ function MicButton({ onText, onError, onStatus }: { onText: (t: string) => void;
       <Pressable
         onPress={toggle}
         accessibilityRole="button"
-        accessibilityLabel={busy ? 'Yazıya çevriliyor' : listening ? 'Dinlemeyi durdur' : 'Konuşarak sor'}
+        accessibilityLabel={busy ? tr('Yazıya çevriliyor') : listening ? tr('Dinlemeyi durdur') : tr('Konuşarak sor')}
         style={({ pressed }) => ({
           width: t.size.touchMin,
           height: t.size.touchMin,
@@ -391,7 +392,7 @@ function SendButton({ onPress, canSend }: { onPress: () => void; canSend: boolea
         onPress={canSend ? onPress : undefined}
         disabled={!canSend}
         accessibilityRole="button"
-        accessibilityLabel="Gönder"
+        accessibilityLabel={tr('Gönder')}
         accessibilityState={{ disabled: !canSend }}
         style={({ pressed }) => ({
           width: t.size.touchMin,
@@ -435,7 +436,7 @@ export function ExampleRow({ label, onPress }: { label: string; onPress: () => v
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Örnek soru: ${label}`}
+      accessibilityLabel={tr('Örnek soru: {q}', { q: label })}
       style={({ pressed }) => ({
         minHeight: t.size.touchMin,
         justifyContent: 'center',

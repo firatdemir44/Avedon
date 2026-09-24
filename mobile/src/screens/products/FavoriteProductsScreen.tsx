@@ -1,4 +1,4 @@
-// "Takip ettiklerim" — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
+// {tr('Takip ettiklerim')} — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
 // fetchFavoriteProducts + teklif seçim kipi (useRfqSelection). Görünüm:
 // AppBar · seçim kipi düğmesi · ProductCard listesi · yapışkan teklif şeridi.
 // Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
@@ -17,6 +17,7 @@ import { categoryLabel, isYarnType } from '../../features/products/catalog';
 import { formatComposition } from '../../features/products/glossaryLabels';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import type { Product } from '../../types';
+import { tr } from '../../i18n';
 import { toSelectionItem } from './ProductListScreen';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, Button, EmptyState, Icon, ProductCard, Screen, SkeletonRow } from '../../ui';
@@ -113,19 +114,19 @@ export function RfqStickyBar({ selection, onSubmit }: { selection: RfqSelection;
   return (
     <View style={{ gap: t.space[2] }}>
       <Text style={[t.type.label14, { color: t.colors.ink }]}>
-        {selection.items.length} ürün · {selection.companyCount} firma seçildi
+        {tr('{n} ürün · {c} firma seçildi', { n: selection.items.length, c: selection.companyCount })}
       </Text>
       {!canSubmit ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>En az 2 farklı firmadan ürün seçin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('En az 2 farklı firmadan ürün seçin.')}</Text>
       ) : null}
       {selection.hasDuplicateCompany ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.
+          {tr('Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.')}
         </Text>
       ) : null}
       {selection.manyCompanies ? (
         <Text style={[t.type.body14, { color: t.colors.warning }]}>
-          5'ten fazla firmaya sorunca cevap oranı düşebilir.
+          {tr("5'ten fazla firmaya sorunca cevap oranı düşebilir.")}
         </Text>
       ) : null}
       {selection.limitNote ? (
@@ -134,11 +135,11 @@ export function RfqStickyBar({ selection, onSubmit }: { selection: RfqSelection;
         </Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-        <Button kind="secondary" label="Vazgeç" onPress={selection.cancel} />
+        <Button kind="secondary" label={tr('Vazgeç')} onPress={selection.cancel} />
         <Button
-          label="Teklif iste"
+          label={tr('Teklif iste')}
           disabled={!canSubmit}
-          accessibilityLabel={`Teklif iste, ${selection.companyCount} firma`}
+          accessibilityLabel={tr('Teklif iste, {n} firma', { n: selection.companyCount })}
           onPress={onSubmit}
           style={{ flex: 1 }}
         />
@@ -186,7 +187,7 @@ export function FavoriteProductsScreen({ navigation }: Props) {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const appBar = <AppBar title="Takip ettiklerim" leading="back" onBack={() => navigation.goBack()} />;
+  const appBar = <AppBar title={tr('Takip ettiklerim')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -206,8 +207,8 @@ export function FavoriteProductsScreen({ navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {appBar}
         <Screen>
-          <ErrorBanner message={friendlyMessage(error, 'Takip edilenler alınamadı')} />
-          <Button kind="secondary" label="Tekrar dene" onPress={reload} />
+          <ErrorBanner message={friendlyMessage(error, tr('Takip edilenler alınamadı'))} />
+          <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} />
         </Screen>
       </View>
     );
@@ -219,9 +220,9 @@ export function FavoriteProductsScreen({ navigation }: Props) {
         <Button
           kind="secondary"
           icon={selection.active ? 'x' : 'checkbox-outline'}
-          label={selection.active ? 'Seçimi bırak' : 'Teklif için seç'}
+          label={selection.active ? tr('Seçimi bırak') : tr('Teklif için seç')}
           accessibilityLabel={
-            selection.active ? 'Teklif için seçmeyi bırak' : 'Teklif için ürün seç, birkaç firmaya birden sor'
+            selection.active ? tr('Teklif için seçmeyi bırak') : tr('Teklif için ürün seç, birkaç firmaya birden sor')
           }
           onPress={() => {
             haptics.selection();
@@ -232,11 +233,11 @@ export function FavoriteProductsScreen({ navigation }: Props) {
       ) : null}
       {selection.active ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]} accessibilityLiveRegion="polite">
-          Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.
+          {tr('Teklif almak istediğiniz ürünleri işaretleyin; her firmaya tek istek gider.')}
         </Text>
       ) : null}
       {data.length ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{data.length} takip edilen kumaş</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('{n} takip edilen kumaş', { n: data.length })}</Text>
       ) : null}
     </View>
   );
@@ -265,9 +266,9 @@ export function FavoriteProductsScreen({ navigation }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="heart"
-              title="Takip ettiğin kumaşları burada topla"
-              description="Ürün sayfasındaki ya da akış kartındaki Takibe al düğmesiyle ilgilendiğin kumaşlar burada listelenir."
-              actionLabel="Ürünlere göz at"
+              title={tr('Takip ettiğin kumaşları burada topla')}
+              description={tr('Ürün sayfasındaki ya da akış kartındaki Takibe al düğmesiyle ilgilendiğin kumaşlar burada listelenir.')}
+              actionLabel={tr('Ürünlere göz at')}
               onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
             />
           }

@@ -1,3 +1,4 @@
+import { locale, tr } from '../../i18n';
 // Konfeksiyon (adet) maliyetinin AYRI kalemleri — Fırat'ın kararı (2026-09-16,
 // docs/faz1-plani.md Adım 4, madde 3): amaç yalnızca toplamı görmek değil,
 // hangi aşamanın maliyeti yükselttiğini görmek.
@@ -25,21 +26,24 @@ export interface GarmentItemDef {
 }
 
 export const GARMENT_ITEMS: GarmentItemDef[] = [
-  { key: 'cutting', label: 'Kesim', placeholder: 'Örn. 15' },
-  { key: 'sewing', label: 'Dikim', placeholder: 'Örn. 65' },
-  { key: 'finishing', label: 'Yıkama / baskı / boya', placeholder: 'Örn. 25' },
+  { key: 'cutting', get label() { return tr('Kesim'); }, get placeholder() { return tr('Örn. {n}', { n: 15 }); } },
+  { key: 'sewing', get label() { return tr('Dikim'); }, get placeholder() { return tr('Örn. {n}', { n: 65 }); } },
+  { key: 'finishing', get label() { return tr('Yıkama / baskı / boya'); }, get placeholder() { return tr('Örn. {n}', { n: 25 }); } },
   {
     key: 'accessory',
-    label: 'Aksesuar',
-    hint: 'Fermuar, düğme, lastik, etiket, ip, tela, kordon',
-    placeholder: 'Örn. 12',
+    get label() { return tr('Aksesuar'); },
+    get hint() { return tr('Fermuar, düğme, lastik, etiket, ip, tela, kordon'); },
+    get placeholder() { return tr('Örn. {n}', { n: 12 }); },
   },
-  { key: 'packaging', label: 'Paketleme', placeholder: 'Örn. 8' },
-  { key: 'shipping', label: 'Nakliye', placeholder: 'Örn. 10' },
-  { key: 'overhead', label: 'Genel gider / fire / diğer', placeholder: 'Örn. 10' },
+  { key: 'packaging', get label() { return tr('Paketleme'); }, get placeholder() { return tr('Örn. {n}', { n: 8 }); } },
+  { key: 'shipping', get label() { return tr('Nakliye'); }, get placeholder() { return tr('Örn. {n}', { n: 10 }); } },
+  { key: 'overhead', get label() { return tr('Genel gider / fire / diğer'); }, get placeholder() { return tr('Örn. {n}', { n: 10 }); } },
 ];
 
-export const FABRIC_LABEL = 'Kumaş';
+// Dil değişince güncel kalsın diye fonksiyon.
+export function fabricLabel(): string {
+  return tr('Kumaş');
+}
 
 export type GarmentItemAmounts = Record<GarmentItemKey, number>;
 
@@ -76,7 +80,7 @@ export function buildGarmentBreakdown(
   const totalCost = fabricCost + itemsTotal;
 
   const all: { key: GarmentItemKey | 'fabric'; label: string; amount: number }[] = [
-    { key: 'fabric', label: FABRIC_LABEL, amount: fabricCost },
+    { key: 'fabric', label: fabricLabel(), amount: fabricCost },
     ...GARMENT_ITEMS.map((item) => ({ key: item.key, label: item.label, amount: amounts[item.key] || 0 })),
   ];
 
@@ -97,7 +101,7 @@ export function buildGarmentBreakdown(
     });
 
   const emptyLabels = GARMENT_ITEMS.filter((item) => !(amounts[item.key] > 0)).map((item) =>
-    item.label.toLocaleLowerCase('tr-TR')
+    item.label.toLocaleLowerCase(locale())
   );
 
   return {

@@ -1,4 +1,6 @@
 import type { MarketRow } from './trade';
+import { t, normalizeLang, type Lang } from '../i18n';
+import { countryName } from './countries';
 
 // Pazar yorumu (Fırat 2026-09-24: "daha analitik ve vizyoner"). Sayıları karara çevirir:
 // pazar tipi, kazanılabilir pazar ($), fiyat konumu, yerinden edilebilecek rakip, sade yorum ve
@@ -45,14 +47,40 @@ const M49_NAMES: Record<number, string> = {
   702: 'Singapur', 344: 'Hong Kong', 608: 'Filipinler', 116: 'Kamboçya', 104: 'Myanmar', 36: 'Avustralya', 554: 'Yeni Zelanda',
   795: 'Türkmenistan', 417: 'Kırgızistan', 762: 'Tacikistan', 4: 'Afganistan',
 };
-export const m49Name = (m: number) => M49_NAMES[m] ?? `Ülke ${m}`;
+const M49_NAMES_EN: Record<number, string> = {
+  156: 'China', 380: 'Italy', 792: 'Türkiye', 699: 'India', 586: 'Pakistan', 704: 'Vietnam', 490: 'Taiwan', 410: 'South Korea', 276: 'Germany',
+  50: 'Bangladesh', 764: 'Thailand', 360: 'Indonesia', 724: 'Spain', 251: 'France', 620: 'Portugal', 392: 'Japan', 842: 'USA', 826: 'United Kingdom',
+  56: 'Belgium', 528: 'Netherlands', 616: 'Poland', 642: 'Romania', 203: 'Czechia', 40: 'Austria', 757: 'Switzerland', 144: 'Sri Lanka', 458: 'Malaysia',
+  484: 'Mexico', 76: 'Brazil', 818: 'Egypt', 504: 'Morocco', 788: 'Tunisia', 784: 'UAE', 682: 'Saudi Arabia', 376: 'Israel', 348: 'Hungary', 703: 'Slovakia',
+  688: 'Serbia', 499: 'Montenegro', 70: 'Bosnia and Herzegovina', 807: 'North Macedonia', 8: 'Albania', 100: 'Bulgaria', 300: 'Greece', 191: 'Croatia',
+  705: 'Slovenia', 208: 'Denmark', 752: 'Sweden', 246: 'Finland', 578: 'Norway', 372: 'Ireland', 442: 'Luxembourg', 440: 'Lithuania', 428: 'Latvia',
+  233: 'Estonia', 804: 'Ukraine', 112: 'Belarus', 498: 'Moldova', 643: 'Russia', 124: 'Canada', 32: 'Argentina', 170: 'Colombia', 604: 'Peru', 152: 'Chile',
+  400: 'Jordan', 368: 'Iraq', 414: 'Kuwait', 634: 'Qatar', 48: 'Bahrain', 512: 'Oman', 422: 'Lebanon', 760: 'Syria', 710: 'South Africa', 404: 'Kenya',
+  231: 'Ethiopia', 566: 'Nigeria', 12: 'Algeria', 860: 'Uzbekistan', 398: 'Kazakhstan', 268: 'Georgia', 31: 'Azerbaijan', 51: 'Armenia', 364: 'Iran',
+  702: 'Singapore', 344: 'Hong Kong', 608: 'Philippines', 116: 'Cambodia', 104: 'Myanmar', 36: 'Australia', 554: 'New Zealand',
+  795: 'Turkmenistan', 417: 'Kyrgyzstan', 762: 'Tajikistan', 4: 'Afghanistan',
+};
+export const m49Name = (m: number, lang: Lang | string = 'tr') =>
+  normalizeLang(lang) === 'en' ? M49_NAMES_EN[m] ?? `Country ${m}` : M49_NAMES[m] ?? `Ülke ${m}`;
 
-const fmtUsd = (v: number) => {
+const fmtUsd = (v: number, lang: Lang = 'tr') => {
+  if (lang === 'en') {
+    if (v >= 1e9) return `$${(v / 1e9).toFixed(1)} billion`;
+    if (v >= 1e6) return `$${Math.round(v / 1e6)} million`;
+    return `$${Math.round(v / 1e3)}K`;
+  }
   if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace('.', ',')} milyar $`;
   if (v >= 1e6) return `${Math.round(v / 1e6)} milyon $`;
   return `${Math.round(v / 1e3)} bin $`;
 };
-const fmtPct = (v: number) => `%${Math.abs(v) >= 10 ? Math.round(Math.abs(v)) : Math.abs(v).toFixed(1).replace('.', ',')}`;
+const fmtPct = (v: number, lang: Lang = 'tr') => {
+  const n = Math.abs(v) >= 10 ? String(Math.round(Math.abs(v))) : Math.abs(v).toFixed(1);
+  return lang === 'en' ? `${n}%` : `%${n.replace('.', ',')}`;
+};
+const ordinal = (n: number) => {
+  const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${s}`;
+};
 
 // Referans pay: puanlanan ülkelerde Türkiye payının medyanı (en az %3). "Türkiye burada da
 // ortalamasını yakalarsa" hesabı için; tek başına gerçekçi hedef, vaat değil.
@@ -63,14 +91,22 @@ export function referenceShare(rows: MarketRow[]): number {
   return Math.max(3, mid);
 }
 
-export function insightFor(row: MarketRow, refSharePct: number): MarketInsight {
+export function insightFor(row: MarketRow, refSharePct: number, langIn: Lang | string = 'tr'): MarketInsight {
+  const lang = normalizeLang(langIn);
+  const L = (text: string, vars?: Record<string, string | number>) => t(lang, text, vars);
+  const usd = (v: number) => fmtUsd(v, lang);
+  const pc = (v: number) => fmtPct(v, lang);
   const c = row.country;
+  const cName = countryName(c, lang);
   const empty = (type: MarketType, summary: string, action: string): MarketInsight => ({
-    type, typeLabel: MARKET_TYPE_LABEL[type], verdict: 'yok', verdictLabel: type === 'engelli' ? 'Engelli' : 'Değerlendirilemedi',
+    type, typeLabel: L(MARKET_TYPE_LABEL[type]), verdict: 'yok', verdictLabel: L(type === 'engelli' ? 'Engelli' : 'Değerlendirilemedi'),
     winnableUsd: null, pricePosition: null, pricePositionText: null, displaceable: null, summary, action,
   });
-  if (row.blocked) return empty('engelli', `${c.name} ile ticaret şu an yapılamıyor: ${c.notes[0] ?? 'yaptırım/ambargo'}.`, 'Bu pazarı hedeflemeyin.');
-  if (!row.importUsd || row.turkeySharePct == null) return empty('veri_yok', `${c.name} bu ürün kodu için güncel ithalat verisi yayımlamamış.`, 'Başka bir kod ya da komşu ülke deneyin.');
+  if (row.blocked) {
+    const reason = c.notes[0] ? L(c.notes[0]) : L('yaptırım/ambargo');
+    return empty('engelli', `${L('{country} ile ticaret şu an yapılamıyor:', { country: cName })} ${reason}.`, L('Bu pazarı hedeflemeyin.'));
+  }
+  if (!row.importUsd || row.turkeySharePct == null) return empty('veri_yok', L('{country} bu ürün kodu için güncel ithalat verisi yayımlamamış.', { country: cName }), L('Başka bir kod ya da komşu ülke deneyin.'));
 
   const imp = row.importUsd;
   const share = row.turkeySharePct;
@@ -86,17 +122,17 @@ export function insightFor(row: MarketRow, refSharePct: number): MarketInsight {
   const ratio = trKg && avgKg ? trKg / avgKg : null;
   const priceReliable = ratio != null && ratio <= 2.5 && ratio >= 0.4;
   if (trKg && avgKg && !priceReliable) {
-    pricePositionText = 'Bu ülkenin kg (ağırlık) verisi eksik görünüyor; fiyat karşılaştırması güvenilir değil.';
+    pricePositionText = L('Bu ülkenin kg (ağırlık) verisi eksik görünüyor; fiyat karşılaştırması güvenilir değil.');
   }
   if (trKg && avgKg && priceReliable) {
     const diff = ((trKg - avgKg) / avgKg) * 100;
     pricePosition = diff <= -12 ? 'ucuz' : diff >= 12 ? 'pahali' : 'ortalama';
     pricePositionText =
       pricePosition === 'ucuz'
-        ? `Türk ürünü bu pazarda ortalamadan ${fmtPct(diff)} ucuz satılıyor.`
+        ? L('Türk ürünü bu pazarda ortalamadan {pct} ucuz satılıyor.', { pct: pc(diff) })
         : pricePosition === 'pahali'
-          ? `Türk ürünü bu pazarda ortalamadan ${fmtPct(diff)} pahalı; kalite/hız ile satılıyor.`
-          : 'Türk ürünü pazar ortalaması fiyatında.';
+          ? L('Türk ürünü bu pazarda ortalamadan {pct} pahalı; kalite/hız ile satılıyor.', { pct: pc(diff) })
+          : L('Türk ürünü pazar ortalaması fiyatında.');
   }
 
   // Yerinden edilebilecek rakip: Türkiye'den en az %20 pahalı ve payı ≥ %5 olan en büyük tedarikçi.
@@ -105,7 +141,7 @@ export function insightFor(row: MarketRow, refSharePct: number): MarketInsight {
     for (const s of row.topSuppliers) {
       if (s.m49 === 792 || !s.usdKg) continue;
       if (s.sharePct >= 5 && s.usdKg >= trKg * 1.2) {
-        displaceable = { m49: s.m49, name: m49Name(s.m49), sharePct: s.sharePct, priceGapPct: ((s.usdKg - trKg) / s.usdKg) * 100 };
+        displaceable = { m49: s.m49, name: m49Name(s.m49, lang), sharePct: s.sharePct, priceGapPct: ((s.usdKg - trKg) / s.usdKg) * 100 };
         break;
       }
     }
@@ -126,49 +162,52 @@ export function insightFor(row: MarketRow, refSharePct: number): MarketInsight {
 
   const score = row.score ?? 0;
   const verdict: MarketInsight['verdict'] = score >= 70 ? 'guclu' : score >= 50 ? 'degerlendirilebilir' : 'zayif';
-  const verdictLabel = verdict === 'guclu' ? 'Güçlü fırsat' : verdict === 'degerlendirilebilir' ? 'Değerlendirilebilir' : 'Zayıf';
+  const verdictLabel = L(verdict === 'guclu' ? 'Güçlü fırsat' : verdict === 'degerlendirilebilir' ? 'Değerlendirilebilir' : 'Zayıf');
 
-  const g = growth == null ? '' : growth >= 0 ? `, geçen yıla göre ${fmtPct(growth)} arttı` : `, geçen yıla göre ${fmtPct(growth)} azaldı`;
-  const head = `${c.name} bu üründen yılda ${fmtUsd(imp)} ithal ediyor${g}.`;
-  const rankTxt = row.turkeyRank ? ` (${row.turkeyRank}. tedarikçi)` : '';
+  const g = growth == null ? '' : L(growth >= 0 ? ', geçen yıla göre {pct} arttı' : ', geçen yıla göre {pct} azaldı', { pct: pc(growth) });
+  const head = L('{country} bu üründen yılda {usd} ithal ediyor{growth}.', { country: cName, usd: usd(imp), growth: g });
+  const rankTxt = row.turkeyRank ? (lang === 'en' ? ` (${ordinal(row.turkeyRank)} largest supplier)` : ` (${row.turkeyRank}. tedarikçi)`) : '';
+  const v = { share: pc(share), rank: rankTxt, usd: usd(imp) };
   let body: string;
   let action: string;
   switch (type) {
     case 'yukselen':
-      body = `Pazar hızla büyüyor ve Türkiye'nin payı henüz ${fmtPct(share)}${rankTxt}: erken girenin kazanacağı bir pazar.`;
-      action = 'Öncelik verin: numune kiti hazırlayıp bu ülkedeki konfeksiyoncu ve toptancılara ilk teması şimdi kurun.';
+      body = L("Pazar hızla büyüyor ve Türkiye'nin payı henüz {share}{rank}: erken girenin kazanacağı bir pazar.", v);
+      action = L('Öncelik verin: numune kiti hazırlayıp bu ülkedeki konfeksiyoncu ve toptancılara ilk teması şimdi kurun.');
       break;
     case 'turk_guclu':
-      body = `Türkiye burada zaten güçlü: pay ${fmtPct(share)}${rankTxt}. Alıcılar Türk tedarikçiye alışkın, güven kurmak kolay.`;
-      action = 'Kalite, termin ve kumaş pasaportuyla öne çıkın; mevcut Türk tedarikçilerden daha hızlı numune sunun.';
+      body = L('Türkiye burada zaten güçlü: pay {share}{rank}. Alıcılar Türk tedarikçiye alışkın, güven kurmak kolay.', v);
+      action = L('Kalite, termin ve kumaş pasaportuyla öne çıkın; mevcut Türk tedarikçilerden daha hızlı numune sunun.');
       break;
     case 'premium':
-      body = `Türk ürünü burada ortalamanın üstünde fiyatla satılıyor ve pay ${fmtPct(share)}: alıcı kaliteye ve hıza para ödüyor.`;
-      action = 'Fiyatla değil kalite, sertifika (OEKO-TEX, GRS) ve hızlı teslimle konumlanın.';
+      body = L('Türk ürünü burada ortalamanın üstünde fiyatla satılıyor ve pay {share}: alıcı kaliteye ve hıza para ödüyor.', v);
+      action = L('Fiyatla değil kalite, sertifika (OEKO-TEX, GRS) ve hızlı teslimle konumlanın.');
       break;
     case 'fiyat':
-      body = `Pazar fiyat odaklı; Türk ürünü ucuz ama pay yalnızca ${fmtPct(share)}. Rekabet düşük fiyatlı Asya tedarikçileriyle.`;
-      action = 'Hacimli, standart kalitelerle girin; kısa termin ve küçük parti avantajını vurgulayın.';
+      body = L('Pazar fiyat odaklı; Türk ürünü ucuz ama pay yalnızca {share}. Rekabet düşük fiyatlı Asya tedarikçileriyle.', v);
+      action = L('Hacimli, standart kalitelerle girin; kısa termin ve küçük parti avantajını vurgulayın.');
       break;
     case 'kucuk':
-      body = `Küçük bir pazar (${fmtUsd(imp)}); Türkiye payı ${fmtPct(share)}.`;
-      action = 'Tek başına hedef değil; bölgedeki büyük pazarla birlikte değerlendirin.';
+      body = L('Küçük bir pazar ({usd}); Türkiye payı {share}.', v);
+      action = L('Tek başına hedef değil; bölgedeki büyük pazarla birlikte değerlendirin.');
       break;
     case 'riskli':
-      body = `Talep var ama ödeme veya kur riski yüksek; Türkiye payı ${fmtPct(share)}.`;
-      action = 'Akreditif ya da Türk Eximbank alacak sigortasıyla çalışın; peşin/avans şartı koyun.';
+      body = L('Talep var ama ödeme veya kur riski yüksek; Türkiye payı {share}.', v);
+      action = L('Akreditif ya da Türk Eximbank alacak sigortasıyla çalışın; peşin/avans şartı koyun.');
       break;
     default:
-      body = `Büyük ve rekabetçi bir pazar; Türkiye payı ${fmtPct(share)}${rankTxt}.`;
+      body = L('Büyük ve rekabetçi bir pazar; Türkiye payı {share}{rank}.', v);
       action = displaceable
-        ? `${displaceable.name}'dan alan alıcıları hedefleyin: siz ${fmtPct(displaceable.priceGapPct)} daha ucuzsunuz.`
-        : 'Belirli bir niş (renk, desen, sürdürülebilir iplik) ile farklılaşarak girin.';
+        ? L("{rival}'dan alan alıcıları hedefleyin: siz {pct} daha ucuzsunuz.", { rival: displaceable.name, pct: pc(displaceable.priceGapPct) })
+        : L('Belirli bir niş (renk, desen, sürdürülebilir iplik) ile farklılaşarak girin.');
   }
-  const winTxt = winnableUsd >= 1e6 ? ` Türkiye burada diğer pazarlardaki ortalama payına ulaşırsa yıllık ek ${fmtUsd(winnableUsd)} iş çıkar.` : '';
-  const dispTxt = displaceable && type !== 'buyuk_rekabetci' ? ` Rakip: ${displaceable.name} (pazar payı ${fmtPct(displaceable.sharePct)}) Türk ürününden ${fmtPct(displaceable.priceGapPct)} pahalı satıyor.` : '';
+  const winTxt = winnableUsd >= 1e6 ? ' ' + L('Türkiye burada diğer pazarlardaki ortalama payına ulaşırsa yıllık ek {usd} iş çıkar.', { usd: usd(winnableUsd) }) : '';
+  const dispTxt = displaceable && type !== 'buyuk_rekabetci'
+    ? ' ' + L('Rakip: {rival} (pazar payı {share}) Türk ürününden {pct} pahalı satıyor.', { rival: displaceable.name, share: pc(displaceable.sharePct), pct: pc(displaceable.priceGapPct) })
+    : '';
   return {
     type,
-    typeLabel: MARKET_TYPE_LABEL[type],
+    typeLabel: L(MARKET_TYPE_LABEL[type]),
     verdict,
     verdictLabel,
     winnableUsd,
@@ -181,7 +220,8 @@ export function insightFor(row: MarketRow, refSharePct: number): MarketInsight {
 }
 
 // Ekranın en üstü: en iyi 3 pazar ve tek cümlelik genel tablo.
-export function overview(rows: (MarketRow & { insight: MarketInsight })[]) {
+export function overview(rows: (MarketRow & { insight: MarketInsight })[], langIn: Lang | string = 'tr') {
+  const lang = normalizeLang(langIn);
   const scored = rows.filter((r) => r.score != null).sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const top = scored.slice(0, 3);
   const totalImport = scored.reduce((s, r) => s + (r.importUsd ?? 0), 0);
@@ -189,12 +229,13 @@ export function overview(rows: (MarketRow & { insight: MarketInsight })[]) {
   const winnable = scored.reduce((s, r) => s + (r.insight.winnableUsd ?? 0), 0);
   const trShare = totalImport ? (totalTr / totalImport) * 100 : 0;
   return {
-    top: top.map((r) => ({ m49: r.country.m49, name: r.country.name, score: r.score, typeLabel: r.insight.typeLabel, reason: r.insight.summary.split('. ')[1] ?? r.insight.summary })),
+    top: top.map((r) => ({ m49: r.country.m49, name: countryName(r.country, lang), score: r.score, typeLabel: r.insight.typeLabel, reason: r.insight.summary.split('. ')[1] ?? r.insight.summary })),
     totalImportUsd: totalImport,
     turkeySharePct: trShare,
     winnableUsd: winnable,
     headline: scored.length
-      ? `İncelenen ${scored.length} ülke bu üründen yılda toplam ${fmtUsd(totalImport)} ithal ediyor; Türkiye'nin payı ${fmtPct(trShare)}.${winnable >= 1e6 ? ` Payın ortalamaya çıktığı senaryoda ek ${fmtUsd(winnable)} pazar var.` : ''}`
-      : 'Veri geliyor…',
+      ? t(lang, "İncelenen {n} ülke bu üründen yılda toplam {usd} ithal ediyor; Türkiye'nin payı {share}.", { n: scored.length, usd: fmtUsd(totalImport, lang), share: fmtPct(trShare, lang) }) +
+        (winnable >= 1e6 ? ' ' + t(lang, 'Payın ortalamaya çıktığı senaryoda ek {usd} pazar var.', { usd: fmtUsd(winnable, lang) }) : '')
+      : t(lang, 'Veri geliyor…'),
   };
 }

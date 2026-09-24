@@ -26,6 +26,7 @@ import {
 } from '../../features/companies/completeness';
 import { COMPANY_TYPES } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   AppBar,
   Button,
@@ -265,8 +266,8 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       haptics.error();
       setError(
         err instanceof ApiError && err.code === 'invalid_body'
-          ? 'Bilgileri kontrol edin: e-posta geçerli bir adres olmalı, kuruluş yılı dört haneli olmalı.'
-          : friendlyMessage(err, 'Değişiklikler kaydedilemedi')
+          ? tr('Bilgileri kontrol edin: e-posta geçerli bir adres olmalı, kuruluş yılı dört haneli olmalı.')
+          : friendlyMessage(err, tr('Değişiklikler kaydedilemedi'))
       );
     } finally {
       setSaving(false);
@@ -280,7 +281,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
   };
 
   const shareCode = async () => {
-    const message = `Takyon'da ${name} firmasına katılmak için şirket kodu: ${companyCode}`;
+    const message = tr('Takyon\'da {name} firmasına katılmak için şirket kodu: {code}', { name, code: companyCode });
     if (Platform.OS === 'web') {
       // Web'de paylaşım penceresi yok: kod panoya kopyalanır.
       const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
@@ -291,7 +292,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
         setCodeCopied(true);
         setError(null);
       } catch {
-        setError('Kod kopyalanamadı; kodu seçip elle kopyalayabilirsiniz.');
+        setError(tr('Kod kopyalanamadı; kodu seçip elle kopyalayabilirsiniz.'));
       }
       return;
     }
@@ -300,7 +301,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
 
   const shell = (children: React.ReactNode, sticky?: React.ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Firma sayfanı tamamla" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Firma sayfanı tamamla')} leading="back" onBack={() => navigation.goBack()} />
       <Screen sticky={sticky}>{children}</Screen>
     </View>
   );
@@ -309,8 +310,8 @@ export function CompanySetupScreen({ route, navigation }: Props) {
     return shell(
       <EmptyState
         icon="business-outline"
-        title="Firmaya bağlı değilsiniz"
-        description="Bu adımlar yalnızca bir firmaya bağlı hesaplarda kullanılır."
+        title={tr('Firmaya bağlı değilsiniz')}
+        description={tr('Bu adımlar yalnızca bir firmaya bağlı hesaplarda kullanılır.')}
       />
     );
   }
@@ -329,7 +330,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
     return shell(
       <ErrorState
         error={loadError}
-        fallback="Firma bilgisi alınamadı"
+        fallback={tr('Firma bilgisi alınamadı')}
         onRetry={() => navigation.replace('CompanySetup', route.params)}
       />
     );
@@ -364,7 +365,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
           style={[t.type.caption12, { color: t.colors.ink3 }]}
         >{`${stepIndex + 1} / ${COMPANY_SETUP_STEP_ORDER.length} · ${completeness.steps[stepIndex].title}`}</Text>
         <Text style={[t.type.title22, { color: t.colors.ink }]}>{completeness.steps[stepIndex].title}</Text>
-        {hint(STEP_HINTS[stepKey])}
+        {hint(tr(STEP_HINTS[stepKey]))}
       </View>
 
       {error ? (
@@ -387,19 +388,19 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       {stepKey === 'tanitim' ? (
         <View style={{ gap: t.space[3] }}>
           <Input
-            label="Hakkında"
+            label={tr('Hakkında')}
             value={about}
             onChangeText={setAbout}
             multiline
-            placeholder="Ne ürettiğiniz, aylık kapasiteniz ve öne çıkan özelliğiniz. Örnek: 1998'den beri süprem ve interlok örüyoruz; aylık 120 ton kapasite, OEKO-TEX sertifikalı boyahane."
+            placeholder={tr('Ne ürettiğiniz, aylık kapasiteniz ve öne çıkan özelliğiniz. Örnek: 1998\'den beri süprem ve interlok örüyoruz; aylık 120 ton kapasite, OEKO-TEX sertifikalı boyahane.')}
           />
           <View style={{ gap: t.space[1] }}>
-            {fieldLabel('Şirket tipi')}
+            {fieldLabel(tr('Şirket tipi'))}
             <ChipRow>
               {TYPE_OPTIONS.map((o) => (
                 <Chip
                   key={o.value || 'bos'}
-                  label={o.label}
+                  label={tr(o.label)}
                   selected={o.value === companyType}
                   onPress={() => setCompanyType(o.value)}
                 />
@@ -407,7 +408,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
             </ChipRow>
           </View>
           <Input
-            label="Kuruluş yılı"
+            label={tr('Kuruluş yılı')}
             value={foundedYear}
             onChangeText={setFoundedYear}
             keyboardType="number-pad"
@@ -422,7 +423,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       {stepKey === 'iletisim' ? (
         <View style={{ gap: t.space[3] }}>
           <Input
-            label="İletişim e-postası"
+            label={tr('İletişim e-postası')}
             value={contactEmail}
             onChangeText={setContactEmail}
             keyboardType="email-address"
@@ -433,7 +434,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
             placeholder="ornek@firma.com"
           />
           <Input
-            label="İletişim telefonu"
+            label={tr('İletişim telefonu')}
             value={contactPhone}
             onChangeText={setContactPhone}
             keyboardType="phone-pad"
@@ -443,7 +444,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
             placeholder="0212 000 00 00"
           />
           <Input
-            label="Web sitesi"
+            label={tr('Web sitesi')}
             value={website}
             onChangeText={setWebsite}
             autoCapitalize="none"
@@ -454,7 +455,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
             <Input
               containerStyle={{ flex: 1 }}
-              label="Şehir"
+              label={tr('Şehir')}
               value={city}
               onChangeText={setCity}
               placeholder="İstanbul"
@@ -462,15 +463,15 @@ export function CompanySetupScreen({ route, navigation }: Props) {
             />
             <Input
               containerStyle={{ flex: 1 }}
-              label="İlçe / bölge"
+              label={tr('İlçe / bölge')}
               value={district}
               onChangeText={setDistrict}
               placeholder="Bağcılar"
               autoCapitalize="words"
             />
           </View>
-          <Input label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
-          <Input label="Ana pazarlar" value={mainMarkets} onChangeText={setMainMarkets} placeholder="Avrupa, Türkiye" />
+          <Input label={tr('Adres')} value={address} onChangeText={setAddress} multiline placeholder={tr('Cadde, sokak, no')} />
+          <Input label={tr('Ana pazarlar')} value={mainMarkets} onChangeText={setMainMarkets} placeholder={tr('Avrupa, Türkiye')} />
         </View>
       ) : null}
 
@@ -491,10 +492,10 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       {stepKey === 'fotograflar' ? (
         <>
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Firmadan görseller (${gallery.photos.office.length}/${MAX_COMPANY_PHOTOS})`} />
+            <SectionTitle title={tr('Firmadan görseller ({n}/{max})', { n: gallery.photos.office.length, max: MAX_COMPANY_PHOTOS })} />
             <Card>
               <View style={{ gap: t.space[3] }}>
-                {hint('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.')}
+                {hint(tr('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.'))}
                 <PhotoGridEditor
                   photos={gallery.photos.office}
                   max={MAX_COMPANY_PHOTOS}
@@ -502,18 +503,18 @@ export function CompanySetupScreen({ route, navigation }: Props) {
                   onAdd={() => addPhoto('office')}
                   onRemove={(key) => gallery.remove('office', key)}
                   onMoveFirst={(key) => gallery.moveFirst('office', key)}
-                  firstBadge="İlk"
+                  firstBadge={tr('İlk')}
                 />
               </View>
             </Card>
           </View>
           <View style={{ gap: t.space[3] }}>
             <SectionTitle
-              title={`Sertifikalar ve başarılar (${gallery.photos.certificate.length}/${MAX_COMPANY_PHOTOS})`}
+              title={tr('Sertifikalar ve başarılar ({n}/{max})', { n: gallery.photos.certificate.length, max: MAX_COMPANY_PHOTOS })}
             />
             <Card>
               <View style={{ gap: t.space[3] }}>
-                {hint('Kalite belgeleri ve ödüller isteğe bağlı, ama alıcıların güveni için önemli.')}
+                {hint(tr('Kalite belgeleri ve ödüller isteğe bağlı, ama alıcıların güveni için önemli.'))}
                 <PhotoGridEditor
                   photos={gallery.photos.certificate}
                   max={MAX_COMPANY_PHOTOS}
@@ -521,7 +522,7 @@ export function CompanySetupScreen({ route, navigation }: Props) {
                   onAdd={() => addPhoto('certificate')}
                   onRemove={(key) => gallery.remove('certificate', key)}
                   onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
-                  firstBadge="İlk"
+                  firstBadge={tr('İlk')}
                 />
               </View>
             </Card>
@@ -532,17 +533,17 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       {stepKey === 'urun' ? (
         <>
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Şirket kodunuz" />
+            <SectionTitle title={tr('Şirket kodunuz')} />
             <Card>
               <View style={{ gap: t.space[3] }}>
                 <Text selectable style={[t.type.display28, { color: t.colors.brand, fontFamily: t.type.mono20.fontFamily }]}>
                   {companyCode}
                 </Text>
-                {hint('Çalışanlarınız kayıt olurken bu kodu girerek firmanıza katılır.')}
+                {hint(tr('Çalışanlarınız kayıt olurken bu kodu girerek firmanıza katılır.'))}
                 <Button
                   kind="secondary"
                   fullWidth
-                  label={codeCopied ? 'Kod kopyalandı' : 'Kodu paylaş'}
+                  label={codeCopied ? tr('Kod kopyalandı') : tr('Kodu paylaş')}
                   icon={codeCopied ? 'check' : 'share'}
                   onPress={shareCode}
                 />
@@ -550,22 +551,22 @@ export function CompanySetupScreen({ route, navigation }: Props) {
             </Card>
           </View>
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="İlk ürününüz" />
+            <SectionTitle title={tr('İlk ürününüz')} />
             <Card>
               <View style={{ gap: t.space[3] }}>
                 {productCount > 0 ? (
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
                     <Icon name="check" size={t.size.iconSm} color="success" />
-                    <Text style={[t.type.body16, { color: t.colors.ink }]}>{productCount} ürününüz var.</Text>
+                    <Text style={[t.type.body16, { color: t.colors.ink }]}>{tr('{n} ürününüz var.', { n: productCount })}</Text>
                   </View>
                 ) : (
-                  hint('Ürünleriniz katalogda aranabilir olur ve firma sayfanızda listelenir.')
+                  hint(tr('Ürünleriniz katalogda aranabilir olur ve firma sayfanızda listelenir.'))
                 )}
                 {/* Ekranda tek dolu düğme alt çubukta; bu eylem kenarlıklı. */}
                 <Button
                   kind="secondary"
                   fullWidth
-                  label={productCount > 0 ? 'Yeni ürün ekleyin' : 'İlk ürününüzü ekleyin'}
+                  label={productCount > 0 ? tr('Yeni ürün ekleyin') : tr('İlk ürününüzü ekleyin')}
                   icon="plus"
                   onPress={() => navigation.navigate('AddProduct')}
                 />
@@ -576,9 +577,9 @@ export function CompanySetupScreen({ route, navigation }: Props) {
       ) : null}
     </>,
     <View style={{ flexDirection: 'row', gap: t.space[3] }}>
-      <Button kind="secondary" label="Atla" onPress={goNext} style={{ flex: 1 }} />
+      <Button kind="secondary" label={tr('Atla')} onPress={goNext} style={{ flex: 1 }} />
       <Button
-        label={isLast ? 'Bitir' : 'Kaydet ve devam'}
+        label={isLast ? tr('Bitir') : tr('Kaydet ve devam')}
         loading={saving}
         onPress={saveAndContinue}
         style={{ flex: 2 }}

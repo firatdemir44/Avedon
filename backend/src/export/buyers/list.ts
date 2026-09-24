@@ -1,7 +1,9 @@
 import { prisma } from '../../db';
 import { countryByIso2 } from '../countries';
 import { GROUP_RULES, hsGroup, industryByNaf, industryBySic, nafCodesFor, SEGMENT_LABEL, sicCodesFor, type Segment } from './segments';
-import { scoreBuyer } from './score';
+import { localizeSize, scoreBuyer } from './score';
+import { t, type Lang } from '../../i18n';
+import { countryName } from '../countries';
 import { ensureFresh, registrySources } from './sync';
 import { SOURCE_LABEL, sourceUrl, type BuyerSource } from './types';
 
@@ -20,7 +22,10 @@ function parseRaw(raw: string): { employeesMin?: number | null; categorie?: stri
   }
 }
 
-export async function listBuyers(opts: { hs6: string; country: string; segment?: Segment; page: number; companyId: string | null }) {
+export async function listBuyers(opts: { hs6: string; country: string; segment?: Segment; page: number; companyId: string | null; lang?: Lang }) {
+  const lang = opts.lang ?? 'tr';
+  const L = (text: string, vars?: Record<string, string | number>) => t(lang, text, vars);
+  const segLabel = (k: string) => L(SEGMENT_LABEL[k as Segment] ?? SEGMENT_LABEL.diger);
   const group = hsGroup(opts.hs6);
   const { pending, errors } = await ensureFresh(opts.country, group);
 
@@ -43,7 +48,9 @@ export async function listBuyers(opts: { hs6: string; country: string; segment?:
       const raw = parseRaw(r.raw);
       const s = scoreBuyer(
         { source: r.source, industryCode: r.industryCode, sizeLabel: r.sizeLabel, employeesMin: raw.employeesMin ?? null, categorie: raw.categorie ?? null, revenueEur: r.revenueEur, website: r.website, city: r.city, sourceUpdatedAt: r.sourceUpdatedAt },
-        group
+        group,
+        Date.now(),
+        lang
       );
       return { r, s };
     })
@@ -69,18 +76,19 @@ export async function listBuyers(opts: { hs6: string; country: string; segment?:
     : [];
 
   const registry = registrySources(opts.country);
-  const sources = [...registry, 'wikidata'].map((s) => REGISTRY_NAME[s]);
-  const countryName = countryByIso2(opts.country)?.name ?? opts.country;
+  const sources = [...registry, 'wikidata'].map((s) => L(REGISTRY_NAME[s]));
+  const c = countryByIso2(opts.country);
+  const cName = c ? countryName(c, lang) : opts.country;
   let note: string;
-  if (registry.length) note = `${countryName} için ${sources.join(' ve ')} kullanılıyor. Liste herkese açık kayıtlardan üretilir; firmanın bu ürünü aldığı kesin değildir, puan olasılığı gösterir.`;
-  else if (opts.country === 'GB') note = 'BK şirketler sicili anahtarı henüz tanımlı değil; şimdilik yalnızca Wikidata\'daki bilinen moda/tekstil markaları gösteriliyor.';
-  else note = `${countryName} için ücretsiz açık ticaret sicili yok; şimdilik yalnızca Wikidata'daki bilinen moda/tekstil markaları gösteriliyor.`;
-  if (errors.length) note += ' Bazı kaynaklara şu an ulaşılamadı; biraz sonra yeniden deneyin.';
+  if (registry.length) note = L('{country} için {sources} kullanılıyor. Liste herkese açık kayıtlardan üretilir; firmanın bu ürünü aldığı kesin değildir, puan olasılığı gösterir.', { country: cName, sources: sources.join(L(' ve ')) });
+  else if (opts.country === 'GB') note = L("BK şirketler sicili anahtarı henüz tanımlı değil; şimdilik yalnızca Wikidata'daki bilinen moda/tekstil markaları gösteriliyor.");
+  else note = L("{country} için ücretsiz açık ticaret sicili yok; şimdilik yalnızca Wikidata'daki bilinen moda/tekstil markaları gösteriliyor.", { country: cName });
+  if (errors.length) note += ' ' + L('Bazı kaynaklara şu an ulaşılamadı; biraz sonra yeniden deneyin.');
 
   return {
     hs6: opts.hs6,
     group,
-    groupLabel: GROUP_RULES[group].label,
+    groupLabel: L(GROUP_RULES[group].label),
     buyers: slice.map(({ r, s }) => {
       const lead = leads.find((l) => l.buyerId === r.id);
       const ind = r.source === 'sirene' ? industryByNaf(r.industryCode) : r.source === 'companies_house' ? industryBySic(r.industryCode) : null;
@@ -91,15 +99,15 @@ export async function listBuyers(opts: { hs6: string; country: string; segment?:
         countryIso2: r.countryIso2,
         website: r.website || null,
         segment: r.segment,
-        segmentLabel: SEGMENT_LABEL[r.segment as Segment] ?? SEGMENT_LABEL.diger,
-        industryLabel: ind?.label ?? null,
-        sizeLabel: r.sizeLabel || null,
+        segmentLabel: segLabel(r.segment),
+        industryLabel: ind ? L(ind.label) : null,
+        sizeLabel: localizeSize(r.sizeLabel, lang) || null,
         foundedYear: r.foundedYear,
         score: s.score,
         scoreParts: s.parts,
         reasons: s.reasons,
         source: r.source,
-        sourceLabel: SOURCE_LABEL[r.source as BuyerSource] ?? r.source,
+        sourceLabel: SOURCE_LABEL[r.source as BuyerSource] ? L(SOURCE_LABEL[r.source as BuyerSource]) : r.source,
         sourceUrl: sourceUrl(r.source, r.sourceId),
         lead: lead ? { status: lead.status, note: lead.note } : null,
       };
@@ -107,7 +115,7 @@ export async function listBuyers(opts: { hs6: string; country: string; segment?:
     total,
     page: opts.page,
     pageSize: PAGE_SIZE,
-    segments: Object.entries(segmentCounts).map(([key, count]) => ({ key, label: SEGMENT_LABEL[key as Segment] ?? key, count })),
+    segments: Object.entries(segmentCounts).map(([key, count]) => ({ key, label: SEGMENT_LABEL[key as Segment] ? L(SEGMENT_LABEL[key as Segment]) : key, count })),
     pending,
     coverage: { registry: registry.length > 0, sources },
     note,
@@ -115,7 +123,7 @@ export async function listBuyers(opts: { hs6: string; country: string; segment?:
   };
 }
 
-export async function listLeads(companyId: string) {
+export async function listLeads(companyId: string, lang: Lang = 'tr') {
   const leads = await prisma.buyerLead.findMany({ where: { companyId }, include: { buyer: true }, orderBy: { updatedAt: 'desc' }, take: 500 });
   return leads.map((l) => ({
     id: l.id,
@@ -127,11 +135,14 @@ export async function listLeads(companyId: string) {
       name: l.buyer.name,
       city: l.buyer.city,
       countryIso2: l.buyer.countryIso2,
-      countryName: countryByIso2(l.buyer.countryIso2)?.name ?? l.buyer.countryIso2,
+      countryName: (() => {
+        const c = countryByIso2(l.buyer.countryIso2);
+        return c ? countryName(c, lang) : l.buyer.countryIso2;
+      })(),
       website: l.buyer.website || null,
-      segmentLabel: SEGMENT_LABEL[l.buyer.segment as Segment] ?? SEGMENT_LABEL.diger,
-      sizeLabel: l.buyer.sizeLabel || null,
-      sourceLabel: SOURCE_LABEL[l.buyer.source as BuyerSource] ?? l.buyer.source,
+      segmentLabel: t(lang, SEGMENT_LABEL[l.buyer.segment as Segment] ?? SEGMENT_LABEL.diger),
+      sizeLabel: localizeSize(l.buyer.sizeLabel, lang) || null,
+      sourceLabel: SOURCE_LABEL[l.buyer.source as BuyerSource] ? t(lang, SOURCE_LABEL[l.buyer.source as BuyerSource]) : l.buyer.source,
       sourceUrl: sourceUrl(l.buyer.source, l.buyer.sourceId),
     },
   }));

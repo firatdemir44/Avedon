@@ -2,6 +2,7 @@
 import * as z from 'zod/v4';
 import { gsmFromSample } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const inputSchema = z.object({
   widthMm: z.number().positive().describe('Kesilen numunenin genişliği (mm); 10 cm için 100'),
@@ -19,7 +20,11 @@ export const fabricGsmSample = defineSkill<typeof inputSchema, { gsm: number }>(
   formula: 'Gramaj (gr/m²) = ağırlık(g) / alan(m²); alan = genişlik(mm) × uzunluk(mm) / 1.000.000.',
   inputSchema,
   run: (input) => ({ gsm: gsmFromSample(input.widthMm, input.lengthMm, input.weightGrams) }),
-  summarize: (input, out) =>
-    `${fmt(input.widthMm, 0)} mm × ${fmt(input.lengthMm, 0)} mm numune ${fmt(input.weightGrams, 4)} g geldi; ` +
-    `gramaj ${fmt(out.gsm, 1)} gr/m².`,
+  summarize: (input, out, lang) =>
+    t(lang, '{w} mm × {l} mm numune {g} g geldi; gramaj {gsm} gr/m².', {
+      w: fmt(input.widthMm, 0),
+      l: fmt(input.lengthMm, 0),
+      g: fmt(input.weightGrams, 4),
+      gsm: fmt(out.gsm, 1),
+    }),
 });

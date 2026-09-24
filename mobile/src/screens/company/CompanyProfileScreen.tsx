@@ -56,6 +56,7 @@ import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../fea
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr, tp, locale } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -84,12 +85,12 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 // açılan eski bağlantılar kırılmasın diye içerik korunuyor.
 type CompanyTab = 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
 
-const TABS: { key: CompanyTab; label: string }[] = [
-  { key: 'products', label: 'Ürünler' },
-  { key: 'machines', label: 'Makineler' },
-  { key: 'about', label: 'Hakkında' },
-  { key: 'people', label: 'Kişiler' },
-  { key: 'docs', label: 'Belgeler' },
+const tabs = (): { key: CompanyTab; label: string }[] => [
+  { key: 'products', label: tr('Ürünler') },
+  { key: 'machines', label: tr('Makineler') },
+  { key: 'about', label: tr('Hakkında') },
+  { key: 'people', label: tr('Kişiler') },
+  { key: 'docs', label: tr('Belgeler') },
 ];
 
 export function CompanyProfileScreen({ navigation, route }: Props) {
@@ -234,7 +235,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [unclaimed, user?.companyId])
   );
   // Sahipsiz firmada ürün/kişi sekmeleri yok.
-  const visibleTabs = unclaimed ? TABS.filter((item) => item.key !== 'products' && item.key !== 'people' && item.key !== 'machines') : TABS;
+  const allTabs = tabs();
+  const visibleTabs = unclaimed ? allTabs.filter((item) => item.key !== 'products' && item.key !== 'people' && item.key !== 'machines') : allTabs;
   useEffect(() => {
     if (unclaimed && (tab === 'products' || tab === 'people' || tab === 'machines')) setTab('about');
   }, [unclaimed, tab]);
@@ -327,9 +329,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const removePost = async (post: FeedPost) => {
     const confirmed = await confirmAction({
-      title: 'Gönderiyi sil',
-      message: 'Bu gönderi kalıcı olarak silinsin mi?',
-      confirmLabel: 'Sil',
+      title: tr('Gönderiyi sil'),
+      message: tr('Bu gönderi kalıcı olarak silinsin mi?'),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -362,7 +364,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       haptics.success();
       setRefFormOpen(false);
       setRefFormNote('');
-      setRefNote('Onay isteği gönderildi; karşı firma onaylayınca iki sayfada da görünür.');
+      setRefNote(tr('Onay isteği gönderildi; karşı firma onaylayınca iki sayfada da görünür.'));
       loadReferences();
     } catch (err) {
       haptics.error();
@@ -381,8 +383,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       haptics.success();
       setRefNote(
         action === 'confirm'
-          ? `${row.company.name} referanslarınızda görünüyor.`
-          : `${row.company.name} isteği reddedildi.`
+          ? tr('{name} referanslarınızda görünüyor.', { name: row.company.name })
+          : tr('{name} isteği reddedildi.', { name: row.company.name })
       );
       loadReferences();
     } catch (err) {
@@ -395,12 +397,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const removeReference = async (row: CompanyReference, mode: 'withdraw' | 'remove') => {
     const confirmed = await confirmAction({
-      title: mode === 'withdraw' ? 'İsteği geri çek' : 'Referansı kaldır',
+      title: mode === 'withdraw' ? tr('İsteği geri çek') : tr('Referansı kaldır'),
       message:
         mode === 'withdraw'
-          ? `${row.company.name} firmasına gönderdiğiniz onay isteği geri çekilsin mi?`
-          : `${row.company.name} referansınızdan kaldırılsın mı? İki firmanın sayfasından da düşer.`,
-      confirmLabel: mode === 'withdraw' ? 'Geri çek' : 'Kaldır',
+          ? tr('{name} firmasına gönderdiğiniz onay isteği geri çekilsin mi?', { name: row.company.name })
+          : tr('{name} referansınızdan kaldırılsın mı? İki firmanın sayfasından da düşer.', { name: row.company.name }),
+      confirmLabel: mode === 'withdraw' ? tr('Geri çek') : tr('Kaldır'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -436,12 +438,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   if (!viewedCompanyId) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-        {bar('Firma')}
+        {bar(tr('Firma'))}
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Firmaya bağlı değilsiniz"
-            description="Bireysel hesabınız bir firmaya bağlı değil."
+            title={tr('Firmaya bağlı değilsiniz')}
+            description={tr('Bireysel hesabınız bir firmaya bağlı değil.')}
           />
         </Screen>
       </View>
@@ -451,7 +453,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   if (status === 'loading') {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-        {bar('Firma')}
+        {bar(tr('Firma'))}
         <Screen>
           <View style={{ flexDirection: 'row', gap: t.space[3], alignItems: 'center' }}>
             <Skeleton width={t.size.tabbar} height={t.size.tabbar} />
@@ -472,21 +474,21 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   if (!company) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-        {bar('Firma')}
+        {bar(tr('Firma'))}
         <Screen>
           {error && !isNotFound(error) ? (
             <EmptyState
               icon="cloud-offline-outline"
-              title="Firma bilgisi alınamadı"
-              description={friendlyMessage(error, 'Bağlantınızı kontrol edip tekrar deneyin.')}
-              actionLabel="Tekrar dene"
+              title={tr('Firma bilgisi alınamadı')}
+              description={friendlyMessage(error, tr('Bağlantınızı kontrol edip tekrar deneyin.'))}
+              actionLabel={tr('Tekrar dene')}
               onAction={reload}
             />
           ) : (
             <EmptyState
               icon="business-outline"
-              title="Firma bulunamadı"
-              description="Firma kaldırılmış olabilir."
+              title={tr('Firma bulunamadı')}
+              description={tr('Firma kaldırılmış olabilir.')}
             />
           )}
         </Screen>
@@ -501,17 +503,17 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   };
 
   const appBar = bar(
-    'Firma',
+    tr('Firma'),
     isOwnCompany
       ? [
           {
             icon: 'create-outline' as const,
-            label: 'Firmayı düzenle',
+            label: tr('Firmayı düzenle'),
             onPress: () => navigation.navigate('EditCompany', { companyId: company.id }),
           },
-          { icon: 'share' as const, label: 'Firmayı paylaş', onPress: shareCompany },
+          { icon: 'share' as const, label: tr('Firmayı paylaş'), onPress: shareCompany },
         ]
-      : [{ icon: 'share' as const, label: 'Firmayı paylaş', onPress: shareCompany }]
+      : [{ icon: 'share' as const, label: tr('Firmayı paylaş'), onPress: shareCompany }]
   );
 
   // Kendi firmasında: sayfanın ne kadarının dolduğu ve eksikse "Tamamla" kartı.
@@ -533,7 +535,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       <Card>
         <View style={{ gap: t.space[2] }}>
           <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
-            Firma sayfanız %{setup.percent} tamamlandı
+            {tr('Firma sayfanız %{percent} tamamlandı', { percent: setup.percent })}
           </Text>
           <View
             style={{
@@ -553,13 +555,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             />
           </View>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            {setup.total - setup.doneCount} adım kaldı. Eksik bilgiler alıcıların size güvenmesini zorlaştırır.
+            {tr('{n} adım kaldı. Eksik bilgiler alıcıların size güvenmesini zorlaştırır.', { n: setup.total - setup.doneCount })}
           </Text>
           <Button
             kind="secondary"
-            label="Tamamla"
+            label={tr('Tamamla')}
             onPress={() => navigation.navigate('CompanySetup')}
-            accessibilityLabel={`Firma sayfanız yüzde ${setup.percent} tamamlandı, tamamla`}
+            accessibilityLabel={tr('Firma sayfanız yüzde {percent} tamamlandı, tamamla', { percent: setup.percent })}
           />
         </View>
       </Card>
@@ -575,7 +577,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     .join(' · ');
 
   const infoLine2 = [
-    company.foundedYear ? `Kuruluş ${company.foundedYear}` : '',
+    company.foundedYear ? tr('Kuruluş {year}', { year: company.foundedYear }) : '',
     company.mainMarkets,
   ]
     .filter(Boolean)
@@ -592,22 +594,21 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               onPress={() => setVerifyInfoOpen((open) => !open)}
               accessibilityRole="button"
               accessibilityState={{ expanded: verifyInfoOpen }}
-              accessibilityLabel={`${verificationLevelText(company)}. Doğrulama düzeyleri ne demek?`}
+              accessibilityLabel={tr('{level}. Doğrulama düzeyleri ne demek?', { level: verificationLevelText(company) })}
               style={({ pressed }) => [{ alignSelf: 'flex-start', opacity: pressed ? 0.6 : 1 }]}
             >
               <Badge kind="verified" />
             </Pressable>
           ) : company.verification === 'inceleniyor' ? (
-            <Badge kind="pending" label="İnceleniyor" />
+            <Badge kind="pending" label={tr('İnceleniyor')} />
           ) : (
-            <Badge kind="info" label="Doğrulanmamış" />
+            <Badge kind="info" label={tr('Doğrulanmamış')} />
           )}
           {infoLine1 ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{infoLine1}</Text> : null}
           {infoLine2 ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{infoLine2}</Text> : null}
           {verifyInfoOpen && company.verification === 'dogrulanmis' ? (
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              {verificationLevelText(company)}. Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı
-              incelendi. Yerinde ziyaretle doğrulama: Takyon ekibi tesisi yerinde gördü.
+              {tr('{level}. Belge ile doğrulama: firmanın vergi levhası ve ticaret sicil kaydı incelendi. Yerinde ziyaretle doğrulama: Takyon ekibi tesisi yerinde gördü.', { level: verificationLevelText(company) })}
             </Text>
           ) : null}
         </View>
@@ -637,7 +638,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       >
         <Icon name="info" size={t.size.iconSm} color="brand" />
         <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-          Bu firma dernek listesinden eklendi, henüz Takyon'a katılmadı.
+          {tr('Bu firma dernek listesinden eklendi, henüz Takyon\'a katılmadı.')}
         </Text>
       </View>
       {claimPending ? (
@@ -654,12 +655,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         >
           <Icon name="clock" size={t.size.iconSm} color="warning" />
           <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-            Başvurunuz inceleniyor. Sonuç bildirimle gelecek.
+            {tr('Başvurunuz inceleniyor. Sonuç bildirimle gelecek.')}
           </Text>
         </View>
       ) : !user?.companyId ? (
         <Button
-          label="Bu firma benim"
+          label={tr('Bu firma benim')}
           icon="shield-checkmark-outline"
           onPress={() => navigation.navigate('ClaimCompany', { companyId: company.id, companyName: company.name })}
           fullWidth
@@ -667,7 +668,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       ) : null}
       <Button
         kind="secondary"
-        label="Bu firmayı davet et"
+        label={tr('Bu firmayı davet et')}
         icon="person-add-outline"
         onPress={() => navigation.navigate('Invites')}
         fullWidth
@@ -677,10 +678,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
 
   const actionRow = unclaimed ? unclaimedBlock : isOwnCompany ? (
     <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
-      <Button label="Ürün ekle" icon="plus" onPress={() => navigation.navigate('AddProduct')} style={{ flex: 1 }} />
+      <Button label={tr('Ürün ekle')} icon="plus" onPress={() => navigation.navigate('AddProduct')} style={{ flex: 1 }} />
       <Button
         kind="secondary"
-        label="Talepler"
+        label={tr('Talepler')}
         icon="requests"
         onPress={() => navigation.navigate('IncomingSampleRequests')}
         style={{ flex: 1 }}
@@ -691,19 +692,19 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     // Metinler kısaltılmaz: dar ekranda iki düğme alt alta iner, kare düğme yanda kalır.
     <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
       <ButtonRow style={{ flex: 1, minWidth: 0 }}>
-        <Button label="Mesaj gönder" icon="message" onPress={() => navigation.navigate('NewConversation')} />
+        <Button label={tr('Mesaj gönder')} icon="message" onPress={() => navigation.navigate('NewConversation')} />
         {whatsappPhone ? (
           <Button
             kind="secondary"
             label="WhatsApp"
             icon="whatsapp"
-            accessibilityLabel={`${company.name} ile WhatsApp'ta yazış`}
+            accessibilityLabel={tr('{name} ile WhatsApp\'ta yazış', { name: company.name })}
             onPress={() => Linking.openURL(`https://wa.me/${whatsappPhone}`).catch(() => {})}
           />
         ) : null}
       </ButtonRow>
       {user?.companyId ? (
-        <SquareButton icon="person-add-outline" label="Bağlantı kur" onPress={openReferenceForm} />
+        <SquareButton icon="person-add-outline" label={tr('Bağlantı kur')} onPress={openReferenceForm} />
       ) : null}
     </View>
   );
@@ -711,11 +712,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   // Değeri olmayan ("—") kutular gizlenir (tasarım incelemesi 2026-09-23).
   const responseTime = responseTimeText(trust?.quoteResponse?.medianHours ?? null);
   const stats: { value: string | number; label: string }[] = [
-    { value: products.length, label: 'Ürün' },
-    ...(trust?.quoteResponse ? [{ value: `%${trust.quoteResponse.responseRate}`, label: 'Numune yanıtı' }] : []),
-    ...(responseTime ? [{ value: responseTime, label: 'Ort. yanıt' }] : []),
+    { value: products.length, label: tr('Ürün') },
+    ...(trust?.quoteResponse ? [{ value: `%${trust.quoteResponse.responseRate}`, label: tr('Numune yanıtı') }] : []),
+    ...(responseTime ? [{ value: responseTime, label: tr('Ort. yanıt') }] : []),
     ...(trust?.confirmedReferenceCount != null
-      ? [{ value: trust.confirmedReferenceCount, label: 'Ortak bağlantı' }]
+      ? [{ value: trust.confirmedReferenceCount, label: tr('Ortak bağlantı') }]
       : []),
   ];
 
@@ -805,10 +806,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     isOwnCompany ? (
       <Button
         kind="danger"
-        label="Kaldır"
+        label={tr('Kaldır')}
         onPress={() => void removeReference(row, 'remove')}
         disabled={refBusyId === row.id}
-        accessibilityLabel={`Referansı kaldır: ${row.company.name}`}
+        accessibilityLabel={tr('Referansı kaldır: {name}', { name: row.company.name })}
       />
     ) : undefined;
 
@@ -816,7 +817,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     <View style={{ gap: t.space[4] }}>
       {trust ? <TrustSummaryCard trust={trust} /> : null}
 
-      <SectionTitle title="Referanslar" />
+      <SectionTitle title={tr('Referanslar')} />
 
       {refsLoading && !refs ? (
         <Card>
@@ -829,9 +830,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Card>
           <EmptyState
             icon="cloud-offline-outline"
-            title="Referanslar alınamadı"
-            description="Bağlantınızı kontrol edip tekrar deneyin."
-            actionLabel="Tekrar dene"
+            title={tr('Referanslar alınamadı')}
+            description={tr('Bağlantınızı kontrol edip tekrar deneyin.')}
+            actionLabel={tr('Tekrar dene')}
             onAction={loadReferences}
           />
         </Card>
@@ -844,7 +845,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <>
           {isOwnCompany && refs.pendingIncoming.length ? (
             <>
-              <SectionTitle title={`Onayınızı bekleyenler (${refs.pendingIncoming.length})`} />
+              <SectionTitle title={tr('Onayınızı bekleyenler ({n})', { n: refs.pendingIncoming.length })} />
               <Card>
                 {refs.pendingIncoming.map((row, index) =>
                   referenceRow(
@@ -853,35 +854,37 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                     <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                       <Button
                         kind="secondary"
-                        label="Onayla"
+                        label={tr('Onayla')}
                         onPress={() => void respondReference(row, 'confirm')}
                         disabled={refBusyId === row.id}
-                        accessibilityLabel={`${row.company.name} referansını onayla`}
+                        accessibilityLabel={tr('{name} referansını onayla', { name: row.company.name })}
                         style={{ flex: 1 }}
                       />
                       <Button
                         kind="danger"
-                        label="Reddet"
+                        label={tr('Reddet')}
                         onPress={() => void respondReference(row, 'reject')}
                         disabled={refBusyId === row.id}
-                        accessibilityLabel={`${row.company.name} referansını reddet`}
+                        accessibilityLabel={tr('{name} referansını reddet', { name: row.company.name })}
                         style={{ flex: 1 }}
                       />
                     </View>,
                     // relation sayfası görüntülenen firmaya (size) göre.
-                    `${row.company.name} sizi ${row.relation === 'tedarikci' ? 'müşterisi' : 'tedarikçisi'} olarak gösterdi.`
+                    row.relation === 'tedarikci'
+                      ? tr('{name} sizi müşterisi olarak gösterdi.', { name: row.company.name })
+                      : tr('{name} sizi tedarikçisi olarak gösterdi.', { name: row.company.name })
                   )
                 )}
               </Card>
               <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                Onayladığınız referans iki firmanın sayfasında da görünür; reddettiğiniz hiçbir yerde görünmez.
+                {tr('Onayladığınız referans iki firmanın sayfasında da görünür; reddettiğiniz hiçbir yerde görünmez.')}
               </Text>
             </>
           ) : null}
 
           {isOwnCompany && refs.pendingOutgoing.length ? (
             <>
-              <SectionTitle title={`Gönderdikleriniz — onay bekliyor (${refs.pendingOutgoing.length})`} />
+              <SectionTitle title={tr('Gönderdikleriniz — onay bekliyor ({n})', { n: refs.pendingOutgoing.length })} />
               <Card>
                 {refs.pendingOutgoing.map((row, index) =>
                   referenceRow(
@@ -889,12 +892,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                     index < refs.pendingOutgoing.length - 1,
                     <Button
                       kind="secondary"
-                      label="İsteği geri çek"
+                      label={tr('İsteği geri çek')}
                       onPress={() => void removeReference(row, 'withdraw')}
                       disabled={refBusyId === row.id}
-                      accessibilityLabel={`${row.company.name} firmasına gönderdiğiniz isteği geri çek`}
+                      accessibilityLabel={tr('{name} firmasına gönderdiğiniz isteği geri çek', { name: row.company.name })}
                     />,
-                    `Bu firmayı ${row.relation === 'musteri' ? 'müşteriniz' : 'tedarikçiniz'} olarak gösterdiniz.`
+                    row.relation === 'musteri'
+                      ? tr('Bu firmayı müşteriniz olarak gösterdiniz.')
+                      : tr('Bu firmayı tedarikçiniz olarak gösterdiniz.')
                   )
                 )}
               </Card>
@@ -904,7 +909,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           {confirmedCustomers.length ? (
             <>
               <SectionTitle
-                title={`${isOwnCompany ? 'Müşterileriniz' : 'Müşterileri'} (${confirmedCustomers.length})`}
+                title={isOwnCompany ? tr('Müşterileriniz ({n})', { n: confirmedCustomers.length }) : tr('Müşterileri ({n})', { n: confirmedCustomers.length })}
               />
               <Card>
                 {confirmedCustomers.map((row, index) =>
@@ -917,7 +922,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           {confirmedSuppliers.length ? (
             <>
               <SectionTitle
-                title={`${isOwnCompany ? 'Tedarikçileriniz' : 'Tedarikçileri'} (${confirmedSuppliers.length})`}
+                title={isOwnCompany ? tr('Tedarikçileriniz ({n})', { n: confirmedSuppliers.length }) : tr('Tedarikçileri ({n})', { n: confirmedSuppliers.length })}
               />
               <Card>
                 {confirmedSuppliers.map((row, index) =>
@@ -931,11 +936,11 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             <Card>
               <EmptyState
                 icon="ribbon-outline"
-                title="Henüz onaylı referans yok"
+                title={tr('Henüz onaylı referans yok')}
                 description={
                   isOwnCompany
-                    ? "Çalıştığınız firmaların sayfasından 'Bağlantı kur' diyerek onay isteyebilirsiniz."
-                    : 'Bu firmanın onaylı referansı yok.'
+                    ? tr('Çalıştığınız firmaların sayfasından \'Bağlantı kur\' diyerek onay isteyebilirsiniz.')
+                    : tr('Bu firmanın onaylı referansı yok.')
                 }
               />
             </Card>
@@ -946,10 +951,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             <Card>
               {refFormOpen ? (
                 <View style={{ gap: t.space[3] }}>
-                  <Text style={[t.type.title18, { color: t.colors.ink }]}>Bu firmayla çalışıyor musunuz?</Text>
+                  <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Bu firmayla çalışıyor musunuz?')}</Text>
                   <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap' }}>
                     <Chip
-                      label="Bu firma müşterimiz"
+                      label={tr('Bu firma müşterimiz')}
                       selected={refRelation === 'musteri'}
                       onPress={() => {
                         haptics.selection();
@@ -957,7 +962,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                       }}
                     />
                     <Chip
-                      label="Bu firma tedarikçimiz"
+                      label={tr('Bu firma tedarikçimiz')}
                       selected={refRelation === 'tedarikci'}
                       onPress={() => {
                         haptics.selection();
@@ -966,25 +971,25 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                     />
                   </View>
                   <Input
-                    label="Not (isteğe bağlı)"
+                    label={tr('Not (isteğe bağlı)')}
                     value={refFormNote}
                     onChangeText={setRefFormNote}
-                    placeholder="Örn. 2023'ten beri süprem alıyoruz"
+                    placeholder={tr('Örn. 2023\'ten beri süprem alıyoruz')}
                     maxLength={200}
                     multiline
-                    helper="İstek karşı firmaya gider; onaylanmadan hiçbir sayfada görünmez."
+                    helper={tr('İstek karşı firmaya gider; onaylanmadan hiçbir sayfada görünmez.')}
                   />
                   <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                     <Button
                       kind="secondary"
-                      label="Gönder"
+                      label={tr('Gönder')}
                       loading={refSaving}
                       onPress={() => void submitReference()}
                       style={{ flex: 1 }}
                     />
                     <Button
                       kind="quiet"
-                      label="Vazgeç"
+                      label={tr('Vazgeç')}
                       disabled={refSaving}
                       onPress={() => {
                         setRefFormOpen(false);
@@ -997,10 +1002,10 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               ) : (
                 <Button
                   kind="secondary"
-                  label="Referans olarak ekle"
+                  label={tr('Referans olarak ekle')}
                   icon="person-add-outline"
                   onPress={openReferenceForm}
-                  accessibilityLabel={`${company.name} firmasını referans olarak ekle`}
+                  accessibilityLabel={tr('{name} firmasını referans olarak ekle', { name: company.name })}
                 />
               )}
             </Card>
@@ -1013,44 +1018,44 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   // --- Hakkında sekmesi --------------------------------------------------
   const ownTools = isOwnCompany ? (
     <>
-      <SectionTitle title="Firma yönetimi" />
+      <SectionTitle title={tr('Firma yönetimi')} />
       <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
         {pendingDrafts > 0 ? (
           <ListRow
-            title={`WhatsApp taslakları (${pendingDrafts})`}
-            subtitle="Etiket fotoğrafından hazırlandı, kontrol edip kaydedin"
+            title={tr('WhatsApp taslakları ({n})', { n: pendingDrafts })}
+            subtitle={tr('Etiket fotoğrafından hazırlandı, kontrol edip kaydedin')}
             left={<Icon name="whatsapp" color="brand" />}
             onPress={() => navigation.navigate('ProductDrafts')}
           />
         ) : null}
         <ListRow
-          title="İplik ekle"
-          subtitle="İplikler kumaş formuyla değil kendi formuyla eklenir"
+          title={tr('İplik ekle')}
+          subtitle={tr('İplikler kumaş formuyla değil kendi formuyla eklenir')}
           left={<Icon name="yarn" color="brand" />}
           onPress={() => navigation.navigate('YarnForm')}
         />
         <ListRow
-          title={openQuoteRequests ? `Gelen teklif istekleri (${openQuoteRequests})` : 'Gelen teklif istekleri'}
+          title={openQuoteRequests ? tr('Gelen teklif istekleri ({n})', { n: openQuoteRequests }) : tr('Gelen teklif istekleri')}
           left={<Icon name="quote" color="brand" />}
           onPress={() => navigation.navigate('QuoteRequests', { role: 'seller' })}
         />
         <ListRow
-          title={pendingDealReviews ? `Siparişler (${pendingDealReviews} değerlendirme bekliyor)` : 'Siparişler'}
+          title={pendingDealReviews ? tr('Siparişler ({n} değerlendirme bekliyor)', { n: pendingDealReviews }) : tr('Siparişler')}
           left={<Icon name="sample" color="brand" />}
           onPress={() => navigation.navigate('Deals', { role: 'seller' })}
         />
         <ListRow
-          title={openQuestions ? `Asistana gelen sorular (${openQuestions})` : 'Asistana gelen sorular'}
+          title={openQuestions ? tr('Asistana gelen sorular ({n})', { n: openQuestions }) : tr('Asistana gelen sorular')}
           left={<Icon name="sparkles-outline" color="brand" />}
           onPress={() => navigation.navigate('CompanyQuestions')}
         />
         <ListRow
-          title="Tedarikçi ya da müşteri davet et"
+          title={tr('Tedarikçi ya da müşteri davet et')}
           left={<Icon name="person-add-outline" color="brand" />}
           onPress={() => navigation.navigate('Invites')}
         />
         <ListRow
-          title="Firmayı düzenle"
+          title={tr('Firmayı düzenle')}
           left={<Icon name="create-outline" color="brand" />}
           divider={false}
           onPress={() => navigation.navigate('EditCompany', { companyId: company.id })}
@@ -1083,7 +1088,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               { color: empty ? t.colors.ink3 : t.colors.ink, textAlign: 'right' },
             ]}
           >
-            {empty ? 'Eklenmemiş' : value}
+            {empty ? tr('Eklenmemiş') : value}
           </Text>
         </View>
         {onPress ? <Icon name="chevron" color="ink3" /> : null}
@@ -1094,7 +1099,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         key={label}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${label}: ${empty ? 'Eklenmemiş' : value}`}
+        accessibilityLabel={`${label}: ${empty ? tr('Eklenmemiş') : value}`}
         style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
       >
         {row}
@@ -1108,7 +1113,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     <View style={{ gap: t.space[4] }}>
       {route.params?.focus === 'references' ? referencesContent : null}
 
-      <SectionTitle title="Hakkında" />
+      <SectionTitle title={tr('Hakkında')} />
       <Card>
         {company.about ? (
           <Text style={[t.type.body16, { color: t.colors.ink }]}>{company.about}</Text>
@@ -1116,26 +1121,26 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           <Pressable
             onPress={() => navigation.navigate('CompanySetup', { step: 'tanitim' })}
             accessibilityRole="button"
-            accessibilityLabel="Firmanızı tanıtan bir yazı ekleyin"
+            accessibilityLabel={tr('Firmanızı tanıtan bir yazı ekleyin')}
             style={({ pressed }) => [{ minHeight: t.size.touchMin, justifyContent: 'center', opacity: pressed ? 0.6 : 1 }]}
           >
             <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
-              Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.
+              {tr('Firmanızı tanıtan bir yazı ekleyin: ne ürettiğiniz, kapasiteniz ve öne çıkan özellikleriniz.')}
             </Text>
-            <Text style={[t.type.label14, { color: t.colors.brand }]}>Tanıtım yazısı ekle</Text>
+            <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Tanıtım yazısı ekle')}</Text>
           </Pressable>
         ) : (
-          <Text style={[t.type.body16, { color: t.colors.ink2 }]}>Bu firma henüz tanıtım yazısı eklememiş.</Text>
+          <Text style={[t.type.body16, { color: t.colors.ink2 }]}>{tr('Bu firma henüz tanıtım yazısı eklememiş.')}</Text>
         )}
       </Card>
 
-      <SectionTitle title="İletişim" />
+      <SectionTitle title={tr('İletişim')} />
       <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
-        {factRow('E-posta', company.contactEmail || '—')}
-        {factRow('Telefon', company.contactPhone || '—', true)}
+        {factRow(tr('E-posta'), company.contactEmail || '—')}
+        {factRow(tr('Telefon'), company.contactPhone || '—', true)}
         {company.website ? (
           <ListRow
-            title="Web sitesi"
+            title={tr('Web sitesi')}
             subtitle={company.website}
             left={null}
             onPress={() => Linking.openURL(websiteUrl(company.website)).catch(() => {})}
@@ -1143,7 +1148,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         ) : null}
         {company.address || company.city || company.district
           ? factRow(
-              'Adres',
+              tr('Adres'),
               [company.address, [company.district, company.city].filter(Boolean).join('/')].filter(Boolean).join(', ')
             )
           : null}
@@ -1159,27 +1164,27 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               borderBottomColor: t.colors.line,
             }}
           >
-            <Text style={[t.type.body16, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>Vergi kaydı doğrulandı</Text>
+            <Text style={[t.type.body16, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{tr('Vergi kaydı doğrulandı')}</Text>
             <Icon name="checkmark-circle-outline" color="success" />
           </View>
         ) : null}
-        {isOwnCompany ? factRow('Şirket kodu', company.companyCode, true) : null}
+        {isOwnCompany ? factRow(tr('Şirket kodu'), company.companyCode, true) : null}
       </Card>
 
-      <SectionTitle title="Şirket genel bakışı" />
+      <SectionTitle title={tr('Şirket genel bakışı')} />
       <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
-        {factRow('Şirket tipi', company.companyType ? companyTypeLabel(company.companyType) : '—')}
-        {factRow('Kuruluş yılı', company.foundedYear ? String(company.foundedYear) : '—', true)}
-        {factRow('Ürün grupları', productGroups || '—')}
-        {factRow('Şehir', [company.district, company.city].filter(Boolean).join('/') || '—')}
-        {factRow('Ana pazarlar', company.mainMarkets || '—')}
+        {factRow(tr('Şirket tipi'), company.companyType ? companyTypeLabel(company.companyType) : '—')}
+        {factRow(tr('Kuruluş yılı'), company.foundedYear ? String(company.foundedYear) : '—', true)}
+        {factRow(tr('Ürün grupları'), productGroups || '—')}
+        {factRow(tr('Şehir'), [company.district, company.city].filter(Boolean).join('/') || '—')}
+        {factRow(tr('Ana pazarlar'), company.mainMarkets || '—')}
         {factRow(
-          'Doğrulama',
+          tr('Doğrulama'),
           company.verification === 'dogrulanmis'
-            ? 'Doğrulanmış üretici'
+            ? tr('Doğrulanmış üretici')
             : company.verification === 'inceleniyor'
-              ? 'İnceleniyor'
-              : 'Doğrulanmamış',
+              ? tr('İnceleniyor')
+              : tr('Doğrulanmamış'),
           false,
           isOwnCompany ? () => navigation.navigate('Verification') : undefined
         )}
@@ -1196,24 +1201,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     <View style={{ gap: t.space[4] }}>
       {company.certificatePhotoCount ? (
         <>
-          <SectionTitle title={`Sertifikalar ve başarılar (${company.certificatePhotoCount})`} />
+          <SectionTitle title={tr('Sertifikalar ve başarılar ({n})', { n: company.certificatePhotoCount })} />
           <CompanyPhotoGallery
             companyId={company.id}
             kind="certificate"
             count={company.certificatePhotoCount}
-            itemLabel="Sertifika"
+            itemLabel={tr('Sertifika')}
           />
         </>
       ) : null}
 
       {company.officePhotoCount ? (
         <>
-          <SectionTitle title={`Firmadan görseller (${company.officePhotoCount})`} />
+          <SectionTitle title={tr('Firmadan görseller ({n})', { n: company.officePhotoCount })} />
           <CompanyPhotoGallery
             companyId={company.id}
             kind="office"
             count={company.officePhotoCount}
-            itemLabel="Firma fotoğrafı"
+            itemLabel={tr('Firma fotoğrafı')}
           />
         </>
       ) : null}
@@ -1222,13 +1227,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Card>
           <EmptyState
             icon="document-text-outline"
-            title={isOwnCompany ? 'Henüz belge eklemediniz' : 'Belge yok'}
+            title={isOwnCompany ? tr('Henüz belge eklemediniz') : tr('Belge yok')}
             description={
               isOwnCompany
-                ? 'Sertifikalarınızı ve firma görsellerinizi ekleyin; alıcılar size daha çabuk güvenir.'
-                : 'Bu firma sertifika ya da görsel eklememiş.'
+                ? tr('Sertifikalarınızı ve firma görsellerinizi ekleyin; alıcılar size daha çabuk güvenir.')
+                : tr('Bu firma sertifika ya da görsel eklememiş.')
             }
-            actionLabel={isOwnCompany ? 'Firmayı düzenle' : undefined}
+            actionLabel={isOwnCompany ? tr('Firmayı düzenle') : undefined}
             onAction={isOwnCompany ? () => navigation.navigate('EditCompany', { companyId: company.id }) : undefined}
           />
         </Card>
@@ -1258,9 +1263,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Card>
           <EmptyState
             icon="cloud-offline-outline"
-            title="Makineler alınamadı"
-            description="Bağlantınızı kontrol edip tekrar deneyin."
-            actionLabel="Tekrar dene"
+            title={tr('Makineler alınamadı')}
+            description={tr('Bağlantınızı kontrol edip tekrar deneyin.')}
+            actionLabel={tr('Tekrar dene')}
             onAction={loadPark}
           />
         </Card>
@@ -1270,13 +1275,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <>
           {isOwnCompany && park.machines.length ? (
             <ButtonRow>
-              <Button kind="secondary" label="Makine ekle" icon="plus" onPress={() => navigation.navigate('MachineForm')} />
-              <Button kind="secondary" label="Fotoğraftan aktar" icon="camera-outline" onPress={() => navigation.navigate('MachineImport')} />
+              <Button kind="secondary" label={tr('Makine ekle')} icon="plus" onPress={() => navigation.navigate('MachineForm')} />
+              <Button kind="secondary" label={tr('Fotoğraftan aktar')} icon="camera-outline" onPress={() => navigation.navigate('MachineImport')} />
               <Button
                 kind="secondary"
-                label="Kapasite"
+                label={tr('Kapasite')}
                 icon="create-outline"
-                accessibilityLabel="Aylık kapasiteyi ve makine listesini düzenle"
+                accessibilityLabel={tr('Aylık kapasiteyi ve makine listesini düzenle')}
                 onPress={() => navigation.navigate('MachinePark')}
               />
             </ButtonRow>
@@ -1285,14 +1290,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           {park.machines.length && (capacityTons || park.capacity.note) ? (
             <Card>
               <View style={{ gap: t.space[1] }}>
-                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Aylık kapasite</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Aylık kapasite')}</Text>
                 {capacityTons ? <Text style={[t.type.mono14, { color: t.colors.ink }]}>{capacityTons}</Text> : null}
                 {park.capacity.note ? (
                   <Text style={[t.type.body16, { color: t.colors.ink }]}>{park.capacity.note}</Text>
                 ) : null}
                 {park.capacity.updatedAt ? (
                   <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-                    güncellendi: {formatRelativeTime(park.capacity.updatedAt)}
+                    {tr('güncellendi: {time}', { time: formatRelativeTime(park.capacity.updatedAt) })}
                   </Text>
                 ) : null}
               </View>
@@ -1314,14 +1319,14 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 <View style={{ gap: t.space[2] }}>
                 <EmptyState
                   icon="machine"
-                  title="Makine parkurunu ekle, fason iş alan firmalar arasında görün"
-                  description="Tür, çap, fine ve günlük kapasiteyi girin; fason iş arayanlar sizi aramada bulsun."
-                  actionLabel="Makine ekle"
+                  title={tr('Makine parkurunu ekle, fason iş alan firmalar arasında görün')}
+                  description={tr('Tür, çap, fine ve günlük kapasiteyi girin; fason iş arayanlar sizi aramada bulsun.')}
+                  actionLabel={tr('Makine ekle')}
                   onAction={() => navigation.navigate('MachineForm')}
                 />
                 <Button
                   kind="quiet"
-                  label="Tablonuzu fotoğraftan aktarın"
+                  label={tr('Tablonuzu fotoğraftan aktarın')}
                   icon="camera-outline"
                   fullWidth
                   onPress={() => navigation.navigate('MachineImport')}
@@ -1329,7 +1334,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
                 </View>
               ) : (
                 <Text style={[t.type.body16, { color: t.colors.ink2, textAlign: 'center' }]}>
-                  Bu firma henüz makine eklemedi.
+                  {tr('Bu firma henüz makine eklemedi.')}
                 </Text>
               )}
             </Card>
@@ -1340,7 +1345,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   );
 
   // --- Ürünler sekmesi ---------------------------------------------------
-  const gridTitle = typeFilter ? TYPE_LABELS[typeFilter] : 'Ürünler';
+  const gridTitle = typeFilter ? TYPE_LABELS[typeFilter] : tr('Ürünler');
 
   const productFilters =
     products.length > 0 ? (
@@ -1355,7 +1360,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             keyExtractor={(item) => item.type ?? 'all'}
             renderItem={({ item }) => (
               <Chip
-                label={`${item.type ? TYPE_LABELS[item.type] : 'Tümü'} ${item.count}`}
+                label={`${item.type ? TYPE_LABELS[item.type] : tr('Tümü')} ${item.count}`}
                 selected={item.type ? typeFilter === item.type : !typeFilter}
                 onPress={() => {
                   haptics.selection();
@@ -1393,7 +1398,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {people.map((person, index) => (
         <ListRow
           key={person.id}
-          title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
+          title={`${person.firstName} ${person.lastName}${person.id === user?.id ? tr(' (siz)') : ''}`}
           subtitle={person.position}
           left={
             <UserAvatar
@@ -1417,9 +1422,9 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {error ? (
         <Card>
           <Text style={[t.type.body14, { color: t.colors.danger }]}>
-            {friendlyMessage(error, 'Firma bilgisi alınamadı')}
+            {friendlyMessage(error, tr('Firma bilgisi alınamadı'))}
           </Text>
-          <Button kind="secondary" label="Tekrar dene" onPress={reload} style={{ marginTop: t.space[2] }} />
+          <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} style={{ marginTop: t.space[2] }} />
         </Card>
       ) : null}
       {setupBanner}
@@ -1434,8 +1439,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <View style={{ gap: t.space[3] }}>
           {isOwnCompany ? (
             <ButtonRow>
-              <Button kind="secondary" label="Siteden aktar" icon="globe-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'web' })} />
-              <Button kind="secondary" label="Dosyadan aktar" icon="document-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'file' })} />
+              <Button kind="secondary" label={tr('Siteden aktar')} icon="globe-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'web' })} />
+              <Button kind="secondary" label={tr('Dosyadan aktar')} icon="document-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'file' })} />
             </ButtonRow>
           ) : null}
           {productFilters}
@@ -1444,12 +1449,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <SectionTitle title={gridTitle} />
               </View>
-              <Text style={[t.type.label14, { color: t.colors.brand }]}>{visibleProducts.length} ürün</Text>
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>{tp('1 ürün', '{n} ürün', visibleProducts.length)}</Text>
             </View>
           ) : null}
         </View>
       ) : null}
-      {tab === 'people' ? <SectionTitle title="Yetkililer" /> : null}
+      {tab === 'people' ? <SectionTitle title={tr('Yetkililer')} /> : null}
       {tab === 'feed' && postsLoading ? (
         <Card>
           <SkeletonRow />
@@ -1462,7 +1467,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
   const listFooter =
     tab === 'products' && people.length ? (
       <View style={{ gap: t.space[3], paddingTop: t.space[6] }}>
-        <SectionTitle title="Yetkililer" />
+        <SectionTitle title={tr('Yetkililer')} />
         {peopleRows}
       </View>
     ) : null;
@@ -1472,15 +1477,15 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       <Card>
         <EmptyState
           icon="sample"
-          title={typeFilter || usageFilter ? 'Bu süzgece uyan ürün yok' : 'Henüz ürün eklenmemiş'}
+          title={typeFilter || usageFilter ? tr('Bu süzgece uyan ürün yok') : tr('Henüz ürün eklenmemiş')}
           description={
             typeFilter || usageFilter
-              ? 'Süzgeci kaldırıp tüm ürünlere bakabilirsiniz.'
+              ? tr('Süzgeci kaldırıp tüm ürünlere bakabilirsiniz.')
               : isOwnCompany
-                ? 'Ürün eklediğinizde katalogda ve firma sayfanızda görünür.'
-                : 'Bu firma henüz ürün eklemedi.'
+                ? tr('Ürün eklediğinizde katalogda ve firma sayfanızda görünür.')
+                : tr('Bu firma henüz ürün eklemedi.')
           }
-          actionLabel={typeFilter || usageFilter ? 'Süzgeci kaldır' : isOwnCompany ? 'Ürün ekle' : undefined}
+          actionLabel={typeFilter || usageFilter ? tr('Süzgeci kaldır') : isOwnCompany ? tr('Ürün ekle') : undefined}
           onAction={
             typeFilter || usageFilter
               ? () => {
@@ -1498,22 +1503,22 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <Card>
           <EmptyState
             icon={postsFailed ? 'cloud-offline-outline' : 'messages'}
-            title={postsFailed ? 'Akış alınamadı' : 'Henüz gönderi yok'}
+            title={postsFailed ? tr('Akış alınamadı') : tr('Henüz gönderi yok')}
             description={
               postsFailed
-                ? 'Bağlantınızı kontrol edip tekrar deneyin.'
+                ? tr('Bağlantınızı kontrol edip tekrar deneyin.')
                 : isOwnCompany
-                  ? 'Paylaştığınız gönderiler firma sayfanızda burada görünür.'
-                  : 'Bu firma henüz gönderi paylaşmadı.'
+                  ? tr('Paylaştığınız gönderiler firma sayfanızda burada görünür.')
+                  : tr('Bu firma henüz gönderi paylaşmadı.')
             }
-            actionLabel={postsFailed ? 'Tekrar dene' : isOwnCompany ? 'Gönderi paylaş' : undefined}
+            actionLabel={postsFailed ? tr('Tekrar dene') : isOwnCompany ? tr('Gönderi paylaş') : undefined}
             onAction={postsFailed ? loadPosts : isOwnCompany ? () => navigation.navigate('CreatePost') : undefined}
           />
         </Card>
       )
     ) : (
       <Card>
-        <EmptyState icon="user" title="Kişi yok" description="Bu firmaya bağlı kullanıcı yok." />
+        <EmptyState icon="user" title={tr('Kişi yok')} description={tr('Bu firmaya bağlı kullanıcı yok.')} />
       </Card>
     );
 
@@ -1586,7 +1591,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             const person = item as CompanyEmployee;
             return (
               <ListRow
-                title={`${person.firstName} ${person.lastName}${person.id === user?.id ? ' (siz)' : ''}`}
+                title={`${person.firstName} ${person.lastName}${person.id === user?.id ? tr(' (siz)') : ''}`}
                 subtitle={person.position}
                 left={
                   <UserAvatar
@@ -1696,7 +1701,7 @@ function CompanyLogo({
           source={{ uri: logo }}
           style={{ width: '100%', height: '100%' }}
           resizeMode="contain"
-          accessibilityLabel={`${name} logosu`}
+          accessibilityLabel={tr('{name} logosu', { name })}
         />
       </View>
     );
@@ -1704,7 +1709,7 @@ function CompanyLogo({
   return (
     <View style={[box, { backgroundColor: t.colors.brandSoft }]}>
       <Text style={[t.type.title22, { color: t.colors.brand }]}>
-        {name.trim().charAt(0).toLocaleUpperCase('tr-TR') || '?'}
+        {name.trim().charAt(0).toLocaleUpperCase(locale()) || '?'}
       </Text>
     </View>
   );
@@ -1781,10 +1786,10 @@ function ProductTile({ product, onPress }: { product: Product; onPress: () => vo
 function verificationLevelText(company: { verificationLevel?: string; verifiedAt?: string | null }): string {
   const level =
     company.verificationLevel === 'belge'
-      ? 'Belge ile doğrulandı'
+      ? tr('Belge ile doğrulandı')
       : company.verificationLevel === 'ziyaret'
-        ? 'Yerinde ziyaretle doğrulandı'
-        : 'Doğrulandı';
+        ? tr('Yerinde ziyaretle doğrulandı')
+        : tr('Doğrulandı');
   const when = company.verifiedAt ? formatMonthYear(company.verifiedAt) : '';
   return when ? `${level} · ${when}` : level;
 }
@@ -1792,9 +1797,9 @@ function verificationLevelText(company: { verificationLevel?: string; verifiedAt
 // Tipik yanıt süresi: saat/gün olarak okunur metin.
 function responseTimeText(medianHours: number | null): string | null {
   if (medianHours == null) return null;
-  if (medianHours >= 48) return `${Math.round(medianHours / 24)} gün`;
-  if (medianHours < 1) return '<1 saat';
-  return `${Math.round(medianHours)} saat`;
+  if (medianHours >= 48) return tr('{n} gün', { n: Math.round(medianHours / 24) });
+  if (medianHours < 1) return tr('<1 saat');
+  return tr('{n} saat', { n: Math.round(medianHours) });
 }
 
 // Adres "www" ile yazıldıysa başına https:// eklenir, yoksa Linking açamaz.
@@ -1808,17 +1813,17 @@ function referenceErrorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.code === 'already_exists') {
       const status = typeof err.body?.status === 'string' ? err.body.status : '';
-      if (status === 'pending') return 'Onay bekleyen bir isteğiniz var.';
-      if (status === 'confirmed') return 'Bu firma zaten referansınız.';
-      return 'Bu firma için daha önce bir istek gönderilmiş.';
+      if (status === 'pending') return tr('Onay bekleyen bir isteğiniz var.');
+      if (status === 'confirmed') return tr('Bu firma zaten referansınız.');
+      return tr('Bu firma için daha önce bir istek gönderilmiş.');
     }
-    if (err.code === 'own_company') return 'Kendi firmanızı referans olarak ekleyemezsiniz.';
-    if (err.code === 'no_company') return 'Referans eklemek için bir firmaya bağlı olmanız gerekir.';
-    if (err.code === 'too_many_references') return 'Referans sayısı üst sınıra ulaştı.';
-    if (err.code === 'already_responded') return 'Bu istek daha önce cevaplanmış.';
-    if (err.code === 'reference_not_found') return 'Bu referans artık yok, liste yenilendiğinde düşecek.';
+    if (err.code === 'own_company') return tr('Kendi firmanızı referans olarak ekleyemezsiniz.');
+    if (err.code === 'no_company') return tr('Referans eklemek için bir firmaya bağlı olmanız gerekir.');
+    if (err.code === 'too_many_references') return tr('Referans sayısı üst sınıra ulaştı.');
+    if (err.code === 'already_responded') return tr('Bu istek daha önce cevaplanmış.');
+    if (err.code === 'reference_not_found') return tr('Bu referans artık yok, liste yenilendiğinde düşecek.');
   }
-  return friendlyMessage(err, 'İşlem tamamlanamadı, tekrar deneyin.');
+  return friendlyMessage(err, tr('İşlem tamamlanamadı, tekrar deneyin.'));
 }
 
 // Kayıtlı telefonu wa.me biçimine çevirir (yalnız rakam, ülke koduyla).

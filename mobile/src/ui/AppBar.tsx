@@ -2,6 +2,7 @@
 // Sol: geri oku (44px) | logo | özel node. Başlık title-18, tek satır kısaltılır.
 // Sağda en fazla 2 ikon ya da sessiz metin düğmesi (44px). Üstte güvenli alan boşluğu.
 import React from 'react';
+import { tr } from '../i18n';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
@@ -103,7 +104,7 @@ export function AppBar({ title, leading = 'none', onBack, left, actions = [], st
       >
         {left ??
           (leading === 'back' ? (
-            <BarButton action={{ icon: 'back', label: 'Geri', onPress: onBack ?? (() => undefined) }} />
+            <BarButton action={{ icon: 'back', label: tr('Geri'), onPress: onBack ?? (() => undefined) }} />
           ) : leading === 'logo' ? (
             <View
               style={{

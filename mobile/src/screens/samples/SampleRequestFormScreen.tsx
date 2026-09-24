@@ -10,21 +10,22 @@ import { useSession } from '../../context/SessionContext';
 import { createSampleRequest } from '../../api/client';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Button, Card, Chip, Icon, Input, Screen, SectionTitle } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'SampleRequestForm'>;
 
 // Teslimat, serbest metin yerine iki seçenek: tasarımdaki takip ekranı son adımı
 // ("Teslim Edildi" / "Kurye Teslim Aldı") bu seçime göre adlandırıyor.
-const OPTIONS: { mode: DeliveryMode; title: string; description: string }[] = [
+const OPTIONS = (): { mode: DeliveryMode; title: string; description: string }[] => [
   {
     mode: 'seller_ships',
-    title: 'Satıcı göndersin',
-    description: 'Üretici firma numuneyi kargoyla adresine gönderir.',
+    title: tr('Satıcı göndersin'),
+    description: tr('Üretici firma numuneyi kargoyla adresine gönderir.'),
   },
   {
     mode: 'customer_courier',
-    title: 'Kendi kuryemle alayım',
-    description: 'Numune hazır olunca senin kuryen üreticiden teslim alır.',
+    title: tr('Kendi kuryemle alayım'),
+    description: tr('Numune hazır olunca senin kuryen üreticiden teslim alır.'),
   },
 ];
 
@@ -57,22 +58,22 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
       // tuşunun doldurulmuş forma dönmesini de engelliyor.
       navigation.replace('SampleRequestTracking', { sampleRequestId: sampleRequest.id });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Talep gönderilemedi');
+      setError(err instanceof Error ? err.message : tr('Talep gönderilemedi'));
       setSubmitting(false);
     }
   };
 
-  const chosen = OPTIONS.find((o) => o.mode === deliveryMode);
+  const chosen = OPTIONS().find((o) => o.mode === deliveryMode);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Numune talebi" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Numune talebi')} leading="back" onBack={() => navigation.goBack()} />
 
       <Screen
         sticky={
           <Button
             size="lg"
-            label="Talebi gönder"
+            label={tr('Talebi gönder')}
             loading={submitting}
             disabled={!deliveryMode}
             onPress={handleSubmit}
@@ -82,15 +83,15 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
         {/* Ürün özeti: hangi kumaş için talep açıldığı üstte görünsün. */}
         <Card>
           <View style={{ gap: t.space[1] }}>
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Numune istenen ürün</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Numune istenen ürün')}</Text>
             <Text style={[t.type.mono20, { color: t.colors.ink }]}>{productCode}</Text>
           </View>
         </Card>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Numuneyi nasıl almak istersin?" />
+          <SectionTitle title={tr('Numuneyi nasıl almak istersin?')} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
-            {OPTIONS.map((option) => (
+            {OPTIONS().map((option) => (
               <Chip
                 key={option.mode}
                 label={option.title}
@@ -101,15 +102,15 @@ export function SampleRequestFormScreen({ route, navigation }: Props) {
             ))}
           </View>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            {chosen ? chosen.description : 'Devam etmek için bir teslim şekli seç.'}
+            {chosen ? chosen.description : tr('Devam etmek için bir teslim şekli seç.')}
           </Text>
         </View>
 
         <Input
-          label="Not (isteğe bağlı)"
+          label={tr('Not (isteğe bağlı)')}
           value={note}
           onChangeText={setNote}
-          placeholder="Örn. İstanbul ofisimize, 2 metre yeterli"
+          placeholder={tr('Örn. İstanbul ofisimize, 2 metre yeterli')}
           multiline
         />
 

@@ -14,6 +14,7 @@ import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'CompanyQuestions'>;
 
@@ -50,7 +51,7 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
     async (question: CompanyQuestion) => {
       const answer = draft.trim();
       if (!answer) {
-        setRowError('Cevap boş olamaz.');
+        setRowError(tr('Cevap boş olamaz.'));
         return;
       }
       setSaving(true);
@@ -64,7 +65,7 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
         await reload();
       } catch (err) {
         haptics.error();
-        setRowError(friendlyMessage(err, 'Cevap gönderilemedi, tekrar deneyin.'));
+        setRowError(friendlyMessage(err, tr('Cevap gönderilemedi, tekrar deneyin.')));
       } finally {
         setSaving(false);
       }
@@ -74,13 +75,13 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
 
   const bar = (
     <AppBar
-      title="Asistana gelen sorular"
+      title={tr('Asistana gelen sorular')}
       leading="back"
       onBack={() => navigation.goBack()}
       actions={[
         {
           icon: 'help-circle-outline',
-          label: 'Sık sorulanlar',
+          label: tr('Sık sorulanlar'),
           onPress: () => navigation.navigate('CompanyFaq'),
         },
       ]}
@@ -109,8 +110,8 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Bu sayfa firmaya bağlı"
-            description="Asistanınıza gelen sorular firmanıza gelir. Bir firmaya bağlandığınızda burada görünür."
+            title={tr('Bu sayfa firmaya bağlı')}
+            description={tr('Asistanınıza gelen sorular firmanıza gelir. Bir firmaya bağlandığınızda burada görünür.')}
           />
         </Screen>
       </View>
@@ -124,9 +125,9 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Sorular alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Sorular alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </Screen>
@@ -146,7 +147,10 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
           onPress={() => startAnswer(question)}
           accessibilityRole="button"
           accessibilityState={{ expanded: editing }}
-          accessibilityLabel={`${question.question}, soran ${question.asker.name}${question.asker.company ? `, ${question.asker.company.name}` : ''}. Cevapla`}
+          accessibilityLabel={tr('{question}, soran {asker}. Cevapla', {
+            question: question.question,
+            asker: `${question.asker.name}${question.asker.company ? `, ${question.asker.company.name}` : ''}`,
+          })}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -177,15 +181,15 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
         {editing ? (
           <View style={{ gap: t.space[3] }}>
             <Input
-              label="Cevabınız"
+              label={tr('Cevabınız')}
               value={draft}
               onChangeText={setDraft}
               error={rowError}
               multiline
               autoFocus
               maxLength={1000}
-              placeholder="Cevabınızı yazın. Fiyat yazmayın; fiyat yalnızca teklifle gider."
-              accessibilityLabel="Cevabınız"
+              placeholder={tr('Cevabınızı yazın. Fiyat yazmayın; fiyat yalnızca teklifle gider.')}
+              accessibilityLabel={tr('Cevabınız')}
             />
             <Pressable
               onPress={() => {
@@ -194,7 +198,7 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
               }}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: addToFaq }}
-              accessibilityLabel="Sık sorulanlara ekle"
+              accessibilityLabel={tr('Sık sorulanlara ekle')}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -210,10 +214,10 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
                 color={addToFaq ? 'brand' : 'lineStrong'}
               />
               <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-                Sık sorulanlara ekle
+                {tr('Sık sorulanlara ekle')}
               </Text>
             </Pressable>
-            <Button label="Cevabı gönder" loading={saving} fullWidth onPress={() => void submit(question)} />
+            <Button label={tr('Cevabı gönder')} loading={saving} fullWidth onPress={() => void submit(question)} />
           </View>
         ) : null}
       </Card>
@@ -236,26 +240,25 @@ export function CompanyQuestionsScreen({ navigation }: Props) {
       >
         <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, gap: t.space[6], minWidth: 0 }}>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Asistanınız cevabı katalogda bulamadığında soruyu size iletir. Cevabınız alıcının sohbetine düşer; sık
-            sorulanlara eklerseniz asistanınız bir dahakine kendisi cevaplar.
+            {tr('Asistanınız cevabı katalogda bulamadığında soruyu size iletir. Cevabınız alıcının sohbetine düşer; sık sorulanlara eklerseniz asistanınız bir dahakine kendisi cevaplar.')}
           </Text>
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Bekleyen sorular (${open.length})`} />
+            <SectionTitle title={tr('Bekleyen sorular ({n})', { n: open.length })} />
             {open.length ? (
               open.map(renderOpen)
             ) : (
               <EmptyState
                 icon="messages"
-                title="Bekleyen soru yok"
-                description="Alıcılar asistanınıza soru sorduğunda ve cevap katalogda yoksa burada görünür."
+                title={tr('Bekleyen soru yok')}
+                description={tr('Alıcılar asistanınıza soru sorduğunda ve cevap katalogda yoksa burada görünür.')}
               />
             )}
           </View>
 
           {answered.length ? (
             <View style={{ gap: t.space[3] }}>
-              <SectionTitle title={`Cevaplananlar (${answered.length})`} />
+              <SectionTitle title={tr('Cevaplananlar ({n})', { n: answered.length })} />
               {answered.map((question) => (
                 <Card key={question.id} style={{ gap: t.space[1] }}>
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{question.question}</Text>

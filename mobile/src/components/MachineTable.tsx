@@ -7,6 +7,7 @@ import React, { useRef } from 'react';
 import { Pressable, ScrollView, Text, View, useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import type { AvailabilityTone } from '../features/machines/availability';
 import { useTheme } from '../theme/ThemeContext';
+import { tr } from '../i18n';
 
 export interface MachineTableRow {
   key: string;
@@ -37,7 +38,7 @@ const COLUMNS: { key: ColKey; label: string; width: ColWidth; mono: boolean }[] 
 
 export function MachineTable({
   rows,
-  statusHeader = 'Durum',
+  statusHeader = tr('Durum'),
   onRowPress,
   onStatusPress,
   rowActionLabel,
@@ -68,13 +69,13 @@ export function MachineTable({
   const headerRow = (
     <View style={{ flexDirection: 'row', backgroundColor: t.colors.surface2, ...divider }}>
       <View style={[cell, { width: t.size.tableColNo, borderRightWidth: 1, borderRightColor: t.colors.line }]}>
-        <Text style={headText}>No</Text>
+        <Text style={headText}>{tr('No')}</Text>
       </View>
       <ScrollView ref={headerScroll} horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
         {COLUMNS.map((c) => (
           <View key={c.key} style={[cell, { width: t.size[c.width] }]}>
             <Text style={headText} numberOfLines={1}>
-              {c.label}
+              {tr(c.label)}
             </Text>
           </View>
         ))}
@@ -156,7 +157,7 @@ export function MachineTable({
                   disabled={!handler}
                   onPress={() => handler?.(row.key)}
                   accessibilityRole={handler ? 'button' : undefined}
-                  accessibilityLabel={`${row.no ? `${row.no} numara, ` : ''}${row.status.label}${onStatusPress && statusActionLabel ? `. ${statusActionLabel}` : ''}`}
+                  accessibilityLabel={`${row.no ? `${tr('{n} numara', { n: row.no })}, ` : ''}${row.status.label}${onStatusPress && statusActionLabel ? `. ${statusActionLabel}` : ''}`}
                   style={({ pressed }) => [
                     cell,
                     { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: t.space[2] },

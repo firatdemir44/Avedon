@@ -1,7 +1,9 @@
 // Deneyim tarihleri: sunucu ay+yıl sayısı saklıyor, gösterim ve süre hesabı
 // tamamen istemcide (backend'e dokunulmadı, 2026-09-22).
+import { tr } from '../../i18n';
+import { trLabels } from '../trLabels';
 
-export const MONTH_NAMES_SHORT = [
+export const MONTH_NAMES_SHORT = trLabels([
   'Oca',
   'Şub',
   'Mar',
@@ -14,9 +16,9 @@ export const MONTH_NAMES_SHORT = [
   'Eki',
   'Kas',
   'Ara',
-] as const;
+] as const);
 
-export const MONTH_NAMES_LONG = [
+export const MONTH_NAMES_LONG = trLabels([
   'Ocak',
   'Şubat',
   'Mart',
@@ -29,7 +31,7 @@ export const MONTH_NAMES_LONG = [
   'Ekim',
   'Kasım',
   'Aralık',
-] as const;
+] as const);
 
 export function monthLabel(month: number) {
   return MONTH_NAMES_SHORT[Math.min(Math.max(month, 1), 12) - 1];
@@ -46,8 +48,8 @@ function humanDuration(months: number) {
   const years = Math.floor(months / 12);
   const rest = months % 12;
   const parts: string[] = [];
-  if (years) parts.push(`${years} yıl`);
-  if (rest) parts.push(`${rest} ay`);
+  if (years) parts.push(tr('{n} yıl', { n: years }));
+  if (rest) parts.push(tr('{n} ay', { n: rest }));
   return parts.join(' ');
 }
 
@@ -66,7 +68,7 @@ export interface ExperiencePeriod {
 export function formatExperiencePeriod(exp: ExperiencePeriod, now = new Date()) {
   const start = exp.startYear * 12 + exp.startMonth;
   const ongoing = exp.endYear == null || exp.endMonth == null;
-  const endLabel = ongoing ? 'Devam ediyor' : point(exp.endMonth!, exp.endYear!);
+  const endLabel = ongoing ? tr('Devam ediyor') : point(exp.endMonth!, exp.endYear!);
   const end = ongoing ? now.getFullYear() * 12 + (now.getMonth() + 1) : exp.endYear! * 12 + exp.endMonth!;
   const duration = humanDuration(end - start + 1);
   const range = `${point(exp.startMonth, exp.startYear)} - ${endLabel}`;

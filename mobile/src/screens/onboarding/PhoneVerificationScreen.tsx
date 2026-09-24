@@ -10,6 +10,7 @@ import { OtpCodeField } from '../../components/OtpCodeField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, registerUser, requestOtp, verifyOtp } from '../../api/client';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Icon } from '../../ui';
 
@@ -43,7 +44,7 @@ export function PhoneVerificationScreen({ navigation }: Props) {
       if (err instanceof ApiError && err.code === 'cooldown') {
         setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
       } else {
-        setError('Kod gönderilemedi, lütfen tekrar deneyin.');
+        setError(tr('Kod gönderilemedi, lütfen tekrar deneyin.'));
       }
     } finally {
       setResending(false);
@@ -56,7 +57,7 @@ export function PhoneVerificationScreen({ navigation }: Props) {
     try {
       const result = await verifyOtp(draft.phone, code.trim());
       if (result.purpose === 'login') {
-        setError('Bu telefon numarası zaten kayıtlı.');
+        setError(tr('Bu telefon numarası zaten kayıtlı.'));
         setAlreadyRegistered(true);
         return;
       }
@@ -76,14 +77,14 @@ export function PhoneVerificationScreen({ navigation }: Props) {
       const errCode = err instanceof ApiError ? err.code : undefined;
       setError(
         errCode === 'mismatch'
-          ? 'Kod hatalı, tekrar deneyin.'
+          ? tr('Kod hatalı, tekrar deneyin.')
           : errCode === 'expired'
-            ? 'Kodun süresi doldu, yeni kod isteyin.'
+            ? tr('Kodun süresi doldu, yeni kod isteyin.')
             : errCode === 'max_attempts'
-              ? 'Çok fazla yanlış deneme yapıldı, yeni kod isteyin.'
+              ? tr('Çok fazla yanlış deneme yapıldı, yeni kod isteyin.')
               : err instanceof Error
                 ? err.message
-                : 'Doğrulama başarısız'
+                : tr('Doğrulama başarısız')
       );
     } finally {
       setSubmitting(false);
@@ -94,15 +95,15 @@ export function PhoneVerificationScreen({ navigation }: Props) {
     <OnboardingLayout
       step={5}
       totalSteps={6}
-      title="Telefonunuzu doğrulayın"
-      subtitle={`${draft.phone || 'Telefon numaranıza'} gönderilen 6 haneli kodu girin`}
+      title={tr('Telefonunuzu doğrulayın')}
+      subtitle={draft.phone ? tr('{phone} numarasına gönderilen 6 haneli kodu girin.', { phone: draft.phone }) : tr('Telefon numaranıza gönderilen 6 haneli kodu girin')}
       footer={
         alreadyRegistered ? (
-          <Button size="lg" label="Giriş Yap'a Git" onPress={() => navigation.replace('Login')} />
+          <Button size="lg" label={tr("Giriş Yap'a Git")} onPress={() => navigation.replace('Login')} />
         ) : (
           <Button
             size="lg"
-            label="Doğrula ve Devam Et"
+            label={tr('Doğrula ve Devam Et')}
             loading={submitting}
             disabled={code.trim().length !== 6}
             onPress={handleContinue}

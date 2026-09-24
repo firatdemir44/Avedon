@@ -26,6 +26,7 @@ import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../fea
 import { haptics } from '../../features/haptics';
 import { setProductFavorite, startConversation, type FeedPost } from '../../api/client';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { ReportPostSheet } from './ReportPostSheet';
 import { Avatar, Badge, Card, Icon, type AnyIconName } from '../../ui';
 
@@ -208,8 +209,8 @@ function PostCardComponent({
   const meta = [
     authorName,
     post.author.position,
-    post.visibility === 'connections' ? 'Bağlantılarım' : null,
-    post.editedAt ? 'düzenlendi' : null,
+    post.visibility === 'connections' ? tr('Bağlantılarım') : null,
+    post.editedAt ? tr('düzenlendi') : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -230,7 +231,7 @@ function PostCardComponent({
         <Pressable
           onPress={() => onOpenAuthor(post)}
           accessibilityRole="button"
-          accessibilityLabel={`${authorName}${company ? `, ${company.name}` : ''}, profili aç`}
+          accessibilityLabel={tr('{name}, profili aç', { name: `${authorName}${company ? `, ${company.name}` : ''}` })}
           style={({ pressed }) => [
             { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: t.space[3] },
             pressed && { opacity: 0.6 },
@@ -260,7 +261,7 @@ function PostCardComponent({
                 {company?.name ?? authorName}
               </Text>
               {company?.verification === 'dogrulanmis' ? (
-                <View accessible accessibilityRole="image" accessibilityLabel="Doğrulanmış firma">
+                <View accessible accessibilityRole="image" accessibilityLabel={tr('Doğrulanmış firma')}>
                   <Icon name="shield-checkmark" size={t.size.iconXs} color="success" />
                 </View>
               ) : null}
@@ -276,7 +277,7 @@ function PostCardComponent({
         <Pressable
           onPress={() => setMenuOpen((open) => !open)}
           accessibilityRole="button"
-          accessibilityLabel="Gönderi seçenekleri"
+          accessibilityLabel={tr('Gönderi seçenekleri')}
           accessibilityState={{ expanded: menuOpen }}
           style={({ pressed }) => ({
             width: t.size.touchMin,
@@ -293,25 +294,25 @@ function PostCardComponent({
 
       {menuOpen ? (
         <View style={[pad, { flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2], paddingTop: t.space[3] }]}>
-          <MenuAction icon="share" label="Paylaş" onPress={() => onShare(post)} />
+          <MenuAction icon="share" label={tr('Paylaş')} onPress={() => onShare(post)} />
           {product ? (
             <MenuAction
               icon={following ? 'check' : 'heart'}
-              label={following ? 'Takipte' : 'Takibe al'}
+              label={following ? tr('Takipte') : tr('Takibe al')}
               onPress={toggleFollow}
             />
           ) : null}
           {canRequestQuote ? (
-            <MenuAction icon="quote" label="Teklif iste" onPress={() => onRequestQuote?.(post)} />
+            <MenuAction icon="quote" label={tr('Teklif iste')} onPress={() => onRequestQuote?.(post)} />
           ) : null}
-          {isMine ? <MenuAction icon="create-outline" label="Düzenle" onPress={() => onEdit(post)} /> : null}
+          {isMine ? <MenuAction icon="create-outline" label={tr('Düzenle')} onPress={() => onEdit(post)} /> : null}
           {isMine ? (
-            <MenuAction icon="trash-outline" label="Sil" danger onPress={() => onDelete(post)} />
+            <MenuAction icon="trash-outline" label={tr('Sil')} danger onPress={() => onDelete(post)} />
           ) : null}
           {!isMine && company && company.id !== myCompanyId && onMuteCompany ? (
             <MenuAction
               icon="eye-off-outline"
-              label="Bu firmayı akışımda gizle"
+              label={tr('Bu firmayı akışımda gizle')}
               onPress={() => {
                 setMenuOpen(false);
                 onMuteCompany(post);
@@ -321,7 +322,7 @@ function PostCardComponent({
           {!isMine ? (
             <MenuAction
               icon="flag-outline"
-              label="Şikâyet et"
+              label={tr('Şikâyet et')}
               danger
               onPress={() => {
                 setMenuOpen(false);
@@ -340,7 +341,7 @@ function PostCardComponent({
         <Pressable
           onPress={openTender}
           accessibilityRole="button"
-          accessibilityLabel={`Açık talep: ${tender.title}, ayrıntıyı aç`}
+          accessibilityLabel={tr('Açık talep: {title}, ayrıntıyı aç', { title: tender.title })}
           style={[pad, { paddingTop: t.space[3] }]}
         >
           {({ pressed }) => (
@@ -355,7 +356,7 @@ function PostCardComponent({
               }}
             >
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
-                <Badge kind="new" label="Açık talep" />
+                <Badge kind="new" label={tr('Açık talep')} />
                 {tender.status !== 'open' ? <Badge {...tenderBadge(tender)} /> : null}
               </View>
               <View style={{ flexDirection: 'row', gap: t.space[3] }}>
@@ -406,11 +407,11 @@ function PostCardComponent({
             <Pressable
               onPress={() => setExpanded(true)}
               accessibilityRole="button"
-              accessibilityLabel="Metnin devamını oku"
+              accessibilityLabel={tr('Metnin devamını oku')}
               hitSlop={{ top: t.space[2], bottom: t.space[2], right: t.space[4] }}
               style={({ pressed }) => [{ alignSelf: 'flex-start', paddingTop: t.space[1] }, pressed && { opacity: 0.6 }]}
             >
-              <Text style={[t.type.label14, { color: t.colors.brand }]}>…devamı</Text>
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('…devamı')}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -444,7 +445,7 @@ function PostCardComponent({
           <Pressable
             onPress={() => onOpenProduct(post)}
             accessibilityRole="button"
-            accessibilityLabel={`${product.code} ürün sayfasını aç`}
+            accessibilityLabel={tr('{code} ürün sayfasını aç', { code: product.code })}
             style={({ pressed }) => ({
               minHeight: t.size.touchMin,
               flexDirection: 'row',
@@ -501,7 +502,7 @@ function PostCardComponent({
         <BarAction
           compact={feed}
           icon={post.likedByMe ? 'heart' : 'heart-outline'}
-          label={post.likedByMe ? 'Beğeniyi geri al' : 'Beğen'}
+          label={post.likedByMe ? tr('Beğeniyi geri al') : tr('Beğen')}
           count={post.likeCount}
           active={post.likedByMe}
           onPress={() => onToggleLike(post)}
@@ -509,7 +510,7 @@ function PostCardComponent({
         <BarAction
           compact={feed}
           icon="message"
-          label="Yorumlar"
+          label={tr('Yorumlar')}
           count={post.commentCount}
           onPress={() => onOpenComments(post)}
         />
@@ -517,8 +518,8 @@ function PostCardComponent({
           <BarAction
           compact={feed}
             icon="quote"
-            label={isMine ? 'Teklifleri gör' : 'Teklif ver'}
-            text={isMine ? 'Teklifleri gör' : 'Teklif ver'}
+            label={isMine ? tr('Teklifleri gör') : tr('Teklif ver')}
+            text={isMine ? tr('Teklifleri gör') : tr('Teklif ver')}
             brand
             onPress={openTender}
           />
@@ -526,20 +527,20 @@ function PostCardComponent({
           <BarAction
           compact={feed}
             icon="sample"
-            label={`${product.code} için numune talep et`}
-            text={feed ? "Numune" : "Numune talep et"}
+            label={tr('{code} için numune talep et', { code: product.code })}
+            text={feed ? tr('Numune') : tr('Numune talep et')}
             brand
             onPress={() => onRequestSample(post)}
           />
         ) : isMine ? (
           <BarAction
-          compact={feed} icon="share" label="Paylaş" text="Paylaş" brand onPress={() => onShare(post)} />
+          compact={feed} icon="share" label={tr('Paylaş')} text={tr('Paylaş')} brand onPress={() => onShare(post)} />
         ) : (
           <BarAction
           compact={feed}
             icon="message"
-            label={`${authorName} kişisine mesaj gönder`}
-            text={feed ? "Mesaj" : "Mesaj gönder"}
+            label={tr('{name} kişisine mesaj gönder', { name: authorName })}
+            text={feed ? tr('Mesaj') : tr('Mesaj gönder')}
             brand
             onPress={openMessage}
           />
@@ -572,7 +573,7 @@ function PostImage({ uri, onPress, flush }: { uri: string | null; onPress?: () =
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Ürün fotoğrafı, ürün sayfasını aç"
+      accessibilityLabel={tr('Ürün fotoğrafı, ürün sayfasını aç')}
       style={({ pressed }) => [box, pressed && { opacity: 0.9 }]}
     >
       {content}

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { tx } from '../i18n';
 import { prisma } from '../db';
 import { createProductSchema, updateProductSchema, MAX_PRODUCT_IMAGES } from '../validation';
 import { makeHandle } from './handle';
@@ -190,7 +191,7 @@ productsRouter.post(
         if (meta.length) await writeFieldMeta(tx, created.id, meta);
         return tx.product.findUniqueOrThrow({ where: { id: created.id }, select: PRODUCT_SELECT });
       });
-      const warnings = collectWarnings(product, resolved.warnings);
+      const warnings = collectWarnings(product, resolved.warnings, req.lang);
       // Faz 2 Adım 1: izleme kuralları yanıtı bekletmeden taranır.
       matchWatchRulesInBackground(product.id);
       // Faz 3 Adım 3: kapak fotoğrafından görünüm kartı (benzer kumaş arama) arka planda çıkarılır.
@@ -231,7 +232,8 @@ function stripPassportKeys<T extends Record<string, unknown>>(obj: T) {
 // Makullük uyarıları + kompozisyon toplamı; kaydı engellemez, ekranda gösterilir.
 function collectWarnings(
   product: { type: string; subtype: string; weightGsm: number; widthCm: number; compositions: { fiber: string; percent: number }[] },
-  extra: string[]
+  extra: string[],
+  lang?: string
 ) {
   const w = passportWarnings({
     type: product.type as Parameters<typeof isValidSubtype>[0],
@@ -240,7 +242,7 @@ function collectWarnings(
     widthCm: product.widthCm,
     composition: product.compositions,
   });
-  return { codes: [...extra, ...w.flags], notes: w.notes };
+  return { codes: [...extra, ...w.flags], notes: w.notes.map((n) => tx(lang, n)) };
 }
 
 // Sertifika belgesi ve test raporu fotoğrafı: liste/detay yanıtında dönmez,
@@ -511,7 +513,7 @@ productsRouter.patch(
         return tx.product.findUniqueOrThrow({ where: { id: req.params.id }, select: PRODUCT_SELECT });
       });
       const isFavorite = (await favoriteIdsFor(req.user!.id, [product.id])).has(product.id);
-      const warnings = collectWarnings(product, resolved?.warnings ?? []);
+      const warnings = collectWarnings(product, resolved?.warnings ?? [], req.lang);
       if (imageList) refreshProductLookInBackground(req.params.id);
       res.json({ product: { ...toProductRow(product, req.user!.companyId), isFavorite }, warnings });
     } catch (err) {

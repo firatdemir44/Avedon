@@ -28,6 +28,7 @@ import {
   monthlyCapacityText,
 } from '../../features/machines/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   AppBar,
   Badge,
@@ -67,9 +68,10 @@ function fold(value: string): string {
     .trim();
 }
 
-const GROUP_OPTIONS: { value: MachineGroup | ''; label: string }[] = [
-  { value: '', label: 'Tümü' },
-  ...MACHINE_GROUP_ORDER.map((value) => ({ value, label: MACHINE_GROUP_LABELS[value] })),
+// Etiketler çeviri için çizim anında üretilir (modül düzeyinde tr() çağrılmaz).
+const groupOptions = (): { value: MachineGroup | ''; label: string }[] => [
+  { value: '', label: tr('Tümü') },
+  ...MACHINE_GROUP_ORDER.map((value) => ({ value, label: tr(MACHINE_GROUP_LABELS[value]) })),
 ];
 
 export function CapacitySearchScreen({ navigation }: Props) {
@@ -124,7 +126,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
   const search = async () => {
     if (numbersInvalid) {
       haptics.error();
-      setSearchError('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).');
+      setSearchError(tr('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).'));
       return;
     }
     // Yeni arama: liste ve sayfalama sıfırlanır.
@@ -147,7 +149,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
       setNextOffset(page.hasMore ? page.nextOffset : null);
     } catch (err) {
       haptics.error();
-      setSearchError(friendlyMessage(err, 'Arama yapılamadı, tekrar deneyin.'));
+      setSearchError(friendlyMessage(err, tr('Arama yapılamadı, tekrar deneyin.')));
     } finally {
       setSearching(false);
     }
@@ -170,7 +172,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
       setNextOffset(page.hasMore ? page.nextOffset : null);
     } catch (err) {
       haptics.error();
-      setSearchError(friendlyMessage(err, 'Sonraki sonuçlar alınamadı, tekrar deneyin.'));
+      setSearchError(friendlyMessage(err, tr('Sonraki sonuçlar alınamadı, tekrar deneyin.')));
     } finally {
       setLoadingMore(false);
     }
@@ -182,13 +184,13 @@ export function CapacitySearchScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Fason kapasite ara" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Fason kapasite ara')} leading="back" onBack={() => navigation.goBack()} />
 
       <Screen
         sticky={
           <Button
             size="lg"
-            label="Ara"
+            label={tr('Ara')}
             icon="search"
             loading={searching}
             disabled={searching}
@@ -197,22 +199,21 @@ export function CapacitySearchScreen({ navigation }: Props) {
         }
       >
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Aradığın makineyi tarif et: fason kapasitesini bildiren firmalar ve eşleşen makineleri listelenir. Fiyat ve
-          doluluk takvimi burada yoktur, firmayla konuşman gerekir.
+          {tr('Aradığın makineyi tarif et: fason kapasitesini bildiren firmalar ve eşleşen makineleri listelenir. Fiyat ve doluluk takvimi burada yoktur, firmayla konuşman gerekir.')}
         </Text>
 
         <SearchBox
-          placeholder="Makine türü — örn. süprem"
+          placeholder={tr('Makine türü — örn. süprem')}
           value={kind}
           onChangeText={setKind}
           onSubmitEditing={() => void search()}
-          accessibilityLabel="Makine türü ara"
+          accessibilityLabel={tr('Makine türü ara')}
         />
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Grup" />
+          <SectionTitle title={tr('Grup')} />
           <ChipRow>
-            {GROUP_OPTIONS.map((option) => (
+            {groupOptions().map((option) => (
               <Chip
                 key={option.value || 'all'}
                 label={option.label}
@@ -228,7 +229,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
 
         {suggestions.length ? (
           <View style={{ gap: t.space[2] }}>
-            <SectionTitle title="Öneriler" />
+            <SectionTitle title={tr('Öneriler')} />
             <ChipRow>
               {suggestions.map((item) => (
                 <Chip
@@ -246,51 +247,51 @@ export function CapacitySearchScreen({ navigation }: Props) {
         ) : null}
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Teknik" />
+          <SectionTitle title={tr('Teknik')} />
           <Card>
             <View style={{ gap: t.space[3] }}>
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Fayn"
+                  label={tr('Fayn')}
                   value={gauge}
                   onChangeText={setGauge}
-                  placeholder="Örn. 28"
+                  placeholder={tr('Örn. 28')}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
-                  error={gaugeValue.invalid ? 'Yalnızca rakam' : null}
+                  error={gaugeValue.invalid ? tr('Yalnızca rakam') : null}
                 />
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Pus"
-                  unit="inç"
+                  label={tr('Pus')}
+                  unit={tr('inç')}
                   value={diameterInch}
                   onChangeText={setDiameterInch}
-                  placeholder="Örn. 30"
+                  placeholder={tr('Örn. 30')}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
-                  error={diameterValue.invalid ? 'Yalnızca rakam' : null}
+                  error={diameterValue.invalid ? tr('Yalnızca rakam') : null}
                 />
               </View>
               <Input
-                label="En az çalışma eni"
+                label={tr('En az çalışma eni')}
                 unit="cm"
                 value={widthMin}
                 onChangeText={setWidthMin}
-                placeholder="Örn. 180"
+                placeholder={tr('Örn. 180')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                error={widthValue.invalid ? 'Yalnızca rakam' : null}
+                error={widthValue.invalid ? tr('Yalnızca rakam') : null}
               />
             </View>
           </Card>
         </View>
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Firma" />
+          <SectionTitle title={tr('Firma')} />
           <Card>
             <View style={{ gap: t.space[3] }}>
-              <Input label="Şehir" value={city} onChangeText={setCity} placeholder="Örn. Bursa" maxLength={60} />
+              <Input label={tr('Şehir')} value={city} onChangeText={setCity} placeholder={tr('Örn. Bursa')} maxLength={60} />
               <View
                 style={{
                   flexDirection: 'row',
@@ -301,7 +302,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
                 }}
               >
                 <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-                  Yalnızca fason açık firmalar
+                  {tr('Yalnızca fason açık firmalar')}
                 </Text>
                 <Switch
                   value={onlyOpen}
@@ -310,7 +311,7 @@ export function CapacitySearchScreen({ navigation }: Props) {
                     setOnlyOpen(value);
                   }}
                   trackColor={{ true: t.colors.brand, false: t.colors.lineStrong }}
-                  accessibilityLabel="Yalnızca fason kapasitesi açık firmalar"
+                  accessibilityLabel={tr('Yalnızca fason kapasitesi açık firmalar')}
                 />
               </View>
             </View>
@@ -336,19 +337,19 @@ export function CapacitySearchScreen({ navigation }: Props) {
         {results === null ? null : results.length === 0 ? (
           <EmptyState
             icon="machine"
-            title="Eşleşen firma yok"
-            description="Süzgeci gevşetip tekrar dene: türü kısaltmak ya da fayn/pus alanlarını boşaltmak çoğu zaman yeter."
+            title={tr('Eşleşen firma yok')}
+            description={tr('Süzgeci gevşetip tekrar dene: türü kısaltmak ya da fayn/pus alanlarını boşaltmak çoğu zaman yeter.')}
           />
         ) : (
           <View style={{ gap: t.space[2] }}>
-            <SectionTitle title={`Sonuçlar (${results.length})`} />
+            <SectionTitle title={tr('Sonuçlar ({n})', { n: results.length })} />
             <Card noPadding style={{ paddingHorizontal: t.space[4] }}>
               {results.map((result, index) => {
                 const capacity = [
                   monthlyCapacityText(result.capacity.monthlyCapacityTons)
-                    ? `Aylık ${monthlyCapacityText(result.capacity.monthlyCapacityTons)}`
+                    ? tr('Aylık {cap}', { cap: monthlyCapacityText(result.capacity.monthlyCapacityTons) as string })
                     : null,
-                  result.capacity.contractOpen ? 'fason açık' : 'fason almıyor',
+                  result.capacity.contractOpen ? tr('fason açık') : tr('fason almıyor'),
                   result.company.city || null,
                 ]
                   .filter(Boolean)
@@ -396,8 +397,8 @@ export function CapacitySearchScreen({ navigation }: Props) {
               <Button
                 kind="secondary"
                 fullWidth
-                label="Daha fazla göster"
-                accessibilityLabel="Daha fazla firma göster"
+                label={tr('Daha fazla göster')}
+                accessibilityLabel={tr('Daha fazla firma göster')}
                 loading={loadingMore}
                 disabled={loadingMore}
                 onPress={() => void loadMore()}

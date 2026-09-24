@@ -32,6 +32,7 @@ import {
 } from '../../features/machines/catalog';
 import { parseRange } from '../../features/machines/range';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   AppBar,
   Button,
@@ -102,7 +103,7 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const title = machineId ? 'Makineyi düzenle' : 'Makine ekle';
+  const title = machineId ? tr('Makineyi düzenle') : tr('Makine ekle');
 
   // Başlık ekranın kendi AppBar'ında; gezinti başlığı kapatılır.
   useEffect(() => {
@@ -144,12 +145,12 @@ export function MachineFormScreen({ navigation, route }: Props) {
             const found = machines.find((m) => m.id === machineId);
             if (cancelled) return;
             if (found) fill(found);
-            else setLoadError('Makine bulunamadı, silinmiş olabilir.');
+            else setLoadError(tr('Makine bulunamadı, silinmiş olabilir.'));
           })
         : Promise.resolve();
     void Promise.all([kinds, machine])
       .catch(() => {
-        if (!cancelled) setLoadError('Makine bilgisi alınamadı.');
+        if (!cancelled) setLoadError(tr('Makine bilgisi alınamadı.'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -186,12 +187,12 @@ export function MachineFormScreen({ navigation, route }: Props) {
   const save = async () => {
     const trimmedKind = kind.trim();
     if (trimmedKind.length < 2) {
-      setFormError('Makine türünü yazın (en az 2 karakter).');
+      setFormError(tr('Makine türünü yazın (en az 2 karakter).'));
       haptics.error();
       return;
     }
     if (numbersInvalid) {
-      setFormError('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).');
+      setFormError(tr('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).'));
       haptics.error();
       return;
     }
@@ -228,13 +229,13 @@ export function MachineFormScreen({ navigation, route }: Props) {
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'too_many_machines') {
-        setFormError('Makine sınırına ulaştınız. Yenisini eklemek için birini silin.');
+        setFormError(tr('Makine sınırına ulaştınız. Yenisini eklemek için birini silin.'));
       } else if (err instanceof ApiError && err.code === 'no_company') {
-        setFormError('Makine parkı firmaya bağlıdır. Bir firmaya bağlandığınızda ekleyebilirsiniz.');
+        setFormError(tr('Makine parkı firmaya bağlıdır. Bir firmaya bağlandığınızda ekleyebilirsiniz.'));
       } else if (err instanceof ApiError && err.code === 'invalid_body') {
-        setFormError('Girilen değerlerden biri kabul edilmedi. Sayı alanlarını kontrol edin.');
+        setFormError(tr('Girilen değerlerden biri kabul edilmedi. Sayı alanlarını kontrol edin.'));
       } else {
-        setFormError(friendlyMessage(err, 'Kaydedilemedi, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Kaydedilemedi, tekrar deneyin.')));
       }
     } finally {
       setSaving(false);
@@ -250,8 +251,8 @@ export function MachineFormScreen({ navigation, route }: Props) {
         <Screen>
           <EmptyState
             icon="machine"
-            title="Makine parkı firmaya bağlı"
-            description="Bir firmaya bağlandığında makine parkını girebilirsin."
+            title={tr('Makine parkı firmaya bağlı')}
+            description={tr('Bir firmaya bağlandığında makine parkını girebilirsin.')}
           />
         </Screen>
       </View>
@@ -296,18 +297,18 @@ export function MachineFormScreen({ navigation, route }: Props) {
 
       <Screen
         sticky={
-          <Button size="lg" label="Kaydet" loading={saving} disabled={saving} onPress={() => void save()} />
+          <Button size="lg" label={tr('Kaydet')} loading={saving} disabled={saving} onPress={() => void save()} />
         }
       >
         {loadError ? banner(loadError) : null}
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Grup" />
+          <SectionTitle title={tr('Grup')} />
           <ChipRow>
             {MACHINE_GROUP_ORDER.map((value) => (
               <Chip
                 key={value}
-                label={MACHINE_GROUP_LABELS[value]}
+                label={tr(MACHINE_GROUP_LABELS[value])}
                 selected={value === group}
                 onPress={() => {
                   haptics.selection();
@@ -319,17 +320,17 @@ export function MachineFormScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Makine türü" />
+          <SectionTitle title={tr('Makine türü')} />
           <Card>
             <View style={{ gap: t.space[3] }}>
               <Input
-                label="Tür"
+                label={tr('Tür')}
                 value={kind}
                 onChangeText={setKind}
-                placeholder="Örn. Yuvarlak örme (süprem)"
+                placeholder={tr('Örn. Yuvarlak örme (süprem)')}
                 maxLength={80}
                 autoCapitalize="sentences"
-                helper={suggestions.length ? 'Öneriler bağlayıcı değil, istediğinizi yazabilirsiniz.' : undefined}
+                helper={suggestions.length ? tr('Öneriler bağlayıcı değil, istediğinizi yazabilirsiniz.') : undefined}
               />
               {suggestions.length ? (
                 <ChipRow>
@@ -350,25 +351,25 @@ export function MachineFormScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Makine bilgisi" />
+          <SectionTitle title={tr('Makine bilgisi')} />
           <Card>
             <View style={{ gap: t.space[3] }}>
               <Input
-                label="Makine no"
+                label={tr('Makine no')}
                 value={machineNo}
                 onChangeText={setMachineNo}
-                placeholder="Örn. 12 (tablonuzdaki Mak No)"
+                placeholder={tr('Örn. 12 (tablonuzdaki Mak No)')}
                 inputMode="numeric"
                 keyboardType="number-pad"
-                error={machineNoValue.invalid ? 'Yalnızca rakam' : null}
+                error={machineNoValue.invalid ? tr('Yalnızca rakam') : null}
               />
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Marka"
+                  label={tr('Marka')}
                   value={brand}
                   onChangeText={setBrand}
-                  placeholder="Örn. Mayer"
+                  placeholder={tr('Örn. Mayer')}
                   maxLength={60}
                 />
                 <Input
@@ -376,31 +377,31 @@ export function MachineFormScreen({ navigation, route }: Props) {
                   label="Model"
                   value={model}
                   onChangeText={setModel}
-                  placeholder="Örn. Relanit"
+                  placeholder={tr('Örn. Relanit')}
                   maxLength={60}
                 />
               </View>
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Yıl"
+                  label={tr('Yıl')}
                   value={year}
                   onChangeText={setYear}
-                  placeholder="Örn. 2019"
+                  placeholder={tr('Örn. 2019')}
                   inputMode="numeric"
                   keyboardType="number-pad"
-                  error={yearValue.invalid ? 'Yalnızca rakam' : null}
+                  error={yearValue.invalid ? tr('Yalnızca rakam') : null}
                 />
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Adet"
-                  unit="adet"
+                  label={tr('Adet')}
+                  unit={tr('adet')}
                   value={count}
                   onChangeText={setCount}
                   placeholder="1"
                   inputMode="numeric"
                   keyboardType="number-pad"
-                  error={countValue.invalid ? 'Yalnızca rakam' : null}
+                  error={countValue.invalid ? tr('Yalnızca rakam') : null}
                 />
               </View>
             </View>
@@ -409,57 +410,57 @@ export function MachineFormScreen({ navigation, route }: Props) {
 
         {knit ? (
           <View style={{ gap: t.space[2] }}>
-            <SectionTitle title="Teknik" />
+            <SectionTitle title={tr('Teknik')} />
             <Card>
               <View style={{ gap: t.space[3] }}>
                 <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                   <Input
                     containerStyle={{ flex: 1 }}
-                    label="Pus"
-                    unit="inç"
+                    label={tr('Pus')}
+                    unit={tr('inç')}
                     value={diameterInch}
                     onChangeText={setDiameterInch}
-                    placeholder="Örn. 30"
+                    placeholder={tr('Örn. 30')}
                     inputMode="decimal"
                     keyboardType="decimal-pad"
-                    error={diameterValue.invalid ? 'Yalnızca rakam' : null}
+                    error={diameterValue.invalid ? tr('Yalnızca rakam') : null}
                   />
                   <Input
                     containerStyle={{ flex: 1 }}
-                    label="Fayn"
+                    label={tr('Fayn')}
                     value={gauge}
                     onChangeText={setGauge}
-                    placeholder="Örn. 28 ya da 28-22"
+                    placeholder={tr('Örn. 28 ya da 28-22')}
                     keyboardType="numbers-and-punctuation"
-                    error={gaugeValue.invalid ? 'Sayı ya da aralık (28-22)' : null}
+                    error={gaugeValue.invalid ? tr('Sayı ya da aralık (28-22)') : null}
                   />
                 </View>
                 <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                   <Input
                     containerStyle={{ flex: 1 }}
-                    label="Sistem sayısı"
+                    label={tr('Sistem sayısı')}
                     value={feeders}
                     onChangeText={setFeeders}
-                    placeholder="Örn. 96"
+                    placeholder={tr('Örn. 96')}
                     inputMode="numeric"
                     keyboardType="number-pad"
-                    error={feedersValue.invalid ? 'Yalnızca rakam' : null}
+                    error={feedersValue.invalid ? tr('Yalnızca rakam') : null}
                   />
                   <Input
                     containerStyle={{ flex: 1 }}
-                    label="İğne sayısı"
+                    label={tr('İğne sayısı')}
                     value={needles}
                     onChangeText={setNeedles}
-                    placeholder="Örn. 2640 ya da 2808-2210"
+                    placeholder={tr('Örn. 2640 ya da 2808-2210')}
                     keyboardType="numbers-and-punctuation"
-                    error={needlesValue.invalid ? 'Sayı ya da aralık' : null}
+                    error={needlesValue.invalid ? tr('Sayı ya da aralık') : null}
                   />
                 </View>
                 <Input
-                  label="Örgü cinsi"
+                  label={tr('Örgü cinsi')}
                   value={fabricType}
                   onChangeText={setFabricType}
-                  placeholder="Örn. Süprem tüp, İnter-ribana"
+                  placeholder={tr('Örn. Süprem tüp, İnter-ribana')}
                   maxLength={80}
                 />
               </View>
@@ -469,41 +470,41 @@ export function MachineFormScreen({ navigation, route }: Props) {
 
         {width ? (
           <View style={{ gap: t.space[2] }}>
-            <SectionTitle title="Teknik" />
+            <SectionTitle title={tr('Teknik')} />
             <Card>
               <Input
-                label="Çalışma eni"
+                label={tr('Çalışma eni')}
                 unit="cm"
                 value={workingWidthCm}
                 onChangeText={setWorkingWidthCm}
-                placeholder="Örn. 240"
+                placeholder={tr('Örn. 240')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                error={widthValue.invalid ? 'Yalnızca rakam' : null}
+                error={widthValue.invalid ? tr('Yalnızca rakam') : null}
               />
             </Card>
           </View>
         ) : null}
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Özellik ve not" />
+          <SectionTitle title={tr('Özellik ve not')} />
           <Card>
             <View style={{ gap: t.space[3] }}>
               <Input
-                label="Günlük kapasite"
+                label={tr('Günlük kapasite')}
                 unit="kg"
                 value={dailyCapacityKg}
                 onChangeText={setDailyCapacityKg}
-                placeholder="Örn. 450"
+                placeholder={tr('Örn. 450')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                error={dailyValue.invalid ? 'Yalnızca rakam' : null}
+                error={dailyValue.invalid ? tr('Yalnızca rakam') : null}
               />
               <Input
-                label="Özellik"
+                label={tr('Özellik')}
                 value={feature}
                 onChangeText={setFeature}
-                placeholder="Örn. tek plaka"
+                placeholder={tr('Örn. tek plaka')}
                 maxLength={120}
               />
               {featureSuggestions.length ? (
@@ -521,10 +522,10 @@ export function MachineFormScreen({ navigation, route }: Props) {
                 </ChipRow>
               ) : null}
               <Input
-                label="Not"
+                label={tr('Not')}
                 value={note}
                 onChangeText={setNote}
-                placeholder="İsteğe bağlı"
+                placeholder={tr('İsteğe bağlı')}
                 maxLength={300}
                 multiline
               />

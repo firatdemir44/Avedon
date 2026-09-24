@@ -21,6 +21,7 @@ import { confirmAction } from '../features/confirm';
 import { haptics } from '../features/haptics';
 import { useTheme } from '../theme/ThemeContext';
 import { Button, Card, Icon } from '../ui';
+import { tr } from '../i18n';
 
 export function PushSettingsCard() {
   const t = useTheme();
@@ -72,12 +73,12 @@ export function PushSettingsCard() {
     setBusy(false);
     if (result === 'enabled') {
       haptics.success();
-      setNote({ tone: 'ok', text: 'Anlık bildirimler açıldı.' });
+      setNote({ tone: 'ok', text: tr('Anlık bildirimler açıldı.') });
       return;
     }
     haptics.error();
     if (result === 'denied') {
-      setNote({ tone: 'error', text: 'Bildirim izni verilmedi.' });
+      setNote({ tone: 'error', text: tr('Bildirim izni verilmedi.') });
       return;
     }
     if (result === 'not-configured') {
@@ -88,16 +89,16 @@ export function PushSettingsCard() {
       tone: 'error',
       text:
         result === 'unsupported'
-          ? 'Bu tarayıcı anlık bildirimi desteklemiyor.'
-          : `Bildirimler açılamadı, tekrar deneyin.${getLastPushError() ? ` (Hata kodu: ${getLastPushError()})` : ''}`,
+          ? tr('Bu tarayıcı anlık bildirimi desteklemiyor.')
+          : `${tr('Bildirimler açılamadı, tekrar deneyin.')}${getLastPushError() ? ` (${tr('Hata kodu: {code}', { code: getLastPushError() ?? '' })})` : ''}`,
     });
   }, [refresh]);
 
   const turnOff = useCallback(async () => {
     const ok = await confirmAction({
-      title: 'Anlık bildirimler kapatılsın mı?',
-      message: 'Yeni mesaj ve teklifler için bildirim almayı durdurursunuz.',
-      confirmLabel: 'Kapat',
+      title: tr('Anlık bildirimler kapatılsın mı?'),
+      message: tr('Yeni mesaj ve teklifler için bildirim almayı durdurursunuz.'),
+      confirmLabel: tr('Kapat'),
       destructive: true,
     });
     if (!ok) return;
@@ -106,7 +107,7 @@ export function PushSettingsCard() {
     await disablePush();
     await refresh();
     setBusy(false);
-    setNote({ tone: 'ok', text: 'Anlık bildirimler kapatıldı.' });
+    setNote({ tone: 'ok', text: tr('Anlık bildirimler kapatıldı.') });
   }, [refresh]);
 
   const sendTest = useCallback(async () => {
@@ -114,17 +115,17 @@ export function PushSettingsCard() {
     setNote(null);
     try {
       await sendTestPush();
-      setNote({ tone: 'ok', text: 'Deneme bildirimi gönderildi.' });
+      setNote({ tone: 'ok', text: tr('Deneme bildirimi gönderildi.') });
     } catch (err) {
       const code = err instanceof ApiError ? err.code : undefined;
       setNote({
         tone: 'error',
         text:
           code === 'no_subscription'
-            ? 'Bu cihaz kayıtlı değil. Bildirimleri kapatıp yeniden açın.'
+            ? tr('Bu cihaz kayıtlı değil. Bildirimleri kapatıp yeniden açın.')
             : code === 'push_not_configured'
-              ? 'Sunucuda anlık bildirim kapalı.'
-              : 'Deneme bildirimi gönderilemedi.',
+              ? tr('Sunucuda anlık bildirim kapalı.')
+              : tr('Deneme bildirimi gönderilemedi.'),
       });
     }
     setBusy(false);
@@ -138,21 +139,21 @@ export function PushSettingsCard() {
   // hepsi kenarlıklı (secondary) ya da tehlikeli (danger).
   const title =
     support === 'needs-install'
-      ? 'Anlık bildirim için ana ekrana ekleyin'
+      ? tr('Anlık bildirim için ana ekrana ekleyin')
       : permission === 'denied'
-        ? 'Bildirim izni kapalı'
+        ? tr('Bildirim izni kapalı')
         : subscribed
-          ? 'Anlık bildirimler açık'
-          : 'Anlık bildirimleri aç';
+          ? tr('Anlık bildirimler açık')
+          : tr('Anlık bildirimleri aç');
 
   const description =
     support === 'needs-install'
-      ? "iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Takyon'u ana ekrandan açın."
+      ? tr("iPhone'da bildirim için: Paylaş düğmesi → Ana Ekrana Ekle, sonra Takyon'u ana ekrandan açın.")
       : permission === 'denied'
-        ? 'Bildirim izni tarayıcıda kapalı. Tarayıcı ayarlarından bu site için bildirimlere izin verin.'
+        ? tr('Bildirim izni tarayıcıda kapalı. Tarayıcı ayarlarından bu site için bildirimlere izin verin.')
         : subscribed
-          ? 'Yeni mesaj, teklif ve numune talepleri telefonunuza bildirim olarak gelir.'
-          : 'Yeni mesaj, teklif ve numune taleplerinde telefonunuza bildirim gelir.';
+          ? tr('Yeni mesaj, teklif ve numune talepleri telefonunuza bildirim olarak gelir.')
+          : tr('Yeni mesaj, teklif ve numune taleplerinde telefonunuza bildirim gelir.');
 
   const showActions = support !== 'needs-install' && permission !== 'denied';
 
@@ -175,18 +176,18 @@ export function PushSettingsCard() {
               <Button
                 kind="secondary"
                 icon="bell"
-                label="Deneme bildirimi gönder"
+                label={tr('Deneme bildirimi gönder')}
                 disabled={busy}
                 loading={busy}
                 onPress={() => void sendTest()}
               />
-              <Button kind="danger" icon="x" label="Kapat" disabled={busy} onPress={() => void turnOff()} />
+              <Button kind="danger" icon="x" label={tr('Kapat')} disabled={busy} onPress={() => void turnOff()} />
             </View>
           ) : (
             <Button
               kind="secondary"
               icon="bell"
-              label="Anlık bildirimleri aç"
+              label={tr('Anlık bildirimleri aç')}
               disabled={busy}
               loading={busy}
               onPress={() => void turnOn()}

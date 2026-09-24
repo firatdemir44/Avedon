@@ -15,6 +15,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { BottomSheet, Chip, ChipRow, SegmentControl } from '../ui';
 import { AvailabilitySheet, MachineCard } from './MachineCard';
 import { MachineTable, type MachineTableRow } from './MachineTable';
+import { locale, tr } from '../i18n';
 
 type ViewMode = 'table' | 'cards';
 type StatusFilter = 'all' | 'available' | 'busy';
@@ -47,10 +48,10 @@ export function machineToTableRow(m: Machine, now = new Date()): MachineTableRow
     fabric: m.fabricType || m.feature,
     status: { tone: status.tone, label: status.label },
     a11y: [
-      m.machineNo != null ? `${m.machineNo} numara` : null,
+      m.machineNo != null ? tr('{n} numara', { n: m.machineNo }) : null,
       title,
-      m.diameterInch != null ? `${formatMeasure(m.diameterInch)} pus` : null,
-      fine ? `${fine} fine` : null,
+      m.diameterInch != null ? tr('{n} pus', { n: formatMeasure(m.diameterInch) }) : null,
+      fine ? tr('{n} fine', { n: fine }) : null,
       m.fabricType || null,
       status.label,
     ]
@@ -95,7 +96,7 @@ export function MachineParkView({
     const seen = new Map<string, string>();
     for (const m of sorted) {
       const f = m.fabricType.trim();
-      if (f && !seen.has(f.toLocaleLowerCase('tr-TR'))) seen.set(f.toLocaleLowerCase('tr-TR'), f);
+      if (f && !seen.has(f.toLocaleLowerCase(locale()))) seen.set(f.toLocaleLowerCase(locale()), f);
     }
     return [...seen.values()];
   }, [sorted]);
@@ -104,7 +105,7 @@ export function MachineParkView({
     const s = availabilityShort(m.busyUntil, now);
     if (status === 'available' && !s.available) return false;
     if (status === 'busy' && s.available) return false;
-    if (fabric && m.fabricType.trim().toLocaleLowerCase('tr-TR') !== fabric.toLocaleLowerCase('tr-TR')) return false;
+    if (fabric && m.fabricType.trim().toLocaleLowerCase(locale()) !== fabric.toLocaleLowerCase(locale())) return false;
     return true;
   });
 
@@ -118,24 +119,24 @@ export function MachineParkView({
     <View style={{ gap: t.space[3] }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[3], flexWrap: 'wrap' }}>
         <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
-          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.total}</Text> makine ·{' '}
-          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.available}</Text> müsait ·{' '}
-          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.busy}</Text> dolu
+          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.total}</Text> {tr('makine')} ·{' '}
+          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.available}</Text> {tr('müsait')} ·{' '}
+          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{summary.busy}</Text> {tr('dolu')}
         </Text>
         <SegmentControl<ViewMode>
-          accessibilityLabel="Görünüm"
+          accessibilityLabel={tr('Görünüm')}
           value={mode}
           onChange={(v) => pick(setMode, v)}
           options={[
-            { value: 'table', label: 'Tablo' },
-            { value: 'cards', label: 'Kart' },
+            { value: 'table', label: tr('Tablo') },
+            { value: 'cards', label: tr('Kart') },
           ]}
         />
       </View>
 
       <ChipRow>
         <Chip
-          label="Tümü"
+          label={tr('Tümü')}
           selected={status === 'all' && !fabric}
           onPress={() => {
             haptics.selection();
@@ -143,8 +144,8 @@ export function MachineParkView({
             setFabric(null);
           }}
         />
-        <Chip label="Müsait" selected={status === 'available'} onPress={() => pick(setStatus, status === 'available' ? 'all' : 'available')} />
-        <Chip label="Dolu" selected={status === 'busy'} onPress={() => pick(setStatus, status === 'busy' ? 'all' : 'busy')} />
+        <Chip label={tr('Müsait')} selected={status === 'available'} onPress={() => pick(setStatus, status === 'available' ? 'all' : 'available')} />
+        <Chip label={tr('Dolu')} selected={status === 'busy'} onPress={() => pick(setStatus, status === 'busy' ? 'all' : 'busy')} />
         {fabricTypes.map((f) => (
           <Chip key={f} label={f} selected={fabric === f} onPress={() => pick(setFabric, fabric === f ? null : f)} />
         ))}
@@ -152,13 +153,13 @@ export function MachineParkView({
 
       {!visible.length ? (
         <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center', paddingVertical: t.space[4] }]}>
-          Bu süzgece uyan makine yok.
+          {tr('Bu süzgece uyan makine yok.')}
         </Text>
       ) : mode === 'table' ? (
         <MachineTable
           rows={visible.map((m) => machineToTableRow(m, now))}
-          rowActionLabel={isOwner ? 'Düzenle' : 'Ayrıntı'}
-          statusActionLabel="Müsaitliği güncelle"
+          rowActionLabel={isOwner ? tr('Düzenle') : tr('Ayrıntı')}
+          statusActionLabel={tr('Müsaitliği güncelle')}
           onRowPress={(id) => {
             const m = byId(id);
             if (!m) return;
@@ -180,7 +181,7 @@ export function MachineParkView({
       {isOwner && availabilityFor ? (
         <AvailabilitySheet
           machine={availabilityFor}
-          title={[availabilityFor.machineNo != null ? `No ${availabilityFor.machineNo}` : null, machineCardTitle(availabilityFor).title]
+          title={[availabilityFor.machineNo != null ? tr('No {n}', { n: availabilityFor.machineNo }) : null, machineCardTitle(availabilityFor).title]
             .filter(Boolean)
             .join(' · ')}
           visible
@@ -192,7 +193,7 @@ export function MachineParkView({
         />
       ) : null}
 
-      <BottomSheet visible={detailFor !== null} onClose={() => setDetailFor(null)} title="Makine">
+      <BottomSheet visible={detailFor !== null} onClose={() => setDetailFor(null)} title={tr('Makine')}>
         {detailFor ? <MachineCard machine={detailFor} isOwner={false} /> : null}
       </BottomSheet>
     </View>

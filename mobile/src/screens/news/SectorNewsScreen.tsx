@@ -7,6 +7,7 @@ import { fetchNews, type NewsItem, type NewsTopicKey } from '../../api/client';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { Chip, ChipRow, EmptyState, SkeletonRow, useBottomPadding } from '../../ui';
 import { NewsRow } from './NewsRow';
 
@@ -57,7 +58,7 @@ export function SectorNewsScreen({ navigation }: Props) {
         setHasMore(r.hasMore);
         setError(null);
       } catch (err) {
-        if (req === reqRef.current) setError(friendlyMessage(err, 'Haberler alınamadı'));
+        if (req === reqRef.current) setError(friendlyMessage(err, tr('Haberler alınamadı')));
       } finally {
         if (req === reqRef.current) {
           setLoading(false);
@@ -79,12 +80,12 @@ export function SectorNewsScreen({ navigation }: Props) {
     <View style={{ gap: t.space[2], paddingVertical: t.space[3] }}>
       <ChipRow>
         {TOPIC_CHIPS.map((c) => (
-          <Chip key={c.label} label={c.label} selected={topic === c.key} onPress={() => setTopic(c.key)} />
+          <Chip key={c.label} label={tr(c.label)} selected={topic === c.key} onPress={() => setTopic(c.key)} />
         ))}
       </ChipRow>
       <ChipRow>
         {LANG_CHIPS.map((c) => (
-          <Chip key={c.key} label={c.label} selected={lang === c.key} onPress={() => setLang(c.key)} />
+          <Chip key={c.key} label={tr(c.label)} selected={lang === c.key} onPress={() => setLang(c.key)} />
         ))}
       </ChipRow>
     </View>
@@ -115,13 +116,13 @@ export function SectorNewsScreen({ navigation }: Props) {
               <SkeletonRow />
             </View>
           ) : error ? (
-            <EmptyState icon="warning" title="Haberler alınamadı" description={error} actionLabel="Tekrar dene" onAction={() => load(1, 'first')} />
+            <EmptyState icon="warning" title={tr('Haberler alınamadı')} description={error} actionLabel={tr('Tekrar dene')} onAction={() => load(1, 'first')} />
           ) : (
             <EmptyState
               icon="newspaper-outline"
-              title="Bu süzgeçte haber yok"
-              description="Başka bir konu ya da dil seçebilirsiniz. Haberler birkaç saatte bir yenilenir."
-              actionLabel={topic || lang !== 'all' ? 'Süzgeci temizle' : undefined}
+              title={tr('Bu süzgeçte haber yok')}
+              description={tr('Başka bir konu ya da dil seçebilirsiniz. Haberler birkaç saatte bir yenilenir.')}
+              actionLabel={topic || lang !== 'all' ? tr('Süzgeci temizle') : undefined}
               onAction={topic || lang !== 'all' ? () => { setTopic(null); setLang('all'); } : undefined}
             />
           )

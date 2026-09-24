@@ -4,6 +4,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { fetchVideo, fetchVideoPlayback, type VideoRef } from '../api/client';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { tr } from '../i18n';
 
 const POLL_MS = 5000;
 const POLL_LIMIT_MS = 5 * 60 * 1000;
@@ -105,8 +106,8 @@ export function PostVideo({ video }: Props) {
         <Icon name="warning" size={t.size.icon} colorValue={t.colors.onBrand} />
         <Text style={stateText}>
           {current.errorReason === 'too_long'
-            ? 'Video 60 saniyeden uzun olduğu için yayınlanamadı.'
-            : 'Video işlenemedi.'}
+            ? tr('Video 60 saniyeden uzun olduğu için yayınlanamadı.')
+            : tr('Video işlenemedi.')}
         </Text>
       </View>
     );
@@ -116,7 +117,7 @@ export function PostVideo({ video }: Props) {
     return (
       <View style={[frame, centered]}>
         <ActivityIndicator color={t.colors.onBrand} />
-        <Text style={stateText}>Video işleniyor, birazdan izlenebilir.</Text>
+        <Text style={stateText}>{tr('Video işleniyor, birazdan izlenebilir.')}</Text>
       </View>
     );
   }
@@ -137,7 +138,7 @@ export function PostVideo({ video }: Props) {
         if (playback) setPlaying(true);
       }}
       accessibilityRole="button"
-      accessibilityLabel={duration ? `Videoyu oynat, ${duration}` : 'Videoyu oynat'}
+      accessibilityLabel={duration ? tr('Videoyu oynat, {d}', { d: duration }) : tr('Videoyu oynat')}
     >
       {playback ? (
         <Image source={{ uri: playback.thumbnailUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
@@ -146,7 +147,7 @@ export function PostVideo({ video }: Props) {
         {playbackFailed ? (
           <>
             <Icon name="refresh-outline" size={t.size.icon} colorValue={t.colors.onBrand} />
-            <Text style={stateText}>Video yüklenemedi, tekrar denemek için dokunun.</Text>
+            <Text style={stateText}>{tr('Video yüklenemedi, tekrar denemek için dokunun.')}</Text>
           </>
         ) : (
           <View

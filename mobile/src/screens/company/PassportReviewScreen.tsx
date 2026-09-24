@@ -21,6 +21,7 @@ import {
 } from '../../features/products/passportImport';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { AppBar, Badge, Button, Card, Icon, Screen, SectionTitle, type BadgeKind } from '../../ui';
 
 type Props = RootStackScreenProps<'PassportReview'>;
@@ -28,9 +29,9 @@ type Props = RootStackScreenProps<'PassportReview'>;
 // Güven rozeti: yüksekse etikette birebir yazıyor, ortadaysa kontrol edilmeli,
 // düşükse şüpheli (varsayılan olarak işaretsiz gelir).
 function confidenceBadge(confidence: number): { kind: BadgeKind; label: string } {
-  if (confidence >= CERTAIN_CONFIDENCE) return { kind: 'verified', label: 'Etikette yazıyor' };
-  if (confidence >= AUTO_SELECT_CONFIDENCE) return { kind: 'pending', label: 'Kontrol edin' };
-  return { kind: 'cancelled', label: 'Şüpheli' };
+  if (confidence >= CERTAIN_CONFIDENCE) return { kind: 'verified', label: tr('Etikette yazıyor') };
+  if (confidence >= AUTO_SELECT_CONFIDENCE) return { kind: 'pending', label: tr('Kontrol edin') };
+  return { kind: 'cancelled', label: tr('Şüpheli') };
 }
 
 // Sayı ve kod alanları eşit aralıklı yazıyla.
@@ -78,13 +79,13 @@ export function PassportReviewScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Etiketten okunanlar" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Etiketten okunanlar')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
-            <Button kind="secondary" label="Vazgeç" onPress={() => navigation.goBack()} style={{ flex: 1 }} />
+            <Button kind="secondary" label={tr('Vazgeç')} onPress={() => navigation.goBack()} style={{ flex: 1 }} />
             <Button
-              label={`Forma aktar (${selected.length})`}
+              label={tr('Forma aktar ({n})', { n: selected.length })}
               disabled={selected.length === 0}
               onPress={transfer}
               style={{ flex: 2 }}
@@ -94,10 +95,10 @@ export function PassportReviewScreen({ navigation, route }: Props) {
       >
         <View style={{ gap: t.space[1] }}>
           <Text style={[t.type.body16, { color: t.colors.ink }]}>
-            İşaretli alanlar forma aktarılır; sonra düzenleyebilirsiniz.
+            {tr('İşaretli alanlar forma aktarılır; sonra düzenleyebilirsiniz.')}
           </Text>
           {meta.mock ? (
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Test kipi: gerçek model çağrılmadı.</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Test kipi: gerçek model çağrılmadı.')}</Text>
           ) : null}
         </View>
 
@@ -115,7 +116,7 @@ export function PassportReviewScreen({ navigation, route }: Props) {
           >
             <Icon name="warning" size={t.size.iconSm} color="warning" />
             <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-              <Text style={[t.type.label14, { color: t.colors.warning }]}>Dikkat</Text>
+              <Text style={[t.type.label14, { color: t.colors.warning }]}>{tr('Dikkat')}</Text>
               {warnings.notes.map((note) => (
                 <Text key={note} style={[t.type.body14, { color: t.colors.ink }]}>
                   {note}
@@ -126,11 +127,11 @@ export function PassportReviewScreen({ navigation, route }: Props) {
         ) : null}
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title={`Okunan alanlar (${readFields.length})`} />
+          <SectionTitle title={tr('Okunan alanlar ({n})', { n: readFields.length })} />
           <Card noPadding>
             {readFields.length === 0 ? (
               <Text style={[t.type.body14, { color: t.colors.ink2, padding: t.space[4] }]}>
-                Etiketten hiçbir alan okunamadı. Bilgileri elle girebilirsiniz.
+                {tr('Etiketten hiçbir alan okunamadı. Bilgileri elle girebilirsiniz.')}
               </Text>
             ) : null}
             {readFields.map((field, index) => {
@@ -147,7 +148,7 @@ export function PassportReviewScreen({ navigation, route }: Props) {
                   // react-native-web accessibilityState.checked'i aria-checked'e
                   // çevirmiyor; ekran okuyucu seçimi duysun.
                   aria-checked={checked}
-                  accessibilityLabel={`${FIELD_LABELS[field]}, ${value}, ${badge.label}`}
+                  accessibilityLabel={`${tr(FIELD_LABELS[field])}, ${value}, ${badge.label}`}
                   style={({ pressed }) => ({
                     flexDirection: 'row',
                     alignItems: 'flex-start',
@@ -174,14 +175,14 @@ export function PassportReviewScreen({ navigation, route }: Props) {
                         flexWrap: 'wrap',
                       }}
                     >
-                      <Text style={[t.type.label14, { color: t.colors.ink2, flexShrink: 1 }]}>{FIELD_LABELS[field]}</Text>
+                      <Text style={[t.type.label14, { color: t.colors.ink2, flexShrink: 1 }]}>{tr(FIELD_LABELS[field])}</Text>
                       <Badge kind={badge.kind} label={badge.label} />
                     </View>
                     <Text style={[isMonoField(field) ? t.type.mono14 : t.type.body16, { color: t.colors.ink }]}>
                       {value}
                     </Text>
                     {evidence ? (
-                      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Okunan: {evidence}</Text>
+                      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Okunan: {evidence}', { evidence })}</Text>
                     ) : null}
                   </View>
                 </Pressable>
@@ -192,15 +193,15 @@ export function PassportReviewScreen({ navigation, route }: Props) {
 
         {missingFields.length ? (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Bulunamadı (${missingFields.length})`} />
+            <SectionTitle title={tr('Bulunamadı ({n})', { n: missingFields.length })} />
             <Card>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
                 {missingFields.map((field) => (
-                  <Badge key={field} kind="info" label={FIELD_LABELS[field]} />
+                  <Badge key={field} kind="info" label={tr(FIELD_LABELS[field])} />
                 ))}
               </View>
               <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: t.space[3] }]}>
-                Bu alanlar etikette okunamadı; formda elle girebilirsiniz.
+                {tr('Bu alanlar etikette okunamadı; formda elle girebilirsiniz.')}
               </Text>
             </Card>
           </View>
@@ -208,7 +209,7 @@ export function PassportReviewScreen({ navigation, route }: Props) {
 
         {rejected.length ? (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Okundu ama aktarılmadı (${rejected.length})`} />
+            <SectionTitle title={tr('Okundu ama aktarılmadı ({n})', { n: rejected.length })} />
             <Card noPadding>
               {rejected.map((item, index) => (
                 <View
@@ -223,7 +224,7 @@ export function PassportReviewScreen({ navigation, route }: Props) {
                 >
                   <Text style={[t.type.body16, { color: t.colors.ink }]}>{item.raw}</Text>
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    {REJECT_REASON_LABELS[item.reason] ?? item.reason}
+                    {REJECT_REASON_LABELS[item.reason] ? tr(REJECT_REASON_LABELS[item.reason]) : item.reason}
                   </Text>
                 </View>
               ))}
@@ -233,7 +234,7 @@ export function PassportReviewScreen({ navigation, route }: Props) {
 
         {extraction.notes.trim() ? (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Notlar" />
+            <SectionTitle title={tr('Notlar')} />
             <Card>
               <Text style={[t.type.body16, { color: t.colors.ink }]}>{extraction.notes.trim()}</Text>
             </Card>

@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { tr, locale } from '../i18n';
 import {
   View,
   Text,
@@ -116,7 +117,7 @@ export function CalcSectionRow({ label, _first }: { label: string } & RowInterna
         divider,
       ]}
     >
-      <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{label.toLocaleUpperCase('tr-TR')}</Text>
+      <Text style={[t.type.caption12, { color: t.colors.ink2 }]}>{label.toLocaleUpperCase(locale())}</Text>
     </View>
   );
 }
@@ -163,7 +164,7 @@ export function CalcInputRow({
           TextInput düğme değildir; iç içe buton sorunu oluşmaz. */}
       <Pressable
         onPress={() => inputRef.current?.focus()}
-        accessibilityLabel={`${a11y} alanına yaz`}
+        accessibilityLabel={tr('{a11y} alanına yaz', { a11y })}
         style={{
           flexDirection: 'row',
           alignItems: 'center',
@@ -330,7 +331,7 @@ export function CalcFormulaRow({ text, _first }: { text: string } & RowInternals
         onPress={() => setOpen((o) => !o)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`Nasıl hesaplandı, ${open ? 'kapat' : 'aç'}`}
+        accessibilityLabel={open ? tr('Nasıl hesaplandı, kapat') : tr('Nasıl hesaplandı, aç')}
         style={({ pressed }) => [
           {
             flexDirection: 'row',
@@ -342,7 +343,7 @@ export function CalcFormulaRow({ text, _first }: { text: string } & RowInternals
           pressed && { backgroundColor: t.colors.surface2 },
         ]}
       >
-        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>Nasıl hesaplandı?</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{tr('Nasıl hesaplandı?')}</Text>
         <Icon name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="ink3" />
       </Pressable>
       {open ? (
@@ -444,9 +445,9 @@ export function CalcRemoveCell({ label, onPress }: { label: string; onPress?: ()
 export function CalcClearButton({ onClear }: { onClear: () => void }) {
   const press = async () => {
     const ok = await confirmAction({
-      title: 'Alanları temizle',
-      message: 'Girdiğiniz bütün değerler silinecek. Devam edilsin mi?',
-      confirmLabel: 'Temizle',
+      title: tr('Alanları temizle'),
+      message: tr('Girdiğiniz bütün değerler silinecek. Devam edilsin mi?'),
+      confirmLabel: tr('Temizle'),
       destructive: true,
     });
     if (ok) onClear();
@@ -454,9 +455,9 @@ export function CalcClearButton({ onClear }: { onClear: () => void }) {
   return (
     <Button
       kind="secondary"
-      label="Temizle"
+      label={tr('Temizle')}
       icon="refresh-outline"
-      accessibilityLabel="Alanları temizle"
+      accessibilityLabel={tr('Alanları temizle')}
       onPress={press}
     />
   );

@@ -8,27 +8,29 @@ import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { InviteBanner } from '../../components/InviteBanner';
 import { useRegistration } from '../../context/RegistrationContext';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Card } from '../../ui';
 import type { AccountType } from '../../types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'RoleSelection'>;
 
-const OPTIONS: { value: AccountType; title: string; description: string }[] = [
+// Etiketler render anında çevrilsin diye fonksiyon.
+const options = (): { value: AccountType; title: string; description: string }[] => [
   {
     value: 'konfeksiyon',
-    title: 'Konfeksiyon / Giyim Üreticisi',
-    description: 'Kumaş ve numune arıyorum (alıcı taraf)',
+    title: tr('Konfeksiyon / Giyim Üreticisi'),
+    description: tr('Kumaş ve numune arıyorum (alıcı taraf)'),
   },
   {
     value: 'uretici',
-    title: 'Kumaş Üreticisi',
-    description: 'Raschel, örme, dokuma vb. kumaş üretiyorum',
+    title: tr('Kumaş Üreticisi'),
+    description: tr('Raschel, örme, dokuma vb. kumaş üretiyorum'),
   },
   {
     value: 'bireysel',
-    title: 'Bireysel',
-    description: 'Bir firmaya bağlı değilim',
+    title: tr('Bireysel'),
+    description: tr('Bir firmaya bağlı değilim'),
   },
 ];
 
@@ -45,12 +47,12 @@ export function RoleSelectionScreen({ navigation }: Props) {
     <OnboardingLayout
       step={1}
       totalSteps={6}
-      title="Nasıl katılmak istersiniz?"
-      subtitle="Hesap türünüzü seçin"
+      title={tr('Nasıl katılmak istersiniz?')}
+      subtitle={tr('Hesap türünüzü seçin')}
       banner={<InviteBanner />}
     >
       <View style={{ gap: t.space[3], minWidth: 0 }}>
-        {OPTIONS.map((option) => {
+        {options().map((option) => {
           const selected = draft.accountType === option.value;
           return (
             <Card
@@ -77,7 +79,7 @@ export function RoleSelectionScreen({ navigation }: Props) {
       <Button
         kind="quiet"
         fullWidth
-        label="Zaten hesabım var, giriş yap"
+        label={tr('Zaten hesabım var, giriş yap')}
         onPress={() => navigation.navigate('Login')}
       />
     </OnboardingLayout>

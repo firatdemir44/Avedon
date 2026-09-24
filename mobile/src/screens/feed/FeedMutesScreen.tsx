@@ -12,6 +12,7 @@ import { formatRelativeTime } from '../../features/time';
 import { haptics } from '../../features/haptics';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { useBottomPadding, Button, EmptyState, ListRow, Screen, SkeletonRow } from '../../ui';
 
 export function FeedMutesScreen() {
@@ -34,7 +35,7 @@ export function FeedMutesScreen() {
       markFeedStale();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Firma yeniden gösterilemedi'));
+      setActionError(friendlyMessage(err, tr('Firma yeniden gösterilemedi')));
     } finally {
       setBusyId(null);
     }
@@ -55,9 +56,9 @@ export function FeedMutesScreen() {
       <Screen>
         <EmptyState
           icon="warning"
-          title="Liste alınamadı"
-          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Liste alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -80,7 +81,7 @@ export function FeedMutesScreen() {
         ListHeaderComponent={
           <View style={{ gap: t.space[2], paddingBottom: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Bu firmaların paylaşımları ana sayfa akışınızda görünmez. Firmalar bundan haberdar olmaz.
+              {tr('Bu firmaların paylaşımları ana sayfa akışınızda görünmez. Firmalar bundan haberdar olmaz.')}
             </Text>
             {actionError ? <Text style={[t.type.body14, { color: t.colors.danger }]}>{actionError}</Text> : null}
           </View>
@@ -88,21 +89,21 @@ export function FeedMutesScreen() {
         ListEmptyComponent={
           <EmptyState
             icon="eye-outline"
-            title="Gizlediğiniz firma yok"
-            description="Akışta bir gönderinin menüsünden “Bu firmayı akışımda gizle” diyerek firma gizleyebilirsiniz."
+            title={tr('Gizlediğiniz firma yok')}
+            description={tr('Akışta bir gönderinin menüsünden “Bu firmayı akışımda gizle” diyerek firma gizleyebilirsiniz.')}
           />
         }
         renderItem={({ item, index }) => (
           <ListRow
             title={item.name}
-            subtitle={`Gizlendi: ${formatRelativeTime(item.createdAt)}`}
+            subtitle={tr('Gizlendi: {time}', { time: formatRelativeTime(item.createdAt) })}
             avatarName={item.name}
             avatarKind="company"
             divider={index < mutes.length - 1}
             right={
               <Button
                 kind="secondary"
-                label="Göster"
+                label={tr('Göster')}
                 loading={busyId === item.companyId}
                 disabled={!!busyId}
                 onPress={() => unmute(item.companyId)}

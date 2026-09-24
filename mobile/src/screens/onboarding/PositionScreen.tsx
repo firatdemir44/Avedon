@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Chip } from '../../ui';
 
@@ -22,12 +23,12 @@ export function PositionScreen({ navigation }: Props) {
     <OnboardingLayout
       step={2}
       totalSteps={6}
-      title="Pozisyonunuz nedir?"
-      subtitle="Size uygun olanı seçin."
+      title={tr('Pozisyonunuz nedir?')}
+      subtitle={tr('Size uygun olanı seçin.')}
       footer={
         <Button
           size="lg"
-          label="Devam Et"
+          label={tr('Devam Et')}
           disabled={!draft.position}
           onPress={() => navigation.navigate('PersonalInfo')}
         />
@@ -39,7 +40,7 @@ export function PositionScreen({ navigation }: Props) {
         {POSITIONS.map((position) => (
           <Chip
             key={position}
-            label={position}
+            label={tr(position)}
             selected={draft.position === position}
             onPress={() => updateDraft({ position })}
             // Dokunma hedefi 44px'in altına inmesin.

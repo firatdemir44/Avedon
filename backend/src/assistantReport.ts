@@ -5,6 +5,7 @@
 //   Hiç soru gelmemiş firmaya bildirim gitmez (boş rapor sıkar).
 import { prisma } from './db';
 import { notifyMany } from './notifications';
+import { t, type Lang } from './i18n';
 
 const DAY = 86_400_000;
 
@@ -88,10 +89,10 @@ export function istanbulWeek(now = new Date()) {
   return { weekKey, due };
 }
 
-export function digestText(r: AssistantReport) {
-  const parts = [`${r.askerCompanies} firmadan ${r.questions} soru geldi`];
-  if (r.answeredByAssistant) parts.push(`${r.answeredByAssistant} tanesini asistanınız kendisi cevapladı`);
-  if (r.forwardedOpen) parts.push(`${r.forwardedOpen} soru sizin cevabınızı bekliyor`);
+export function digestText(r: AssistantReport, lang: Lang = 'tr') {
+  const parts = [t(lang, '{c} firmadan {q} soru geldi', { c: r.askerCompanies, q: r.questions })];
+  if (r.answeredByAssistant) parts.push(t(lang, '{n} tanesini asistanınız kendisi cevapladı', { n: r.answeredByAssistant }));
+  if (r.forwardedOpen) parts.push(t(lang, '{n} soru sizin cevabınızı bekliyor', { n: r.forwardedOpen }));
   return parts.join(', ') + '.';
 }
 
@@ -120,7 +121,7 @@ export async function sendWeeklyDigests(now = new Date()) {
     const staff = await prisma.user.findMany({ where: { companyId }, select: { id: true } });
     await notifyMany(
       staff.map((u) => u.id),
-      { kind: 'assistant_digest', title: `Asistanınız bu hafta ${report.questions} soruyu karşıladı`, body: digestText(report), data: { companyId } }
+      { kind: 'assistant_digest', title: 'Asistanınız bu hafta {n} soruyu karşıladı', vars: { n: report.questions }, localize: (lang) => ({ title: t(lang, 'Asistanınız bu hafta {n} soruyu karşıladı', { n: report.questions }), body: digestText(report, lang) }), data: { companyId } }
     );
     sent++;
   }

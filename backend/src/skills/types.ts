@@ -8,6 +8,7 @@
 // İlke: model hesap yapmaz. Rakam yalnızca `run`'dan çıkar; `summarize` bu
 // rakamları Türkçe cümleye döker, asistan bu metnin dışında sayı söylemez.
 import * as z from 'zod/v4';
+import type { Lang } from '../i18n';
 
 export type SkillInputSchema = z.ZodObject<z.ZodRawShape>;
 
@@ -24,7 +25,8 @@ export interface Skill<I extends SkillInputSchema = SkillInputSchema, O = unknow
   // Saf ve senkron: girdi → çıktı. Hata fırlatmaz; anlamsız girdi şemada yakalanır.
   run: (input: z.infer<I>) => O;
   // Sonucu Türkçe anlatma: yalnızca çıktıdaki sayılar, yuvarlanmış.
-  summarize: (input: z.infer<I>, output: O) => string;
+  // lang === 'en' ise İngilizce; aksi halde Türkçe (varsayılan).
+  summarize: (input: z.infer<I>, output: O, lang?: Lang) => string;
 }
 
 // Kayıt listesi için tür silinmiş hali (run parametresi kontra-varyant, Skill<...> ortak türe atanamaz).

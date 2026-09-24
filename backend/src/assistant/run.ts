@@ -10,6 +10,7 @@ import { fxContextLine, getRates } from '../fx';
 import { mockAssistantTurn } from './mock';
 import { identityBlock } from './persona';
 import { ASSISTANT_SYSTEM_PROMPT, memoryBlock } from './system';
+import { normalizeLang, t, tx, type Lang } from '../i18n';
 import { buildTools, type MemorySuggestion, type ToolCallRecord, type WatchSuggestion } from './tools';
 
 type ApiMessage = Anthropic.Beta.Messages.BetaMessageParam;
@@ -36,7 +37,7 @@ const MAX_HISTORY_API_MESSAGES = 40;
 const MAX_ITERATIONS = 8;
 const TITLE_MAX = 60;
 
-export function toView(row: { id: string; role: string; contentJson: string; createdAt: Date }): AssistantMessageView {
+export function toView(row: { id: string; role: string; contentJson: string; createdAt: Date }, lang?: Lang): AssistantMessageView {
   let parsed: Partial<AssistantMessageView> = {};
   try {
     parsed = JSON.parse(row.contentJson);
@@ -47,9 +48,10 @@ export function toView(row: { id: string; role: string; contentJson: string; cre
     id: row.id,
     role: row.role === 'assistant' ? 'assistant' : 'user',
     text: parsed.text ?? '',
-    toolCalls: parsed.toolCalls ?? [],
-    memorySuggestions: parsed.memorySuggestions ?? [],
-    watchSuggestions: parsed.watchSuggestions ?? [],
+    // Kart başlığı/özeti Türkçe kaydedilir; gösterirken arayüz diline çevrilir.
+    toolCalls: (parsed.toolCalls ?? []).map((c) => ({ ...c, title: tx(lang, c.title), summary: tx(lang, c.summary) })),
+    memorySuggestions: (parsed.memorySuggestions ?? []).map((m) => ({ ...m, label: tx(lang, m.label), reason: tx(lang, m.reason) })),
+    watchSuggestions: (parsed.watchSuggestions ?? []).map((w) => ({ ...w, reason: tx(lang, w.reason) })),
     createdAt: row.createdAt,
   };
 }
@@ -80,7 +82,14 @@ function textOf(content: Anthropic.Beta.Messages.BetaContentBlock[]) {
     .trim();
 }
 
-export async function runAssistantTurn(params: { threadId: string; userId: string; companyId: string | null; text: string }): Promise<TurnResult> {
+// İngilizce arayüzde model İngilizce yanıt verir (talimatlar Türkçe kalır; önbellek bozulmaz).
+export function languageLine(lang: Lang) {
+  return lang === 'en'
+    ? '\n\nLANGUAGE: The user is using the English interface. Reply in English (clear, natural, professional textile-trade English: fabric, yarn, knitted, woven, weight in gsm, width, gauge, sample, quote, open request). Keep product codes, company names and numbers exactly as they are.'
+    : '';
+}
+
+export async function runAssistantTurn(params: { threadId: string; userId: string; companyId: string | null; text: string; lang?: Lang }): Promise<TurnResult> {
   const { threadId, userId, companyId } = params;
   const text = params.text.trim();
 
@@ -100,16 +109,18 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
     prisma.assistantMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { apiJson: true } }),
     companyId && !sellerCompany ? readMemory(companyId) : Promise.resolve([]),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
-    prisma.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
+    prisma.user.findUnique({ where: { id: userId }, select: { firstName: true, language: true } }),
     getRates().catch(() => null),
   ]);
+  // Yanıt dili: istek dili, yoksa kullanıcının kayıtlı dili (WhatsApp, devredilen soru).
+  const lang: Lang = params.lang ?? normalizeLang(user?.language);
   const history = historyFromRows(rows);
   const userApi: ApiMessage = { role: 'user', content: text };
   const messages: ApiMessage[] = [...history, userApi];
 
   const toolSet = sellerCompany
-    ? buildBuyerTools({ askerId: userId, threadId, sellerCompanyId: sellerCompany.id, sellerName: sellerCompany.name })
-    : buildTools({ userId, companyId });
+    ? buildBuyerTools({ askerId: userId, threadId, sellerCompanyId: sellerCompany.id, sellerName: sellerCompany.name, lang })
+    : buildTools({ userId, companyId, lang });
 
   let answer: string;
   let newApi: ApiMessage[];
@@ -129,7 +140,7 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
       max_tokens: 2048,
       // Sabit talimat önbelleğe alınır; firma hafızası sık değiştiği için ayrı blok.
       system: sellerCompany
-        ? [{ type: 'text', text: buyerSystemPrompt(sellerCompany, user?.firstName ?? null) }]
+        ? [{ type: 'text', text: `${buyerSystemPrompt(sellerCompany, user?.firstName ?? null)}${languageLine(lang)}` }]
         : [
         { type: 'text', text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
         // Kimlik + kullanıcı adı kullanıcıya özel: önbellek dışı blokta.
@@ -137,7 +148,7 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
 
 ${memoryBlock(memory, company?.name ?? null)}
 
-${fxContextLine(fx)}` },
+${fxContextLine(fx)}${languageLine(lang)}` },
       ],
       messages,
       tools: toolSet.tools,
@@ -156,7 +167,7 @@ ${fxContextLine(fx)}` },
     }
     if (!final) throw new Error('assistant_no_response');
 
-    answer = textOf(final.content) || 'Bir sonuç üretemedim, soruyu biraz daha açar mısın?';
+    answer = textOf(final.content) || t(lang, 'Bir sonuç üretemedim, soruyu biraz daha açar mısın?');
     // Döngü, araç sonuçlarını params.messages'a ekler; son asistan mesajı eklenmemişse biz ekleriz.
     const tail = runner.params.messages.slice(messages.length) as ApiMessage[];
     const last = tail[tail.length - 1];
@@ -183,5 +194,5 @@ ${fxContextLine(fx)}` },
     return [u, a];
   });
 
-  return { userMessage: toView(userRow), message: toView(assistantRow), usage };
+  return { userMessage: toView(userRow, lang), message: toView(assistantRow, lang), usage };
 }

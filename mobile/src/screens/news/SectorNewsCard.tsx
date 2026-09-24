@@ -5,6 +5,7 @@ import { Pressable, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchNewsDigest, type NewsItem } from '../../api/client';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { Button, Card, Icon, SkeletonText } from '../../ui';
 import { NewsRow } from './NewsRow';
 
@@ -70,7 +71,7 @@ export function SectorNewsCard({ refreshKey, onSeeAll }: SectorNewsCardProps) {
       <Pressable
         onPress={() => setHidden(false)}
         accessibilityRole="button"
-        accessibilityLabel="Sektör gündemini göster"
+        accessibilityLabel={tr('Sektör gündemini göster')}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -85,9 +86,9 @@ export function SectorNewsCard({ refreshKey, onSeeAll }: SectorNewsCardProps) {
       >
         <Icon name="newspaper-outline" size={t.size.iconSm} color="ink2" />
         <Text numberOfLines={1} style={[t.type.label14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-          Sektör gündemi{items ? ` · ${items.length} başlık` : ''}
+          {tr('Sektör gündemi')}{items ? ` · ${tr('{n} başlık', { n: items.length })}` : ''}
         </Text>
-        <Text style={[t.type.label14, { color: t.colors.brand }]}>Göster</Text>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Göster')}</Text>
       </Pressable>
     );
   }
@@ -98,10 +99,10 @@ export function SectorNewsCard({ refreshKey, onSeeAll }: SectorNewsCardProps) {
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
           <Icon name="newspaper-outline" size={t.size.iconSm} color="ink2" />
           <Text style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]} numberOfLines={1}>
-            Sektör gündemi
+            {tr('Sektör gündemi')}
           </Text>
-          <Pressable onPress={() => setHidden(true)} accessibilityRole="button" accessibilityLabel="Sektör gündemini bugün gizle" hitSlop={t.space[3]}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Gizle</Text>
+          <Pressable onPress={() => setHidden(true)} accessibilityRole="button" accessibilityLabel={tr('Sektör gündemini bugün gizle')} hitSlop={t.space[3]}>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Gizle')}</Text>
           </Pressable>
         </View>
         {items === null ? (
@@ -109,7 +110,7 @@ export function SectorNewsCard({ refreshKey, onSeeAll }: SectorNewsCardProps) {
         ) : (
           items.map((item) => <NewsRow key={item.id} item={item} />)
         )}
-        <Button kind="secondary" label="Tümünü gör" onPress={onSeeAll} fullWidth />
+        <Button kind="secondary" label={tr('Tümünü gör')} onPress={onSeeAll} fullWidth />
       </View>
     </Card>
   );

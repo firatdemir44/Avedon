@@ -12,6 +12,7 @@ import {
 import type { CompositionItem } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 import { Badge } from '../ui';
+import { tr } from '../i18n';
 
 // Kumaş pasaportu kartı (Faz 1, Adım 6; taslak docs/tasarim-2027/Main.dc.html).
 // Akış kartında ürünün özeti: ui/Card ölçülerinde kutu (surface-1, 1px line,
@@ -88,7 +89,7 @@ export function toPassportCardProduct(product: PassportCardSource): PassportCard
 // Örgü kumaşlarda sütun başlığı "Örgü", dokuma ve diğerinde "Çeşit"
 // (taslaktaki örnek raschel olduğu için "Örgü" yazıyordu).
 function structureLabel(type: string) {
-  return type === 'dokuma' || type === 'diger' ? 'Çeşit' : 'Örgü';
+  return type === 'dokuma' || type === 'diger' ? tr('Çeşit') : tr('Örgü');
 }
 
 // "1.200 m · MOQ 300 m · 12 gün"
@@ -98,7 +99,7 @@ function commercialSummary(product: PassportCardProduct) {
     const unit = product.moqUnit ? STOCK_UNIT_LABELS[product.moqUnit as StockUnit]?.short ?? product.moqUnit : '';
     parts.push(`MOQ ${formatMeasure(product.moq)}${unit ? ` ${unit}` : ''}`);
   }
-  if (product.leadTimeDays != null) parts.push(`${product.leadTimeDays} gün`);
+  if (product.leadTimeDays != null) parts.push(tr('{n} gün', { n: product.leadTimeDays }));
   return parts.join(' · ');
 }
 
@@ -107,16 +108,17 @@ export function passportAccessibilityLabel(product: PassportCardProduct) {
   // İplikte ölçüler okunmaz (gramaj/en 0).
   if (isYarnType(product.type)) {
     const blend = product.composition.length ? `, ${formatComposition(product.composition)}` : '';
-    return `İplik. ${product.code}${product.yarnSummary ? `, ${product.yarnSummary}` : ''}${blend}, ${commercialSummary(product)}`;
+    return `${tr('İplik')}. ${product.code}${product.yarnSummary ? `, ${product.yarnSummary}` : ''}${blend}, ${commercialSummary(product)}`;
   }
   const composition = product.composition.length ? `, ${formatComposition(product.composition)}` : '';
   const effective =
     product.widthMeaning === 'tup_tek_yuz'
-      ? `, tek yüz tüp eni, hesap eni ${formatMeasure(effectiveWidthCm(product.widthCm, product.widthMeaning))} santim`
+      ? `, ${tr('tek yüz tüp eni, hesap eni {n} santim', { n: formatMeasure(effectiveWidthCm(product.widthCm, product.widthMeaning)) })}`
       : '';
-  return `Kumaş pasaportu. ${product.code}, ${structure}, ${formatMeasure(
-    product.weightGsm
-  )} gram metrekare, ${formatMeasure(product.widthCm)} santim en${effective}${composition}, ${commercialSummary(
+  return `${tr('Kumaş pasaportu')}. ${product.code}, ${structure}, ${tr('{w} gram metrekare, {c} santim en', {
+    w: formatMeasure(product.weightGsm),
+    c: formatMeasure(product.widthCm),
+  })}${effective}${composition}, ${commercialSummary(
     product
   )}`;
 }
@@ -168,7 +170,7 @@ export function PassportCard({
           {product.code}
         </Text>
         <Text style={[t.type.caption12, { color: t.colors.ink3 }]} numberOfLines={1}>
-          {isYarn ? 'İPLİK' : 'KUMAŞ PASAPORTU'}
+          {isYarn ? tr('İPLİK') : tr('KUMAŞ PASAPORTU')}
         </Text>
       </View>
 
@@ -181,13 +183,13 @@ export function PassportCard({
       {isYarn ? null : (
         <View style={{ flexDirection: 'row', gap: t.space[2] }}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={specLabel}>Gramaj</Text>
+            <Text style={specLabel}>{tr('Gramaj')}</Text>
             <Text style={specValue} numberOfLines={1}>
               {formatMeasure(product.weightGsm)} g/m²
             </Text>
           </View>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={specLabel}>En</Text>
+            <Text style={specLabel}>{tr('En')}</Text>
             <Text style={specValue} numberOfLines={1}>
               {formatMeasure(product.widthCm)} cm
             </Text>
@@ -244,7 +246,7 @@ export function PassportCard({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${passportAccessibilityLabel(product)}. Ürün sayfasını aç`}
+      accessibilityLabel={`${passportAccessibilityLabel(product)}. ${tr('Ürün sayfasını aç')}`}
       style={({ pressed }) => [frame, pressed && { backgroundColor: t.colors.surface2 }, style]}
     >
       {inner}

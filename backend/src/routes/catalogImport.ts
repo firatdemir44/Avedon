@@ -68,7 +68,7 @@ catalogImportRouter.get(
     if (!companyId) return res.status(403).json({ error: 'no_company' });
     const job = getJob(req.params.jobId, companyId);
     if (!job) return res.status(404).json({ error: 'job_not_found' });
-    res.json(toJobView(job));
+    res.json(toJobView(job, req.lang));
   })
 );
 

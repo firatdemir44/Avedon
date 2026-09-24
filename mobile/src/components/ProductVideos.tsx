@@ -14,6 +14,7 @@ import { InlineError } from './StateView';
 import { PostVideo } from './PostVideo';
 import { useTheme } from '../theme/ThemeContext';
 import { Button, Card, SectionTitle } from '../ui';
+import { tr } from '../i18n';
 
 interface Props {
   productId: string;
@@ -80,9 +81,9 @@ export function ProductVideos({ productId, isOwner }: Props) {
 
   const remove = async (videoId: string) => {
     const ok = await confirmAction({
-      title: 'Video kaldırılsın mı?',
-      message: 'Video ürün sayfasından kaldırılacak ve tamamen silinecek.',
-      confirmLabel: 'Kaldır',
+      title: tr('Video kaldırılsın mı?'),
+      message: tr('Video ürün sayfasından kaldırılacak ve tamamen silinecek.'),
+      confirmLabel: tr('Kaldır'),
       destructive: true,
     });
     if (!ok) return;
@@ -93,7 +94,7 @@ export function ProductVideos({ productId, isOwner }: Props) {
       setVideos((prev) => (prev ?? []).filter((v) => v.id !== videoId));
       haptics.success();
     } catch {
-      setError('Video kaldırılamadı, tekrar deneyin.');
+      setError(tr('Video kaldırılamadı, tekrar deneyin.'));
     } finally {
       setBusyId(null);
     }
@@ -109,7 +110,7 @@ export function ProductVideos({ productId, isOwner }: Props) {
 
   return (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title={videos.length ? `Videolar (${videos.length})` : 'Videolar'} />
+      <SectionTitle title={videos.length ? tr('Videolar ({n})', { n: videos.length }) : tr('Videolar')} />
       <Card style={{ gap: t.space[3] }}>
         {videos.map((video) => (
           <View key={video.id} style={{ gap: t.space[2] }}>
@@ -117,9 +118,9 @@ export function ProductVideos({ productId, isOwner }: Props) {
             {isOwner ? (
               <Button
                 kind="secondary"
-                label={busyId === video.id ? 'Kaldırılıyor...' : 'Kaldır'}
+                label={busyId === video.id ? tr('Kaldırılıyor...') : tr('Kaldır')}
                 disabled={busyId === video.id}
-                accessibilityLabel="Bu videoyu kaldır"
+                accessibilityLabel={tr('Bu videoyu kaldır')}
                 onPress={() => remove(video.id)}
               />
             ) : null}
@@ -128,7 +129,7 @@ export function ProductVideos({ productId, isOwner }: Props) {
 
         {videos.length === 0 && isOwner && !uploading && !attaching ? (
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Bu ürüne en fazla {max} video ekleyebilirsiniz (her biri en çok {MAX_VIDEO_SECONDS} saniye).
+            {tr('Bu ürüne en fazla {max} video ekleyebilirsiniz (her biri en çok {s} saniye).', { max, s: MAX_VIDEO_SECONDS })}
           </Text>
         ) : null}
 
@@ -136,10 +137,10 @@ export function ProductVideos({ productId, isOwner }: Props) {
           <View style={{ gap: t.space[2] }}>
             <Text style={[t.type.body14, { color: t.colors.ink }]}>
               {attaching
-                ? 'Video ürüne ekleniyor...'
+                ? tr('Video ürüne ekleniyor...')
                 : progress >= 0.999
-                  ? 'Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...'
-                  : `Video yükleniyor %${Math.round(progress * 100)}`}
+                  ? tr('Yükleme tamamlanıyor, Cloudflare onayı bekleniyor...')
+                  : tr('Video yükleniyor %{p}', { p: Math.round(progress * 100) })}
             </Text>
             <View
               accessibilityRole="progressbar"
@@ -159,7 +160,7 @@ export function ProductVideos({ productId, isOwner }: Props) {
         {error ? <InlineError message={error} /> : null}
 
         {canAdd ? (
-          <Button kind="secondary" label="Video ekle" icon="videocam-outline" onPress={addVideo} />
+          <Button kind="secondary" label={tr('Video ekle')} icon="videocam-outline" onPress={addVideo} />
         ) : null}
       </Card>
     </View>

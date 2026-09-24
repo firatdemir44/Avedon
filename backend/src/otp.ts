@@ -27,7 +27,7 @@ export type IssueOtpResult =
   | { ok: false; error: 'cooldown'; retryAfterSeconds: number }
   | { ok: false; error: 'sms_failed' };
 
-export async function issueOtp(phone: string): Promise<IssueOtpResult> {
+export async function issueOtp(phone: string, lang?: string): Promise<IssueOtpResult> {
   const existing = await prisma.phoneOtp.findUnique({ where: { phone } });
   if (existing) {
     const elapsedMs = Date.now() - existing.createdAt.getTime();
@@ -54,7 +54,7 @@ export async function issueOtp(phone: string): Promise<IssueOtpResult> {
 
   // Sağlayıcı bağlıyken SMS gitmediyse kullanıcı boşuna beklemesin: kod silinir (bekleme süresi
   // işlemez), ekran "gönderilemedi" der. Sağlayıcı bağlı değilken eski davranış: kod sunucu kaydına düşer.
-  const sent = await sendOtpSms(phone, code);
+  const sent = await sendOtpSms(phone, code, lang);
   if (!sent.ok && isSmsConfigured()) {
     await prisma.phoneOtp.delete({ where: { phone } }).catch(() => {});
     return { ok: false, error: 'sms_failed' };

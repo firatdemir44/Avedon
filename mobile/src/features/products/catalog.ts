@@ -4,6 +4,8 @@
 // ve saklar, uygulama etiketleri gösterir. Birini değiştirince ötekini de
 // değiştir; backend'de `npx tsx scripts/check-catalog.ts` farkı yakalar.
 // Anahtar silinmez/yeniden adlandırılmaz (kayıtlı ürünler etiketsiz kalır).
+import { tr } from '../../i18n';
+import { trLabels } from '../trLabels';
 
 export const PRODUCT_TYPES = ['orme', 'raschel', 'dokuma', 'dantel', 'triko', 'diger'] as const;
 export type ProductType = (typeof PRODUCT_TYPES)[number];
@@ -20,14 +22,14 @@ export function isYarnType(type: string): type is YarnProductType {
   return type === YARN_PRODUCT_TYPE;
 }
 
-export const TYPE_LABELS: Record<ProductType, string> = {
+export const TYPE_LABELS: Record<ProductType, string> = trLabels({
   orme: 'Örme',
   raschel: 'Raschel',
   dokuma: 'Dokuma',
   dantel: 'Dantel',
   triko: 'Triko',
   diger: 'Diğer',
-};
+});
 
 export interface CatalogOption {
   key: string;
@@ -84,8 +86,9 @@ export const SUBTYPES: Record<ProductType, readonly CatalogOption[]> = {
   ],
   diger: [],
 };
+Object.values(SUBTYPES).forEach((list) => trLabels(list as CatalogOption[]));
 
-export const USAGES: readonly CatalogOption[] = [
+export const USAGES: readonly CatalogOption[] = trLabels([
   { key: 'pantolonluk', label: 'Pantolonluk' },
   { key: 'taytlik', label: 'Taytlık' },
   { key: 'tisortluk', label: 'Tişörtlük' },
@@ -100,13 +103,13 @@ export const USAGES: readonly CatalogOption[] = [
   { key: 'astar', label: 'Astar' },
   { key: 'cocuk_giyim', label: 'Çocuk Giyim' },
   { key: 'ev_tekstili', label: 'Ev Tekstili' },
-];
+]);
 
 export const STOCK_UNITS = ['m', 'kg'] as const;
 
 // Firma türü (orijinal tasarım: "Şirket Tipi"). Kullanıcı hesap türünden ayrı:
 // hesap türü kişinin rolü, bu firmanın ne iş yaptığı.
-export const COMPANY_TYPES = [
+export const COMPANY_TYPES = trLabels([
   { key: 'kumas_uretici', label: 'Kumaş Üreticisi' },
   { key: 'konfeksiyon', label: 'Konfeksiyon / Giyim Üreticisi' },
   { key: 'boyahane', label: 'Boyahane / Terbiye' },
@@ -115,7 +118,7 @@ export const COMPANY_TYPES = [
   { key: 'baski', label: 'Baskı / Nakış' },
   { key: 'toptanci', label: 'Toptancı / Tedarikçi' },
   { key: 'diger', label: 'Diğer' },
-] as const;
+] as const);
 
 export const COMPANY_TYPE_KEYS = new Set(COMPANY_TYPES.map((t) => t.key));
 
@@ -126,7 +129,7 @@ export function isValidCompanyType(value: string) {
 
 // --- Kumaş pasaportu listeleri (Faz 1, Adım 2) ---
 // BAŞLANGIÇ değerleri; Fırat'ın listesiyle güncellenecek. Anahtar silinmez.
-export const YARN_TYPES = [
+export const YARN_TYPES = trLabels([
   { key: 'penye', label: 'Penye (ring)' },
   { key: 'karde', label: 'Karde' },
   { key: 'open_end', label: 'Open End' },
@@ -136,13 +139,13 @@ export const YARN_TYPES = [
   { key: 'poy', label: 'POY' },
   { key: 'vortex', label: 'Vortex' },
   { key: 'diger', label: 'Diğer' },
-] as const;
+] as const);
 
-export const YARN_ROLES = [
+export const YARN_ROLES = trLabels([
   { key: 'ana', label: 'Ana iplik' },
   { key: 'ilave', label: 'İlave iplik' },
   { key: 'ekstra', label: 'Ekstra iplik' },
-] as const;
+] as const);
 
 export const YARN_UNITS = [
   { key: 'ne', label: 'Ne' },
@@ -153,7 +156,7 @@ export const YARN_UNITS = [
 ] as const;
 
 // Boya / apre etiketleri (çoklu seçim, usages ile aynı desen).
-export const FINISH_TAGS = [
+export const FINISH_TAGS = trLabels([
   { key: 'sardonlu', label: 'Şardonlu' },
   { key: 'yikamali', label: 'Yıkamalı' },
   { key: 'peach', label: 'Peach (şeftali tuşe)' },
@@ -168,7 +171,7 @@ export const FINISH_TAGS = [
   { key: 'baskili', label: 'Baskılı' },
   { key: 'duz_boya', label: 'Düz boya' },
   { key: 'melanj', label: 'Melanj' },
-] as const;
+] as const);
 
 export const PRICE_CURRENCIES = ['TRY', 'USD', 'EUR'] as const;
 
@@ -179,14 +182,14 @@ export const YARN_UNIT_KEYS = new Set<string>(YARN_UNITS.map((t) => t.key));
 export type StockUnit = (typeof STOCK_UNITS)[number];
 
 export const STOCK_UNIT_LABELS: Record<StockUnit, { short: string; long: string }> = {
-  m: { short: 'm', long: 'metre' },
-  kg: { short: 'kg', long: 'kilogram' },
+  m: trLabels({ short: 'm', long: 'metre' }, ['long']),
+  kg: trLabels({ short: 'kg', long: 'kilogram' }, ['long']),
 };
 
 // Sunucu yeni bir çeşit gönderirse (uygulama güncellenmemişse) anahtarın kendisi görünür.
 // İplik TYPE_LABELS'ta değil (o kumaş çeşitlerinin listesi), etiketi burada.
 export function typeLabel(type: string) {
-  if (isYarnType(type)) return 'İplik';
+  if (isYarnType(type)) return tr('İplik');
   return TYPE_LABELS[type as ProductType] ?? type;
 }
 

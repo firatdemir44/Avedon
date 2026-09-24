@@ -378,8 +378,9 @@ tendersRouter.post(
     if (sellers.length) {
       await notifyMany(sellers, {
         kind: 'tender_new',
-        title: `Açık talep: ${d.title}`,
-        body: `${tenderSummary(tender)} · Teklif verebilirsiniz.`,
+        title: 'Açık talep: {title}',
+        body: '{summary} · Teklif verebilirsiniz.',
+        vars: { title: d.title, summary: tenderSummary(tender) },
         data: { tenderId: tender.id },
       });
     }
@@ -483,8 +484,9 @@ tendersRouter.post(
     const company = await prisma.company.findUnique({ where: { id: me.companyId }, select: { name: true } });
     await notify(t.buyerId, {
       kind: 'tender_offer',
-      title: `${company?.name ?? 'Bir firma'} teklif verdi: ${t.title}`,
-      body: `${d.priceValue} ${d.priceCurrency}/${d.priceUnit}${d.leadTimeDays != null ? ` · ${d.leadTimeDays} gün` : ''}`,
+      title: company?.name ? '{company} teklif verdi: {title}' : 'Bir firma teklif verdi: {title}',
+      body: d.leadTimeDays != null ? '{price} · {days} gün' : '{price}',
+      vars: { company: company?.name ?? '', title: t.title, price: `${d.priceValue} ${d.priceCurrency}/${d.priceUnit}`, days: d.leadTimeDays ?? '' },
       data: { tenderId: t.id },
     });
     res.status(existing ? 200 : 201).json({ offer: toOfferView(offer, undefined, false), updated: !!existing });
@@ -522,12 +524,13 @@ tendersRouter.post(
     const buyer = (await partyInfo([me.id])).get(me.id);
     await notify(offer.sellerUserId, {
       kind: 'tender_awarded',
-      title: `Teklifiniz seçildi: ${t.title}`,
-      body: `${buyer?.name ?? 'Alıcı'} teklifinizi kabul etti. Sohbetten devam edebilirsiniz.`,
+      title: 'Teklifiniz seçildi: {title}',
+      body: buyer?.name ? '{buyer} teklifinizi kabul etti. Sohbetten devam edebilirsiniz.' : 'Alıcı teklifinizi kabul etti. Sohbetten devam edebilirsiniz.',
+      vars: { title: t.title, buyer: buyer?.name ?? '' },
       data: { tenderId: t.id, userId: me.id },
     });
     if (others.length) {
-      await notifyMany(others.map((o) => o.sellerUserId), { kind: 'tender_closed', title: `Talep kapandı: ${t.title}`, body: 'Alıcı başka bir teklifi seçti.', data: { tenderId: t.id } });
+      await notifyMany(others.map((o) => o.sellerUserId), { kind: 'tender_closed', title: 'Talep kapandı: {title}', body: 'Alıcı başka bir teklifi seçti.', vars: { title: t.title }, data: { tenderId: t.id } });
     }
     res.json({ ok: true });
   })
@@ -545,7 +548,7 @@ tendersRouter.post(
     await prisma.tender.update({ where: { id: t.id }, data: { status: 'closed' } });
     const sellers = await prisma.tenderOffer.findMany({ where: { tenderId: t.id, status: 'sent' }, select: { sellerUserId: true } });
     if (sellers.length) {
-      await notifyMany(sellers.map((s) => s.sellerUserId), { kind: 'tender_closed', title: `Talep kapandı: ${t.title}`, body: 'Alıcı talebi kapattı.', data: { tenderId: t.id } });
+      await notifyMany(sellers.map((s) => s.sellerUserId), { kind: 'tender_closed', title: 'Talep kapandı: {title}', body: 'Alıcı talebi kapattı.', vars: { title: t.title }, data: { tenderId: t.id } });
     }
     res.json({ ok: true });
   })

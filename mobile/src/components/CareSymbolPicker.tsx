@@ -1,4 +1,5 @@
 import React from 'react';
+import { tr } from '../i18n';
 import { View, Text, Pressable } from 'react-native';
 import { CareSymbolIcon } from './CareSymbolIcon';
 import {
@@ -49,7 +50,7 @@ export function CareSymbolPicker({
                   accessibilityRole="radio"
                   accessibilityState={{ selected, checked: selected }}
                   accessibilityLabel={symbol.label}
-                  accessibilityHint={selected ? 'Seçimi kaldırmak için dokunun' : undefined}
+                  accessibilityHint={selected ? tr('Seçimi kaldırmak için dokunun') : undefined}
                   style={({ pressed }) => ({
                     width: CELL_WIDTH,
                     minHeight: t.size.control + t.space[2],

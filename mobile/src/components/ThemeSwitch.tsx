@@ -2,14 +2,15 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme, useThemePreference, type ThemePreference } from '../theme/ThemeContext';
 import { SegmentControl } from '../ui';
-import { tr } from '../i18n';
+import { getLang, tr } from '../i18n';
 
 // Tema anahtarı (DESIGN.md §1: ana sayfadaki profil avatarının alt sayfasında; varsayılan sistem tercihi).
 // Segment kontrolün kendisi src/ui/SegmentControl.tsx'te.
 const options = (): { value: ThemePreference; label: string }[] => [
-  { value: 'system', label: tr('Sistem') },
-  { value: 'light', label: tr('Açık') },
-  { value: 'dark', label: tr('Koyu') },
+  // 'Açık' başka yerlerde 'Open' anlamında çevrildiği için tema etiketleri burada sabit.
+  { value: 'system', label: getLang() === 'en' ? 'System' : 'Sistem' },
+  { value: 'light', label: getLang() === 'en' ? 'Light' : 'Açık' },
+  { value: 'dark', label: getLang() === 'en' ? 'Dark' : 'Koyu' },
 ];
 
 export function ThemeSwitch() {

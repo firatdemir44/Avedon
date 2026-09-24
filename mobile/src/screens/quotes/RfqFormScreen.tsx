@@ -13,17 +13,18 @@ import { companyCountOf, type RfqSelectionItem } from '../../features/quotes/rfq
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Avatar, Button, Card, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'RfqForm'>;
 
 const UNIT_OPTIONS = STOCK_UNITS.map((unit) => ({ value: unit, label: STOCK_UNIT_LABELS[unit].long }));
 
-const SKIP_REASONS: Record<string, string> = {
-  not_found: 'ürün bulunamadı',
-  own_product: 'kendi firmanızın ürünü',
-  same_company: 'aynı firmadan başka ürün seçilmişti',
-  already_open: 'bu ürün için zaten açık isteğiniz var',
-};
+const SKIP_REASONS = (): Record<string, string> => ({
+  not_found: tr('ürün bulunamadı'),
+  own_product: tr('kendi firmanızın ürünü'),
+  same_company: tr('aynı firmadan başka ürün seçilmişti'),
+  already_open: tr('bu ürün için zaten açık isteğiniz var'),
+});
 
 // Faz 3, Adım 1: tek üründe kalan teklif isteğinin çoklu hali. Aynı ihtiyaç
 // birkaç firmaya birden sorulur; istek FİRMA başına tek gider.
@@ -62,7 +63,7 @@ export function RfqFormScreen({ route, navigation }: Props) {
   const dateInvalid = !!targetDate.trim() && !DATE_PATTERN.test(targetDate.trim());
   const canSubmit = quantityValue > 0 && companyCount >= 2 && !dateInvalid && !submitting && !result;
 
-  const codeOf = (productId: string) => items.find((i) => i.id === productId)?.code ?? 'Ürün';
+  const codeOf = (productId: string) => items.find((i) => i.id === productId)?.code ?? tr('Ürün');
 
   const openCompare = (rfqId: string) => {
     // replace: geri tuşu doldurulmuş forma dönmesin.
@@ -93,18 +94,18 @@ export function RfqFormScreen({ route, navigation }: Props) {
       haptics.error();
       const apiError = err instanceof ApiError ? err : null;
       if (apiError?.code === 'need_two_companies') {
-        setError('En az 2 farklı firmadan ürün gerekiyor. Seçtikleriniz aynı firmadan ya da size ait olabilir.');
+        setError(tr('En az 2 farklı firmadan ürün gerekiyor. Seçtikleriniz aynı firmadan ya da size ait olabilir.'));
       } else if (apiError?.code === 'too_many_companies') {
-        setError(`En çok ${MAX_RFQ_COMPANIES} firmaya sorabilirsiniz. Birkaç ürünü listeden çıkarın.`);
+        setError(tr('En çok {n} firmaya sorabilirsiniz. Birkaç ürünü listeden çıkarın.', { n: MAX_RFQ_COMPANIES }));
       } else if (apiError?.code === 'daily_limit') {
         const remaining = typeof apiError.body?.remaining === 'number' ? apiError.body.remaining : 0;
         setError(
           remaining > 0
-            ? `Günlük teklif isteği sınırına yaklaştınız; bugün ${remaining} istek hakkınız kaldı.`
-            : 'Günlük teklif isteği sınırına ulaştınız. Yarın tekrar deneyin.'
+            ? tr('Günlük teklif isteği sınırına yaklaştınız; bugün {n} istek hakkınız kaldı.', { n: remaining })
+            : tr('Günlük teklif isteği sınırına ulaştınız. Yarın tekrar deneyin.')
         );
       } else {
-        setError(friendlyMessage(err, 'Teklif isteği gönderilemedi'));
+        setError(friendlyMessage(err, tr('Teklif isteği gönderilemedi')));
       }
       setSubmitting(false);
     }
@@ -112,15 +113,15 @@ export function RfqFormScreen({ route, navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Çoklu teklif iste" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Çoklu teklif iste')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
           result ? (
-            <Button size="lg" label="Karşılaştırmayı aç" onPress={() => openCompare(result.rfqId)} />
+            <Button size="lg" label={tr('Karşılaştırmayı aç')} onPress={() => openCompare(result.rfqId)} />
           ) : (
             <Button
               size="lg"
-              label={`Teklif iste (${companyCount} firma)`}
+              label={tr('Teklif iste ({n} firma)', { n: companyCount })}
               loading={submitting}
               disabled={!canSubmit}
               onPress={submit}
@@ -129,12 +130,11 @@ export function RfqFormScreen({ route, navigation }: Props) {
         }
       >
         <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
-          Aynı ihtiyacı {companyCount} firmaya birden soruyorsunuz. Her firmaya tek istek gider; gelen teklifleri
-          tek tabloda karşılaştırırsınız.
+          {tr('Aynı ihtiyacı {n} firmaya birden soruyorsunuz. Her firmaya tek istek gider; gelen teklifleri tek tabloda karşılaştırırsınız.', { n: companyCount })}
         </Text>
 
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title={`Seçilen ürünler (${items.length})`} />
+          <SectionTitle title={tr('Seçilen ürünler ({n})', { n: items.length })} />
           <Card>
             {items.map((item, index) => (
               <View
@@ -162,7 +162,7 @@ export function RfqFormScreen({ route, navigation }: Props) {
                 <Pressable
                   onPress={() => setItems((prev) => prev.filter((i) => i.id !== item.id))}
                   accessibilityRole="button"
-                  accessibilityLabel={`${item.code} ürününü listeden çıkar`}
+                  accessibilityLabel={tr('{code} ürününü listeden çıkar', { code: item.code })}
                   style={({ pressed }) => ({
                     width: t.size.touchMin,
                     height: t.size.touchMin,
@@ -180,7 +180,7 @@ export function RfqFormScreen({ route, navigation }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1], paddingTop: t.space[2] }}>
                 <Icon name="warning" size={t.size.iconSm} color="danger" />
                 <Text style={[t.type.body14, { color: t.colors.danger, flexShrink: 1 }]}>
-                  En az 2 farklı firmadan ürün gerekiyor.
+                  {tr('En az 2 farklı firmadan ürün gerekiyor.')}
                 </Text>
               </View>
             ) : null}
@@ -188,46 +188,46 @@ export function RfqFormScreen({ route, navigation }: Props) {
         </View>
 
         <View style={{ gap: t.space[4] }}>
-          <SectionTitle title="İstek bilgileri" />
+          <SectionTitle title={tr('İstek bilgileri')} />
           <Input
-            label="Miktar"
+            label={tr('Miktar')}
             value={quantity}
             onChangeText={setQuantity}
             inputMode="decimal"
             keyboardType="decimal-pad"
-            placeholder="Örn. 1500"
+            placeholder={tr('Örn. 1500')}
             unit={STOCK_UNIT_LABELS[unit].short}
           />
           <View style={{ gap: t.space[1] }}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim</Text>
-            <SegmentControl<StockUnit> stretch accessibilityLabel="Birim" value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Birim')}</Text>
+            <SegmentControl<StockUnit> stretch accessibilityLabel={tr('Birim')} value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
           </View>
 
           <Input
-            label="İstenen termin tarihi (isteğe bağlı)"
+            label={tr('İstenen termin tarihi (isteğe bağlı)')}
             value={targetDate}
             onChangeText={setTargetDate}
             placeholder="2026-11-15"
             autoCapitalize="none"
-            helper="YYYY-AA-GG biçiminde yazın."
-            error={dateInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+            helper={tr('YYYY-AA-GG biçiminde yazın.')}
+            error={dateInvalid ? tr('Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).') : null}
           />
 
           <Input
-            label="Not (isteğe bağlı)"
+            label={tr('Not (isteğe bağlı)')}
             value={note}
             onChangeText={setNote}
-            placeholder="Örn. Ekru, ilk parti 500 m olabilir"
+            placeholder={tr('Örn. Ekru, ilk parti 500 m olabilir')}
             multiline
           />
           <Input
-            label="Başlık (isteğe bağlı)"
+            label={tr('Başlık (isteğe bağlı)')}
             value={title}
             onChangeText={setTitle}
-            placeholder="Örn. Yazlık süprem alımı"
+            placeholder={tr('Örn. Yazlık süprem alımı')}
           />
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Satıcılar başka kaç firmaya sorduğunuzu görmez; onlara normal bir teklif isteği olarak düşer.
+            {tr('Satıcılar başka kaç firmaya sorduğunuzu görmez; onlara normal bir teklif isteği olarak düşer.')}
           </Text>
         </View>
 
@@ -245,10 +245,10 @@ export function RfqFormScreen({ route, navigation }: Props) {
           >
             <Icon name="warning" size={t.size.iconSm} color="warning" />
             <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-              <Text style={[t.type.label14, { color: t.colors.warning }]}>Bazı ürünler için istek gönderilmedi:</Text>
+              <Text style={[t.type.label14, { color: t.colors.warning }]}>{tr('Bazı ürünler için istek gönderilmedi:')}</Text>
               {result.skipped.map((s) => (
                 <Text key={s.productId} style={[t.type.body14, { color: t.colors.warning }]}>
-                  {codeOf(s.productId)} — {SKIP_REASONS[s.reason] ?? 'gönderilemedi'}
+                  {codeOf(s.productId)} — {SKIP_REASONS()[s.reason] ?? tr('gönderilemedi')}
                 </Text>
               ))}
             </View>

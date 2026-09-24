@@ -1,6 +1,7 @@
 import type { YarnSearchParams } from '../../api/client';
 import type { YarnWatchQuery } from '../products/filters';
 import type { YarnDirectoryPreset } from '../../screens/yarns/YarnDirectoryScreen';
+import { tr } from '../../i18n';
 
 // İplik izleme (Faz 2, Adım 6). Sunucudaki yarnWatchQuerySchema `.strict()`:
 // dizin aramasının izlemeye uygun ALT KÜMESİ gider. `inStock`, `companyId`,
@@ -44,7 +45,7 @@ export function yarnWatchQueryFromParams(params: YarnSearchParams): YarnWatchQue
 
 // İzlemeye çevrilirken düşen süzgeçler (kullanıcıya söylenir, sessizce yutulmaz).
 export function unsupportedYarnWatchLabels(params: YarnSearchParams): string[] {
-  return params.inStock ? ['stok'] : [];
+  return params.inStock ? [tr('stok')] : [];
 }
 
 // İzleme kuralından iplik dizinini aynı süzgeçle açmak için ön dolgu.

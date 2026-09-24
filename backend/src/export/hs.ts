@@ -5,6 +5,9 @@
 // Sonuç her zaman "tahmini" etiketlidir; kesin sınıflandırma bağlayıcı tarife bilgisi (BTB) ister.
 // 6 hane ülkeler arası ortaktır (Comtrade/TÜİK eşleşmesi bunun üzerinden yapılır).
 
+import { t, normalizeLang, type Lang } from '../i18n';
+import { exportTexts } from '../i18n/en/export';
+
 export type Confidence = 'yuksek' | 'orta' | 'dusuk';
 export interface HsSuggestion {
   hs6: string;
@@ -175,7 +178,41 @@ function yarn(input: HsInput): HsSuggestion {
   return { hs6: '540269', hs4: '5402', label: 'Sentetik iplik (ayrıntı eksik)', confidence: 'dusuk', reasons: [...reasons, 'İplik ailesi ve tipi eklenirse kod netleşir'], alternatives: [] };
 }
 
-export function suggestHs(input: HsInput): HsSuggestion {
+export function suggestHs(input: HsInput, lang: Lang | string = 'tr'): HsSuggestion {
+  const s = suggestHsTr(input);
+  if (normalizeLang(lang) !== 'en') return s;
+  return { ...s, label: localizeHsText(s.label, lang), reasons: s.reasons.map((r) => localizeHsText(r, lang)), alternatives: s.alternatives.map((a) => ({ ...a, label: localizeHsText(a.label, lang) })) };
+}
+
+// Kalıplı Türkçe metni çevirir; yakalanan parçalar (lif grubu, terbiye) da sözlükten çevrilir.
+let hsPatterns: { re: RegExp; names: string[]; en: string }[] | null = null;
+export function localizeHsText(text: string, lang: Lang | string): string {
+  if (normalizeLang(lang) !== 'en') return text;
+  if (exportTexts[text]) return exportTexts[text];
+  if (!hsPatterns) {
+    hsPatterns = [];
+    for (const [tr, en] of Object.entries(exportTexts)) {
+      if (!/\{\w+\}/.test(tr)) continue;
+      const names: string[] = [];
+      const src = tr.split(/(\{\w+\})/).map((part) => {
+        const m = /^\{(\w+)\}$/.exec(part);
+        if (m) { names.push(m[1]); return '(.+?)'; }
+        return part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }).join('');
+      hsPatterns.push({ re: new RegExp(`^${src}$`, 's'), names, en });
+    }
+  }
+  for (const p of hsPatterns) {
+    const m = p.re.exec(text);
+    if (!m) continue;
+    const vals: Record<string, string> = {};
+    p.names.forEach((n, i) => (vals[n] = t(lang, m[i + 1])));
+    return p.en.replace(/\{(\w+)\}/g, (all, k) => vals[k] ?? all);
+  }
+  return t(lang, text);
+}
+
+function suggestHsTr(input: HsInput): HsSuggestion {
   const comp = (input.composition ?? []).filter((c) => c.percent > 0);
   switch (input.type) {
     case 'orme':

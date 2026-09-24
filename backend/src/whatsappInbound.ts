@@ -6,6 +6,7 @@ import { prisma } from './db';
 import { runAssistantTurn } from './assistant/run';
 import { LlmNotConfiguredError, isLlmConfigured } from './llm';
 import { phoneCandidatesFromWhatsApp } from './phone';
+import { normalizeLang, t, type Lang } from './i18n';
 import { downloadWhatsAppMedia, markInbound, sendWhatsAppText } from './whatsapp';
 import { notify } from './notifications';
 import { runPassportExtract, type ImageMediaType } from './skills/passportExtract';
@@ -70,15 +71,15 @@ const MAX_WHATSAPP_REPLY = 3500;
 // WhatsApp'ta kart yok: araç özetleri ve hafıza önerileri metnin altına eklenir.
 export function composeWhatsAppReply(turn: {
   message: { text: string; toolCalls: { title: string; summary: string }[]; memorySuggestions: { label: string; value: unknown }[]; watchSuggestions?: { name: string }[] };
-}) {
+}, lang: Lang = 'tr') {
   const lines: string[] = [turn.message.text.trim()];
   for (const c of turn.message.toolCalls) lines.push(`\n${c.title}: ${c.summary}`);
   if (turn.message.memorySuggestions.length) {
     const items = turn.message.memorySuggestions.map((s) => `${s.label} = ${String(s.value)}`).join(', ');
-    lines.push(`\nHafızaya kaydetmek için uygulamadaki Asistan sekmesinden onaylayın: ${items}.`);
+    lines.push('\n' + t(lang, 'Hafızaya kaydetmek için uygulamadaki Asistan sekmesinden onaylayın: {items}.', { items }));
   }
   if (turn.message.watchSuggestions?.length) {
-    lines.push(`\nİzleme kuralını kurmak için uygulamadaki Asistan sekmesinden onaylayın: ${turn.message.watchSuggestions.map((w) => w.name).join('; ')}.`);
+    lines.push('\n' + t(lang, 'İzleme kuralını kurmak için uygulamadaki Asistan sekmesinden onaylayın: {items}.', { items: turn.message.watchSuggestions.map((w) => w.name).join('; ') }));
   }
   const text = lines.join('\n').trim();
   return text.length > MAX_WHATSAPP_REPLY ? `${text.slice(0, MAX_WHATSAPP_REPLY - 1)}…` : text;
@@ -104,7 +105,10 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
     throw err;
   }
 
+  // Hazır cevaplar kullanıcının kayıtlı dilinde (tanınmayan numara: Türkçe).
+  let lang: Lang = 'tr';
   const finish = async (status: string, replyBody: string, extra: { userId?: string; threadId?: string; error?: string } = {}) => {
+    if (status !== 'answered' && status !== 'draft_created') replyBody = t(lang, replyBody);
     if (replyBody) {
       try {
         await sendWhatsAppText(msg.from, replyBody);
@@ -122,6 +126,7 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
 
   const user = await prisma.user.findFirst({ where: { phone: { in: phoneCandidatesFromWhatsApp(msg.from) } } });
   if (!user) return finish('unknown_user', REPLY_UNKNOWN_USER);
+  lang = normalizeLang(user.language);
 
   // Etiket fotoğrafı → ürün TASLAĞI (ürün oluşturmaz; kullanıcı uygulamada kontrol edip kaydeder).
   if (msg.type === 'image' && msg.mediaId) {
@@ -136,10 +141,10 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
       const draft = await prisma.productDraft.create({
         data: { userId: user.id, companyId: user.companyId, source: 'whatsapp', imageUrl: `data:${mediaType};base64,${media.data}`, caption: msg.caption ?? '', extractionJson: JSON.stringify(outcome) },
       });
-      await notify(user.id, { kind: 'product_draft', title: "WhatsApp'tan ürün taslağı hazır", body: summary, data: { draftId: draft.id } });
+      await notify(user.id, { kind: 'product_draft', title: "WhatsApp'tan ürün taslağı hazır", body: summary, rawBody: true, data: { draftId: draft.id } });
       return finish(
         'draft_created',
-        `Etiketi okudum: ${summary}.\n\nTaslak uygulamada hazır: Bildirimler'den açın, bilgileri kontrol edip kaydedin. Fiyat ve stok etiketten alınmaz, onları siz girersiniz.`,
+        t(lang, "Etiketi okudum: {summary}.\n\nTaslak uygulamada hazır: Bildirimler'den açın, bilgileri kontrol edip kaydedin. Fiyat ve stok etiketten alınmaz, onları siz girersiniz.", { summary }),
         { userId: user.id }
       );
     } catch (err) {
@@ -155,7 +160,7 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
   const thread = await findOrCreateWhatsAppThread(user.id, user.companyId ?? null);
   try {
     const turn = await runAssistantTurn({ threadId: thread.id, userId: user.id, companyId: user.companyId ?? null, text: msg.body });
-    return finish('answered', composeWhatsAppReply(turn), { userId: user.id, threadId: thread.id });
+    return finish('answered', composeWhatsAppReply(turn, lang), { userId: user.id, threadId: thread.id });
   } catch (err) {
     console.error('[whatsapp] asistan hatası:', err);
     const reply = err instanceof LlmNotConfiguredError ? REPLY_ASSISTANT_DOWN : REPLY_FAILED;

@@ -1,6 +1,7 @@
 import type { Machine, MachineGroup } from '../../api/client';
 import { formatMeasure } from '../calculators/parse';
 import { rangeDisplay } from './range';
+import { tr } from '../../i18n';
 
 // Faz 2, Adım 5: makine parkı. Grup etiketleri ve makine satırı özetleri tek
 // yerde; hem firma sayfası, hem yönetim ekranı, hem de kapasite arama sonuçları
@@ -18,17 +19,31 @@ export const MACHINE_GROUP_ORDER: MachineGroup[] = [
 ];
 
 export const MACHINE_GROUP_LABELS: Record<MachineGroup, string> = {
-  orme: 'Örme',
-  dokuma: 'Dokuma',
-  boya_terbiye: 'Boya - Terbiye',
-  baski: 'Baskı',
-  konfeksiyon: 'Konfeksiyon',
-  iplik: 'İplik',
-  diger: 'Diğer',
+  get orme() {
+    return tr('Örme');
+  },
+  get dokuma() {
+    return tr('Dokuma');
+  },
+  get boya_terbiye() {
+    return tr('Boya - Terbiye');
+  },
+  get baski() {
+    return tr('Baskı');
+  },
+  get konfeksiyon() {
+    return tr('Konfeksiyon');
+  },
+  get iplik() {
+    return tr('İplik');
+  },
+  get diger() {
+    return tr('Diğer');
+  },
 };
 
 export function machineGroupLabel(group: string): string {
-  return MACHINE_GROUP_LABELS[group as MachineGroup] ?? 'Diğer';
+  return MACHINE_GROUP_LABELS[group as MachineGroup] ?? tr('Diğer');
 }
 
 // Örme makinelerinde pus/fayn/sistem/iğne anlamlı; dokuma, boya ve baskıda
@@ -59,14 +74,14 @@ const num = (value: number | null) => (value == null ? null : formatMeasure(valu
 export function machineSummary(machine: Machine): string {
   const parts: string[] = [];
   const diameter = num(machine.diameterInch);
-  if (diameter) parts.push(`${diameter} pus`);
+  if (diameter) parts.push(tr('{n} pus', { n: diameter }));
   const gauge = rangeDisplay(machine.gaugeText, machine.gauge);
-  if (gauge) parts.push(`${gauge} fayn`);
-  if (machine.feeders) parts.push(`${machine.feeders} sistem`);
+  if (gauge) parts.push(tr('{n} fayn', { n: gauge }));
+  if (machine.feeders) parts.push(tr('{n} sistem', { n: machine.feeders }));
   const needles = rangeDisplay(machine.needlesText, machine.needles);
-  if (needles) parts.push(`${needles} iğne`);
+  if (needles) parts.push(tr('{n} iğne', { n: needles }));
   const width = num(machine.workingWidthCm);
-  if (width) parts.push(`${width} cm en`);
+  if (width) parts.push(tr('{n} cm en', { n: width }));
   const brandModel = [machine.brand, machine.model].filter(Boolean).join(' ');
   if (brandModel) parts.push(brandModel);
   if (machine.year) parts.push(String(machine.year));
@@ -78,20 +93,20 @@ export function machineSummary(machine: Machine): string {
 export function machineOneLine(machine: Machine): string {
   const specs: string[] = [];
   const diameter = num(machine.diameterInch);
-  if (diameter) specs.push(`${diameter} pus`);
+  if (diameter) specs.push(tr('{n} pus', { n: diameter }));
   const gauge = num(machine.gauge);
-  if (gauge) specs.push(`${gauge} fayn`);
+  if (gauge) specs.push(tr('{n} fayn', { n: gauge }));
   const width = num(machine.workingWidthCm);
-  if (width) specs.push(`${width} cm en`);
+  if (width) specs.push(tr('{n} cm en', { n: width }));
   return `${machine.count}× ${machine.kind}${specs.length ? ` ${specs.join(' ')}` : ''}`;
 }
 
 export function monthlyCapacityText(tons: number | null): string | null {
-  return tons == null ? null : `${formatMeasure(tons)} ton`;
+  return tons == null ? null : tr('{n} ton', { n: formatMeasure(tons) });
 }
 
 export function contractOpenLabel(open: boolean): string {
-  return open ? 'Fason kapasitesi açık' : 'Fason almıyor';
+  return open ? tr('Fason kapasitesi açık') : tr('Fason almıyor');
 }
 
 // Kart başlığındaki tür adı (sunucudaki machines/query.ts ile aynı kural):
@@ -110,10 +125,10 @@ function foldTr(value: string): string {
 
 export function machineTypeLabel(machine: { kind: string; group: string }): string {
   const key = foldTr(machine.kind);
-  if (key.includes('yuvarlak')) return 'Yuvarlak örme';
+  if (key.includes('yuvarlak')) return tr('Yuvarlak örme');
   if (key.includes('raschel') || key.includes('rasel')) return 'Raschel';
-  if (key.includes('duz orme')) return 'Düz örme';
-  if (machine.group === 'dokuma') return 'Dokuma';
+  if (key.includes('duz orme')) return tr('Düz örme');
+  if (machine.group === 'dokuma') return tr('Dokuma');
   return machine.kind;
 }
 
@@ -137,14 +152,14 @@ export function machineSpecRows(
     Partial<Pick<Machine, 'workingWidthCm' | 'machineNo' | 'gaugeText' | 'needlesText'>>
 ): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
-  if (machine.machineNo != null) rows.push({ label: 'No', value: String(machine.machineNo) });
-  if (machine.diameterInch != null) rows.push({ label: 'Çap', value: `${formatMeasure(machine.diameterInch)} inç` });
-  if (machine.gauge != null || machine.gaugeText) rows.push({ label: 'Fine', value: rangeDisplay(machine.gaugeText, machine.gauge) });
-  if (machine.feeders != null) rows.push({ label: 'Sistem', value: String(machine.feeders) });
-  if (machine.needles != null || machine.needlesText) rows.push({ label: 'İğne', value: rangeDisplay(machine.needlesText, machine.needles) });
-  if (machine.workingWidthCm != null) rows.push({ label: 'Çalışma eni', value: `${formatMeasure(machine.workingWidthCm)} cm` });
-  rows.push({ label: 'Adet', value: String(machine.count) });
-  if (machine.dailyCapacityKg != null) rows.push({ label: 'Günlük kapasite', value: `${formatMeasure(machine.dailyCapacityKg)} kg` });
+  if (machine.machineNo != null) rows.push({ label: tr('No'), value: String(machine.machineNo) });
+  if (machine.diameterInch != null) rows.push({ label: tr('Çap'), value: tr('{n} inç', { n: formatMeasure(machine.diameterInch) }) });
+  if (machine.gauge != null || machine.gaugeText) rows.push({ label: tr('Fine'), value: rangeDisplay(machine.gaugeText, machine.gauge) });
+  if (machine.feeders != null) rows.push({ label: tr('Sistem'), value: String(machine.feeders) });
+  if (machine.needles != null || machine.needlesText) rows.push({ label: tr('İğne'), value: rangeDisplay(machine.needlesText, machine.needles) });
+  if (machine.workingWidthCm != null) rows.push({ label: tr('Çalışma eni'), value: `${formatMeasure(machine.workingWidthCm)} cm` });
+  rows.push({ label: tr('Adet'), value: String(machine.count) });
+  if (machine.dailyCapacityKg != null) rows.push({ label: tr('Günlük kapasite'), value: `${formatMeasure(machine.dailyCapacityKg)} kg` });
   return rows;
 }
 

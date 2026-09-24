@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { tr } from '../i18n';
 
 interface Props<T extends string> {
   options: { value: T; label: string }[];
@@ -36,7 +37,7 @@ export function UnitToggle<T extends string>({ options, value, onChange, label }
       ]}
       accessibilityRole="button"
       accessibilityLabel={`${label}: ${current.label}`}
-      accessibilityHint={`Dokununca ${next.label} olur`}
+      accessibilityHint={tr('Dokununca {u} olur', { u: next.label })}
       hitSlop={4}
     >
       <Text numberOfLines={1} style={[t.type.label14, { color: t.colors.brand }]}>

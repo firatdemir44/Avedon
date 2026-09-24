@@ -6,6 +6,7 @@ import { CalcSubRow, CalcSubHeadCell, CalcAddRow, CalcRemoveCell, calcCells } fr
 import type { YarnCountSystem, YarnFeedRow } from '../features/calculators/formulas';
 import { parseNumber } from '../features/calculators/parse';
 import { useTheme } from '../theme/ThemeContext';
+import { tr } from '../i18n';
 
 // Alanlar metin olarak tutuluyor (kullanıcı "15," yazarken silinmesin diye);
 // hesap anında sayıya çevriliyor.
@@ -54,9 +55,9 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
     <>
       <CalcSubRow header>
         <CalcSubHeadCell label="#" style={calcCells.index} />
-        <CalcSubHeadCell label="50 iğne cm" style={calcCells.flex11} />
-        <CalcSubHeadCell label="Numara" style={calcCells.flex2} />
-        <CalcSubHeadCell label="Sistem" style={calcCells.flex11} />
+        <CalcSubHeadCell label={tr('50 iğne cm')} style={calcCells.flex11} />
+        <CalcSubHeadCell label={tr('Numara')} style={calcCells.flex2} />
+        <CalcSubHeadCell label={tr('Sistem')} style={calcCells.flex11} />
         <View style={{ width: t.size.icon }} />
       </CalcSubRow>
 
@@ -68,7 +69,7 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
             value={row.length}
             onChangeText={(v) => updateRow(index, { length: v })}
             placeholder="15,5"
-            accessibilityLabel={`${index + 1}. iplik, 50 iğne iplik uzunluğu, santimetre`}
+            accessibilityLabel={tr('{n}. iplik, 50 iğne iplik uzunluğu, santimetre', { n: index + 1 })}
           />
           <View style={[calcCells.flex2, { flexDirection: 'row', alignItems: 'center', gap: t.space[1] }]}>
             <TableInput
@@ -76,13 +77,13 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
               value={row.count}
               onChangeText={(v) => updateRow(index, { count: v })}
               placeholder={row.system === 'denye' ? '20' : '30'}
-              accessibilityLabel={`${index + 1}. iplik numarası`}
+              accessibilityLabel={tr('{n}. iplik numarası', { n: index + 1 })}
             />
             <UnitToggle
               options={FEED_SYSTEM_OPTIONS}
               value={row.system}
               onChange={(system) => updateRow(index, { system })}
-              label={`${index + 1}. iplik numara sistemi`}
+              label={tr('{n}. iplik numara sistemi', { n: index + 1 })}
             />
           </View>
           <TableInput
@@ -91,17 +92,17 @@ export function YarnFeedRowsEditor({ rows, onChange, maxRows = 6 }: Props) {
             value={row.feeders}
             onChangeText={(v) => updateRow(index, { feeders: v })}
             placeholder="102"
-            accessibilityLabel={`${index + 1}. iplik sistem sayısı`}
+            accessibilityLabel={tr('{n}. iplik sistem sayısı', { n: index + 1 })}
           />
           <CalcRemoveCell
-            label={`${index + 1}. ipliği kaldır`}
+            label={tr('{n}. ipliği kaldır', { n: index + 1 })}
             onPress={rows.length > 1 ? () => onChange(rows.filter((_, i) => i !== index)) : undefined}
           />
         </CalcSubRow>
       ))}
 
       {rows.length < maxRows ? (
-        <CalcAddRow label="İplik ekle" onPress={() => onChange([...rows, { ...EMPTY_FEED_ROW }])} />
+        <CalcAddRow label={tr('İplik ekle')} onPress={() => onChange([...rows, { ...EMPTY_FEED_ROW }])} />
       ) : null}
     </>
   );

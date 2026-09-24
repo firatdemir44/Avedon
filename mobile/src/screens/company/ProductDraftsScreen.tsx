@@ -18,6 +18,7 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { useBottomPadding, AppBar, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = RootStackScreenProps<'ProductDrafts'>;
@@ -38,9 +39,9 @@ export function ProductDraftsScreen({ navigation }: Props) {
 
   const remove = async (draft: ProductDraftSummary) => {
     const confirmed = await confirmAction({
-      title: 'Taslağı sil',
-      message: `${draft.code || 'Kodsuz taslak'} silinsin mi?`,
-      confirmLabel: 'Sil',
+      title: tr('Taslağı sil'),
+      message: tr('{name} silinsin mi?', { name: draft.code || tr('Kodsuz taslak') }),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -52,7 +53,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
       setData((prev) => (prev ? { drafts: prev.drafts.filter((d) => d.id !== draft.id) } : prev));
     } catch {
       haptics.error();
-      setActionError('Taslak silinemedi, lütfen tekrar deneyin.');
+      setActionError(tr('Taslak silinemedi, lütfen tekrar deneyin.'));
     } finally {
       setBusyId(null);
     }
@@ -62,7 +63,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
       {drafts.length ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Taslak henüz ürün değil: açıp kontrol edin, fiyat ve stoğu siz girin, sonra kaydedin.
+          {tr('Taslak henüz ürün değil: açıp kontrol edin, fiyat ve stoğu siz girin, sonra kaydedin.')}
         </Text>
       ) : null}
       {actionError ? (
@@ -100,7 +101,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="WhatsApp taslakları" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('WhatsApp taslakları')} leading="back" onBack={() => navigation.goBack()} />
       <Screen scroll={false} noPadding>
         {status === 'loading' ? (
           <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
@@ -109,7 +110,7 @@ export function ProductDraftsScreen({ navigation }: Props) {
             <SkeletonRow />
           </View>
         ) : status === 'error' ? (
-          <ErrorState error={error} fallback="Taslaklar alınamadı" onRetry={reload} />
+          <ErrorState error={error} fallback={tr('Taslaklar alınamadı')} onRetry={reload} />
         ) : (
           <FlatList
             data={drafts}
@@ -121,12 +122,12 @@ export function ProductDraftsScreen({ navigation }: Props) {
             ListEmptyComponent={
               <EmptyState
                 icon="whatsapp"
-                title="Bekleyen taslak yok"
-                description="WhatsApp'tan Takyon asistanına bir etiket fotoğrafı gönderin; taslağı burada hazır bulursunuz."
+                title={tr('Bekleyen taslak yok')}
+                description={tr('WhatsApp\'tan Takyon asistanına bir etiket fotoğrafı gönderin; taslağı burada hazır bulursunuz.')}
               />
             }
             renderItem={({ item, index }) => {
-              const title = item.code || 'Kodsuz taslak';
+              const title = item.code || tr('Kodsuz taslak');
               const subtitle = subtitleFor(item);
               const last = index === drafts.length - 1;
               return (
@@ -150,8 +151,8 @@ export function ProductDraftsScreen({ navigation }: Props) {
                   >
                     <Button
                       kind="danger"
-                      label="Taslağı sil"
-                      accessibilityLabel={`${title} taslağını sil`}
+                      label={tr('Taslağı sil')}
+                      accessibilityLabel={tr('{title} taslağını sil', { title })}
                       loading={busyId === item.id}
                       onPress={() => remove(item)}
                     />
@@ -169,11 +170,13 @@ export function ProductDraftsScreen({ navigation }: Props) {
 // Alt satır: çeşit / alt çeşit etiketi ve WhatsApp mesajındaki not.
 function subtitleFor(draft: ProductDraftSummary) {
   const parts: string[] = [];
-  const typeLabel = draft.type ? TYPE_LABELS[draft.type as ProductType] : undefined;
+  const rawType = draft.type ? TYPE_LABELS[draft.type as ProductType] : undefined;
+  const typeLabel = rawType ? tr(rawType) : undefined;
   if (typeLabel) {
-    const subtypeLabel = draft.subtype
+    const rawSubtype = draft.subtype
       ? SUBTYPES[draft.type as ProductType]?.find((s) => s.key === draft.subtype)?.label
       : undefined;
+    const subtypeLabel = rawSubtype ? tr(rawSubtype) : undefined;
     parts.push(subtypeLabel ? `${typeLabel} · ${subtypeLabel}` : typeLabel);
   }
   if (draft.caption.trim()) parts.push(draft.caption.trim());

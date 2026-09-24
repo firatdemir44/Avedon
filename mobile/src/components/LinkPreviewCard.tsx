@@ -2,6 +2,7 @@
 // (varsa), site adı, 2 satır kalın başlık, 2 satır açıklama. Dokununca bağlantı
 // açılır; paylaşım ekranında sağ üstte kaldırma (x) düğmesi olur.
 import React from 'react';
+import { tr } from '../i18n';
 import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
@@ -53,7 +54,7 @@ export function LinkPreviewCard({ url, title, description, siteName, imageUri, h
       <Pressable
         onPress={onPress ?? (() => openExternalUrl(url))}
         accessibilityRole="link"
-        accessibilityLabel={`${heading}, ${site}. Bağlantıyı aç`}
+        accessibilityLabel={tr('{heading}, {site}. Bağlantıyı aç', { heading, site })}
         style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
         {hasImage ? (
@@ -83,7 +84,7 @@ export function LinkPreviewCard({ url, title, description, siteName, imageUri, h
           {loading ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
               <ActivityIndicator color={t.colors.ink3} />
-              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Önizleme alınıyor…</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Önizleme alınıyor…')}</Text>
             </View>
           ) : (
             <>
@@ -103,7 +104,7 @@ export function LinkPreviewCard({ url, title, description, siteName, imageUri, h
         <Pressable
           onPress={onRemove}
           accessibilityRole="button"
-          accessibilityLabel="Bağlantıyı kaldır"
+          accessibilityLabel={tr('Bağlantıyı kaldır')}
           hitSlop={t.space[1]}
           style={{
             position: 'absolute',

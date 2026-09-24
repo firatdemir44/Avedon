@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcSectionRow,
@@ -92,80 +93,79 @@ export function GarmentCostCalculator({ navigation }: RootStackScreenProps<'Garm
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Konfeksiyon maliyeti" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Konfeksiyon maliyeti')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <View style={{ gap: t.space[2] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Para birimi</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Para birimi')}</Text>
           <SegmentControl
             stretch
-            accessibilityLabel="Para birimi"
+            accessibilityLabel={tr('Para birimi')}
             options={CURRENCIES}
             value={f.currency}
             onChange={(currency) => update({ currency })}
           />
         </View>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-          Tüm tutarlar aynı para biriminde girilmelidir. Uygulama kur çevirmez, seçim yalnızca etiketi değiştirir.
-          Bilmediğiniz kalemi boş bırakın, 0 sayılır.
+          {tr('Tüm tutarlar aynı para biriminde girilmelidir. Uygulama kur çevirmez, seçim yalnızca etiketi değiştirir. Bilmediğiniz kalemi boş bırakın, 0 sayılır.')}
         </Text>
 
-        <CalcTable title="Konfeksiyon maliyeti (adet)">
-          <CalcSectionRow label="Kumaş" />
+        <CalcTable title={tr('Konfeksiyon maliyeti (adet)')}>
+          <CalcSectionRow label={tr('Kumaş')} />
           <CalcInputRow
-            label="Kumaş tüketimi"
+            label={tr('Kumaş tüketimi')}
             value={f.consumption}
             onChangeText={(v) => update({ consumption: v })}
             placeholder="1,4"
-            unit="m/adet"
+            unit={tr('m/adet')}
           />
           <CalcInputRow
-            label="Metre fiyatı"
+            label={tr('Metre fiyatı')}
             value={f.fabricPrice}
             onChangeText={(v) => update({ fabricPrice: v })}
             placeholder="45"
             unit={`${symbol}/m`}
           />
           <CalcInputRow
-            label="Kesim firesi"
+            label={tr('Kesim firesi')}
             value={f.wastage}
             onChangeText={(v) => update({ wastage: v })}
             placeholder="8"
             unit="%"
           />
 
-          <CalcSectionRow label="Adet başı kalemler" />
+          <CalcSectionRow label={tr('Adet başı kalemler')} />
           {GARMENT_ITEMS.map((item) => (
             <CalcInputRow
               key={item.key}
-              label={item.label}
-              hint={item.hint}
+              label={tr(item.label)}
+              hint={item.hint ? tr(item.hint) : undefined}
               value={f[item.key]}
               onChangeText={(v) => update({ [item.key]: v } as Partial<Fields>)}
               placeholder={item.placeholder.replace('Örn. ', '')}
-              unit={`${symbol}/adet`}
+              unit={tr('{s}/adet', { s: symbol })}
             />
           ))}
 
-          <CalcSectionRow label="Sipariş (isteğe bağlı)" />
+          <CalcSectionRow label={tr('Sipariş (isteğe bağlı)')} />
           <CalcInputRow
-            label="Sipariş adedi"
+            label={tr('Sipariş adedi')}
             value={f.quantity}
             onChangeText={(v) => update({ quantity: v })}
             placeholder="500"
             keyboardType="number-pad"
-            unit="adet"
+            unit={tr('adet')}
           />
 
-          <CalcSectionRow label="Sonuç" />
+          <CalcSectionRow label={tr('Sonuç')} />
           {result
             ? result.rows.map((row) => (
                 <CalcResultRow
                   key={row.key}
-                  label={row.label}
+                  label={tr(row.label)}
                   note={
                     row.largest
-                      ? `Toplam içinde %${formatNumber(row.sharePercent, 1)}, en büyük kalem`
-                      : `Toplam içinde %${formatNumber(row.sharePercent, 1)}`
+                      ? tr('Toplam içinde %{n}, en büyük kalem', { n: formatNumber(row.sharePercent, 1) })
+                      : tr('Toplam içinde %{n}', { n: formatNumber(row.sharePercent, 1) })
                   }
                   value={formatNumber(row.amount)}
                   unit={symbol}
@@ -173,26 +173,26 @@ export function GarmentCostCalculator({ navigation }: RootStackScreenProps<'Garm
               ))
             : null}
           <CalcResultRow
-            label="Adet maliyeti"
+            label={tr('Adet maliyeti')}
             value={result ? formatNumber(result.totalCost) : '—'}
             unit={symbol}
             emphasis="primary"
           />
           {result && result.orderTotal !== null ? (
             <CalcResultRow
-              label="Sipariş toplamı"
-              note={`${formatNumber(parseNumber(f.quantity), 0)} adet`}
+              label={tr('Sipariş toplamı')}
+              note={tr('{n} adet', { n: formatNumber(parseNumber(f.quantity), 0) })}
               value={formatNumber(result.orderTotal)}
               unit={symbol}
             />
           ) : null}
           {result === null ? (
-            <CalcNoteRow text="Hesap için en az kumaş tüketimi ve metre fiyatı girin." />
+            <CalcNoteRow text={tr('Hesap için en az kumaş tüketimi ve metre fiyatı girin.')} />
           ) : null}
           {result && result.emptyLabels.length ? (
-            <CalcNoteRow text={`Boş kalemler: ${result.emptyLabels.join(', ')}.`} />
+            <CalcNoteRow text={tr('Boş kalemler: {list}.', { list: GARMENT_ITEMS.filter((i) => result.emptyLabels.includes(i.label.toLocaleLowerCase('tr-TR'))).map((i) => tr(i.label)).join(', ') })} />
           ) : null}
-          <CalcFormulaRow text="Kumaş = tüketim × metre fiyatı × (1 + kesim firesi ÷ 100). Adet maliyeti bu kalemlerin toplamıdır; kâr ve vergi eklenmez. Sipariş toplamı = adet maliyeti × sipariş adedi." />
+          <CalcFormulaRow text={tr('Kumaş = tüketim × metre fiyatı × (1 + kesim firesi ÷ 100). Adet maliyeti bu kalemlerin toplamıdır; kâr ve vergi eklenmez. Sipariş toplamı = adet maliyeti × sipariş adedi.')} />
         </CalcTable>
         <CalcClearButton onClear={() => update({ ...INITIAL, currency: f.currency })} />
       </Screen>

@@ -5,6 +5,7 @@ import type { RootStackParamList } from '../navigation/types';
 import { HeaderButton } from './HeaderButton';
 import { useSession } from '../context/SessionContext';
 import { useUnreadNotifications } from '../features/notifications/unreadCount';
+import { tr } from '../i18n';
 
 // Sayaçlı bildirim zili (Faz 2, Adım 1). Akış, Ürünler, Mesajlar ve Profil
 // sekmelerinin başlığında aynı bileşen duruyor; sayı modül düzeyinde
@@ -19,7 +20,7 @@ export function NotificationBell() {
   return (
     <HeaderButton
       icon="bell"
-      label="Bildirimler"
+      label={tr('Bildirimler')}
       badge={unread}
       onPress={() => navigation.navigate('Notifications')}
     />

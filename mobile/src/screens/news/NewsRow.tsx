@@ -6,6 +6,7 @@ import type { NewsItem } from '../../api/client';
 import { openExternalUrl } from '../../components/LinkPreviewCard';
 import { formatRelativeTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { Avatar, Button } from '../../ui';
 
 export interface NewsRowProps {
@@ -17,7 +18,7 @@ export interface NewsRowProps {
 
 export function NewsRow({ item, showSummary, onShare }: NewsRowProps) {
   const t = useTheme();
-  const meta = [item.source, formatRelativeTime(item.publishedAt), item.lang === 'en' ? 'İngilizce' : null].filter(Boolean).join(' · ');
+  const meta = [item.source, formatRelativeTime(item.publishedAt), item.lang === 'en' ? tr('İngilizce') : null].filter(Boolean).join(' · ');
   return (
     <View style={{ flexDirection: 'row', gap: t.space[3], minWidth: 0 }}>
       <Avatar name={item.source} size={t.size.avatarSm} />
@@ -25,7 +26,7 @@ export function NewsRow({ item, showSummary, onShare }: NewsRowProps) {
         <Pressable
           onPress={() => openExternalUrl(item.url)}
           accessibilityRole="link"
-          accessibilityLabel={`${item.title}, ${item.source}. Haberi aç`}
+          accessibilityLabel={tr('{title}, {source}. Haberi aç', { title: item.title, source: item.source })}
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, gap: t.space[1] })}
         >
           <Text numberOfLines={2} style={[t.type.label14, { color: t.colors.ink }]}>
@@ -42,7 +43,7 @@ export function NewsRow({ item, showSummary, onShare }: NewsRowProps) {
         </Pressable>
         {onShare ? (
           <View style={{ flexDirection: 'row' }}>
-            <Button kind="quiet" icon="share" label="Akışta paylaş" onPress={() => onShare(item)} />
+            <Button kind="quiet" icon="share" label={tr('Akışta paylaş')} onPress={() => onShare(item)} />
           </View>
         ) : null}
       </View>

@@ -37,6 +37,7 @@ import { isSameCalendarDay } from '../../features/time';
 import { toolResultView } from '../../features/assistant/toolResult';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Button, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'SellerAssistant'>;
 
@@ -57,10 +58,14 @@ type Props = RootStackScreenProps<'SellerAssistant'>;
 const POLL_INTERVAL_MS = 10000;
 const NEAR_BOTTOM_THRESHOLD_PX = 80;
 
-const INFO =
-  'Bu asistan yalnızca firmanın yayınlanmış kataloğundan cevap verir. Fiyat için Teklif iste\'yi kullanın.';
+const infoText = () =>
+  tr('Bu asistan yalnızca firmanın yayınlanmış kataloğundan cevap verir. Fiyat için Teklif iste\'yi kullanın.');
 
-const EXAMPLES = ['Elastanlı tülünüz var mı?', 'MOQ ve termin nedir?', 'OEKO-TEX sertifikalı ürünleriniz hangileri?'];
+const baseExamples = () => [
+  tr('Elastanlı tülünüz var mı?'),
+  tr('MOQ ve termin nedir?'),
+  tr('OEKO-TEX sertifikalı ürünleriniz hangileri?'),
+];
 
 type ChatItem = AssistantMessage & { local?: boolean };
 
@@ -203,14 +208,14 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
       } catch (err) {
         haptics.error();
         if (err instanceof ApiError && err.code === 'daily_limit') {
-          setSendError('Bugünlük soru sınırına ulaştınız.');
+          setSendError(tr('Bugünlük soru sınırına ulaştınız.'));
           retryTextRef.current = '';
         } else if (err instanceof ApiError && err.code === 'assistant_not_configured') {
-          setSendError('Asistan bu sunucuda etkin değil.');
+          setSendError(tr('Asistan bu sunucuda etkin değil.'));
         } else if (err instanceof ApiError && err.code === 'assistant_failed') {
-          setSendError('Asistan yanıt veremedi, tekrar deneyin.');
+          setSendError(tr('Asistan yanıt veremedi, tekrar deneyin.'));
         } else {
-          setSendError(friendlyMessage(err, 'Asistan yanıt veremedi, tekrar deneyin.'));
+          setSendError(friendlyMessage(err, tr('Asistan yanıt veremedi, tekrar deneyin.')));
         }
       } finally {
         setSending(false);
@@ -235,7 +240,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
 
   // Ürün sayfasından gelindiyse ilk öneri o ürünle ilgili olsun.
   const examples = useMemo(
-    () => (productCode ? [`${productCode} hakkında bilgi alabilir miyim?`, ...EXAMPLES] : EXAMPLES),
+    () => (productCode ? [tr('{code} hakkında bilgi alabilir miyim?', { code: productCode }), ...baseExamples()] : baseExamples()),
     [productCode]
   );
 
@@ -288,7 +293,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
                       >
                         <Icon name="paper-plane-outline" size={t.size.iconSm} color="accent" />
                         <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-                          Sorunuz firmaya iletildi. Cevap gelince bildirim alacaksınız.
+                          {tr('Sorunuz firmaya iletildi. Cevap gelince bildirim alacaksınız.')}
                         </Text>
                       </View>
                     ) : null}
@@ -305,7 +310,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
 
   const bar = (
     <AppBar
-      title={companyName ? `${companyName} asistanı` : 'Firma asistanı'}
+      title={companyName ? tr('{name} asistanı', { name: companyName }) : tr('Firma asistanı')}
       leading="back"
       onBack={() => navigation.goBack()}
     />
@@ -328,18 +333,18 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
     const known = code === 'own_company' || code === 'company_not_found';
     const fallback =
       code === 'own_company'
-        ? 'Kendi firmanızın asistanı için Asistan sekmesini kullanın.'
+        ? tr('Kendi firmanızın asistanı için Asistan sekmesini kullanın.')
         : code === 'company_not_found'
-          ? 'Firma bulunamadı.'
-          : 'Asistan açılamadı';
+          ? tr('Firma bulunamadı.')
+          : tr('Asistan açılamadı');
     return (
       <View style={chat.screen}>
         {bar}
         <EmptyState
           icon="warning"
-          title={known ? fallback : 'Asistan açılamadı'}
-          description={known ? undefined : friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel={known ? undefined : 'Tekrar dene'}
+          title={known ? fallback : tr('Asistan açılamadı')}
+          description={known ? undefined : friendlyMessage(loadError, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={known ? undefined : tr('Tekrar dene')}
           onAction={known ? undefined : () => void load()}
         />
       </View>
@@ -363,7 +368,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
         }}
       >
         <Icon name="info" size={t.size.iconSm} color="ink3" />
-        <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{INFO}</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{infoText()}</Text>
       </View>
       <KeyboardAvoidingView
         style={chat.flex}
@@ -388,7 +393,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
                 <SellerAvatar companyId={companyId} companyName={companyName} />
                 <View style={chat.assistantColumn}>
                   <AssistantBubble
-                    text={`${companyName || 'Bu firma'} kataloğu hakkında sorularınızı yanıtlayayım. Cevabı katalogda bulamazsam sorunuzu firmaya iletirim.`}
+                    text={tr('{name} kataloğu hakkında sorularınızı yanıtlayayım. Cevabı katalogda bulamazsam sorunuzu firmaya iletirim.', { name: companyName || tr('Bu firma') })}
                   />
                 </View>
               </View>
@@ -404,7 +409,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
               {sending ? (
                 <View style={chat.assistantRow}>
                   <SellerAvatar companyId={companyId} companyName={companyName} />
-                  <ThinkingBubble label="Katalogda bakıyor..." />
+                  <ThinkingBubble label={tr('Katalogda bakıyor...')} />
                 </View>
               ) : null}
               {sendError ? (
@@ -423,7 +428,7 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
                   <Icon name="warning" size={t.size.iconSm} color="danger" />
                   <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{sendError}</Text>
                   {retryTextRef.current ? (
-                    <Button kind="quiet" label="Tekrar dene" onPress={() => void send(retryTextRef.current)} />
+                    <Button kind="quiet" label={tr('Tekrar dene')} onPress={() => void send(retryTextRef.current)} />
                   ) : null}
                 </View>
               ) : null}
@@ -436,8 +441,8 @@ export function SellerAssistantScreen({ navigation, route }: Props) {
           onChangeText={setInput}
           onSend={() => void send(input)}
           canSend={canSend}
-          placeholder="Kataloğu sorun..."
-          accessibilityLabel="Firmanın asistanına sorunuz"
+          placeholder={tr('Kataloğu sorun...')}
+          accessibilityLabel={tr('Firmanın asistanına sorunuz')}
           bottomInset={insets.bottom}
         />
       </KeyboardAvoidingView>

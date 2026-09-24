@@ -25,6 +25,7 @@ import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, EmptyState, Icon, ListRow, Screen, SkeletonRow, type AnyIconName } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'Notifications'>;
 
@@ -109,7 +110,7 @@ export function NotificationsScreen({ navigation }: Props) {
           // Sekme başlıklarındaki zil yoklamayı beklemeden düzelsin.
           setUnreadNotificationCount(fresh);
         })
-        .catch(() => setActionError('Bildirim okundu işaretlenemedi.'));
+        .catch(() => setActionError(tr('Bildirim okundu işaretlenemedi.')));
     },
     [setData]
   );
@@ -125,7 +126,7 @@ export function NotificationsScreen({ navigation }: Props) {
       })
       .catch(() => {
         haptics.error();
-        setActionError('Bildirimler okundu işaretlenemedi, tekrar deneyin.');
+        setActionError(tr('Bildirimler okundu işaretlenemedi, tekrar deneyin.'));
       });
   }, [setData]);
 
@@ -147,8 +148,8 @@ export function NotificationsScreen({ navigation }: Props) {
           .catch((err) =>
             setActionError(
               err instanceof ApiError && err.status === 404
-                ? 'Bu taslak kullanılmış ya da silinmiş.'
-                : 'Taslak açılamadı, lütfen tekrar deneyin.'
+                ? tr(tr('Bu taslak kullanılmış ya da silinmiş.'))
+                : tr(tr('Taslak açılamadı, lütfen tekrar deneyin.'))
             )
           );
         return;
@@ -267,9 +268,9 @@ export function NotificationsScreen({ navigation }: Props) {
       <Screen scroll={false}>
         <EmptyState
           icon="warning"
-          title="Bildirimler alınamadı"
-          description={friendlyMessage(error, 'Bildirimler alınamadı')}
-          actionLabel="Tekrar dene"
+          title={tr('Bildirimler alınamadı')}
+          description={friendlyMessage(error, tr('Bildirimler alınamadı'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -306,8 +307,8 @@ export function NotificationsScreen({ navigation }: Props) {
             <View>
               {unreadCount > 0 ? (
                 <ListRow
-                  title="Tümünü okundu say"
-                  subtitle={`${unreadCount} okunmamış bildirim`}
+                  title={tr('Tümünü okundu say')}
+                  subtitle={tr('{n} okunmamış bildirim', { n: unreadCount })}
                   left={<IconSquare name="check" />}
                   unread
                   unreadCount={unreadCount}
@@ -315,8 +316,8 @@ export function NotificationsScreen({ navigation }: Props) {
                 />
               ) : null}
               <ListRow
-                title="İzlediklerim"
-                subtitle="Yeni ürün çıkınca haber alacağınız süzgeçler"
+                title={tr('İzlediklerim')}
+                subtitle={tr('Yeni ürün çıkınca haber alacağınız süzgeçler')}
                 left={<IconSquare name="bell" />}
                 divider={false}
                 onPress={() => navigation.navigate('WatchRules')}
@@ -327,9 +328,9 @@ export function NotificationsScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="bell"
-            title="Henüz bildirim yok"
-            description="Bir kaliteyi izlemeye alırsanız yeni ürünler burada görünür."
-            actionLabel="İzleme kur"
+            title={tr('Henüz bildirim yok')}
+            description={tr('Bir kaliteyi izlemeye alırsanız yeni ürünler burada görünür.')}
+            actionLabel={tr('İzleme kur')}
             onAction={() => navigation.navigate('WatchRules')}
           />
         }
@@ -347,7 +348,7 @@ export function NotificationsScreen({ navigation }: Props) {
         ListFooterComponent={
           notifications.length ? (
             <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[4] }]}>
-              Son 30 bildirim gösterilir.
+              {tr('Son 30 bildirim gösterilir.')}
             </Text>
           ) : null
         }

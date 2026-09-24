@@ -1,23 +1,24 @@
 // Intl.RelativeTimeFormat kullanmıyoruz: Hermes'in Intl desteği platformlar
 // arasında tutarsız, elle hesaplamak burada hem yeterli hem güvenli.
+import { locale, tr } from '../i18n';
 export function formatRelativeTime(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   const diffMs = now.getTime() - date.getTime();
   if (Number.isNaN(diffMs)) return '';
 
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'şimdi';
-  if (minutes < 60) return `${minutes} dk`;
+  if (minutes < 1) return tr('şimdi');
+  if (minutes < 60) return tr('{n} dk', { n: minutes });
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} sa`;
+  if (hours < 24) return tr('{n} sa', { n: hours });
 
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Dün';
-  if (days < 7) return `${days} gün`;
+  if (days === 1) return tr('Dün');
+  if (days < 7) return tr('{n} gün', { n: days });
 
   // 7 günden eski: "14 Eyl"; başka yıldaysa "14 Eyl 2025" (DESIGN.md §5).
-  const base = `${date.getDate()} ${TR_MONTHS_SHORT[date.getMonth()]}`;
+  const base = `${date.getDate()} ${tr(TR_MONTHS_SHORT[date.getMonth()])}`;
   return date.getFullYear() === now.getFullYear() ? base : `${base} ${date.getFullYear()}`;
 }
 
@@ -28,14 +29,14 @@ const TR_MONTHS_SHORT = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu
 export function formatDateTime(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return `${date.toLocaleDateString('tr-TR')} · ${formatClockTime(iso)}`;
+  return `${date.toLocaleDateString(locale())} · ${formatClockTime(iso)}`;
 }
 
 // Doğrulama tarihinde gün gerekmiyor: "Eylül 2026" (Faz 2, Adım 7).
 export function formatMonthYear(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
 }
 
 export function isSameCalendarDay(a: Date, b: Date): boolean {
@@ -52,9 +53,9 @@ function yesterdayOf(now: Date): Date {
 export function formatDayLabel(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  if (isSameCalendarDay(date, now)) return 'Bugün';
-  if (isSameCalendarDay(date, yesterdayOf(now))) return 'Dün';
-  return date.toLocaleDateString('tr-TR');
+  if (isSameCalendarDay(date, now)) return tr('Bugün');
+  if (isSameCalendarDay(date, yesterdayOf(now))) return tr('Dün');
+  return date.toLocaleDateString(locale());
 }
 
 // Mesajlar listesindeki saat (taslak CMesajlar.dc.html): bugün "10:09",
@@ -63,8 +64,8 @@ export function formatListTime(iso: string, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   if (isSameCalendarDay(date, now)) return formatClockTime(iso);
-  if (isSameCalendarDay(date, yesterdayOf(now))) return 'dün';
-  return date.toLocaleDateString('tr-TR');
+  if (isSameCalendarDay(date, yesterdayOf(now))) return tr('dün');
+  return date.toLocaleDateString(locale());
 }
 
 export function formatClockTime(iso: string): string {

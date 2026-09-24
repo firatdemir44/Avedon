@@ -7,6 +7,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { MANY_RFQ_COMPANIES, MAX_RFQ_COMPANIES } from '../../api/client';
 import type { StockUnit } from '../products/catalog';
+import { tr } from '../../i18n';
 
 // Forma taşınan ürün özeti: form ekranı id'lerden yeniden veri çekmesin.
 export interface RfqSelectionItem {
@@ -46,7 +47,7 @@ export function useRfqSelection() {
       if (prev.some((i) => i.id === item.id)) return prev.filter((i) => i.id !== item.id);
       const next = [...prev, item];
       if (companyCountOf(next) > MAX_RFQ_COMPANIES) {
-        setLimitNote(`En çok ${MAX_RFQ_COMPANIES} firmaya sorabilirsiniz.`);
+        setLimitNote(tr('En çok {n} firmaya sorabilirsiniz.', { n: MAX_RFQ_COMPANIES }));
         return prev;
       }
       return next;

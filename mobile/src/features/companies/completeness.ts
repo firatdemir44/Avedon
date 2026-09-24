@@ -1,3 +1,4 @@
+import { tr } from '../../i18n';
 // "Firma sayfanı tamamla" (Aşama B: adım adım şirket sayfası oluşturma).
 // Firma verisinden adım adım durum ve yüzde çıkaran saf fonksiyon: hem
 // CompanySetupScreen (hangi adımdan başlanacak, ilerleme çubuğu) hem de
@@ -39,11 +40,21 @@ export interface CompanyCompleteness {
 }
 
 export const COMPANY_SETUP_STEP_TITLES: Record<CompanySetupStepKey, string> = {
-  tanitim: 'Tanıtım',
-  iletisim: 'İletişim ve adres',
-  logo: 'Logo',
-  fotograflar: 'Fotoğraflar',
-  urun: 'Ekip ve ilk ürün',
+  get tanitim() {
+    return tr('Tanıtım');
+  },
+  get iletisim() {
+    return tr('İletişim ve adres');
+  },
+  get logo() {
+    return tr('Logo');
+  },
+  get fotograflar() {
+    return tr('Fotoğraflar');
+  },
+  get urun() {
+    return tr('Ekip ve ilk ürün');
+  },
 };
 
 export const COMPANY_SETUP_STEP_ORDER: CompanySetupStepKey[] = [

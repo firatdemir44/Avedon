@@ -16,6 +16,7 @@ import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { useBottomPadding, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ConnectionRequests'>;
@@ -39,7 +40,7 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'İşlem yapılamadı'));
+      setActionError(friendlyMessage(err, tr('İşlem yapılamadı')));
     } finally {
       setUpdatingId(null);
     }
@@ -62,16 +63,16 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
       <Screen scroll={false}>
         <EmptyState
           icon="warning"
-          title="İstekler alınamadı"
-          description={friendlyMessage(error, 'İstekler alınamadı')}
-          actionLabel="Tekrar dene"
+          title={tr('İstekler alınamadı')}
+          description={friendlyMessage(error, tr('İstekler alınamadı'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
     );
   }
 
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'İstekler alınamadı') : null);
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, tr('İstekler alınamadı')) : null);
 
   return (
     <Screen scroll={false} noPadding>
@@ -102,8 +103,8 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="person-add-outline"
-            title="Bekleyen istek yok"
-            description="Biri size bağlantı isteği gönderdiğinde burada kabul edebilir ya da reddedebilirsiniz."
+            title={tr('Bekleyen istek yok')}
+            description={tr('Biri size bağlantı isteği gönderdiğinde burada kabul edebilir ya da reddedebilirsiniz.')}
           />
         }
         renderItem={({ item, index }) => {
@@ -133,19 +134,19 @@ export function ConnectionRequestsScreen({ navigation }: Props) {
                 <Button
                   kind="secondary"
                   icon="check"
-                  label="Kabul et"
+                  label={tr('Kabul et')}
                   loading={busy}
                   disabled={busy}
-                  accessibilityLabel={`${name} isteğini kabul et`}
+                  accessibilityLabel={tr('{name} isteğini kabul et', { name })}
                   onPress={() => void handleRespond(item.id, 'accepted')}
                   style={{ flex: 1, minWidth: 0 }}
                 />
                 <Button
                   kind="danger"
                   icon="x"
-                  label="Reddet"
+                  label={tr('Reddet')}
                   disabled={busy}
-                  accessibilityLabel={`${name} isteğini reddet`}
+                  accessibilityLabel={tr('{name} isteğini reddet', { name })}
                   onPress={() => void handleRespond(item.id, 'rejected')}
                   style={{ flex: 1, minWidth: 0 }}
                 />

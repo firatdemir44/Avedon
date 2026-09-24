@@ -10,6 +10,7 @@ import { friendlyMessage } from './StateView';
 import { haptics } from '../features/haptics';
 import { useTheme } from '../theme/ThemeContext';
 import { BottomSheet, Button, Card, Input } from '../ui';
+import { tr } from '../i18n';
 
 type StatusMachine = Pick<Machine, 'busyUntil' | 'availabilityUpdatedAt'>;
 
@@ -45,7 +46,7 @@ export function AvailabilityIndicator({ machine, onPress }: { machine: StatusMac
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${a11y}. Müsaitliği güncelle`}
+      accessibilityLabel={`${a11y}. ${tr('Müsaitliği güncelle')}`}
       style={({ pressed }) => ({
         width: t.size.statusColumn,
         minHeight: t.size.touchMin,
@@ -74,7 +75,7 @@ export function MachineCard({
   const specs = machineSpecRows(machine);
 
   return (
-    <Card onPress={isOwner ? onEdit : undefined} accessibilityLabel={isOwner ? `${title}, düzenle` : undefined}>
+    <Card onPress={isOwner ? onEdit : undefined} accessibilityLabel={isOwner ? tr('{title}, düzenle', { title }) : undefined}>
       <View style={{ flexDirection: 'row', gap: t.space[3], alignItems: 'flex-start' }}>
         <View style={{ flex: 1, minWidth: 0, gap: t.space[2] }}>
           <View style={{ gap: t.space[1] }}>
@@ -145,7 +146,7 @@ export function AvailabilitySheet({
       onSaved(res.machine);
     } catch (err) {
       haptics.error();
-      setError(friendlyMessage(err, 'Durum kaydedilemedi'));
+      setError(friendlyMessage(err, tr('Durum kaydedilemedi')));
     } finally {
       setSaving(null);
     }
@@ -158,7 +159,7 @@ export function AvailabilitySheet({
   };
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Müsaitlik">
+    <BottomSheet visible={visible} onClose={onClose} title={tr('Müsaitlik')}>
       <View style={{ gap: t.space[3] }}>
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{title}</Text>
         {QUICK_AVAILABILITY.map((option) => (
@@ -175,20 +176,20 @@ export function AvailabilitySheet({
         {dateOpen ? (
           <View style={{ gap: t.space[2] }}>
             <Input
-              label="Dolu olduğu son gün"
+              label={tr('Dolu olduğu son gün')}
               value={dateText}
               onChangeText={setDateText}
-              placeholder="GG.AA.YYYY"
+              placeholder={tr('GG.AA.YYYY')}
               inputMode="numeric"
               keyboardType="numbers-and-punctuation"
               maxLength={10}
               error={dateError}
               onSubmitEditing={saveDate}
             />
-            <Button label="Kaydet" fullWidth loading={saving === 'date'} disabled={saving !== null} onPress={saveDate} />
+            <Button label={tr('Kaydet')} fullWidth loading={saving === 'date'} disabled={saving !== null} onPress={saveDate} />
           </View>
         ) : (
-          <Button kind="quiet" label="Tarih seç" icon="calendar-outline" fullWidth onPress={() => setDateOpen(true)} />
+          <Button kind="quiet" label={tr('Tarih seç')} icon="calendar-outline" fullWidth onPress={() => setDateOpen(true)} />
         )}
         {error ? <Text style={[t.type.body14, { color: t.colors.danger }]}>{error}</Text> : null}
       </View>

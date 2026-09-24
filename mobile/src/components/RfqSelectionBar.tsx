@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RfqSelection } from '../features/quotes/rfqSelection';
 import { useTheme } from '../theme/ThemeContext';
 import { Button, Icon } from '../ui';
+import { tr } from '../i18n';
 
 // Çoklu teklif seçimi açıkken ekranın altına sabitlenen şerit (Faz 3, Adım 1).
 // DESIGN.md §2 yapışkan alt çubuk: surface-1, üst kenarlık line, shadow-raised.
@@ -30,18 +31,18 @@ export function RfqSelectionBar({ selection, onSubmit }: { selection: RfqSelecti
       ]}
     >
       <Text style={[t.type.label14, { color: t.colors.ink }]}>
-        {items.length} ürün · {companyCount} firma seçildi
+        {tr('{n} ürün · {c} firma seçildi', { n: items.length, c: companyCount })}
       </Text>
       {!canSubmit ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>En az 2 farklı firmadan ürün seçin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('En az 2 farklı firmadan ürün seçin.')}</Text>
       ) : null}
       {hasDuplicateCompany ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.
+          {tr('Aynı firmadan yalnızca ilk seçtiğiniz ürün için istek gider.')}
         </Text>
       ) : null}
       {manyCompanies ? (
-        <Text style={[t.type.body14, { color: t.colors.warning }]}>5'ten fazla firmaya sorunca cevap oranı düşebilir.</Text>
+        <Text style={[t.type.body14, { color: t.colors.warning }]}>{tr("5'ten fazla firmaya sorunca cevap oranı düşebilir.")}</Text>
       ) : null}
       {limitNote ? (
         <View
@@ -60,13 +61,13 @@ export function RfqSelectionBar({ selection, onSubmit }: { selection: RfqSelecti
         </View>
       ) : null}
       <View style={{ flexDirection: 'row', gap: t.space[2], paddingTop: t.space[2] }}>
-        <Button kind="secondary" label="Vazgeç" onPress={selection.cancel} />
+        <Button kind="secondary" label={tr('Vazgeç')} onPress={selection.cancel} />
         <Button
-          label="Teklif iste"
+          label={tr('Teklif iste')}
           disabled={!canSubmit}
           onPress={onSubmit}
           style={{ flex: 1 }}
-          accessibilityLabel={`Teklif iste, ${companyCount} firma`}
+          accessibilityLabel={tr('Teklif iste, {c} firma', { c: companyCount })}
         />
       </View>
     </View>

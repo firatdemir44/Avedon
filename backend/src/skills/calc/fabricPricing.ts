@@ -2,6 +2,7 @@
 import * as z from 'zod/v4';
 import { calculateFabricPricing, type FabricPricingResult } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const currency = z.enum(['TRY', 'USD', 'EUR']);
 
@@ -41,17 +42,17 @@ export const fabricPricing = defineSkill<typeof inputSchema, FabricPricingResult
     'Boyalı maliyet = (ham maliyet + boya fason) / (1 − boya firesi). Satış = maliyet × (1 + kâr). Metre/kg = 100.000 / (gramaj × en).',
   inputSchema,
   run: (input) => calculateFabricPricing(input),
-  summarize: (input, out) => {
+  summarize: (input, out, lang) => {
     const parts = [
-      `İplik maliyeti ${fmt(out.yarnCostPerKg.TRY)} TRY/kg`,
-      `ham maliyet ${fmt(out.greigeCostPerKg.TRY)} TRY/kg, ham satış ${fmt(out.greigeSalePerKg.TRY)} TRY/kg`,
-      `boyalı maliyet ${fmt(out.dyedCostPerKg.TRY)} TRY/kg, boyalı satış ${fmt(out.dyedSalePerKg.TRY)} TRY/kg`,
+      t(lang, 'İplik maliyeti {v} TRY/kg', { v: fmt(out.yarnCostPerKg.TRY) }),
+      t(lang, 'ham maliyet {c} TRY/kg, ham satış {s} TRY/kg', { c: fmt(out.greigeCostPerKg.TRY), s: fmt(out.greigeSalePerKg.TRY) }),
+      t(lang, 'boyalı maliyet {c} TRY/kg, boyalı satış {s} TRY/kg', { c: fmt(out.dyedCostPerKg.TRY), s: fmt(out.dyedSalePerKg.TRY) }),
     ];
-    if (out.dyedSalePerKg.USD != null) parts.push(`(boyalı satış ${fmt(out.dyedSalePerKg.USD)} USD/kg)`);
+    if (out.dyedSalePerKg.USD != null) parts.push(t(lang, '(boyalı satış {v} USD/kg)', { v: fmt(out.dyedSalePerKg.USD) }));
     if (out.metersPerKg != null) {
-      parts.push(`1 kg ≈ ${fmt(out.metersPerKg)} m, boyalı satış ${fmt(out.dyedSalePerKg.TRY / out.metersPerKg)} TRY/m`);
+      parts.push(t(lang, '1 kg ≈ {mpk} m, boyalı satış {v} TRY/m', { mpk: fmt(out.metersPerKg), v: fmt(out.dyedSalePerKg.TRY / out.metersPerKg) }));
     }
-    if (Math.round(out.ratioTotal) !== 100) parts.push(`Dikkat: iplik oranları toplamı %${fmt(out.ratioTotal)}, 100 olmalı`);
+    if (Math.round(out.ratioTotal) !== 100) parts.push(t(lang, 'Dikkat: iplik oranları toplamı %{v}, 100 olmalı', { v: fmt(out.ratioTotal) }));
     return parts.join('; ') + '.';
   },
 });

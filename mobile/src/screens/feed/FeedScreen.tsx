@@ -31,6 +31,7 @@ import { consumeFeedStale } from '../../features/feed/feedRefresh';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { UserAvatar } from '../../components/UserAvatar';
 import { AccountSheet } from '../../components/AccountSheet';
 import {
@@ -140,7 +141,7 @@ export function FeedScreen({ navigation }: Props) {
       })
       .catch((err) => {
         if (stale()) return;
-        setError(friendlyMessage(err, 'Akış alınamadı'));
+        setError(friendlyMessage(err, tr('Akış alınamadı')));
       })
       .finally(() => {
         setLoading(false);
@@ -181,9 +182,9 @@ export function FeedScreen({ navigation }: Props) {
     const company = post.author.company;
     if (!company) return;
     const confirmed = await confirmAction({
-      title: 'Firmayı gizle',
-      message: `${company.name} firmasının paylaşımları akışınızda görünmeyecek. Firma bundan haberdar olmaz; Profilim > Gizlediğim Firmalar bölümünden geri alabilirsiniz.`,
-      confirmLabel: 'Gizle',
+      title: tr('Firmayı gizle'),
+      message: tr('{name} firmasının paylaşımları akışınızda görünmeyecek. Firma bundan haberdar olmaz; Profilim > Gizlediğim Firmalar bölümünden geri alabilirsiniz.', { name: company.name }),
+      confirmLabel: tr('Gizle'),
     });
     if (!confirmed) return;
     try {
@@ -191,7 +192,7 @@ export function FeedScreen({ navigation }: Props) {
       haptics.success();
       const removed = posts.filter((p) => p.author.company?.id === company.id);
       setPosts((prev) => prev.filter((p) => p.author.company?.id !== company.id));
-      showNotice(`${company.name} akışınızda gizlendi.`, async () => {
+      showNotice(tr('{name} akışınızda gizlendi.', { name: company.name }), async () => {
         setNotice(null);
         try {
           await unmuteCompanyInFeed(company.id);
@@ -200,12 +201,12 @@ export function FeedScreen({ navigation }: Props) {
             return merged.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
           });
         } catch (err) {
-          setError(friendlyMessage(err, 'Geri alınamadı'));
+          setError(friendlyMessage(err, tr('Geri alınamadı')));
         }
       });
     } catch (err) {
       haptics.error();
-      setError(friendlyMessage(err, 'Firma gizlenemedi'));
+      setError(friendlyMessage(err, tr('Firma gizlenemedi')));
     }
   };
 
@@ -269,9 +270,9 @@ export function FeedScreen({ navigation }: Props) {
 
   const handleDelete = async (post: FeedPost) => {
     const confirmed = await confirmAction({
-      title: 'Gönderiyi sil',
-      message: 'Bu gönderi kalıcı olarak silinecek.',
-      confirmLabel: 'Sil',
+      title: tr('Gönderiyi sil'),
+      message: tr('Bu gönderi kalıcı olarak silinecek.'),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -281,7 +282,7 @@ export function FeedScreen({ navigation }: Props) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      setError(friendlyMessage(err, 'Gönderi silinemedi'));
+      setError(friendlyMessage(err, tr('Gönderi silinemedi')));
     }
   };
 
@@ -290,17 +291,17 @@ export function FeedScreen({ navigation }: Props) {
   const header = (
     <View style={{ gap: t.space[6], paddingBottom: t.space[4], paddingHorizontal: t.space[4] }}>
       <SearchBox
-        placeholder="Kumaş, iplik veya firma ara"
-        accessibilityLabel="Arama yap"
+        placeholder={tr('Kumaş, iplik veya firma ara')}
+        accessibilityLabel={tr('Arama yap')}
         onPress={() => navigation.navigate('GlobalSearch')}
-        trailingAction={{ icon: 'camera', label: 'Fotoğrafla benzer kumaş ara', onPress: () => navigation.navigate('SimilarSearch') }}
+        trailingAction={{ icon: 'camera', label: tr('Fotoğrafla benzer kumaş ara'), onPress: () => navigation.navigate('SimilarSearch') }}
       />
 
       {/* Bugün */}
       <View style={{ gap: t.space[3] }}>
         {/* Artboard 1: "Bugün" solda, firma adı sağda (tek satır, kısaltılır). */}
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: t.space[3] }}>
-          <Text style={[t.type.title18, { color: t.colors.ink }]}>Bugün</Text>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Bugün')}</Text>
           {today?.companyName ? (
             <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
               {today.companyName}
@@ -310,18 +311,18 @@ export function FeedScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', gap: t.space[3] }}>
           <StatCard
             value={stat(today?.pendingSamples)}
-            label="Bekleyen numune"
+            label={tr('Bekleyen numune')}
             accent
             onPress={() => navigation.navigate('Requests')}
           />
           <StatCard
             value={stat(today?.newQuotes)}
-            label="Yeni teklif"
+            label={tr('Yeni teklif')}
             onPress={() => navigation.navigate('Requests')}
           />
           <StatCard
             value={stat(today?.unreadMessages)}
-            label="Okunmamış mesaj"
+            label={tr('Okunmamış mesaj')}
             onPress={() => navigation.navigate('Conversations')}
           />
         </View>
@@ -332,25 +333,25 @@ export function FeedScreen({ navigation }: Props) {
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
           icon="globe-outline"
-          label="Dünyayı Keşfet"
+          label={tr('Dünyayı Keşfet')}
           onPress={() => navigation.navigate('ExportRadar')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
           icon="quote"
-          label="Teklif iste"
+          label={tr('Teklif iste')}
           onPress={() => navigation.navigate('TenderForm')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
           icon="calculator"
-          label="Hesap araçları"
+          label={tr('Hesap araçları')}
           onPress={() => navigation.navigate('Calculators')}
         />
         <QuickAction
           style={{ flexBasis: '47%', flexGrow: 1 }}
           icon="sample"
-          label="Talepler"
+          label={tr('Talepler')}
           dot={(today?.pendingSamples ?? 0) + (today?.newQuotes ?? 0) > 0}
           onPress={() => navigation.navigate('Requests')}
         />
@@ -361,16 +362,16 @@ export function FeedScreen({ navigation }: Props) {
         <View style={{ flex: 1, minWidth: 0 }}>
           <SegmentControl<FeedScope>
             stretch
-            accessibilityLabel="Akışta ne görünsün"
+            accessibilityLabel={tr('Akışta ne görünsün')}
             value={scope}
             onChange={changeScope}
             options={[
-              { value: 'connections', label: 'Bağlantılarım' },
-              { value: 'all', label: 'Genel akış' },
+              { value: 'connections', label: tr('Bağlantılarım') },
+              { value: 'all', label: tr('Genel akış') },
             ]}
           />
         </View>
-        <Button kind="quiet" icon="plus" label="Paylaş" onPress={() => navigation.navigate('CreatePost')} />
+        <Button kind="quiet" icon="plus" label={tr('Paylaş')} onPress={() => navigation.navigate('CreatePost')} />
       </View>
 
       {/* Sektör gündemi: firma türüne göre günün başlıkları (iki akış sekmesinde de). */}
@@ -402,13 +403,13 @@ export function FeedScreen({ navigation }: Props) {
         actions={[
           {
             icon: 'bell',
-            label: 'Bildirimler',
+            label: tr('Bildirimler'),
             dot: !!today && today.unreadNotifications > 0,
             onPress: () => navigation.navigate('Notifications'),
           },
           {
             icon: 'user',
-            label: 'Hesabım',
+            label: tr('Hesabım'),
             // Profilim, Görünüm ve Çıkış alt sayfada (Araçlar sekmesinden taşındı).
             onPress: () => setAccountOpen(true),
             // Profil fotoğrafı (yoksa baş harfler); 32px, bant üzerinde beyaz çerçeve.
@@ -458,29 +459,29 @@ export function FeedScreen({ navigation }: Props) {
             ) : error ? (
               <EmptyState
                 icon="warning"
-                title="Akış alınamadı"
+                title={tr('Akış alınamadı')}
                 description={error}
-                actionLabel="Tekrar dene"
+                actionLabel={tr('Tekrar dene')}
                 onAction={() => loadFirstPage()}
               />
             ) : scope === 'connections' ? (
               <EmptyState
                 icon="people-outline"
-                title="Firmaları takip et, yenilikleri burada gör"
-                description="Bağlantı kurduğun firmaların yeni ürünleri ve duyuruları bu akışta çıkar."
-                actionLabel="Firmaları keşfet"
+                title={tr('Firmaları takip et, yenilikleri burada gör')}
+                description={tr('Bağlantı kurduğun firmaların yeni ürünleri ve duyuruları bu akışta çıkar.')}
+                actionLabel={tr('Firmaları keşfet')}
                 onAction={() => navigation.navigate('CompaniesDirectory')}
               />
             ) : (
               <EmptyState
                 icon="home"
-                title={forMe ? 'Size uygun paylaşım bulunamadı' : 'Henüz paylaşım yok'}
+                title={forMe ? tr('Size uygun paylaşım bulunamadı') : tr('Henüz paylaşım yok')}
                 description={
                   forMe
-                    ? 'Firmanızın işiyle ilgili paylaşım yok. Tüm sektör paylaşımlarına bakabilirsiniz.'
-                    : 'Sektörde henüz herkese açık paylaşım yok.'
+                    ? tr('Firmanızın işiyle ilgili paylaşım yok. Tüm sektör paylaşımlarına bakabilirsiniz.')
+                    : tr('Sektörde henüz herkese açık paylaşım yok.')
                 }
-                actionLabel={forMe ? 'Tümünü göster' : 'Firmaları keşfet'}
+                actionLabel={forMe ? tr('Tümünü göster') : tr('Firmaları keşfet')}
                 onAction={() => (forMe ? changeForMe(false) : navigation.navigate('CompaniesDirectory'))}
               />
             )}
@@ -549,7 +550,7 @@ export function FeedScreen({ navigation }: Props) {
             {notice.undo ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Geri al"
+                accessibilityLabel={tr('Geri al')}
                 onPress={notice.undo}
                 style={({ pressed }) => ({
                   minHeight: t.size.touchMin,
@@ -558,7 +559,7 @@ export function FeedScreen({ navigation }: Props) {
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
-                <Text style={[t.type.label14, { color: t.colors.surface1 }]}>Geri al</Text>
+                <Text style={[t.type.label14, { color: t.colors.surface1 }]}>{tr('Geri al')}</Text>
               </Pressable>
             ) : null}
           </View>
@@ -566,7 +567,7 @@ export function FeedScreen({ navigation }: Props) {
         {showTop ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="En üste çık"
+            accessibilityLabel={tr('En üste çık')}
             onPress={scrollTop}
             style={({ pressed }) => [
               {
@@ -586,7 +587,7 @@ export function FeedScreen({ navigation }: Props) {
             ]}
           >
             <Icon name="up" color="onBrand" />
-            <Text style={[t.type.label14, { color: t.colors.onBrand }]}>En üste</Text>
+            <Text style={[t.type.label14, { color: t.colors.onBrand }]}>{tr('En üste')}</Text>
           </Pressable>
         ) : null}
       </Screen>

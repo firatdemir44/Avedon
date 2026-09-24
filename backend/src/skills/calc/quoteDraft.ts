@@ -4,6 +4,7 @@
 import * as z from 'zod/v4';
 import { metersPerKg } from '../../domain/glossary/units';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const unit = z.enum(['m', 'kg']);
 
@@ -92,17 +93,26 @@ export const quoteDraft = defineSkill<typeof inputSchema, QuoteDraftOutput>({
     'Birim aynıysa birim fiyat = kayıtlı fiyat. kg fiyatı → metre: fiyat / (metre/kg); metre fiyatı → kg: fiyat × (metre/kg); metre/kg = 100.000 / (gramaj × en). Toplam = birim fiyat × miktar.',
   inputSchema,
   run: (input) => computeQuoteDraft(input),
-  summarize: (input, out) => {
+  summarize: (input, out, lang) => {
     const parts: string[] = [];
     if (out.unitPrice != null) {
-      parts.push(`${fmt(input.quantity)} ${out.unit} için birim fiyat ${fmt(out.unitPrice, 3)} ${out.currency}/${out.unit}${out.converted ? ' (birim çevrildi)' : ''}, toplam ${fmt(out.total)} ${out.currency}`);
+      parts.push(
+        t(lang, '{q} {unit} için birim fiyat {price} {cur}/{unit}{conv}, toplam {total} {cur}', {
+          q: fmt(input.quantity),
+          unit: out.unit,
+          price: fmt(out.unitPrice, 3),
+          cur: out.currency ?? '',
+          conv: out.converted ? t(lang, ' (birim çevrildi)') : '',
+          total: fmt(out.total),
+        })
+      );
     } else {
-      parts.push(`${fmt(input.quantity)} ${out.unit} için fiyat hesaplanamadı`);
+      parts.push(t(lang, '{q} {unit} için fiyat hesaplanamadı', { q: fmt(input.quantity), unit: out.unit }));
     }
-    if (out.belowMoq) parts.push(`istenen miktar MOQ'nun (${fmt(out.moq)} ${out.moqUnit}) altında`);
-    if (out.leadTimeDays != null) parts.push(`termin ${out.leadTimeDays} gün`);
-    parts.push(`geçerlilik ${out.validityDays} gün`);
-    if (out.missing.length) parts.push(`eksik: ${out.missing.join(', ')}`);
+    if (out.belowMoq) parts.push(t(lang, "istenen miktar MOQ'nun ({moq} {unit}) altında", { moq: fmt(out.moq), unit: out.moqUnit ?? '' }));
+    if (out.leadTimeDays != null) parts.push(t(lang, 'termin {n} gün', { n: out.leadTimeDays }));
+    parts.push(t(lang, 'geçerlilik {n} gün', { n: out.validityDays }));
+    if (out.missing.length) parts.push(t(lang, 'eksik: {list}', { list: out.missing.map((m) => t(lang, m)).join(', ') }));
     return parts.join('; ') + '.';
   },
 });

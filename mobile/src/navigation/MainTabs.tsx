@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { tr } from '../i18n';
 import { AppState } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import type { MainTabParamList } from './types';
@@ -57,20 +58,20 @@ export function MainTabs() {
         freezeOnBlur: true,
       }}
     >
-      <Tab.Screen name="Feed" component={FeedScreen} options={{ title: 'Ana sayfa' }} />
-      <Tab.Screen name="ProductList" component={ProductListScreen} options={{ title: 'Katalog' }} />
-      <Tab.Screen name="AssistantTab" component={AssistantScreen} options={{ title: 'Asistan' }} />
+      <Tab.Screen name="Feed" component={FeedScreen} options={{ title: tr('Ana sayfa') }} />
+      <Tab.Screen name="ProductList" component={ProductListScreen} options={{ title: tr('Katalog') }} />
+      <Tab.Screen name="AssistantTab" component={AssistantScreen} options={{ title: tr('Asistan') }} />
       <Tab.Screen
         name="Conversations"
         component={ConversationsListScreen}
         listeners={{ focus: refreshBadges }}
         options={{
-          title: 'Mesajlar',
+          title: tr('Mesajlar'),
           // `tabBarBadge` yalnızca bildirim NOKTASINI açar (src/ui TabBar).
           tabBarBadge: unreadMessages > 0 ? unreadMessages : undefined,
         }}
       />
-      <Tab.Screen name="CompaniesDirectory" component={CompaniesDirectoryScreen} options={{ title: 'Firmalar' }} />
+      <Tab.Screen name="CompaniesDirectory" component={CompaniesDirectoryScreen} options={{ title: tr('Firmalar') }} />
     </Tab.Navigator>
   );
 }

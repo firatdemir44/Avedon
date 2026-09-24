@@ -166,8 +166,9 @@ dealsRouter.post(
     const deal = await prisma.deal.update({ where: { id: loaded.deal.id }, data: { status: 'teslim_bildirildi', sellerDeliveredAt: deliveredAt, disputeNote: '' }, include: INCLUDE });
     await notify(deal.buyerId, {
       kind: 'deal_delivered',
-      title: `${deal.productCode}: satıcı teslim ettiğini bildirdi`,
-      body: `Teslimi onaylayın ya da itiraz edin. ${AUTO_CONFIRM_DAYS} gün içinde yanıt vermezseniz onaylanmış sayılır.`,
+      title: '{code}: satıcı teslim ettiğini bildirdi',
+      body: 'Teslimi onaylayın ya da itiraz edin. {days} gün içinde yanıt vermezseniz onaylanmış sayılır.',
+      vars: { code: deal.productCode, days: AUTO_CONFIRM_DAYS },
       data: { dealId: deal.id, productId: deal.productId },
     });
     res.json({ deal: await toView(deal, 'seller') });
@@ -184,7 +185,8 @@ dealsRouter.post(
     const deal = await prisma.deal.update({ where: { id: loaded.deal.id }, data: { status: 'teslim_edildi', buyerConfirmedAt: new Date() }, include: INCLUDE });
     await notifyMany(await sellerUsers(deal.sellerCompanyId), {
       kind: 'deal_confirmed',
-      title: `${deal.productCode}: alıcı teslimi onayladı`,
+      title: '{code}: alıcı teslimi onayladı',
+      vars: { code: deal.productCode },
       body: 'İşi değerlendirebilirsiniz.',
       data: { dealId: deal.id, productId: deal.productId },
     });
@@ -206,8 +208,10 @@ dealsRouter.post(
     const deal = await prisma.deal.update({ where: { id: loaded.deal.id }, data: { status: 'itiraz', disputeNote: parsed.data.note }, include: INCLUDE });
     await notifyMany(await sellerUsers(deal.sellerCompanyId), {
       kind: 'deal_disputed',
-      title: `${deal.productCode}: alıcı teslim beyanına itiraz etti`,
+      title: '{code}: alıcı teslim beyanına itiraz etti',
+      vars: { code: deal.productCode },
       body: parsed.data.note.slice(0, 120),
+      rawBody: true,
       data: { dealId: deal.id, productId: deal.productId },
     });
     res.json({ deal: await toView(deal, 'buyer') });
@@ -229,8 +233,10 @@ dealsRouter.post(
     const targets = loaded.role === 'buyer' ? await sellerUsers(deal.sellerCompanyId) : [deal.buyerId];
     await notifyMany(targets, {
       kind: 'deal_cancelled',
-      title: `${deal.productCode}: sipariş iptal olarak işaretlendi`,
+      title: '{code}: sipariş iptal olarak işaretlendi',
+      vars: { code: deal.productCode },
       body: parsed.data.reason ?? '',
+      rawBody: true,
       data: { dealId: deal.id, productId: deal.productId },
     });
     res.json({ deal: await toView(deal, loaded.role) });
@@ -270,7 +276,8 @@ dealsRouter.post(
     const targets = role === 'buyer' ? await sellerUsers(deal.sellerCompanyId) : [deal.buyerId];
     await notifyMany(targets, {
       kind: 'deal_review',
-      title: `${deal.productCode}: karşı taraf işi değerlendirdi`,
+      title: '{code}: karşı taraf işi değerlendirdi',
+      vars: { code: deal.productCode },
       body: both ? 'İki değerlendirme de artık görünür.' : 'Siz de değerlendirince iki değerlendirme birlikte görünür olur.',
       data: { dealId: deal.id, productId: deal.productId },
     });

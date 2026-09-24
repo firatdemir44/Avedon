@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable, ActivityIndicator, Platform } from 'react
 import { haptics } from '../features/haptics';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { locale, tr } from '../i18n';
 
 // Izgara karesi (DESIGN.md'de adı olmayan ekran-içi ölçü): 375 px'te üç kare
 // + iki aralık yan yana sığar.
@@ -66,8 +67,8 @@ export function PhotoGridEditor({
             accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
             accessibilityLabel={
               index === 0
-                ? `Fotoğraf ${index + 1}${firstBadge ? `, ${firstBadge.toLocaleLowerCase('tr-TR')}` : ''}`
-                : `Fotoğraf ${index + 1}, başa al`
+                ? `${tr('Fotoğraf {n}', { n: index + 1 })}${firstBadge ? `, ${firstBadge.toLocaleLowerCase(locale())}` : ''}`
+                : tr('Fotoğraf {n}, başa al', { n: index + 1 })
             }
             style={({ pressed }) => [tile, pressed && { opacity: 0.8 }]}
           >
@@ -94,7 +95,7 @@ export function PhotoGridEditor({
               }}
             >
               <Text style={[t.type.caption12, { color: t.colors.onBrand }]}>
-                {firstBadge.toLocaleUpperCase('tr-TR')}
+                {firstBadge.toLocaleUpperCase(locale())}
               </Text>
             </View>
           ) : null}
@@ -105,7 +106,7 @@ export function PhotoGridEditor({
             }}
             hitSlop={t.space[2]}
             accessibilityRole="button"
-            accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
+            accessibilityLabel={tr('Fotoğraf {n}, kaldır', { n: index + 1 })}
             style={({ pressed }) => ({
               position: 'absolute',
               top: t.space[1],
@@ -127,7 +128,7 @@ export function PhotoGridEditor({
           onPress={onAdd}
           disabled={busy}
           accessibilityRole="button"
-          accessibilityLabel="Fotoğraf ekle"
+          accessibilityLabel={tr('Fotoğraf ekle')}
           style={({ pressed }) => ({
             width: size,
             height: size,
@@ -147,7 +148,7 @@ export function PhotoGridEditor({
           ) : (
             <>
               <Icon name="plus" color="brand" />
-              <Text style={[t.type.label14, { color: t.colors.brand }]}>Fotoğraf</Text>
+              <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Fotoğraf')}</Text>
             </>
           )}
         </Pressable>

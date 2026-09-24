@@ -36,6 +36,7 @@ import { formatDateTime } from '../../features/time';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tp, tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -163,7 +164,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const bar = <AppBar title="Sipariş" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Sipariş')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -179,13 +180,13 @@ export function DealDetailScreen({ route, navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
         {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Sipariş alınamadı" onRetry={reload} />
+          <ErrorState error={error} fallback={tr('Sipariş alınamadı')} onRetry={reload} />
         ) : (
           <Screen>
             <EmptyState
               icon="cube-outline"
-              title="Sipariş bulunamadı"
-              description="Kayıt kaldırılmış ya da size ait olmayabilir."
+              title={tr('Sipariş bulunamadı')}
+              description={tr('Kayıt kaldırılmış ya da size ait olmayabilir.')}
             />
           </Screen>
         )}
@@ -195,9 +196,9 @@ export function DealDetailScreen({ route, navigation }: Props) {
 
   const isSeller = deal.role === 'seller';
   const counterparty = isSeller
-    ? [deal.buyer?.name, deal.buyer?.company?.name].filter(Boolean).join(' · ') || 'Alıcı'
-    : (deal.sellerCompany?.name ?? 'Satıcı firma');
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Sipariş yenilenemedi') : null);
+    ? [deal.buyer?.name, deal.buyer?.company?.name].filter(Boolean).join(' · ') || tr('Alıcı')
+    : (deal.sellerCompany?.name ?? tr('Satıcı firma'));
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, tr('Sipariş yenilenemedi')) : null);
 
   const runAction = async (kind: Exclude<Busy, null>, action: () => Promise<{ deal: DealView }>, fallback: string) => {
     setBusy(kind);
@@ -210,11 +211,11 @@ export function DealDetailScreen({ route, navigation }: Props) {
     } catch (err) {
       haptics.error();
       const code = err instanceof ApiError ? err.code : undefined;
-      if (code === 'future_date') setActionError('Teslim tarihi ileri bir gün olamaz.');
-      else if (code === 'before_deal') setActionError('Teslim tarihi siparişin açıldığı günden önce olamaz.');
-      else if (code === 'invalid_status') setActionError('Siparişin durumu değişmiş. Sayfayı aşağı çekip yenileyin.');
-      else if (code === 'not_completed') setActionError('Değerlendirme, teslim onaylandıktan sonra açılır.');
-      else if (code === 'already_reviewed') setActionError('Bu siparişi zaten değerlendirdiniz.');
+      if (code === 'future_date') setActionError(tr('Teslim tarihi ileri bir gün olamaz.'));
+      else if (code === 'before_deal') setActionError(tr('Teslim tarihi siparişin açıldığı günden önce olamaz.'));
+      else if (code === 'invalid_status') setActionError(tr('Siparişin durumu değişmiş. Sayfayı aşağı çekip yenileyin.'));
+      else if (code === 'not_completed') setActionError(tr('Değerlendirme, teslim onaylandıktan sonra açılır.'));
+      else if (code === 'already_reviewed') setActionError(tr('Bu siparişi zaten değerlendirdiniz.'));
       else setActionError(friendlyMessage(err, fallback));
       return null;
     } finally {
@@ -225,30 +226,30 @@ export function DealDetailScreen({ route, navigation }: Props) {
   const deliver = async () => {
     const value = deliveredAt.trim();
     if (value && !DATE_PATTERN.test(value)) {
-      setActionError('Teslim tarihini YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).');
+      setActionError(tr('Teslim tarihini YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).'));
       return;
     }
-    const fresh = await runAction('deliver', () => markDealDelivered(deal.id, value || undefined), 'Teslim bildirilemedi');
+    const fresh = await runAction('deliver', () => markDealDelivered(deal.id, value || undefined), tr('Teslim bildirilemedi'));
     if (fresh) setDeliveredAt('');
   };
 
   const confirmDelivery = async () => {
     const ok = await confirmAction({
-      title: 'Teslimi onayla',
-      message: 'Malı aldığınızı beyan etmiş olursunuz. Onaydan sonra iki taraf birbirini değerlendirebilir.',
-      confirmLabel: 'Onayla',
+      title: tr('Teslimi onayla'),
+      message: tr('Malı aldığınızı beyan etmiş olursunuz. Onaydan sonra iki taraf birbirini değerlendirebilir.'),
+      confirmLabel: tr('Onayla'),
     });
     if (!ok) return;
-    await runAction('confirm', () => confirmDealDelivery(deal.id), 'Teslim onaylanamadı');
+    await runAction('confirm', () => confirmDealDelivery(deal.id), tr('Teslim onaylanamadı'));
   };
 
   const sendDispute = async () => {
     const note = disputeNote.trim();
     if (note.length < 3) {
-      setActionError('İtiraz notunu yazın (en az 3 karakter).');
+      setActionError(tr('İtiraz notunu yazın (en az 3 karakter).'));
       return;
     }
-    const fresh = await runAction('dispute', () => disputeDeal(deal.id, note), 'İtiraz gönderilemedi');
+    const fresh = await runAction('dispute', () => disputeDeal(deal.id, note), tr('İtiraz gönderilemedi'));
     if (fresh) {
       setDisputeNote('');
       setDisputeOpen(false);
@@ -262,7 +263,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
     const fresh = await runAction(
       'cancel',
       () => cancelDeal(deal.id, reason || undefined),
-      'Sipariş iptal olarak işaretlenemedi'
+      tr('Sipariş iptal olarak işaretlenemedi')
     );
     if (fresh) {
       setCancelReason('');
@@ -271,7 +272,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
   };
 
   const sendReview = (input: DealReviewInput) =>
-    runAction('review', () => reviewDeal(deal.id, input), 'Değerlendirme gönderilemedi');
+    runAction('review', () => reviewDeal(deal.id, input), tr('Değerlendirme gönderilemedi'));
 
   const steps = dealTimeline(deal);
 
@@ -294,37 +295,37 @@ export function DealDetailScreen({ route, navigation }: Props) {
                 <Badge kind={DEAL_BADGE[deal.status]} label={dealStatusLabel(deal.status)} />
               </View>
               <Text accessibilityRole="header" style={[t.type.title22, { color: t.colors.ink }]}>
-                {isSeller ? `Alıcı: ${counterparty}` : counterparty}
+                {isSeller ? tr('Alıcı: {name}', { name: counterparty }) : counterparty}
               </Text>
             </View>
 
             <Card>
-              <SpecRow label="Miktar" value={formatQuantity(deal.quantity, deal.unit)} />
+              <SpecRow label={tr('Miktar')} value={formatQuantity(deal.quantity, deal.unit)} />
               <SpecRow
-                label="Anlaşılan teslim tarihi"
-                value={deal.agreedDeliveryDate ? formatQuoteDate(deal.agreedDeliveryDate) : 'Belirtilmedi'}
+                label={tr('Anlaşılan teslim tarihi')}
+                value={deal.agreedDeliveryDate ? formatQuoteDate(deal.agreedDeliveryDate) : tr('Belirtilmedi')}
                 sans={!deal.agreedDeliveryDate}
                 last
               />
               <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
-                Satıcının teklifindeki termine göre
+                {tr('Satıcının teklifindeki termine göre')}
               </Text>
             </Card>
 
             <View style={{ flexDirection: 'row', gap: t.space[2] }}>
               <Button
                 kind="secondary"
-                label="Ürünü aç"
+                label={tr('Ürünü aç')}
                 icon="fabric"
-                accessibilityLabel={`${deal.product.code}, ürün sayfasını aç`}
+                accessibilityLabel={tr('{code}, ürün sayfasını aç', { code: deal.product.code })}
                 onPress={() => navigation.navigate('ProductDetail', { productId: deal.product.id })}
                 style={{ flex: 1 }}
               />
               <Button
                 kind="secondary"
-                label="Teklifi aç"
+                label={tr('Teklifi aç')}
                 icon="quote"
-                accessibilityLabel="Bu siparişin teklifini aç"
+                accessibilityLabel={tr('Bu siparişin teklifini aç')}
                 onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: deal.quoteRequestId })}
                 style={{ flex: 1 }}
               />
@@ -334,17 +335,17 @@ export function DealDetailScreen({ route, navigation }: Props) {
                 birlikte varsa anlamlı (sunucu lateDays'i o zaman dolduruyor). */}
             {deal.lateDays != null ? (
               deal.lateDays > 0 ? (
-                <Notice tone="warning" icon="warning">{`${deal.lateDays} gün geç teslim`}</Notice>
+                <Notice tone="warning" icon="warning">{tp('1 gün geç teslim', '{n} gün geç teslim', deal.lateDays)}</Notice>
               ) : (
                 <Notice tone="success" icon="check">
-                  Zamanında teslim
+                  {tr('Zamanında teslim')}
                 </Notice>
               )
             ) : null}
 
             {/* Zaman çizelgesi */}
             <View style={{ gap: t.space[2] }}>
-              <SectionTitle title="Durum" />
+              <SectionTitle title={tr('Durum')} />
               <Card>
                 {steps.map((step, index) => (
                   <TimelineStep
@@ -362,10 +363,10 @@ export function DealDetailScreen({ route, navigation }: Props) {
                 <>
                   <Text style={[t.type.label14, { color: t.colors.ink2 }]}>
                     {deal.cancelledByRole === 'buyer'
-                      ? 'Alıcı siparişi iptal olarak işaretledi.'
+                      ? tr('Alıcı siparişi iptal olarak işaretledi.')
                       : deal.cancelledByRole === 'seller'
-                        ? 'Satıcı siparişi iptal olarak işaretledi.'
-                        : 'Sipariş iptal olarak işaretlendi.'}
+                        ? tr('Satıcı siparişi iptal olarak işaretledi.')
+                        : tr('Sipariş iptal olarak işaretlendi.')}
                   </Text>
                   {deal.cancelReason ? (
                     <Text style={[t.type.body14, { color: t.colors.ink }]}>{deal.cancelReason}</Text>
@@ -376,19 +377,19 @@ export function DealDetailScreen({ route, navigation }: Props) {
 
             {/* --- Satıcı eylemi: teslim beyanı (ekranın tek dolu düğmesi) --- */}
             {isSeller && (deal.status === 'acik' || deal.status === 'itiraz') ? (
-              <Section title={deal.status === 'itiraz' ? 'Teslimi yeniden bildirin' : 'Teslim beyanı'}>
+              <Section title={deal.status === 'itiraz' ? tr('Teslimi yeniden bildirin') : tr('Teslim beyanı')}>
                 <View style={{ gap: t.space[3] }}>
                   <Input
-                    label="Teslim tarihi (YYYY-AA-GG, isteğe bağlı)"
+                    label={tr('Teslim tarihi (YYYY-AA-GG, isteğe bağlı)')}
                     value={deliveredAt}
                     onChangeText={setDeliveredAt}
-                    placeholder="Boş bırakırsanız bugün yazılır"
+                    placeholder={tr('Boş bırakırsanız bugün yazılır')}
                     autoCapitalize="none"
                     inputMode="numeric"
                   />
                   <Button
                     size="lg"
-                    label="Teslim ettim"
+                    label={tr('Teslim ettim')}
                     loading={busy === 'deliver'}
                     disabled={!!busy}
                     onPress={() => void deliver()}
@@ -399,14 +400,14 @@ export function DealDetailScreen({ route, navigation }: Props) {
 
             {/* --- Alıcı eylemi: onay ya da itiraz --- */}
             {!isSeller && deal.status === 'teslim_bildirildi' ? (
-              <Section title="Satıcı teslim ettiğini bildirdi">
+              <Section title={tr('Satıcı teslim ettiğini bildirdi')}>
                 <View style={{ gap: t.space[3] }}>
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    {DEAL_AUTO_CONFIRM_DAYS} gün içinde yanıt vermezseniz teslim onaylanmış sayılır.
+                    {tr('{n} gün içinde yanıt vermezseniz teslim onaylanmış sayılır.', { n: DEAL_AUTO_CONFIRM_DAYS })}
                   </Text>
                   <Button
                     size="lg"
-                    label="Teslimi onayla"
+                    label={tr('Teslimi onayla')}
                     loading={busy === 'confirm'}
                     disabled={!!busy}
                     onPress={() => void confirmDelivery()}
@@ -414,16 +415,16 @@ export function DealDetailScreen({ route, navigation }: Props) {
                   {disputeOpen ? (
                     <View style={{ gap: t.space[3] }}>
                       <Input
-                        label="İtiraz notu"
+                        label={tr('İtiraz notu')}
                         value={disputeNote}
                         onChangeText={setDisputeNote}
-                        placeholder="Örn. Mal henüz elimize ulaşmadı"
+                        placeholder={tr('Örn. Mal henüz elimize ulaşmadı')}
                         multiline
                       />
                       <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                         <Button
                           kind="secondary"
-                          label="Vazgeç"
+                          label={tr('Vazgeç')}
                           disabled={!!busy}
                           onPress={() => {
                             setDisputeOpen(false);
@@ -433,7 +434,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
                         />
                         <Button
                           kind="secondary"
-                          label="İtirazı gönder"
+                          label={tr('İtirazı gönder')}
                           loading={busy === 'dispute'}
                           disabled={!!busy}
                           onPress={() => void sendDispute()}
@@ -445,7 +446,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
                     <Button
                       kind="secondary"
                       fullWidth
-                      label="İtiraz et"
+                      label={tr('İtiraz et')}
                       disabled={!!busy}
                       onPress={() => setDisputeOpen(true)}
                     />
@@ -460,19 +461,19 @@ export function DealDetailScreen({ route, navigation }: Props) {
                 <Card>
                   <View style={{ gap: t.space[3] }}>
                     <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                      Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.
+                      {tr('Karşı tarafa bildirilir ve kayıt kapanır. Değerlendirme açılmaz.')}
                     </Text>
                     <Input
-                      label="Neden (isteğe bağlı)"
+                      label={tr('Neden (isteğe bağlı)')}
                       value={cancelReason}
                       onChangeText={(text) => setCancelReason(text.slice(0, 300))}
-                      placeholder="Örn. Karşılıklı anlaşarak vazgeçtik"
+                      placeholder={tr('Örn. Karşılıklı anlaşarak vazgeçtik')}
                       multiline
                     />
                     <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                       <Button
                         kind="secondary"
-                        label="Vazgeç"
+                        label={tr('Vazgeç')}
                         disabled={!!busy}
                         onPress={() => {
                           setCancelOpen(false);
@@ -482,7 +483,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
                       />
                       <Button
                         kind="danger"
-                        label="İptal olarak işaretle"
+                        label={tr('İptal olarak işaretle')}
                         loading={busy === 'cancel'}
                         disabled={!!busy}
                         onPress={() => void cancel()}
@@ -495,7 +496,7 @@ export function DealDetailScreen({ route, navigation }: Props) {
                 <Button
                   kind="secondary"
                   fullWidth
-                  label="Siparişi iptal olarak işaretle"
+                  label={tr('Siparişi iptal olarak işaretle')}
                   disabled={!!busy}
                   onPress={() => setCancelOpen(true)}
                 />
@@ -523,7 +524,7 @@ function TimelineStep({ step, isLast, nextDone }: { step: DealStep; isLast: bool
     <View
       style={{ flexDirection: 'row', gap: t.space[3] }}
       accessible
-      accessibilityLabel={`${step.label}, ${step.done ? 'tamamlandı' : 'bekleniyor'}`}
+      accessibilityLabel={`${step.label}, ${step.done ? tr('tamamlandı') : tr('bekleniyor')}`}
     >
       <View style={{ width: DOT_SIZE, alignItems: 'center' }}>
         <View
@@ -556,7 +557,7 @@ function TimelineStep({ step, isLast, nextDone }: { step: DealStep; isLast: bool
         {step.occurredAt ? (
           <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatDateTime(step.occurredAt)}</Text>
         ) : !step.done ? (
-          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bekleniyor</Text>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Bekleniyor')}</Text>
         ) : null}
         {step.description ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{step.description}</Text> : null}
         {/* İtiraz: beyan silinmiyor, altına uyarı satırı olarak ekleniyor. */}
@@ -594,7 +595,7 @@ function ReviewSection({
   const submit = async () => {
     const missing = criteria.find((c) => !scores[c.key]);
     if (missing) {
-      setFormError('Puanların hepsini verin.');
+      setFormError(tr('Puanların hepsini verin.'));
       return;
     }
     setFormError(null);
@@ -610,11 +611,10 @@ function ReviewSection({
   return (
     <View style={{ gap: t.space[6] }}>
       {deal.canReview ? (
-        <Section title="İşi değerlendirin">
+        <Section title={tr('İşi değerlendirin')}>
           <View style={{ gap: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Değerlendirmeniz, karşı taraf da yazınca ya da {DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur. Böylece iki
-              taraf birbirinden etkilenmeden yazar.
+              {tr('Değerlendirmeniz, karşı taraf da yazınca ya da {n} gün sonra görünür olur. Böylece iki taraf birbirinden etkilenmeden yazar.', { n: DEAL_REVIEW_REVEAL_DAYS })}
             </Text>
             {criteria.map((criterion) => (
               <ScoreRow
@@ -625,16 +625,16 @@ function ReviewSection({
               />
             ))}
             <Input
-              label="Yorum (isteğe bağlı)"
+              label={tr('Yorum (isteğe bağlı)')}
               value={comment}
               onChangeText={(text) => setComment(text.slice(0, 500))}
-              placeholder="Örn. Kumaş numuneyle birebir aynıydı."
+              placeholder={tr('Örn. Kumaş numuneyle birebir aynıydı.')}
               multiline
               error={formError}
             />
             <Button
               size="lg"
-              label="Değerlendirmeyi gönder"
+              label={tr('Değerlendirmeyi gönder')}
               loading={busy}
               disabled={disabled}
               onPress={() => void submit()}
@@ -643,16 +643,16 @@ function ReviewSection({
         </Section>
       ) : null}
 
-      {deal.myReview ? <ReviewCard title="Sizin değerlendirmeniz" review={deal.myReview} /> : null}
-      {deal.theirReview ? <ReviewCard title="Karşı tarafın değerlendirmesi" review={deal.theirReview} /> : null}
+      {deal.myReview ? <ReviewCard title={tr('Sizin değerlendirmeniz')} review={deal.myReview} /> : null}
+      {deal.theirReview ? <ReviewCard title={tr('Karşı tarafın değerlendirmesi')} review={deal.theirReview} /> : null}
 
       {!deal.theirReview ? (
         <Notice tone="neutral" icon="clock">
           {deal.theirReviewPending
-            ? 'Karşı taraf değerlendirmesini yazdı; siz de yazınca ikisi birlikte görünür olur.'
+            ? tr('Karşı taraf değerlendirmesini yazdı; siz de yazınca ikisi birlikte görünür olur.')
             : deal.myReview
-              ? `Karşı taraf da yazınca ikisi birlikte görünür olur; yazmazsa teslim onayından ${DEAL_REVIEW_REVEAL_DAYS} gün sonra görünür olur.`
-              : 'Karşı taraf henüz değerlendirmedi.'}
+              ? tr('Karşı taraf da yazınca ikisi birlikte görünür olur; yazmazsa teslim onayından {n} gün sonra görünür olur.', { n: DEAL_REVIEW_REVEAL_DAYS })
+              : tr('Karşı taraf henüz değerlendirmedi.')}
         </Notice>
       ) : null}
     </View>
@@ -682,7 +682,7 @@ function ScoreRow({
             }}
             accessibilityRole="button"
             accessibilityState={{ selected: value === n }}
-            accessibilityLabel={`${criterion.label}: ${n} puan`}
+            accessibilityLabel={tr('{label}: {n} puan', { label: criterion.label, n })}
             style={({ pressed }) => [
               {
                 minWidth: t.size.touchMin,

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { tr } from '../i18n';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
@@ -66,7 +67,7 @@ export function CompanyAvatar({ name, verification, size, companyId, logoUpdated
           ]}
           // Logo kareye sığar; kenarları kırpılmaz (yatay logolar taşıyordu).
           resizeMode="contain"
-          accessibilityLabel={name ? `${name} logosu` : 'Firma logosu'}
+          accessibilityLabel={name ? tr('{name} logosu', { name }) : tr('Firma logosu')}
         />
       ) : (
         <View
@@ -100,7 +101,7 @@ export function CompanyAvatar({ name, verification, size, companyId, logoUpdated
               borderColor: t.colors.success,
             },
           ]}
-          accessibilityLabel="Doğrulanmış firma"
+          accessibilityLabel={tr('Doğrulanmış firma')}
         >
           <Icon name="check" size={t.space[3] - 2} color="success" />
         </View>

@@ -10,6 +10,7 @@ import { DocumentPickError, pickPdf } from '../../features/documentPicker';
 import { MAX_COMPOSITION_ROWS } from '../../features/products/limits';
 import { FIBERS } from '../../features/products/glossaryLabels';
 import { parseNumber, toInputNumber } from '../../features/calculators/parse';
+import { tr } from '../../i18n';
 
 // Satırlar metin olarak tutuluyor (kullanıcı "15," yazarken silinmesin diye);
 // kaydederken sayıya çevriliyor.
@@ -163,8 +164,8 @@ export async function pickDocImage(): Promise<{ image: DocImage } | { error: str
     return {
       error:
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.',
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'),
     };
   }
 }
@@ -177,15 +178,15 @@ export async function pickDocPdf(): Promise<{ image: DocImage } | { error: strin
     const dataUrl = picked.dataBase64.startsWith('data:')
       ? picked.dataBase64
       : `${PDF_DATA_PREFIX};base64,${picked.dataBase64}`;
-    if (!dataUrl.startsWith(PDF_DATA_PREFIX)) return { error: 'Yalnızca PDF dosyası seçilebilir.' };
-    if (dataUrl.length > MAX_DOC_PDF_CHARS) return { error: PDF_TOO_LARGE };
+    if (!dataUrl.startsWith(PDF_DATA_PREFIX)) return { error: tr('Yalnızca PDF dosyası seçilebilir.') };
+    if (dataUrl.length > MAX_DOC_PDF_CHARS) return { error: tr(PDF_TOO_LARGE) };
     return { image: { kind: 'new', uri: dataUrl, dataUrl } };
   } catch (err) {
     return {
       error:
         err instanceof DocumentPickError && err.code === 'too_large'
-          ? PDF_TOO_LARGE
-          : 'PDF okunamadı, lütfen başka bir dosya deneyin.',
+          ? tr(PDF_TOO_LARGE)
+          : tr('PDF okunamadı, lütfen başka bir dosya deneyin.'),
     };
   }
 }

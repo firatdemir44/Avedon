@@ -9,6 +9,7 @@ import { NotificationBell } from './NotificationBell';
 import { UserAvatar } from './UserAvatar';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { tr } from '../i18n';
 
 // Dört ana sekmenin ortak üst başlığı: solda yuvarlak profil düğmesi, ortada
 // arama kutusu görünümünde düğme, sağda bildirim zili. AppBar ile aynı bant
@@ -37,7 +38,7 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
         <Pressable
           onPress={() => navigation.navigate('MyProfile')}
           accessibilityRole="button"
-          accessibilityLabel="Profilim"
+          accessibilityLabel={tr('Profilim')}
           style={({ pressed }) => ({
             width: t.size.touchMin,
             height: t.size.touchMin,
@@ -60,7 +61,7 @@ export function MainHeader({ right }: { right?: React.ReactNode }) {
         <Pressable
           onPress={() => navigation.navigate('GlobalSearch')}
           accessibilityRole="search"
-          accessibilityLabel="Arama yap"
+          accessibilityLabel={tr('Arama yap')}
           style={({ pressed }) => ({
             flex: 1,
             minWidth: 0,

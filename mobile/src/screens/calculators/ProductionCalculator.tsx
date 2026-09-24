@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcSectionRow,
@@ -67,71 +68,70 @@ export function ProductionCalculator({ navigation }: RootStackScreenProps<'Produ
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Üretim hesaplama" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Üretim hesaplama')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-          Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine
-          bilgilerini doldurun.
+          {tr('Makinede örülen her iplik için 50 iğnedeki uzunluğu, numarasını ve sistem sayısını girin; ardından makine bilgilerini doldurun.')}
         </Text>
 
-        <CalcTable title="Örme üretim hesabı">
-          <CalcSectionRow label="İplikler" />
+        <CalcTable title={tr('Örme üretim hesabı')}>
+          <CalcSectionRow label={tr('İplikler')} />
           <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
 
-          <CalcSectionRow label="Makine" />
+          <CalcSectionRow label={tr('Makine')} />
           <CalcInputRow
-            label="İğne sayısı"
-            hint="Bilmiyorsanız: çap (inç) × incelik (E) × 3,14"
+            label={tr('İğne sayısı')}
+            hint={tr('Bilmiyorsanız: çap (inç) × incelik (E) × 3,14')}
             value={f.needles}
             onChangeText={(v) => update({ needles: v })}
             placeholder="2568"
             keyboardType="number-pad"
-            unit="iğne"
+            unit={tr('iğne')}
           />
           <CalcInputRow
-            label="Makine devri"
+            label={tr('Makine devri')}
             value={f.rpm}
             onChangeText={(v) => update({ rpm: v })}
             placeholder="25"
-            unit="devir/dk"
+            unit={tr('devir/dk')}
           />
           <CalcInputRow
-            label="Randıman"
+            label={tr('Randıman')}
             value={f.efficiency}
             onChangeText={(v) => update({ efficiency: v })}
             placeholder="90"
             unit="%"
           />
           <CalcInputRow
-            label="Günlük çalışma"
+            label={tr('Günlük çalışma')}
             value={f.hoursPerDay}
             onChangeText={(v) => update({ hoursPerDay: v })}
             placeholder="24"
-            unit="saat"
+            unit={tr('saat')}
           />
           <CalcInputRow
-            label="Fason ücreti"
-            hint="İsteğe bağlı"
+            label={tr('Fason ücreti')}
+            hint={tr('İsteğe bağlı')}
             value={f.fee}
             onChangeText={(v) => update({ fee: v })}
             placeholder="65"
             unit="₺/kg"
           />
 
-          <CalcSectionRow label="Sonuç" />
+          <CalcSectionRow label={tr('Sonuç')} />
           <CalcResultRow
-            label="Saatlik üretim"
+            label={tr('Saatlik üretim')}
             value={result ? formatNumber(result.kgPerHour, 1) : '—'}
             unit="kg"
           />
           <CalcResultRow
-            label="Günlük üretim"
+            label={tr('Günlük üretim')}
             value={result ? formatNumber(result.kgPerDay, 0) : '—'}
             unit="kg"
             emphasis="primary"
           />
           {result && result.dailyFeeIncome !== null ? (
-            <CalcResultRow label="Günlük fason geliri" value={formatNumber(result.dailyFeeIncome, 0)} unit="₺" />
+            <CalcResultRow label={tr('Günlük fason geliri')} value={formatNumber(result.dailyFeeIncome, 0)} unit="₺" />
           ) : null}
           {/* Birden fazla iplik varsa her birinin kumaştaki payı. */}
           {result && multiYarn
@@ -139,13 +139,13 @@ export function ProductionCalculator({ navigation }: RootStackScreenProps<'Produ
                 .map((percent, index) => ({ percent, index }))
                 .filter(({ percent }) => percent > 0)
                 .map(({ percent, index }) => (
-                  <CalcResultRow key={index} label={`${index + 1}. iplik payı`} value={`%${formatNumber(percent, 1)}`} />
+                  <CalcResultRow key={index} label={tr('{n}. iplik payı', { n: index + 1 })} value={`%${formatNumber(percent, 1)}`} />
                 ))
             : null}
           {result === null ? (
-            <CalcNoteRow text="Hesap için iplik satırlarını, iğne sayısını ve makine devrini girin." />
+            <CalcNoteRow text={tr('Hesap için iplik satırlarını, iğne sayısını ve makine devrini girin.')} />
           ) : null}
-          <CalcFormulaRow text="Bir devirde örülen gram = Σ (sistem sayısı × iğne × ilmek boyu ÷ 1000 × Tex ÷ 1000). Saatlik = bu gram × devir × 60 × randıman ÷ 1000. Günlük = saatlik × çalışma saati." />
+          <CalcFormulaRow text={tr('Bir devirde örülen gram = Σ (sistem sayısı × iğne × ilmek boyu ÷ 1000 × Tex ÷ 1000). Saatlik = bu gram × devir × 60 × randıman ÷ 1000. Günlük = saatlik × çalışma saati.')} />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
       </Screen>

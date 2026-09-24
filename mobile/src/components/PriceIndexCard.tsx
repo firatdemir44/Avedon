@@ -4,6 +4,7 @@ import { fetchPriceIndex, type PriceIndex, type PriceIndexBand } from '../api/cl
 import { Card, Icon, SectionTitle } from '../ui';
 import { formatMeasure, formatNumber } from '../features/calculators/parse';
 import { useTheme } from '../theme/ThemeContext';
+import { tr } from '../i18n';
 
 // Faz 3, Adım 6: anonim fiyat / termin endeksi kartı ("Piyasa aralığı").
 // Ürün kuralları (sunucuyla aynı, değiştirilmez):
@@ -76,18 +77,18 @@ function Band({ band, last }: { band: PriceIndexBand; last: boolean }) {
     >
       <Text style={[t.type.mono20, { color: t.colors.brand }]}>
         {priceRange(band)}{' '}
-        <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>· ortanca {formatNumber(band.price.median, 2)}</Text>
+        <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>· {tr('ortanca {n}', { n: formatNumber(band.price.median, 2) })}</Text>
       </Text>
       <BandBar price={band.price} />
       {band.leadTimeDays ? (
         <Text style={[t.type.body16, { color: t.colors.ink }]}>
-          Tipik termin {formatMeasure(band.leadTimeDays.p25)}–{formatMeasure(band.leadTimeDays.p75)} gün
+          {tr('Tipik termin {a}–{b} gün', { a: formatMeasure(band.leadTimeDays.p25), b: formatMeasure(band.leadTimeDays.p75) })}
         </Text>
       ) : null}
-      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>({band.sampleSize} teklif)</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('({n} teklif)', { n: band.sampleSize })}</Text>
       {/* Nötr: satıcının yerini bildirir, yargı bildirmez (uyarı rengi yok). */}
       {band.myPosition ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{POSITION_TEXT[band.myPosition]}</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr(POSITION_TEXT[band.myPosition])}</Text>
       ) : null}
     </View>
   );
@@ -131,12 +132,12 @@ export function PriceIndexCard({
 
   return (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Piyasa aralığı" />
+      <SectionTitle title={tr('Piyasa aralığı')} />
       {subtitle ? <Text style={[t.type.body14, { color: t.colors.ink2, marginTop: -t.space[2] }]}>{subtitle}</Text> : null}
       <Card>
         <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{index.cluster.label}</Text>
         <Text style={[t.type.body14, { color: t.colors.ink2, paddingBottom: t.space[2] }]}>
-          son {index.cluster.windowDays} gün
+          {tr('son {n} gün', { n: index.cluster.windowDays })}
         </Text>
 
         {index.available ? (
@@ -146,8 +147,10 @@ export function PriceIndexCard({
         ) : (
           // Nötr: veri azlığı bir kusur değil, uyarı rengi kullanılmaz.
           <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
-            Bu kalite için henüz yeterli teklif birikmedi. En az {index.rules.minSellers} farklı satıcıdan{' '}
-            {index.rules.minQuotes} teklif olunca aralık görünür.
+            {tr('Bu kalite için henüz yeterli teklif birikmedi. En az {s} farklı satıcıdan {q} teklif olunca aralık görünür.', {
+              s: index.rules.minSellers,
+              q: index.rules.minQuotes,
+            })}
           </Text>
         )}
       </Card>
@@ -156,7 +159,7 @@ export function PriceIndexCard({
         onPress={() => setOpen((value) => !value)}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel="Piyasa aralığı nasıl hesaplanıyor"
+        accessibilityLabel={tr('Piyasa aralığı nasıl hesaplanıyor')}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -166,7 +169,7 @@ export function PriceIndexCard({
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplanıyor?</Text>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Nasıl hesaplanıyor?')}</Text>
         <Icon name={open ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
       </Pressable>
       {open ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{index.note}</Text> : null}

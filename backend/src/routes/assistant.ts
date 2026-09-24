@@ -11,6 +11,7 @@ import { runAssistantTurn, toView } from '../assistant/run';
 import { ASSISTANT_NAME, LEGACY_PERSONA_KEY, greetingText } from '../assistant/persona';
 import { MAX_BUYER_QUESTIONS_PER_DAY } from '../assistant/buyer';
 import { notify } from '../notifications';
+import { t } from '../i18n';
 import { makeHandle } from './handle';
 
 // Faz 1, Adım 5: firma asistanı. Sohbet kaydı sunucuda (istemci threadId tutar),
@@ -32,13 +33,13 @@ assistantRouter.get('/speech', (_req, res) => {
 });
 assistantRouter.post('/transcribe', express.raw({ type: () => true, limit: '8mb' }), async (req, res) => {
   const audio = req.body as Buffer;
-  if (!Buffer.isBuffer(audio) || audio.length < 1000) return res.status(400).json({ error: 'Ses kaydı çok kısa' });
+  if (!Buffer.isBuffer(audio) || audio.length < 1000) return res.status(400).json({ error: t(req.lang, 'Ses kaydı çok kısa') });
   try {
     res.json({ text: await transcribe(audio) });
   } catch (err) {
-    if (err instanceof SpeechNotConfiguredError) return res.status(503).json({ error: 'Sesli soru şu an kullanılamıyor' });
+    if (err instanceof SpeechNotConfiguredError) return res.status(503).json({ error: t(req.lang, 'Sesli soru şu an kullanılamıyor') });
     console.error('[transcribe]', (err as Error).message);
-    res.status(502).json({ error: 'Ses yazıya çevrilemedi, lütfen tekrar deneyin' });
+    res.status(502).json({ error: t(req.lang, 'Ses yazıya çevrilemedi, lütfen tekrar deneyin') });
   }
 });
 const handle = makeHandle('assistant');
@@ -84,7 +85,7 @@ assistantRouter.get(
       orderBy: { createdAt: 'asc' },
       select: { id: true, role: true, contentJson: true, createdAt: true },
     });
-    res.json({ thread, messages: rows.map(toView) });
+    res.json({ thread, messages: rows.map((r) => toView(r, req.lang)) });
   })
 );
 
@@ -122,6 +123,7 @@ assistantRouter.post(
         userId: req.user!.id,
         companyId: req.user!.companyId ?? null,
         text: parsed.data.text,
+        lang: req.lang,
       });
       const updated = await ownThread(thread.id, req.user!.id);
       res.json({ ...result, thread: updated });
@@ -144,7 +146,8 @@ assistantRouter.get(
   handle(async (req, res) => {
     const companyId = requireCompany(req);
     if (!companyId) return res.status(403).json({ error: 'no_company' });
-    res.json({ memory: await readMemory(companyId), keys: MEMORY_KEYS });
+    const L = (x: { label: string; hint: string }) => ({ ...x, label: t(req.lang, x.label), hint: t(req.lang, x.hint) });
+    res.json({ memory: (await readMemory(companyId)).map(L), keys: MEMORY_KEYS.map(L) });
   })
 );
 
@@ -163,7 +166,8 @@ assistantRouter.put(
     if (def.kind === 'number' && typeof parsed.data.value !== 'number') {
       return res.status(400).json({ error: 'value_must_be_number' });
     }
-    res.json({ entry: await writeMemory(companyId, def.key, parsed.data.value) });
+    const entry = await writeMemory(companyId, def.key, parsed.data.value);
+    res.json({ entry: { ...entry, label: t(req.lang, entry.label), hint: t(req.lang, entry.hint) } });
   })
 );
 
@@ -217,8 +221,8 @@ assistantRouter.get(
     ]);
     res.json({
       persona: LEGACY_PERSONA_KEY,
-      name: ASSISTANT_NAME,
-      text: greetingText({ firstName: user?.firstName ?? null, hour, pendingIncoming, unreadMessages, memoryEmpty: memoryCount === 0 }),
+      name: t(req.lang, ASSISTANT_NAME),
+      text: greetingText({ firstName: user?.firstName ?? null, hour, pendingIncoming, unreadMessages, memoryEmpty: memoryCount === 0, lang: req.lang }),
       pendingIncoming,
       unreadMessages,
       memoryEmpty: memoryCount === 0,
@@ -369,8 +373,10 @@ assistantRouter.post(
     }
     await notify(q.askerId, {
       kind: 'company_question_answered',
-      title: `${q.company.name} sorunuzu cevapladı`,
+      title: '{company} sorunuzu cevapladı',
+      vars: { company: q.company.name },
       body: parsed.data.answer.slice(0, 140),
+      rawBody: true,
       data: { questionId: q.id, threadId: q.threadId ?? undefined, companyId },
     });
     res.json({ ok: true });

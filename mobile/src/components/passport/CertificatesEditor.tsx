@@ -9,6 +9,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { passportStyles } from './styles';
 import { emptyCertificateRow, type CertificateRow } from './rows';
 import { DocField } from './DocField';
+import { tr } from '../../i18n';
 
 const CERTIFICATE_OPTIONS = CERTIFICATES.map((c) => ({ value: c.key, label: c.label }));
 
@@ -82,7 +83,7 @@ export function CertificatesEditor({
               onPress={() => removeRow(row.key)}
               disabled={disabled}
               accessibilityRole="button"
-              accessibilityLabel={`${index + 1}. sertifika satırını kaldır`}
+              accessibilityLabel={tr('{n}. sertifika satırını kaldır', { n: index + 1 })}
               style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
             >
               <Icon name="x" color="ink2" />
@@ -95,20 +96,20 @@ export function CertificatesEditor({
             compact
           />
           <Input
-            label="Belge no"
-            helper="İsteğe bağlı"
+            label={tr('Belge no')}
+            helper={tr('İsteğe bağlı')}
             value={row.number}
             onChangeText={(number) => updateRow(row.key, { number })}
-            placeholder="Örn. 21.0.12345"
+            placeholder={tr('Örn. 21.0.12345')}
             editable={!disabled}
             containerStyle={field}
           />
           <Input
-            label="Geçerlilik tarihi"
-            helper="YYYY-AA-GG, isteğe bağlı"
+            label={tr('Geçerlilik tarihi')}
+            helper={tr('YYYY-AA-GG, isteğe bağlı')}
             value={row.validUntil}
             onChangeText={(validUntil) => updateRow(row.key, { validUntil })}
-            placeholder="Örn. 2027-03-01"
+            placeholder={tr('Örn. 2027-03-01')}
             autoCapitalize="none"
             editable={!disabled}
             containerStyle={field}
@@ -120,7 +121,7 @@ export function CertificatesEditor({
             onBusyChange={(active) => setPicking(active ? row.key : null)}
             onError={onError}
             disabled={disabled || (pickingKey !== null && pickingKey !== row.key)}
-            labelPrefix={`${index + 1}. sertifika`}
+            labelPrefix={tr('{n}. sertifika', { n: index + 1 })}
           />
         </View>
       ))}
@@ -129,11 +130,11 @@ export function CertificatesEditor({
           onPress={addRow}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Sertifika satırı ekle"
+          accessibilityLabel={tr('Sertifika satırı ekle')}
           style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
         >
           <Icon name="plus" size={t.size.iconSm} color="brand" />
-          <Text style={styles.addRowText}>Sertifika ekle</Text>
+          <Text style={styles.addRowText}>{tr('Sertifika ekle')}</Text>
         </Pressable>
       ) : null}
     </>

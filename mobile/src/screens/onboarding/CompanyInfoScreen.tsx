@@ -6,6 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Input } from '../../ui';
 
@@ -21,12 +22,12 @@ export function CompanyInfoScreen({ navigation }: Props) {
     <OnboardingLayout
       step={4}
       totalSteps={6}
-      title="Firma bilgileri"
-      subtitle="Vergi numarası, temel belge kontrolüyle birlikte doğrulanmış rozeti almanız için kullanılır."
+      title={tr('Firma bilgileri')}
+      subtitle={tr('Vergi numarası, temel belge kontrolüyle birlikte doğrulanmış rozeti almanız için kullanılır.')}
       footer={
         <Button
           size="lg"
-          label="Devam Et"
+          label={tr('Devam Et')}
           disabled={!canContinue}
           onPress={() => navigation.navigate('PhoneVerification')}
         />
@@ -34,19 +35,19 @@ export function CompanyInfoScreen({ navigation }: Props) {
     >
       <View style={{ gap: t.space[4], minWidth: 0 }}>
         <Input
-          label="Firma adı"
+          label={tr('Firma adı')}
           value={draft.companyName}
           onChangeText={(companyName) => updateDraft({ companyName })}
-          placeholder="Firma unvanı"
+          placeholder={tr('Firma unvanı')}
         />
         <Input
-          label="Vergi numarası"
+          label={tr('Vergi numarası')}
           value={draft.taxId}
           onChangeText={(taxId) => updateDraft({ taxId })}
-          placeholder="Vergi no"
+          placeholder={tr('Vergi no')}
           keyboardType="number-pad"
           inputMode="numeric"
-          helper="Yalnızca doğrulama için kullanılır, profilinizde görünmez."
+          helper={tr('Yalnızca doğrulama için kullanılır, profilinizde görünmez.')}
         />
       </View>
     </OnboardingLayout>

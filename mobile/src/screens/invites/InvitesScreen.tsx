@@ -11,6 +11,7 @@
 // Ham hex / ham px yok: her değer `useTheme()` token'ı ya da `src/ui` bileşeni.
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Linking, Platform, Share } from 'react-native';
+import { canPickContact, pickContact } from '../../features/contactPicker';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
   ApiError,
@@ -27,6 +28,7 @@ import { haptics } from '../../features/haptics';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   Badge,
   Button,
@@ -51,7 +53,7 @@ const RELATION_OPTIONS: { value: InviteRelation; label: string }[] = [
 ];
 
 const relationLabel = (relation: InviteRelation) =>
-  relation === 'tedarikci' ? 'Tedarikçi' : relation === 'musteri' ? 'Müşteri' : '';
+  relation === 'tedarikci' ? tr('Tedarikçi') : relation === 'musteri' ? tr('Müşteri') : '';
 
 // Rehberden kopyalanan numara her biçimde gelebilir; wa.me uluslararası
 // biçim ister (90 5XX...). Çevrilemezse boş döner ve bağlantı numarasız açılır.
@@ -134,22 +136,22 @@ export function InvitesScreen({ navigation }: Props) {
         setAlreadyMember(user);
         setFormError(
           user
-            ? `Bu numara zaten Takyon'da: ${user.firstName} ${user.lastName}. Profiline gidip bağlantı isteği gönderebilirsiniz.`
-            : "Bu numara zaten Takyon'da. Kişiyi arayıp profilinden bağlantı isteği gönderebilirsiniz."
+            ? tr('Bu numara zaten Takyon\'da: {name}. Profiline gidip bağlantı isteği gönderebilirsiniz.', { name: `${user.firstName} ${user.lastName}` })
+            : tr('Bu numara zaten Takyon\'da. Kişiyi arayıp profilinden bağlantı isteği gönderebilirsiniz.')
         );
       } else if (err instanceof ApiError && err.code === 'invalid_phone') {
-        setFormError('Telefon numarasını 05XX XXX XX XX biçiminde yazın.');
+        setFormError(tr('Telefon numarasını 05XX XXX XX XX biçiminde yazın.'));
       } else if (err instanceof ApiError && err.code === 'own_phone') {
-        setFormError('Bu sizin numaranız. Davet edeceğiniz kişinin numarasını yazın.');
+        setFormError(tr('Bu sizin numaranız. Davet edeceğiniz kişinin numarasını yazın.'));
       } else if (err instanceof ApiError && err.code === 'daily_limit') {
         const max = (err.body as { max?: number } | undefined)?.max;
         setFormError(
           max
-            ? `Günde en fazla ${max} davet oluşturabilirsiniz. Yarın tekrar deneyin.`
-            : 'Günlük davet sınırına ulaştınız. Yarın tekrar deneyin.'
+            ? tr('Günde en fazla {n} davet oluşturabilirsiniz. Yarın tekrar deneyin.', { n: max })
+            : tr('Günlük davet sınırına ulaştınız. Yarın tekrar deneyin.')
         );
       } else {
-        setFormError(friendlyMessage(err, 'Davet oluşturulamadı, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Davet oluşturulamadı, tekrar deneyin.')));
       }
     } finally {
       setSubmitting(false);
@@ -158,11 +160,11 @@ export function InvitesScreen({ navigation }: Props) {
 
   const remove = useCallback(
     async (invite: Invite) => {
-      const who = invite.name || invite.phone || 'Açık davet';
+      const who = invite.name || invite.phone || tr('Açık davet');
       const ok = await confirmAction({
-        title: 'Davet iptal edilsin mi?',
-        message: `${who} için oluşturulan davet bağlantısı çalışmayacak.`,
-        confirmLabel: 'İptal et',
+        title: tr('Davet iptal edilsin mi?'),
+        message: tr('{who} için oluşturulan davet bağlantısı çalışmayacak.', { who }),
+        confirmLabel: tr('İptal et'),
         destructive: true,
       });
       if (!ok) return;
@@ -174,9 +176,9 @@ export function InvitesScreen({ navigation }: Props) {
       } catch (err) {
         haptics.error();
         if (err instanceof ApiError && err.code === 'already_joined') {
-          setFormError('Bu davetle biri kayıt olmuş; davet iptal edilemez.');
+          setFormError(tr('Bu davetle biri kayıt olmuş; davet iptal edilemez.'));
         } else {
-          setFormError(friendlyMessage(err, 'Davet iptal edilemedi, tekrar deneyin.'));
+          setFormError(friendlyMessage(err, tr('Davet iptal edilemedi, tekrar deneyin.')));
         }
       }
     },
@@ -198,9 +200,9 @@ export function InvitesScreen({ navigation }: Props) {
       <Screen>
         <EmptyState
           icon="warning"
-          title="Davetler alınamadı"
-          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Davetler alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -227,37 +229,52 @@ export function InvitesScreen({ navigation }: Props) {
         }}
       >
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Çalıştığınız tedarikçiyi ya da müşteriyi davet edin. Kayıt olunca bağlantınız olur; ürünlerini görür,
-          numune ve teklif işlerini buradan yürütürsünüz.
+          {tr('Çalıştığınız tedarikçiyi ya da müşteriyi davet edin. Kayıt olunca bağlantınız olur; ürünlerini görür, numune ve teklif işlerini buradan yürütürsünüz.')}
         </Text>
 
         {/* Davet formu */}
         <Card>
           <View style={{ gap: t.space[4], minWidth: 0 }}>
+            {canPickContact() ? (
+              <Button
+                kind="secondary"
+                icon="people-outline"
+                label={tr('Rehberden seç')}
+                onPress={() => {
+                  pickContact()
+                    .then((c) => {
+                      if (!c) return;
+                      if (c.name) setName(c.name);
+                      if (c.phone) setPhone(c.phone);
+                    })
+                    .catch(() => undefined);
+                }}
+              />
+            ) : null}
             <Input
-              label="Ad (opsiyonel)"
+              label={tr('Ad (opsiyonel)')}
               value={name}
               onChangeText={setName}
-              placeholder="Örn. Ahmet Yılmaz"
+              placeholder={tr('Örn. Ahmet Yılmaz')}
               maxLength={80}
             />
             <Input
-              label="Telefon (opsiyonel)"
+              label={tr('Telefon (opsiyonel)')}
               value={phone}
               onChangeText={setPhone}
               placeholder="05XX XXX XX XX"
               keyboardType="phone-pad"
               maxLength={20}
-              helper="Numarayı yazarsanız o kişi kayıt olunca doğrudan bağlantınız olur."
+              helper={tr('Numarayı yazarsanız o kişi kayıt olunca doğrudan bağlantınız olur.')}
             />
 
             <View style={{ gap: t.space[2], minWidth: 0 }}>
-              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>İlişki</Text>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('İlişki')}</Text>
               <ChipRow>
                 {RELATION_OPTIONS.map((option) => (
                   <Chip
                     key={option.value || 'bos'}
-                    label={option.label}
+                    label={tr(option.label)}
                     selected={relation === option.value}
                     onPress={() => setRelation(option.value)}
                   />
@@ -269,7 +286,7 @@ export function InvitesScreen({ navigation }: Props) {
             {alreadyMember ? (
               <Button
                 kind="secondary"
-                label="Profili aç"
+                label={tr('Profili aç')}
                 icon="user"
                 onPress={() => navigation.navigate('Profile', { userId: alreadyMember.id })}
               />
@@ -279,7 +296,7 @@ export function InvitesScreen({ navigation }: Props) {
             <Button
               kind={current ? 'secondary' : 'primary'}
               size="lg"
-              label="Davet oluştur"
+              label={tr('Davet oluştur')}
               loading={submitting}
               disabled={submitting}
               onPress={() => void submit()}
@@ -289,10 +306,10 @@ export function InvitesScreen({ navigation }: Props) {
 
         {current ? (
           <View style={{ gap: t.space[3], minWidth: 0 }}>
-            <SectionTitle title="Davet hazır" />
+            <SectionTitle title={tr('Davet hazır')} />
             <Card>
               <View style={{ gap: t.space[3], minWidth: 0 }}>
-                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Paylaşılacak metin</Text>
+                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Paylaşılacak metin')}</Text>
                 <Text
                   style={[
                     t.type.body14,
@@ -310,7 +327,7 @@ export function InvitesScreen({ navigation }: Props) {
                 </Text>
 
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.space[2], minWidth: 0 }}>
-                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Davet kodu</Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Davet kodu')}</Text>
                   <Text
                     numberOfLines={1}
                     style={[t.type.mono20, { color: t.colors.brand, flex: 1, minWidth: 0 }]}
@@ -323,19 +340,19 @@ export function InvitesScreen({ navigation }: Props) {
                     yalnızca form görünürken duruyor (davet oluşunca kart açılır). */}
                 <Button
                   size="lg"
-                  label="WhatsApp'tan gönder"
+                  label={tr('WhatsApp\'tan gönder')}
                   icon="whatsapp"
                   onPress={() => openWhatsApp(current)}
                 />
                 <Button
                   kind="secondary"
                   size="lg"
-                  label={copied ? 'Kopyalandı' : Platform.OS === 'web' ? 'Metni kopyala' : 'Paylaş'}
+                  label={copied ? tr('Kopyalandı') : Platform.OS === 'web' ? tr('Metni kopyala') : tr('Paylaş')}
                   icon={copied ? 'check' : 'share'}
                   onPress={() => void shareInvite(current)}
                 />
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Mesajı biz göndermiyoruz; metni siz paylaşıyorsunuz. Kişi kayıt olunca haber vereceğiz.
+                  {tr('Mesajı biz göndermiyoruz; metni siz paylaşıyorsunuz. Kişi kayıt olunca haber vereceğiz.')}
                 </Text>
               </View>
             </Card>
@@ -344,15 +361,15 @@ export function InvitesScreen({ navigation }: Props) {
 
         {/* Davetlerim */}
         <View style={{ gap: t.space[2], minWidth: 0 }}>
-          <SectionTitle title="Davetlerim" />
+          <SectionTitle title={tr('Davetlerim')} />
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            {invites.length} davet · {joinedCount} katıldı
+            {tr('{n} davet · {joined} katıldı', { n: invites.length, joined: joinedCount })}
           </Text>
 
           {invites.length ? (
             invites.map((invite, index) => {
               const joined = invite.status === 'joined';
-              const title = invite.name || invite.phone || 'Açık davet';
+              const title = invite.name || invite.phone || tr('Açık davet');
               const rel = relationLabel(invite.relation);
               const subtitle =
                 [invite.name && invite.phone ? invite.phone : '', rel, formatRelativeTime(invite.createdAt)]
@@ -366,7 +383,7 @@ export function InvitesScreen({ navigation }: Props) {
                     avatarName={title}
                     avatarKind="person"
                     // Rozet ikon + metin taşır, yalnız renk değil (DESIGN.md §6).
-                    right={<Badge kind={joined ? 'delivered' : 'pending'} label={joined ? 'Katıldı' : 'Bekliyor'} />}
+                    right={<Badge kind={joined ? 'delivered' : 'pending'} label={joined ? tr('Katıldı') : tr('Bekliyor')} />}
                     divider={index < invites.length - 1}
                   />
                   {/* Eylemler satırın İÇİNDE değil ALTINDA: iç içe düğme olmaz. */}
@@ -384,7 +401,7 @@ export function InvitesScreen({ navigation }: Props) {
                         kind="quiet"
                         icon="user"
                         label={`${invite.joinedUser.firstName} ${invite.joinedUser.lastName}`}
-                        accessibilityLabel={`${invite.joinedUser.firstName} ${invite.joinedUser.lastName} profilini aç`}
+                        accessibilityLabel={tr('{name} profilini aç', { name: `${invite.joinedUser.firstName} ${invite.joinedUser.lastName}` })}
                         onPress={() => navigation.navigate('Profile', { userId: invite.joinedUser!.id })}
                       />
                     ) : (
@@ -392,8 +409,8 @@ export function InvitesScreen({ navigation }: Props) {
                         <Button
                           kind="quiet"
                           icon="share"
-                          label="Yeniden paylaş"
-                          accessibilityLabel={`Yeniden paylaş: ${title}`}
+                          label={tr('Yeniden paylaş')}
+                          accessibilityLabel={tr('Yeniden paylaş: {title}', { title })}
                           onPress={() => {
                             setCurrent(invite);
                             setCopied(false);
@@ -402,8 +419,8 @@ export function InvitesScreen({ navigation }: Props) {
                         <Button
                           kind="danger"
                           icon="x"
-                          label="İptal et"
-                          accessibilityLabel={`İptal et: ${title}`}
+                          label={tr('İptal et')}
+                          accessibilityLabel={tr('İptal et: {title}', { title })}
                           onPress={() => void remove(invite)}
                         />
                       </>
@@ -415,8 +432,8 @@ export function InvitesScreen({ navigation }: Props) {
           ) : (
             <EmptyState
               icon="plus"
-              title="Henüz davet yok"
-              description="Birlikte çalıştığınız firmadan bir kişiyi davet edin; kayıt olunca bağlantınız olur."
+              title={tr('Henüz davet yok')}
+              description={tr('Birlikte çalıştığınız firmadan bir kişiyi davet edin; kayıt olunca bağlantınız olur.')}
             />
           )}
         </View>

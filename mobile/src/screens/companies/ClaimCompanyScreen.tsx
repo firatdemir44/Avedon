@@ -12,6 +12,7 @@ import type { DocImage } from '../../components/passport/rows';
 import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { AppBar, Badge, Button, Card, Icon, Input } from '../../ui';
 
 type Props = RootStackScreenProps<'ClaimCompany'>;
@@ -22,17 +23,17 @@ function claimErrorText(err: unknown): string {
   const code = err instanceof ApiError ? err.code : undefined;
   switch (code) {
     case 'already_has_company':
-      return 'Zaten bir firmanız var.';
+      return tr('Zaten bir firmanız var.');
     case 'phone_not_verified':
-      return 'Önce telefonunuzu doğrulayın.';
+      return tr('Önce telefonunuzu doğrulayın.');
     case 'claim_pending_by_other':
-      return 'Bu firma için bekleyen bir başvuru var.';
+      return tr('Bu firma için bekleyen bir başvuru var.');
     case 'request_pending':
-      return 'Zaten inceleme bekleyen bir başvurunuz var.';
+      return tr('Zaten inceleme bekleyen bir başvurunuz var.');
     case 'already_claimed':
-      return 'Bu firma sahiplenilmiş.';
+      return tr('Bu firma sahiplenilmiş.');
     default:
-      return friendlyMessage(err, 'Başvuru gönderilemedi');
+      return friendlyMessage(err, tr('Başvuru gönderilemedi'));
   }
 }
 
@@ -48,7 +49,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
 
   const submit = async () => {
     if (doc.kind !== 'new') {
-      setFormError('Önce bir belge yükleyin.');
+      setFormError(tr('Önce bir belge yükleyin.'));
       return;
     }
     setSending(true);
@@ -67,7 +68,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Firmayı sahiplen" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Firmayı sahiplen')} leading="back" onBack={() => navigation.goBack()} />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingVertical: t.space[4], alignItems: 'center' }}
@@ -87,19 +88,18 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
           {sent ? (
             <Card>
               <View style={{ gap: t.space[3], minWidth: 0 }}>
-                <Badge kind="pending" label="İnceleniyor" />
+                <Badge kind="pending" label={tr('İnceleniyor')} />
                 <Text style={[t.type.body16, { color: t.colors.ink }]}>
-                  Başvurunuz alındı. Takyon ekibi belgenizi inceliyor; sonuç bildirimle gelecek.
+                  {tr('Başvurunuz alındı. Takyon ekibi belgenizi inceliyor; sonuç bildirimle gelecek.')}
                 </Text>
-                <Button kind="secondary" label="Firma sayfasına dön" onPress={() => navigation.goBack()} fullWidth />
+                <Button kind="secondary" label={tr('Firma sayfasına dön')} onPress={() => navigation.goBack()} fullWidth />
               </View>
             </Card>
           ) : (
             <Card>
               <View style={{ gap: t.space[4], minWidth: 0 }}>
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Vergi levhası ya da faaliyet belgesi yükleyin; Takyon ekibi inceler, onaylanınca sayfa size bağlanır
-                  ve ürün ekleyebilirsiniz.
+                  {tr('Vergi levhası ya da faaliyet belgesi yükleyin; Takyon ekibi inceler, onaylanınca sayfa size bağlanır ve ürün ekleyebilirsiniz.')}
                 </Text>
                 <DocField
                   image={doc}
@@ -111,17 +111,17 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
                   onBusyChange={setPicking}
                   onError={setFormError}
                   disabled={sending}
-                  labelPrefix="Sahiplenme"
+                  labelPrefix={tr('Sahiplenme')}
                 />
                 <Input
-                  label="Not (isteğe bağlı)"
+                  label={tr('Not (isteğe bağlı)')}
                   value={note}
                   onChangeText={(value) => setNote(value.slice(0, NOTE_LIMIT))}
-                  placeholder="Örn. firmadaki göreviniz"
+                  placeholder={tr('Örn. firmadaki göreviniz')}
                   multiline
                   editable={!sending}
                   maxLength={NOTE_LIMIT}
-                  accessibilityLabel="Başvuru notu"
+                  accessibilityLabel={tr('Başvuru notu')}
                 />
                 {formError ? (
                   <View
@@ -142,7 +142,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
                 {/* Ekranın tek dolu düğmesi. */}
                 <Button
                   size="lg"
-                  label="Sahiplenme başvurusu gönder"
+                  label={tr('Sahiplenme başvurusu gönder')}
                   loading={sending}
                   disabled={sending || picking || doc.kind !== 'new'}
                   onPress={submit}
@@ -152,7 +152,7 @@ export function ClaimCompanyScreen({ navigation, route }: Props) {
           )}
 
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Belge yalnızca inceleme için kullanılır, başka firmalarla paylaşılmaz.
+            {tr('Belge yalnızca inceleme için kullanılır, başka firmalarla paylaşılmaz.')}
           </Text>
         </View>
       </ScrollView>

@@ -1,3 +1,5 @@
+import { tr } from '../../i18n';
+
 // Firma formlarının (EditCompany ve CompanySetup) ortak alan doğrulamaları.
 // Kurallar sunucudakiyle aynı (backend/src/routes/companies.ts).
 
@@ -14,7 +16,7 @@ export function foundedYearError(value: string, now: Date = new Date()): string 
   const currentYear = now.getFullYear();
   const numeric = Number(trimmed);
   if (!/^\d{4}$/.test(trimmed) || numeric < MIN_FOUNDED_YEAR || numeric > currentYear) {
-    return `Kuruluş yılı ${MIN_FOUNDED_YEAR} ile ${currentYear} arasında dört haneli bir yıl olmalı.`;
+    return tr('Kuruluş yılı {min} ile {max} arasında dört haneli bir yıl olmalı.', { min: MIN_FOUNDED_YEAR, max: currentYear });
   }
   return null;
 }

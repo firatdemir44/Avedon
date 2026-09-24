@@ -146,8 +146,10 @@ export async function matchWatchRulesForProduct(productId: string): Promise<numb
     if (today >= MAX_WATCH_NOTIFICATIONS_PER_DAY) continue;
     await notify(rule.userId, {
       kind: 'watch_match',
-      title: isYarn ? `İzlediğiniz özellikte yeni iplik: ${product.code}` : `İzlediğiniz kalitede yeni ürün: ${product.code}`,
+      title: isYarn ? 'İzlediğiniz özellikte yeni iplik: {code}' : 'İzlediğiniz kalitede yeni ürün: {code}',
+      vars: { code: product.code },
       body: `${product.company.name} · ${rule.name}`,
+      rawBody: true,
       data: { productId: product.id, ruleId: rule.id },
     });
     await prisma.watchRule.update({ where: { id: rule.id }, data: { lastMatchedAt: new Date() } });

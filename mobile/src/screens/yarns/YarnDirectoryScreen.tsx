@@ -23,6 +23,7 @@ import {
 import { unsupportedYarnWatchLabels, yarnWatchQueryFromParams } from '../../features/yarns/watch';
 import type { Product } from '../../types';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   AppBar,
   Button,
@@ -277,7 +278,7 @@ export function YarnDirectory({
         .catch((err) => {
           if (signal.cancelled) return;
           setResults([]);
-          setError(friendlyMessage(err, 'İplikler alınamadı, tekrar deneyin.'));
+          setError(friendlyMessage(err, tr('İplikler alınamadı, tekrar deneyin.')));
         })
         .finally(() => {
           if (!signal.cancelled) setLoading(false);
@@ -310,7 +311,7 @@ export function YarnDirectory({
       setNextOffset(page.hasMore ? page.nextOffset : null);
     } catch (err) {
       haptics.error();
-      setError(friendlyMessage(err, 'Sonraki iplikler alınamadı, tekrar deneyin.'));
+      setError(friendlyMessage(err, tr('Sonraki iplikler alınamadı, tekrar deneyin.')));
     } finally {
       setLoadingMore(false);
     }
@@ -323,7 +324,7 @@ export function YarnDirectory({
     const watchQuery = yarnWatchQueryFromParams(params);
     if (!watchQuery) {
       setWatchNote({
-        text: 'Bu süzgeç izlemeye çevrilemiyor. Numara, iplik çeşidi ya da başka bir süzgeç seçin.',
+        text: tr('Bu süzgeç izlemeye çevrilemiyor. Numara, iplik çeşidi ya da başka bir süzgeç seçin.'),
         tone: 'error',
       });
       return;
@@ -334,7 +335,9 @@ export function YarnDirectory({
       haptics.success();
       const dropped = unsupportedYarnWatchLabels(params);
       setWatchNote({
-        text: dropped.length ? `İzlemeye alındı (${dropped.join(', ')} izlemeye girmez).` : 'İzlemeye alındı.',
+        text: dropped.length
+          ? tr('İzlemeye alındı ({list} izlemeye girmez).', { list: dropped.join(', ') })
+          : tr('İzlemeye alındı.'),
         tone: 'ok',
       });
     } catch (err) {
@@ -342,8 +345,8 @@ export function YarnDirectory({
       setWatchNote({
         text:
           err instanceof ApiError && err.code === 'too_many_rules'
-            ? 'İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.'
-            : 'İzleme kurulamadı, tekrar deneyin.',
+            ? tr('İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.')
+            : tr('İzleme kurulamadı, tekrar deneyin.'),
         tone: 'error',
       });
     } finally {
@@ -397,13 +400,13 @@ export function YarnDirectory({
   const canWatch = !numbersInvalid && yarnWatchQueryFromParams(params) !== null;
 
   const countUnitOptions = optionValues(options.countUnits);
-  const anyOption = { value: '', label: 'Fark etmez' };
+  const anyOption = { value: '', label: tr('Fark etmez') };
 
   const canSelect = !!onRfqSubmit && !!user;
 
   const subLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
   const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
-  const invalidText = 'Yalnızca rakam girin.';
+  const invalidText = tr('Yalnızca rakam girin.');
 
   return (
     <Screen
@@ -420,9 +423,9 @@ export function YarnDirectory({
             <Button
               kind="secondary"
               icon={selection.active ? 'x' : 'checkbox-outline'}
-              label={selection.active ? 'Seçimi bırak' : 'Teklif için seç'}
+              label={selection.active ? tr('Seçimi bırak') : tr('Teklif için seç')}
               accessibilityLabel={
-                selection.active ? 'Teklif için seçmeyi bırak' : 'Teklif için iplik seç, birkaç firmaya birden sor'
+                selection.active ? tr('Teklif için seçmeyi bırak') : tr('Teklif için iplik seç, birkaç firmaya birden sor')
               }
               onPress={() => {
                 haptics.selection();
@@ -431,61 +434,61 @@ export function YarnDirectory({
               }}
             />
           ) : null}
-          {onAddYarn ? <Button kind="secondary" icon="plus" label="İplik ekle" onPress={onAddYarn} /> : null}
+          {onAddYarn ? <Button kind="secondary" icon="plus" label={tr('İplik ekle')} onPress={onAddYarn} /> : null}
         </View>
       ) : null}
       {selection.active ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]} accessibilityLiveRegion="polite">
-          Teklif almak istediğiniz iplikleri işaretleyin; her firmaya tek istek gider.
+          {tr('Teklif almak istediğiniz iplikleri işaretleyin; her firmaya tek istek gider.')}
         </Text>
       ) : null}
 
       <SearchBox
         value={search}
         onChangeText={setSearch}
-        placeholder="Kod, marka, çeşit, firma ara"
-        accessibilityLabel="İplik ara"
+        placeholder={tr('Kod, marka, çeşit, firma ara')}
+        accessibilityLabel={tr('İplik ara')}
       />
 
       {/* Ana sorgu 1: iplik çeşidi (lif ailesi). */}
       <View style={{ gap: t.space[3] }}>
-        <SectionTitle title="İplik çeşidi" />
+        <SectionTitle title={tr('İplik çeşidi')} />
         <MultiChips options={options.families} values={families} onChange={setFamilies} />
       </View>
 
       {/* Ana sorgu 2 ve 3: numara + birim, filament sayısı. */}
       <View style={{ gap: t.space[3] }}>
-        <SectionTitle title="Numara" />
+        <SectionTitle title={tr('Numara')} />
         <View style={{ flexDirection: 'row', gap: t.space[3] }}>
           <Input
             containerStyle={{ flex: 1, minWidth: 0 }}
-            label="Numara"
+            label={tr('Numara')}
             unit={optionLabel(options.countUnits, countUnit) || countUnit}
             value={count}
             onChangeText={setCount}
-            placeholder="Örn. 30"
+            placeholder={tr('Örn. 30')}
             error={countValue.invalid ? invalidText : null}
             {...numericProps}
           />
           <Input
             containerStyle={{ flex: 1, minWidth: 0 }}
-            label="Filament sayısı"
+            label={tr('Filament sayısı')}
             value={filaments}
             onChangeText={setFilaments}
-            placeholder="Örn. 48"
+            placeholder={tr('Örn. 48')}
             error={filamentValue.invalid ? invalidText : null}
             {...numericProps}
           />
         </View>
-        {subLabel('Birim')}
+        {subLabel(tr('Birim'))}
         <SingleChips options={countUnitOptions} value={countUnit} onChange={setCountUnit} />
-        {hint('Numara birimden bağımsız aranır: "150 denye" yazarsanız 167 dtex girilmiş iplikler de bulunur.')}
+        {hint(tr('Numara birimden bağımsız aranır: "150 denye" yazarsanız 167 dtex girilmiş iplikler de bulunur.'))}
       </View>
 
       <View style={{ gap: t.space[3] }}>
         <SectionTitle
-          title="Diğer süzgeçler"
-          linkLabel={moreOpen ? 'Gizle' : 'Göster'}
+          title={tr('Diğer süzgeçler')}
+          linkLabel={moreOpen ? tr('Gizle') : tr('Göster')}
           onLinkPress={() => {
             haptics.selection();
             setMoreOpen((v) => !v);
@@ -495,38 +498,38 @@ export function YarnDirectory({
           <>
             {visible.staple ? (
               <>
-                {subLabel('Eğirme sistemi')}
+                {subLabel(tr('Eğirme sistemi'))}
                 <MultiChips options={options.spinnings} values={spinnings} onChange={setSpinnings} />
-                {subLabel('Penye / karde')}
+                {subLabel(tr('Penye / karde'))}
                 <SingleChips options={[anyOption, ...optionValues(options.combings)]} value={combing} onChange={setCombing} />
               </>
             ) : null}
             {visible.filament ? (
               <>
-                {subLabel('Filament tipi')}
+                {subLabel(tr('Filament tipi'))}
                 <MultiChips options={options.filamentTypes} values={filamentTypes} onChange={setFilamentTypes} />
-                {subLabel('Parlaklık')}
+                {subLabel(tr('Parlaklık'))}
                 <SingleChips options={[anyOption, ...optionValues(options.lusters)]} value={luster} onChange={setLuster} />
               </>
             ) : null}
-            {subLabel('Kullanım yeri')}
+            {subLabel(tr('Kullanım yeri'))}
             <MultiChips options={options.endUses} values={endUses} onChange={setEndUses} />
-            {subLabel('Renk durumu')}
+            {subLabel(tr('Renk durumu'))}
             <SingleChips
               options={[anyOption, ...optionValues(options.colorStates)]}
               value={colorState}
               onChange={setColorState}
             />
-            {subLabel('Satıcı')}
+            {subLabel(tr('Satıcı'))}
             <SingleChips
               options={[anyOption, ...optionValues(options.sellerRoles)]}
               value={sellerRole}
               onChange={setSellerRole}
             />
-            {subLabel('Stok')}
+            {subLabel(tr('Stok'))}
             <ChipRow>
               <Chip
-                label="Yalnızca stokta olanlar"
+                label={tr('Yalnızca stokta olanlar')}
                 icon={inStock ? 'check' : undefined}
                 selected={inStock}
                 onPress={() => {
@@ -547,13 +550,13 @@ export function YarnDirectory({
             <Button
               kind="secondary"
               icon="bookmark-outline"
-              label="Bu aramayı izle"
+              label={tr('Bu aramayı izle')}
               loading={watchSaving}
-              accessibilityLabel="Bu aramayı izle, uyan yeni iplik çıkınca haber ver"
+              accessibilityLabel={tr('Bu aramayı izle, uyan yeni iplik çıkınca haber ver')}
               onPress={() => void watchCurrentSearch()}
             />
           ) : null}
-          <Button kind="quiet" label="Süzgeçleri temizle" accessibilityLabel="Tüm süzgeçleri temizle" onPress={clearAll} />
+          <Button kind="quiet" label={tr('Süzgeçleri temizle')} accessibilityLabel={tr('Tüm süzgeçleri temizle')} onPress={clearAll} />
         </View>
       ) : null}
 
@@ -589,18 +592,18 @@ export function YarnDirectory({
       ) : results.length === 0 ? (
         <EmptyState
           icon="yarn"
-          title={hasFilter ? 'Eşleşen iplik yok' : 'Henüz iplik yok'}
+          title={hasFilter ? tr('Eşleşen iplik yok') : tr('Henüz iplik yok')}
           description={
             hasFilter
-              ? 'Süzgeci gevşetip tekrar deneyin: numarayı ya da iplik çeşidini kaldırmak çoğu zaman yeter.'
-              : 'İplik üreticileri ve tüccarlar iplik ekledikçe dizin burada dolacak.'
+              ? tr('Süzgeci gevşetip tekrar deneyin: numarayı ya da iplik çeşidini kaldırmak çoğu zaman yeter.')
+              : tr('İplik üreticileri ve tüccarlar iplik ekledikçe dizin burada dolacak.')
           }
-          actionLabel={hasFilter ? 'Süzgeçleri temizle' : undefined}
+          actionLabel={hasFilter ? tr('Süzgeçleri temizle') : undefined}
           onAction={hasFilter ? clearAll : undefined}
         />
       ) : (
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title={`İplikler · ${results.length}`} />
+          <SectionTitle title={tr('İplikler · {n}', { n: results.length })} />
           {results.map((yarn) => {
             // Kendi firmanızın ipliği seçilemez (sunucu da dışlıyor).
             const selectable = selection.active && !!user && user.companyId !== yarn.companyId;
@@ -622,7 +625,7 @@ export function YarnDirectory({
                     id: yarn.id,
                     code: yarn.code,
                     companyId: yarn.companyId,
-                    companyName: yarn.company?.name ?? 'Firma',
+                    companyName: yarn.company?.name ?? tr('Firma'),
                     // İplikte birim kg.
                     stockUnit: 'kg',
                     type: yarn.type,
@@ -635,10 +638,10 @@ export function YarnDirectory({
             <Button
               kind="secondary"
               fullWidth
-              label="Daha fazla göster"
+              label={tr('Daha fazla göster')}
               loading={loadingMore}
               onPress={() => void loadMore()}
-              accessibilityLabel="Daha fazla iplik göster"
+              accessibilityLabel={tr('Daha fazla iplik göster')}
             />
           ) : null}
         </View>
@@ -710,7 +713,7 @@ export function YarnDirectoryScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="İplik dizini" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('İplik dizini')} leading="back" onBack={() => navigation.goBack()} />
       <YarnDirectory
         preset={route.params?.preset}
         presetKey={route.params?.presetKey}

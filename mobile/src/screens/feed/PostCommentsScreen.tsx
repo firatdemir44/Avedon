@@ -20,6 +20,7 @@ import { haptics } from '../../features/haptics';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { useBottomPadding, AppBar, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'PostComments'>;
@@ -61,7 +62,7 @@ export function PostCommentsScreen({ route, navigation }: Props) {
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Yorum gönderilemedi'));
+      setActionError(friendlyMessage(err, tr('Yorum gönderilemedi')));
     } finally {
       setSending(false);
     }
@@ -72,9 +73,9 @@ export function PostCommentsScreen({ route, navigation }: Props) {
   // düğme olmaz, DESIGN.md §3).
   const handleDelete = async (comment: FeedPostComment) => {
     const confirmed = await confirmAction({
-      title: 'Yorumu sil',
-      message: 'Bu yorum kalıcı olarak silinecek.',
-      confirmLabel: 'Sil',
+      title: tr('Yorumu sil'),
+      message: tr('Bu yorum kalıcı olarak silinecek.'),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -84,13 +85,13 @@ export function PostCommentsScreen({ route, navigation }: Props) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Yorum silinemedi'));
+      setActionError(friendlyMessage(err, tr('Yorum silinemedi')));
     }
   };
 
-  const appBar = <AppBar title="Yorumlar" leading="back" onBack={() => navigation.goBack()} />;
+  const appBar = <AppBar title={tr('Yorumlar')} leading="back" onBack={() => navigation.goBack()} />;
 
-  const banner = actionError ?? (error ? friendlyMessage(error, 'Yorumlar alınamadı') : null);
+  const banner = actionError ?? (error ? friendlyMessage(error, tr('Yorumlar alınamadı')) : null);
 
   if (status === 'loading') {
     return (
@@ -112,9 +113,9 @@ export function PostCommentsScreen({ route, navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Yorumlar alınamadı"
-            description={friendlyMessage(error, 'Bağlantınızı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Yorumlar alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantınızı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </Screen>
@@ -142,8 +143,8 @@ export function PostCommentsScreen({ route, navigation }: Props) {
       ) : null}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: t.space[2] }}>
         <Input
-          placeholder="Yorum yazın"
-          accessibilityLabel="Yorum"
+          placeholder={tr('Yorum yazın')}
+          accessibilityLabel={tr('Yorum')}
           value={input}
           onChangeText={setInput}
           multiline
@@ -151,9 +152,9 @@ export function PostCommentsScreen({ route, navigation }: Props) {
           containerStyle={{ flex: 1, minWidth: 0 }}
         />
         <Button
-          label="Gönder"
+          label={tr('Gönder')}
           icon="send"
-          accessibilityLabel="Yorumu gönder"
+          accessibilityLabel={tr('Yorumu gönder')}
           loading={sending}
           disabled={!canSend}
           onPress={handleSend}
@@ -182,8 +183,8 @@ export function PostCommentsScreen({ route, navigation }: Props) {
             ListEmptyComponent={
               <EmptyState
                 icon="message"
-                title="Henüz yorum yok"
-                description="İlk yorumu siz yazın; gönderi sahibi bildirim alır."
+                title={tr('Henüz yorum yok')}
+                description={tr('İlk yorumu siz yazın; gönderi sahibi bildirim alır.')}
               />
             }
             renderItem={({ item, index }) => {
@@ -212,7 +213,7 @@ export function PostCommentsScreen({ route, navigation }: Props) {
                   </Text>
                   {mine ? (
                     <View style={{ paddingBottom: t.space[3] }}>
-                      <Button kind="danger" fullWidth label="Yorumu sil" onPress={() => handleDelete(item)} />
+                      <Button kind="danger" fullWidth label={tr('Yorumu sil')} onPress={() => handleDelete(item)} />
                     </View>
                   ) : null}
                   {!last ? (

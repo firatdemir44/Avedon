@@ -6,6 +6,7 @@ import * as z from 'zod/v4';
 import { gsmFromKnitStructure, loopLengthMmFrom50Needles, toTex } from '../../domain/calc/formulas';
 import { gsmAfterWidthChange, gsmWithChangePercent } from '../../domain/calc/wastage';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const system = z.enum(['ne', 'nm', 'tex', 'dtex', 'denye']);
 
@@ -91,20 +92,34 @@ export const fabricGsmKnit = defineSkill<typeof inputSchema, KnitGsmOutput>({
       measuredFinishedGsm != null && estimatedFinishedGsm != null ? ((measuredFinishedGsm - estimatedFinishedGsm) / estimatedFinishedGsm) * 100 : null;
     return { gsm, loopLengthMm, yarnTex, estimatedFinishedGsm, estimateBasis, measuredFinishedGsm, deviationPercent };
   },
-  summarize: (input, out) => {
+  summarize: (input, out, lang) => {
     const parts = [
-      `${fmt(input.coursesPerCm, 1)} sıra/cm, ${fmt(input.walesPerCm, 1)} çubuk/cm, ilmek boyu ${fmt(out.loopLengthMm, 2)} mm, ` +
-        `iplik ${fmt(out.yarnTex, 1)} tex${input.doubleJersey ? ' (çift plaka)' : ' (tek plaka)'}`,
-      `teorik ham gramaj ${fmt(out.gsm, 1)} gr/m²`,
+      t(lang, '{courses} sıra/cm, {wales} çubuk/cm, ilmek boyu {loop} mm, iplik {tex} tex{plate}', {
+        courses: fmt(input.coursesPerCm, 1),
+        wales: fmt(input.walesPerCm, 1),
+        loop: fmt(out.loopLengthMm, 2),
+        tex: fmt(out.yarnTex, 1),
+        plate: input.doubleJersey ? t(lang, ' (çift plaka)') : t(lang, ' (tek plaka)'),
+      }),
+      t(lang, 'teorik ham gramaj {gsm} gr/m²', { gsm: fmt(out.gsm, 1) }),
     ];
     if (out.estimatedFinishedGsm != null) {
       parts.push(
         out.estimateBasis === 'width_change'
-          ? `en ${fmt(input.greigeWidthCm, 0)} → ${fmt(input.finishedWidthCm, 0)} cm ile tahmini mamul gramaj ${fmt(out.estimatedFinishedGsm, 1)} gr/m²`
-          : `%${fmt(input.finishChangePercent, 1)} değişimle tahmini mamul gramaj ${fmt(out.estimatedFinishedGsm, 1)} gr/m²`
+          ? t(lang, 'en {from} → {to} cm ile tahmini mamul gramaj {gsm} gr/m²', {
+              from: fmt(input.greigeWidthCm, 0),
+              to: fmt(input.finishedWidthCm, 0),
+              gsm: fmt(out.estimatedFinishedGsm, 1),
+            })
+          : t(lang, '%{pct} değişimle tahmini mamul gramaj {gsm} gr/m²', {
+              pct: fmt(input.finishChangePercent, 1),
+              gsm: fmt(out.estimatedFinishedGsm, 1),
+            })
       );
     }
-    if (out.deviationPercent != null) parts.push(`gerçek ölçüm ${fmt(out.measuredFinishedGsm, 1)} gr/m², sapma %${fmt(out.deviationPercent, 1)}`);
+    if (out.deviationPercent != null) {
+      parts.push(t(lang, 'gerçek ölçüm {gsm} gr/m², sapma %{dev}', { gsm: fmt(out.measuredFinishedGsm, 1), dev: fmt(out.deviationPercent, 1) }));
+    }
     return parts.join('; ') + '.';
   },
 });

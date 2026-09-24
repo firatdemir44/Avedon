@@ -4,6 +4,7 @@ import type { CompanyTrust, CompanyTrustRatings } from '../api/client';
 import { Card, Icon, SectionTitle } from '../ui';
 import { formatMonthYear } from '../features/time';
 import { useTheme } from '../theme/ThemeContext';
+import { tr } from '../i18n';
 
 // Faz 3, Adım 5: firma sayfasındaki "Güven özeti" kartı.
 // Ürün sahibinin kararları (değiştirilmez):
@@ -12,7 +13,6 @@ import { useTheme } from '../theme/ThemeContext';
 //   - Verisi az olan firma cezalandırılmaz: `null` gelen oran/ortalama için
 //     uyarı/kırmızı renk kullanılmaz, nötr "Henüz yeterli veri yok" yazılır.
 
-const NO_DATA = 'Henüz yeterli veri yok';
 
 // "4,5 / 5" (virgül ondalık).
 function scoreText(value: number | null | undefined): string | null {
@@ -28,19 +28,19 @@ function memberSinceText(iso: string): string | null {
   if (!label) return null;
   const year = new Date(iso).getFullYear();
   const suffix = YEAR_SUFFIX[year % 10] ?? 'dan';
-  return `${label}'${suffix} beri`;
+  return tr("{label}'{suffix} beri", { label, suffix });
 }
 
 function verificationText(verification: CompanyTrust['verification']): string {
   if (verification.status !== 'dogrulanmis') {
-    return verification.status === 'inceleniyor' ? 'Doğrulama inceleniyor' : 'Henüz doğrulanmadı';
+    return verification.status === 'inceleniyor' ? tr('Doğrulama inceleniyor') : tr('Henüz doğrulanmadı');
   }
   const level =
     verification.level === 'ziyaret'
-      ? 'Yerinde ziyaretle doğrulandı'
+      ? tr('Yerinde ziyaretle doğrulandı')
       : verification.level === 'belge'
-        ? 'Belge ile doğrulandı'
-        : 'Doğrulandı';
+        ? tr('Belge ile doğrulandı')
+        : tr('Doğrulandı');
   const when = verification.verifiedAt ? formatMonthYear(verification.verifiedAt) : '';
   return when ? `${level} · ${when}` : level;
 }
@@ -48,9 +48,9 @@ function verificationText(verification: CompanyTrust['verification']): string {
 // "tipik yanıt süresi 5 saat" / 48 saat ve üstünde gün olarak.
 function responseTimeText(medianHours: number | null): string | null {
   if (medianHours == null) return null;
-  if (medianHours >= 48) return `${Math.round(medianHours / 24)} gün`;
-  if (medianHours < 1) return '1 saatten az';
-  return `${Math.round(medianHours)} saat`;
+  if (medianHours >= 48) return tr('{n} gün', { n: Math.round(medianHours / 24) });
+  if (medianHours < 1) return tr('1 saatten az');
+  return tr('{n} saat', { n: Math.round(medianHours) });
 }
 
 function ratingRows(ratings: CompanyTrustRatings | null, keys: { key: keyof CompanyTrustRatings; label: string }[]) {
@@ -98,47 +98,47 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
   const buyer = trust.asBuyer;
 
   const sellerRatings = ratingRows(seller.ratings, [
-    { key: 'quality', label: 'Kalite' },
-    { key: 'timing', label: 'Termin' },
-    { key: 'communication', label: 'İletişim' },
+    { key: 'quality', label: tr('Kalite') },
+    { key: 'timing', label: tr('Termin') },
+    { key: 'communication', label: tr('İletişim') },
   ]);
   const buyerRatings = ratingRows(buyer.ratings, [
-    { key: 'communication', label: 'İletişim' },
-    { key: 'seriousness', label: 'İşin ciddiyeti' },
+    { key: 'communication', label: tr('İletişim') },
+    { key: 'seriousness', label: tr('İşin ciddiyeti') },
   ]);
 
   const responseTime = trust.quoteResponse ? responseTimeText(trust.quoteResponse.medianHours) : null;
 
   return (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Güven özeti" />
+      <SectionTitle title={tr('Güven özeti')} />
       <Card>
-        <TrustRow label="Doğrulama" value={verificationText(trust.verification)} />
-        {since ? <TrustRow label="Platformda" value={since} /> : null}
+        <TrustRow label={tr('Doğrulama')} value={verificationText(trust.verification)} />
+        {since ? <TrustRow label={tr('Platformda')} value={since} /> : null}
         <TrustRow
-          label="Onaylı referans"
+          label={tr('Onaylı referans')}
           value={String(trust.confirmedReferenceCount)}
           last={seller.completedDeals === 0 && buyer.completedDeals === 0 && !trust.quoteResponse}
         />
 
         {/* --- Satıcı olarak --- */}
-        <GroupTitle>Satıcı olarak</GroupTitle>
+        <GroupTitle>{tr('Satıcı olarak')}</GroupTitle>
         {seller.completedDeals === 0 ? (
           <TrustRow
-            label="Tamamlanan iş"
-            value="Henüz tamamlanan iş yok"
+            label={tr('Tamamlanan iş')}
+            value={tr('Henüz tamamlanan iş yok')}
             muted
             last={buyer.completedDeals === 0 && !trust.quoteResponse}
           />
         ) : (
           <>
-            <TrustRow label="Tamamlanan iş" value={String(seller.completedDeals)} />
+            <TrustRow label={tr('Tamamlanan iş')} value={String(seller.completedDeals)} />
             <TrustRow
-              label="Zamanında teslim"
+              label={tr('Zamanında teslim')}
               value={
                 seller.onTimeRate != null
                   ? `%${seller.onTimeRate}`
-                  : `${NO_DATA} (en az ${trust.thresholds.deals} tamamlanan iş gerekir)`
+                  : tr('Henüz yeterli veri yok (en az {n} tamamlanan iş gerekir)', { n: trust.thresholds.deals })
               }
               muted={seller.onTimeRate == null}
               last={sellerRatings.length === 0 && buyer.completedDeals === 0 && !trust.quoteResponse}
@@ -149,15 +149,15 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
                   <TrustRow key={row.label} label={row.label} value={row.value} />
                 ))}
                 <TrustRow
-                  label="Değerlendirme"
-                  value={`${seller.reviewCount} değerlendirme`}
+                  label={tr('Değerlendirme')}
+                  value={tr('{n} değerlendirme', { n: seller.reviewCount })}
                   last={buyer.completedDeals === 0 && !trust.quoteResponse}
                 />
               </>
             ) : (
               <TrustRow
-                label="Değerlendirme"
-                value={`${NO_DATA} (en az ${trust.thresholds.reviews} değerlendirme gerekir)`}
+                label={tr('Değerlendirme')}
+                value={tr('Henüz yeterli veri yok (en az {n} değerlendirme gerekir)', { n: trust.thresholds.reviews })}
                 muted
                 last={buyer.completedDeals === 0 && !trust.quoteResponse}
               />
@@ -168,19 +168,19 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
         {/* --- Alıcı olarak: yalnızca tamamlanmış işi varsa --- */}
         {buyer.completedDeals > 0 ? (
           <>
-            <GroupTitle>Alıcı olarak</GroupTitle>
-            <TrustRow label="Tamamlanan iş" value={String(buyer.completedDeals)} />
+            <GroupTitle>{tr('Alıcı olarak')}</GroupTitle>
+            <TrustRow label={tr('Tamamlanan iş')} value={String(buyer.completedDeals)} />
             {buyerRatings.length ? (
               <>
                 {buyerRatings.map((row) => (
                   <TrustRow key={row.label} label={row.label} value={row.value} />
                 ))}
-                <TrustRow label="Değerlendirme" value={`${buyer.reviewCount} değerlendirme`} last={!trust.quoteResponse} />
+                <TrustRow label={tr('Değerlendirme')} value={tr('{n} değerlendirme', { n: buyer.reviewCount })} last={!trust.quoteResponse} />
               </>
             ) : (
               <TrustRow
-                label="Değerlendirme"
-                value={`${NO_DATA} (en az ${trust.thresholds.reviews} değerlendirme gerekir)`}
+                label={tr('Değerlendirme')}
+                value={tr('Henüz yeterli veri yok (en az {n} değerlendirme gerekir)', { n: trust.thresholds.reviews })}
                 muted
                 last={!trust.quoteResponse}
               />
@@ -191,11 +191,11 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
         {/* --- Tekliflere yanıt: veri yoksa satır hiç çizilmez --- */}
         {trust.quoteResponse ? (
           <TrustRow
-            label="Tekliflere yanıt"
+            label={tr('Tekliflere yanıt')}
             value={
               responseTime
-                ? `Tekliflerin %${trust.quoteResponse.responseRate}'ine yanıt veriyor · tipik yanıt süresi ${responseTime}`
-                : `Tekliflerin %${trust.quoteResponse.responseRate}'ine yanıt veriyor`
+                ? tr("Tekliflerin %{r}'ine yanıt veriyor · tipik yanıt süresi {time}", { r: trust.quoteResponse.responseRate, time: responseTime })
+                : tr("Tekliflerin %{r}'ine yanıt veriyor", { r: trust.quoteResponse.responseRate })
             }
             last
           />
@@ -207,7 +207,7 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
         onPress={() => setMethodOpen((open) => !open)}
         accessibilityRole="button"
         accessibilityState={{ expanded: methodOpen }}
-        accessibilityLabel="Güven özeti nasıl hesaplanıyor"
+        accessibilityLabel={tr('Güven özeti nasıl hesaplanıyor')}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',
@@ -217,7 +217,7 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
           opacity: pressed ? 0.6 : 1,
         })}
       >
-        <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplanıyor?</Text>
+        <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Nasıl hesaplanıyor?')}</Text>
         <Icon name={methodOpen ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
       </Pressable>
       {methodOpen ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{trust.method}</Text> : null}

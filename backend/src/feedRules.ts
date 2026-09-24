@@ -13,6 +13,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './db';
 import { notifyMany } from './notifications';
+import { t, type Lang } from './i18n';
 import type Anthropic from '@anthropic-ai/sdk';
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
 import { z } from 'zod/v4';
@@ -49,15 +50,15 @@ const MESSAGES: Record<NonNullable<PublicPostRule['reason']>, string> = {
   no_company: 'Herkese açık paylaşım için bir firmaya bağlı olmanız gerekir.',
   not_verified: 'Herkese açık paylaşım yalnızca doğrulanmış firmalara açık. Firma doğrulama başvurusu yapabilirsiniz; bu arada bağlantılarınızla paylaşabilirsiniz.',
   blocked: 'Firmanızın paylaşımları çok sayıda şikâyet aldığı için herkese açık paylaşım geçici olarak kapalı. Bağlantılarınızla paylaşmaya devam edebilirsiniz.',
-  daily_limit: `Firmanız bugün ${PUBLIC_PER_DAY} herkese açık paylaşım hakkını kullandı. Bağlantılarınızla paylaşabilir ya da yarın tekrar deneyebilirsiniz.`,
-  same_product: `Bu ürün son ${SAME_PRODUCT_DAYS} gün içinde herkese açık paylaşıldı. Aynı ürünü bağlantılarınızla paylaşabilirsiniz.`,
+  daily_limit: 'Firmanız bugün {n} herkese açık paylaşım hakkını kullandı. Bağlantılarınızla paylaşabilir ya da yarın tekrar deneyebilirsiniz.',
+  same_product: 'Bu ürün son {n} gün içinde herkese açık paylaşıldı. Aynı ürünü bağlantılarınızla paylaşabilirsiniz.',
 };
 
 // Herkese açık paylaşım hakkı. productId verilirse aynı ürün kuralı da bakılır;
 // excludePostId düzenlemede gönderinin kendisini saymamak için.
-export async function publicPostRule(user: { id: string; companyId: string | null; isAdmin?: boolean }, opts: { productId?: string | null; excludePostId?: string } = {}): Promise<PublicPostRule> {
+export async function publicPostRule(user: { id: string; companyId: string | null; isAdmin?: boolean }, opts: { productId?: string | null; excludePostId?: string; lang?: Lang } = {}): Promise<PublicPostRule> {
   const base = { usedToday: 0, limitPerDay: PUBLIC_PER_DAY, blockedUntil: null, nextAllowedAt: null };
-  const deny = (reason: NonNullable<PublicPostRule['reason']>, extra: Partial<PublicPostRule> = {}): PublicPostRule => ({ ...base, allowed: false, reason, message: MESSAGES[reason], ...extra });
+  const deny = (reason: NonNullable<PublicPostRule['reason']>, extra: Partial<PublicPostRule> = {}): PublicPostRule => ({ ...base, allowed: false, reason, message: t(opts.lang, MESSAGES[reason], { n: reason === 'daily_limit' ? PUBLIC_PER_DAY : SAME_PRODUCT_DAYS }), ...extra });
   if (!user.companyId) return user.isAdmin ? { ...base, allowed: true, reason: null, message: null } : deny('no_company');
   const company = await prisma.company.findUnique({ where: { id: user.companyId }, select: { verification: true, publicPostBlockedUntil: true } });
   if (!company) return deny('no_company');
@@ -158,8 +159,9 @@ export async function reportPost(reporter: { id: string; companyId: string | nul
       const admins = (await prisma.user.findMany({ where: { isAdmin: true }, select: { id: true } })).map((u) => u.id);
       await notifyMany(admins, {
         kind: 'feed_moderation',
-        title: `Akış: ${company.name} herkese açık paylaşımı ${BLOCK_DAYS} gün kapandı`,
-        body: `${distinct(companyReports)} farklı firmadan şikâyet. Yönetim > Akış şikâyetleri'nden inceleyebilirsiniz.`,
+        title: 'Akış: {company} herkese açık paylaşımı {days} gün kapandı',
+        vars: { company: company.name, days: BLOCK_DAYS, n: distinct(companyReports) },
+        body: "{n} farklı firmadan şikâyet. Yönetim > Akış şikâyetleri'nden inceleyebilirsiniz.",
         data: { companyId: authorCompanyId, postId },
       });
     }

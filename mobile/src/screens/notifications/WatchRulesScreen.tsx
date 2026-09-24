@@ -18,6 +18,7 @@ import { presetFromYarnWatchQuery } from '../../features/yarns/watch';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, Badge, Button, EmptyState, Icon, Input, ListRow, Screen, SkeletonRow } from '../../ui';
+import { tr, locale } from '../../i18n';
 
 type Props = RootStackScreenProps<'WatchRules'>;
 
@@ -30,16 +31,16 @@ function lastMatchLabel(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
   const days = Math.floor((Date.now() - date.getTime()) / 86400000);
-  if (days <= 0) return 'son: bugün';
-  if (days === 1) return 'son: dün';
-  if (days < 30) return `son: ${days} gün önce`;
-  return `son: ${date.toLocaleDateString('tr-TR')}`;
+  if (days <= 0) return tr('son: bugün');
+  if (days === 1) return tr('son: dün');
+  if (days < 30) return tr('son: {n} gün önce', { n: days });
+  return tr('son: {date}', { date: date.toLocaleDateString(locale()) });
 }
 
 function ruleSubtitle(rule: WatchRule): string {
-  const parts = [rule.matchCount > 0 ? `${rule.matchCount} eşleşme` : 'Henüz eşleşme yok'];
+  const parts = [rule.matchCount > 0 ? tr('{n} eşleşme', { n: rule.matchCount }) : tr('Henüz eşleşme yok')];
   if (rule.lastMatchedAt) parts.push(lastMatchLabel(rule.lastMatchedAt));
-  if (!rule.active) parts.push('duraklatıldı');
+  if (!rule.active) parts.push(tr('duraklatıldı'));
   return parts.join(' · ');
 }
 
@@ -75,7 +76,7 @@ export function WatchRulesScreen({ navigation }: Props) {
         setData((prev) =>
           prev ? { ...prev, rules: prev.rules.map((r) => (r.id === rule.id ? { ...r, active: !next } : r)) } : prev
         );
-        setActionError('İzleme güncellenemedi, tekrar deneyin.');
+        setActionError(tr('İzleme güncellenemedi, tekrar deneyin.'));
       } finally {
         setBusyId(null);
       }
@@ -99,7 +100,7 @@ export function WatchRulesScreen({ navigation }: Props) {
     async (rule: WatchRule) => {
       const name = draft.trim().slice(0, NAME_MAX);
       if (!name) {
-        setActionError('İzleme adı boş olamaz.');
+        setActionError(tr('İzleme adı boş olamaz.'));
         return;
       }
       if (name === rule.name) {
@@ -117,7 +118,7 @@ export function WatchRulesScreen({ navigation }: Props) {
         cancelRename();
       } catch {
         haptics.error();
-        setActionError('İzleme adı değiştirilemedi, tekrar deneyin.');
+        setActionError(tr('İzleme adı değiştirilemedi, tekrar deneyin.'));
       } finally {
         setSavingName(false);
       }
@@ -128,9 +129,9 @@ export function WatchRulesScreen({ navigation }: Props) {
   const remove = useCallback(
     async (rule: WatchRule) => {
       const ok = await confirmAction({
-        title: 'İzleme silinsin mi?',
-        message: `"${rule.name}" izlemesi kalıcı olarak silinecek, bu süzgeç için bildirim almazsınız.`,
-        confirmLabel: 'Sil',
+        title: tr('İzleme silinsin mi?'),
+        message: tr('"{name}" izlemesi kalıcı olarak silinecek, bu süzgeç için bildirim almazsınız.', { name: rule.name }),
+        confirmLabel: tr('Sil'),
         destructive: true,
       });
       if (!ok) return;
@@ -141,7 +142,7 @@ export function WatchRulesScreen({ navigation }: Props) {
         setData((prev) => (prev ? { ...prev, rules: prev.rules.filter((r) => r.id !== rule.id) } : prev));
       } catch {
         haptics.error();
-        setActionError('İzleme silinemedi, tekrar deneyin.');
+        setActionError(tr('İzleme silinemedi, tekrar deneyin.'));
       }
     },
     [setData]
@@ -187,9 +188,9 @@ export function WatchRulesScreen({ navigation }: Props) {
       <Screen scroll={false}>
         <EmptyState
           icon="warning"
-          title="İzlemeler alınamadı"
-          description={friendlyMessage(error, 'İzlemeler alınamadı')}
-          actionLabel="Tekrar dene"
+          title={tr('İzlemeler alınamadı')}
+          description={friendlyMessage(error, tr('İzlemeler alınamadı'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -223,15 +224,15 @@ export function WatchRulesScreen({ navigation }: Props) {
             ) : null}
             {full ? (
               <ListRow
-                title="İzleme sınırına ulaştınız"
-                subtitle={`En fazla ${max} izleme kurabilirsiniz. Önce birini silin.`}
+                title={tr('İzleme sınırına ulaştınız')}
+                subtitle={tr('En fazla {max} izleme kurabilirsiniz. Önce birini silin.', { max })}
                 left={<Icon name="warning" color="warning" />}
                 divider={false}
               />
             ) : (
               <ListRow
-                title="Yeni izleme"
-                subtitle="Süzgeci seçin, uyan ürün çıkınca haber verelim"
+                title={tr('Yeni izleme')}
+                subtitle={tr('Süzgeci seçin, uyan ürün çıkınca haber verelim')}
                 left={<Icon name="plus" color="brand" />}
                 divider={false}
                 onPress={newWatch}
@@ -242,9 +243,9 @@ export function WatchRulesScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="bell"
-            title="Henüz izleme yok"
-            description="Aradığınız kaliteyi süzgeçle tarif edin; uyan yeni ürün eklendiğinde bildirim alın."
-            actionLabel="İzleme kur"
+            title={tr('Henüz izleme yok')}
+            description={tr('Aradığınız kaliteyi süzgeçle tarif edin; uyan yeni ürün eklendiğinde bildirim alın.')}
+            actionLabel={tr('İzleme kur')}
             onAction={newWatch}
           />
         }
@@ -264,20 +265,20 @@ export function WatchRulesScreen({ navigation }: Props) {
                 }}
               >
                 <Input
-                  label="İzleme adı"
+                  label={tr('İzleme adı')}
                   value={draft}
                   onChangeText={setDraft}
                   maxLength={NAME_MAX}
                   autoFocus
                   selectTextOnFocus
-                  placeholder="İzleme adı"
+                  placeholder={tr('İzleme adı')}
                   returnKeyType="done"
                   onSubmitEditing={() => void saveRename(item)}
                 />
                 <View style={{ flexDirection: 'row', gap: t.space[2], justifyContent: 'flex-end' }}>
-                  <Button kind="quiet" label="Vazgeç" onPress={cancelRename} />
+                  <Button kind="quiet" label={tr('Vazgeç')} onPress={cancelRename} />
                   <Button
-                    label="Kaydet"
+                    label={tr('Kaydet')}
                     loading={savingName}
                     disabled={savingName}
                     onPress={() => void saveRename(item)}
@@ -306,14 +307,14 @@ export function WatchRulesScreen({ navigation }: Props) {
                 subtitle={ruleSubtitle(item)}
                 // İplik kuralının süzgeci kumaş alanlarıyla çözümlenemez: küçük
                 // bir "İplik" rozeti kuralın hangi dizine ait olduğunu söyler.
-                right={yarn ? <Badge kind="info" label="İplik" /> : undefined}
+                right={yarn ? <Badge kind="info" label={tr('İplik')} /> : undefined}
                 divider={false}
                 onPress={yarn ? () => openYarnRule(item) : undefined}
               />
               <Pressable
                 onPress={() => startRename(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.name} izlemesinin adını değiştir`}
+                accessibilityLabel={tr('{name} izlemesinin adını değiştir', { name: item.name })}
                 style={iconButtonStyle}
               >
                 <Icon name="pencil-outline" size={t.size.iconSm} color="brand" />
@@ -322,14 +323,14 @@ export function WatchRulesScreen({ navigation }: Props) {
                 value={item.active}
                 onValueChange={(next) => void toggleActive(item, next)}
                 disabled={busyId === item.id}
-                accessibilityLabel={`${item.name} izlemesi ${item.active ? 'açık' : 'kapalı'}`}
+                accessibilityLabel={item.active ? tr('{name} izlemesi açık', { name: item.name }) : tr('{name} izlemesi kapalı', { name: item.name })}
                 trackColor={{ true: t.colors.brand, false: t.colors.lineStrong }}
                 thumbColor={t.colors.surface1}
               />
               <Pressable
                 onPress={() => void remove(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.name} izlemesini sil`}
+                accessibilityLabel={tr('{name} izlemesini sil', { name: item.name })}
                 style={iconButtonStyle}
               >
                 <Icon name="trash-outline" size={t.size.iconSm} color="danger" />
@@ -340,7 +341,7 @@ export function WatchRulesScreen({ navigation }: Props) {
         ListFooterComponent={
           rules.length ? (
             <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[4] }]}>
-              Kendi firmanızın ürünleri için bildirim gelmez. Bildirimler yalnızca uygulama içinde gösterilir.
+              {tr('Kendi firmanızın ürünleri için bildirim gelmez. Bildirimler yalnızca uygulama içinde gösterilir.')}
             </Text>
           ) : null
         }

@@ -8,6 +8,7 @@ import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { passportStyles } from './styles';
 import { compositionState, emptyCompositionRow, type CompositionRow } from './rows';
+import { locale, tr } from '../../i18n';
 
 const FIBER_OPTIONS = FIBERS.map((f) => ({ value: f.key, label: f.label }));
 
@@ -33,7 +34,7 @@ export function CompositionEditor({
   hint,
   totalWarning,
   totalSuffix,
-  percentPlaceholder = 'Örn. 100',
+  percentPlaceholder = tr('Örn. 100'),
   disabled,
 }: Props) {
   const t = useTheme();
@@ -65,7 +66,7 @@ export function CompositionEditor({
               onPress={() => removeRow(row.key)}
               disabled={disabled}
               accessibilityRole="button"
-              accessibilityLabel={`${index + 1}. lif satırını kaldır`}
+              accessibilityLabel={tr('{n}. lif satırını kaldır', { n: index + 1 })}
               style={({ pressed }) => [styles.rowRemove, pressed && styles.rowRemovePressed]}
             >
               <Icon name="x" color="ink2" />
@@ -78,7 +79,7 @@ export function CompositionEditor({
             compact
           />
           <Input
-            label="Oran"
+            label={tr('Oran')}
             unit="%"
             value={row.percent}
             onChangeText={(percent) => updateRow(row.key, { percent })}
@@ -95,16 +96,16 @@ export function CompositionEditor({
           onPress={addRow}
           disabled={disabled}
           accessibilityRole="button"
-          accessibilityLabel="Lif satırı ekle"
+          accessibilityLabel={tr('Lif satırı ekle')}
           style={({ pressed }) => [styles.addRow, pressed && styles.addRowPressed]}
         >
           <Icon name="plus" size={t.size.iconSm} color="brand" />
-          <Text style={styles.addRowText}>Lif ekle</Text>
+          <Text style={styles.addRowText}>{tr('Lif ekle')}</Text>
         </Pressable>
       ) : null}
       {valid.length ? (
         <Text style={[styles.totalText, totalWarning && styles.totalWarning]}>
-          Toplam %{total.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}
+          {tr('Toplam %{n}', { n: total.toLocaleString(locale(), { maximumFractionDigits: 2 }) })}
           {totalSuffix ?? ''}
         </Text>
       ) : null}

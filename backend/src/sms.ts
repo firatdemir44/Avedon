@@ -117,7 +117,8 @@ export async function sendSms(phone: string, text: string): Promise<SendSmsResul
   }
 }
 
-export async function sendOtpSms(phone: string, code: string): Promise<SendSmsResult> {
+export async function sendOtpSms(phone: string, code: string, lang?: string): Promise<SendSmsResult> {
+  if (lang === 'en') return sendSms(phone, `Your Takyon verification code: ${code}. Valid for 5 minutes. Do not share it with anyone.`);
   return sendSms(phone, `Takyon dogrulama kodunuz: ${code}. Kod 5 dakika gecerlidir. Kimseyle paylasmayin.`);
 }
 

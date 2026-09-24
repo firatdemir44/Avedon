@@ -1,4 +1,5 @@
 import React from 'react';
+import { tr } from '../i18n';
 import { Modal, View, Image, Pressable, StatusBar, Text } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
@@ -32,7 +33,7 @@ export function ImageViewerModal({ imageUrl, visible, onClose, caption }: Props)
       <Pressable
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Fotoğrafı kapat"
+        accessibilityLabel={tr('Fotoğrafı kapat')}
         style={{
           flex: 1,
           // Tam ekran görsel için koyu örtü: her iki temada da aynı (fotoğraf

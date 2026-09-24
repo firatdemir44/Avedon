@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcSectionRow,
@@ -76,14 +77,14 @@ export function YarnCountCalculator({ navigation }: RootStackScreenProps<'YarnCo
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="İplik numarası" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('İplik numarası')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <SegmentControl
           stretch
-          accessibilityLabel="Hesap yöntemi"
+          accessibilityLabel={tr('Hesap yöntemi')}
           options={[
-            { value: 'convert', label: 'Sistem çevir' },
-            { value: 'sample', label: 'Numuneden hesapla' },
+            { value: 'convert', label: tr('Sistem çevir') },
+            { value: 'sample', label: tr('Numuneden hesapla') },
           ]}
           value={f.mode}
           onChange={(mode) => update({ mode })}
@@ -93,70 +94,69 @@ export function YarnCountCalculator({ navigation }: RootStackScreenProps<'YarnCo
           <>
             {/* Beş sistem 375 px'te tek satıra sığmaz; çip satırı yatay kaydırılır. */}
             <View style={{ gap: t.space[2] }}>
-              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Numaralandırma sistemi</Text>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Numaralandırma sistemi')}</Text>
               <ChipRow>
                 {SYSTEMS.map((s) => (
                   <Chip
                     key={s.value}
-                    label={s.label}
+                    label={tr(s.label)}
                     selected={s.value === f.system}
                     onPress={() => update({ system: s.value })}
                   />
                 ))}
               </ChipRow>
             </View>
-            <CalcTable title="İplik numarası çevirisi">
+            <CalcTable title={tr('İplik numarası çevirisi')}>
               <CalcInputRow
-                label="İplik numarası"
+                label={tr('İplik numarası')}
                 value={f.value}
                 onChangeText={(v) => update({ value: v })}
                 placeholder="30"
-                unit={SYSTEMS.find((s) => s.value === f.system)?.label}
+                unit={tr(SYSTEMS.find((s) => s.value === f.system)?.label ?? '')}
               />
               <CalcInputRow
-                label="Kat sayısı"
-                hint="Tek kat için 1; 60/2 Ne'de 60 ve 2 yazın."
+                label={tr('Kat sayısı')}
+                hint={tr("Tek kat için 1; 60/2 Ne'de 60 ve 2 yazın.")}
                 value={f.ply}
                 onChangeText={(v) => update({ ply: v })}
                 placeholder="1"
                 keyboardType="number-pad"
-                unit="kat"
+                unit={tr('kat')}
               />
-              <CalcSectionRow label="Karşılıkları" />
+              <CalcSectionRow label={tr('Karşılıkları')} />
               {resultRows(converted).map((row) => (
-                <CalcResultRow key={row.label} label={row.label} value={row.value} />
+                <CalcResultRow key={row.label} label={tr(row.label)} value={row.value} />
               ))}
-              {converted === null ? <CalcNoteRow text="Hesap için iplik numarasını girin." /> : null}
-              <CalcFormulaRow text="Önce Tex'e çevrilir (Ne → 1000 ÷ (Ne × 1,693)), kat sayısıyla çarpılır, sonra diğer sistemlere dönüştürülür: Nm = 1000 ÷ Tex, dtex = Tex × 10, Denye = Tex × 9." />
+              {converted === null ? <CalcNoteRow text={tr('Hesap için iplik numarasını girin.')} /> : null}
+              <CalcFormulaRow text={tr("Önce Tex'e çevrilir (Ne → 1000 ÷ (Ne × 1,693)), kat sayısıyla çarpılır, sonra diğer sistemlere dönüştürülür: Nm = 1000 ÷ Tex, dtex = Tex × 10, Denye = Tex × 9.")} />
             </CalcTable>
           </>
         ) : (
           <>
             <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-              İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha
-              güvenilir yapar.
+              {tr('İplikten bir parça kesip uzunluğunu ölçün ve hassas terazide tartın. Uzun parça ölçmek sonucu daha güvenilir yapar.')}
             </Text>
-            <CalcTable title="Numuneden iplik numarası">
+            <CalcTable title={tr('Numuneden iplik numarası')}>
               <CalcInputRow
-                label="İplik uzunluğu"
+                label={tr('İplik uzunluğu')}
                 value={f.lengthCm}
                 onChangeText={(v) => update({ lengthCm: v })}
                 placeholder="100"
                 unit="cm"
               />
               <CalcInputRow
-                label="İplik ağırlığı"
+                label={tr('İplik ağırlığı')}
                 value={f.weightGrams}
                 onChangeText={(v) => update({ weightGrams: v })}
                 placeholder="0,02"
                 unit="gr"
               />
-              <CalcSectionRow label="Karşılıkları" />
+              <CalcSectionRow label={tr('Karşılıkları')} />
               {resultRows(fromSample).map((row) => (
-                <CalcResultRow key={row.label} label={row.label} value={row.value} />
+                <CalcResultRow key={row.label} label={tr(row.label)} value={row.value} />
               ))}
-              {fromSample === null ? <CalcNoteRow text="Hesap için uzunluk ve ağırlığı girin." /> : null}
-              <CalcFormulaRow text="Tex = ağırlık (gr) × 100.000 ÷ uzunluk (cm); 1.000 metrenin gram ağırlığıdır." />
+              {fromSample === null ? <CalcNoteRow text={tr('Hesap için uzunluk ve ağırlığı girin.')} /> : null}
+              <CalcFormulaRow text={tr('Tex = ağırlık (gr) × 100.000 ÷ uzunluk (cm); 1.000 metrenin gram ağırlığıdır.')} />
             </CalcTable>
           </>
         )}

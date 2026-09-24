@@ -12,6 +12,7 @@ import { DATE_PATTERN } from '../../features/quotes/format';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Button, Card, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'QuoteRequestForm'>;
 
@@ -63,21 +64,21 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
       if (apiError?.code === 'already_open') {
         const requestId = typeof apiError.body?.requestId === 'string' ? apiError.body.requestId : null;
         setExistingId(requestId);
-        setError('Bu ürün için zaten açık bir teklif isteğiniz var.');
+        setError(tr('Bu ürün için zaten açık bir teklif isteğiniz var.'));
       } else if (apiError?.code === 'own_product') {
-        setError('Kendi firmanızın ürününe teklif isteyemezsiniz.');
+        setError(tr('Kendi firmanızın ürününe teklif isteyemezsiniz.'));
       } else if (apiError?.code === 'daily_limit') {
         // Faz 3, Adım 1: günlük toplam teklif isteği sınırı tekil istekte de var.
         const remaining = typeof apiError.body?.remaining === 'number' ? apiError.body.remaining : 0;
         setError(
           remaining > 0
-            ? `Günlük teklif isteği sınırına yaklaştınız; bugün ${remaining} istek hakkınız kaldı.`
-            : 'Günlük teklif isteği sınırına ulaştınız. Yarın tekrar deneyin.'
+            ? tr('Günlük teklif isteği sınırına yaklaştınız; bugün {n} istek hakkınız kaldı.', { n: remaining })
+            : tr('Günlük teklif isteği sınırına ulaştınız. Yarın tekrar deneyin.')
         );
       } else if (apiError?.code === 'product_not_found') {
-        setError('Ürün bulunamadı, kaldırılmış olabilir.');
+        setError(tr('Ürün bulunamadı, kaldırılmış olabilir.'));
       } else {
-        setError(friendlyMessage(err, 'Teklif isteği gönderilemedi'));
+        setError(friendlyMessage(err, tr('Teklif isteği gönderilemedi')));
       }
       setSubmitting(false);
     }
@@ -85,12 +86,12 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Teklif iste" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Teklif iste')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
           <Button
             size="lg"
-            label="Teklif iste"
+            label={tr('Teklif iste')}
             loading={submitting}
             disabled={!canSubmit}
             onPress={submit}
@@ -101,42 +102,42 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
           <View style={{ gap: t.space[1] }}>
             <Text style={[t.type.mono20, { color: t.colors.ink }]}>{productCode}</Text>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Ne kadar ve ne zaman istediğinizi yazın; satıcı firma teklifini hazırlayıp gönderir.
+              {tr('Ne kadar ve ne zaman istediğinizi yazın; satıcı firma teklifini hazırlayıp gönderir.')}
             </Text>
           </View>
         </Card>
 
         <View style={{ gap: t.space[4] }}>
-          <SectionTitle title="İstek bilgileri" />
+          <SectionTitle title={tr('İstek bilgileri')} />
           <Input
-            label="Miktar"
+            label={tr('Miktar')}
             value={quantity}
             onChangeText={setQuantity}
             inputMode="decimal"
             keyboardType="decimal-pad"
-            placeholder="Örn. 1500"
+            placeholder={tr('Örn. 1500')}
             unit={STOCK_UNIT_LABELS[unit].short}
           />
           <View style={{ gap: t.space[1] }}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim</Text>
-            <SegmentControl<StockUnit> stretch accessibilityLabel="Birim" value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Birim')}</Text>
+            <SegmentControl<StockUnit> stretch accessibilityLabel={tr('Birim')} value={unit} onChange={setUnit} options={UNIT_OPTIONS} />
           </View>
 
           <Input
-            label="İstenen termin tarihi (isteğe bağlı)"
+            label={tr('İstenen termin tarihi (isteğe bağlı)')}
             value={targetDate}
             onChangeText={setTargetDate}
             placeholder="2026-11-15"
             autoCapitalize="none"
-            helper="YYYY-AA-GG biçiminde yazın."
-            error={dateInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+            helper={tr('YYYY-AA-GG biçiminde yazın.')}
+            error={dateInvalid ? tr('Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).') : null}
           />
 
           <Input
-            label="Not (isteğe bağlı)"
+            label={tr('Not (isteğe bağlı)')}
             value={note}
             onChangeText={setNote}
-            placeholder="Örn. Ekru, ilk parti 500 m olabilir"
+            placeholder={tr('Örn. Ekru, ilk parti 500 m olabilir')}
             multiline
           />
         </View>
@@ -160,7 +161,7 @@ export function QuoteRequestFormScreen({ route, navigation }: Props) {
             {existingId ? (
               <Button
                 kind="secondary"
-                label="Mevcut isteğe git"
+                label={tr('Mevcut isteğe git')}
                 onPress={() => navigation.replace('QuoteRequestDetail', { requestId: existingId })}
               />
             ) : null}

@@ -8,6 +8,7 @@ import { formatComposition } from '../features/products/glossaryLabels';
 import type { Product } from '../types';
 import { useTheme } from '../theme/ThemeContext';
 import { Badge, Button, Icon } from '../ui';
+import { tr } from '../i18n';
 
 // Eski adıyla kullanan ekranlar için (etiketlerin kaynağı artık katalog).
 export const PRODUCT_TYPE_LABELS = TYPE_LABELS;
@@ -48,7 +49,7 @@ const CERTIFICATE_SHORT_LABELS: Record<string, string> = {
 };
 
 function certificateBadgeText(names: string[]) {
-  const first = CERTIFICATE_SHORT_LABELS[names[0]] ?? names[0];
+  const first = names[0] === 'diger' ? tr('Sertifika') : CERTIFICATE_SHORT_LABELS[names[0]] ?? names[0];
   return names.length > 1 ? `${first} +${names.length - 1}` : first;
 }
 
@@ -114,8 +115,8 @@ export function ProductRow({
       accessibilityRole={Platform.OS === 'web' ? undefined : selectable ? 'checkbox' : 'button'}
       accessibilityState={selectable ? { checked: selected } : undefined}
       accessibilityLabel={`${product.code}, ${category}, ${summary}${
-        certificates.length ? `, ${certificates.length} sertifika` : ''
-      }${product.isFavorite ? ', takip ediliyor' : ''}${selectable ? (selected ? ', seçili' : ', seçili değil') : ''}`}
+        certificates.length ? `, ${tr('{n} sertifika', { n: certificates.length })}` : ''
+      }${product.isFavorite ? `, ${tr('takip ediliyor')}` : ''}${selectable ? (selected ? `, ${tr('seçili')}` : `, ${tr('seçili değil')}`) : ''}`}
       style={({ pressed }) => [
         rowStyle,
         {
@@ -173,10 +174,10 @@ export function ProductRow({
           {showAction ? (
             <Button
               kind="quiet"
-              label="Talep et"
+              label={tr('Talep et')}
               icon="sample"
               onPress={onRequestSample}
-              accessibilityLabel={`${product.code} için numune talep et`}
+              accessibilityLabel={tr('{code} için numune talep et', { code: product.code })}
               style={{ marginRight: -t.space[4], minHeight: t.size.touchMin }}
             />
           ) : null}

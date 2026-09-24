@@ -4,6 +4,7 @@ import { formatMeasure } from '../features/calculators/parse';
 import { STOCK_UNIT_LABELS, type StockUnit } from '../features/products/catalog';
 import { useTheme } from '../theme/ThemeContext';
 import { Badge } from '../ui';
+import { tr } from '../i18n';
 
 // Bu miktarın altındaki stok "azalıyor" sayılır: uyarı rengi nokta ve yazı.
 // Numune ve küçük sipariş için 100 m makul bir alt sınır; kilogramla satılan
@@ -46,7 +47,7 @@ export function StockValue({ stock, unit = 'm', style }: StockProps & { style?: 
   return (
     <View
       style={[{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] + t.space[1] / 2 }, style]}
-      accessibilityLabel={`Stok ${formatMeasure(stock)} ${STOCK_UNIT_LABELS[unit]?.long ?? unit}${low ? ', azalıyor' : ''}`}
+      accessibilityLabel={`${tr('Stok')} ${formatMeasure(stock)} ${STOCK_UNIT_LABELS[unit]?.long ?? unit}${low ? `, ${tr('azalıyor')}` : ''}`}
     >
       <StockDot stock={stock} unit={unit} />
       <Text style={[t.type.mono14, { color: low ? t.colors.warning : t.colors.ink2 }]}>{formatStock(stock, unit)}</Text>
@@ -57,5 +58,5 @@ export function StockValue({ stock, unit = 'm', style }: StockProps & { style?: 
 // Ürün sayfasının başındaki durum rozeti: STOKTA (info) / AZ STOK (pending).
 export function StockBadge({ stock, unit }: StockProps) {
   const low = isLowStock(stock, unit);
-  return low ? <Badge kind="pending" label="Az stok" /> : <Badge kind="info" label="Stokta" />;
+  return low ? <Badge kind="pending" label={tr('Az stok')} /> : <Badge kind="info" label={tr('Stokta')} />;
 }

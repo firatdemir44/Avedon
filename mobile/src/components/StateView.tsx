@@ -3,6 +3,7 @@ import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-nat
 import { ApiError } from '../api/client';
 import { useTheme } from '../theme/ThemeContext';
 import { Button, Icon, type AnyIconName } from '../ui';
+import { tr } from '../i18n';
 
 // Boş liste, bulunamadı ve hata ekranları tek bir kalıptan çıkıyor: ne olduğu
 // (başlık), neden / ne yapılabilir (açıklama) ve varsa tek bir sonraki adım.
@@ -79,14 +80,14 @@ export function friendlyMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) return error.message;
   if (typeof error === 'string') return error;
   if (error instanceof Error && /network|fetch|timeout|aborted/i.test(error.message)) {
-    return 'Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+    return tr('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.');
   }
   return error instanceof Error ? error.message : fallback;
 }
 
 export function ErrorState({
   error,
-  fallback = 'Bir şeyler ters gitti.',
+  fallback = tr('Bir şeyler ters gitti.'),
   onRetry,
   compact,
 }: {
@@ -99,9 +100,9 @@ export function ErrorState({
     <EmptyState
       icon="cloud-offline-outline"
       tone="error"
-      title="Yüklenemedi"
+      title={tr('Yüklenemedi')}
       message={friendlyMessage(error, fallback)}
-      actionLabel={onRetry ? 'Tekrar dene' : undefined}
+      actionLabel={onRetry ? tr('Tekrar dene') : undefined}
       onAction={onRetry}
       compact={compact}
     />
@@ -146,7 +147,7 @@ export function InlineError({
           hitSlop={t.space[3]}
           style={{ minHeight: t.size.touchMin, justifyContent: 'center' }}
         >
-          <Text style={[t.type.label14, { color: t.colors.danger }]}>Tekrar dene</Text>
+          <Text style={[t.type.label14, { color: t.colors.danger }]}>{tr('Tekrar dene')}</Text>
         </Pressable>
       ) : null}
     </View>

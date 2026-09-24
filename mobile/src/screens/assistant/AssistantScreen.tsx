@@ -45,6 +45,7 @@ import { readAssistantThreadId, writeAssistantThreadId } from '../../features/as
 import { useTheme } from '../../theme/ThemeContext';
 import { consumeVoiceTurn, toggleSpeak } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
+import { locale, tr } from '../../i18n';
 
 type Props = MainTabScreenProps<'AssistantTab'>;
 
@@ -64,38 +65,38 @@ const FALLBACK_SKILL_COUNT = 10;
 // Yanıt geldikten sonra "anlatıyor"/"sonuç" hali ne kadar kalır.
 const AVATAR_FLASH_MS = 2600;
 
-const WELCOME = 'Soru sor, kumaş ya da firma arat, etiket fotoğrafı gönder, hesap yaptır.';
+const welcomeText = () => tr('Soru sor, kumaş ya da firma arat, etiket fotoğrafı gönder, hesap yaptır.');
 
-const EXAMPLES = [
-  '220 gr/m² 180 cm süprem, 1.000 metre kaç kilo eder?',
-  '30/1 Ne iplik kaç tex?',
-  'Kataloğumda elastanlı süprem var mı?',
-  '34/28 Terrot 108 sistem müsait makine ara?',
+const examples = () => [
+  tr('220 gr/m² 180 cm süprem, 1.000 metre kaç kilo eder?'),
+  tr('30/1 Ne iplik kaç tex?'),
+  tr('Kataloğumda elastanlı süprem var mı?'),
+  tr('34/28 Terrot 108 sistem müsait makine ara?'),
 ];
 
 // Girdi kutusuna başlangıç metni yazan çipler; kullanıcı düzenleyip gönderir.
-const SKILL_CHIPS: { label: string; starter: string }[] = [
-  { label: 'İplik çevir', starter: '30/1 Ne iplik kaç tex?' },
+const skillChips = (): { label: string; starter: string }[] => [
+  { label: tr('İplik çevir'), starter: tr('30/1 Ne iplik kaç tex?') },
   {
-    label: 'Üretim hesabı',
-    starter: 'Örme üretim hesabı: 2.640 iğne, 24 devir, 96 sistem, 50 iğnede 16 cm iplik, 30/1 Ne.',
+    label: tr('Üretim hesabı'),
+    starter: tr('Örme üretim hesabı: 2.640 iğne, 24 devir, 96 sistem, 50 iğnede 16 cm iplik, 30/1 Ne.'),
   },
   {
-    label: 'Kumaş maliyeti',
-    starter: 'Kumaş maliyeti çıkar: 30/1 penye süprem, iplik 3,2 USD/kg, örme fasonu 12 TL/kg.',
+    label: tr('Kumaş maliyeti'),
+    starter: tr('Kumaş maliyeti çıkar: 30/1 penye süprem, iplik 3,2 USD/kg, örme fasonu 12 TL/kg.'),
   },
   {
-    label: 'Konfeksiyon maliyeti',
-    starter: 'Konfeksiyon maliyeti: adette 1,3 m kumaş, metresi 95 TL, kesim 8 TL, dikim 25 TL.',
+    label: tr('Konfeksiyon maliyeti'),
+    starter: tr('Konfeksiyon maliyeti: adette 1,3 m kumaş, metresi 95 TL, kesim 8 TL, dikim 25 TL.'),
   },
   // Faz 2, Adım 1: izleme kuralı önerisi (asistan kurmaz, kart onaylanır).
-  { label: 'Ürün izle', starter: 'PA lycra süprem 200 gr üstü çıkınca haber ver' },
+  { label: tr('Ürün izle'), starter: tr('PA lycra süprem 200 gr üstü çıkınca haber ver') },
   // Faz 2, Adım 5: makine parkına göre fason kapasite araması.
-  { label: 'Fason kapasite', starter: '28 fayn 30 pus süprem örecek fason arıyorum' },
+  { label: tr('Fason kapasite'), starter: tr('28 fayn 30 pus süprem örecek fason arıyorum') },
   // Faz 2, Adım 6: iplik dizini araması.
-  { label: 'İplik ara', starter: '150/48 DTY polyester ipliği kim satıyor?' },
+  { label: tr('İplik ara'), starter: tr('150/48 DTY polyester ipliği kim satıyor?') },
   // Faz 3, Adım 2: çoklu teklif toplama (asistan aday önerir, göndermez).
-  { label: 'Teklif topla', starter: 'Şu özellikte kumaş için teklif toplayalım: ' },
+  { label: tr('Teklif topla'), starter: tr('Şu özellikte kumaş için teklif toplayalım: ') },
 ];
 
 type ChatItem = AssistantMessage & { local?: boolean };
@@ -134,7 +135,7 @@ export function AssistantScreen({ navigation }: Props) {
   // Sohbet balonlarının yanındaki avatar (satır yüksekliğiyle uyumlu).
   const chatAvatarSize = t.size.avatar;
 
-  const personaName = ASSISTANT_DISPLAY_NAME;
+  const personaName = tr(ASSISTANT_DISPLAY_NAME);
   const subtitle = personaName;
 
   // Yeni tasarım: ekran kendi bandını çiziyor, react-navigation başlığı gizli.
@@ -284,17 +285,17 @@ export function AssistantScreen({ navigation }: Props) {
       } catch (err) {
         haptics.error();
         if (err instanceof ApiError && err.code === 'assistant_not_configured') {
-          setSendError('Asistan bu sunucuda etkin değil.');
+          setSendError(tr('Asistan bu sunucuda etkin değil.'));
         } else if (err instanceof ApiError && err.code === 'thread_not_found') {
           // Sohbet arada silinmiş: bir sonraki gönderim yeni sohbet açar.
           threadIdRef.current = null;
           loadedIdRef.current = null;
           void writeAssistantThreadId(null);
-          setSendError('Sohbet bulunamadı, tekrar deneyin.');
+          setSendError(tr('Sohbet bulunamadı, tekrar deneyin.'));
         } else if (err instanceof ApiError && err.code === 'assistant_failed') {
-          setSendError('Asistan yanıt veremedi, tekrar deneyin.');
+          setSendError(tr('Asistan yanıt veremedi, tekrar deneyin.'));
         } else {
-          setSendError(friendlyMessage(err, 'Asistan yanıt veremedi, tekrar deneyin.'));
+          setSendError(friendlyMessage(err, tr('Asistan yanıt veremedi, tekrar deneyin.')));
         }
       } finally {
         setSending(false);
@@ -377,7 +378,7 @@ export function AssistantScreen({ navigation }: Props) {
             <AssistantAvatar
               size={chatAvatarSize}
               state={isLast ? avatarState : 'idle'}
-              accessibilityLabel={`${personaName}, asistan`}
+              accessibilityLabel={tr('{name}, asistan', { name: personaName })}
             />
             <View style={chat.assistantColumn}>
               {item.text ? <AssistantBubble text={item.text} createdAt={item.createdAt} /> : null}
@@ -489,13 +490,13 @@ export function AssistantScreen({ navigation }: Props) {
   );
 
   const composerChips: ComposerChip[] = [
-    ...SKILL_CHIPS.map((chip) => ({
+    ...skillChips().map((chip) => ({
       label: chip.label,
       onPress: () => applyStarter(chip.starter),
-      accessibilityLabel: `${chip.label}, örnek soruyu yaz`,
+      accessibilityLabel: tr('{label}, örnek soruyu yaz', { label: chip.label }),
     })),
     {
-      label: 'Tüm hesaplayıcılar',
+      label: tr('Tüm hesaplayıcılar'),
       icon: 'calculator' as const,
       // Hesap araçları kök yığında geri oklu ekran (2026-09-23).
       onPress: () => navigation.navigate('Calculators'),
@@ -520,8 +521,8 @@ export function AssistantScreen({ navigation }: Props) {
       // Alt çubukta orta sekme (2026-09-24): sekme ekranında geri oku yok.
       leading="none"
       actions={[
-        { icon: 'settings-outline', label: 'Firma hafızası', onPress: () => navigation.navigate('AssistantMemory') },
-        { icon: 'clock', label: 'Sohbetler', onPress: () => navigation.navigate('AssistantThreads') },
+        { icon: 'settings-outline', label: tr('Firma hafızası'), onPress: () => navigation.navigate('AssistantMemory') },
+        { icon: 'clock', label: tr('Sohbetler'), onPress: () => navigation.navigate('AssistantThreads') },
       ]}
     />
   );
@@ -545,16 +546,16 @@ export function AssistantScreen({ navigation }: Props) {
         {bar}
         <EmptyState
           icon="warning"
-          title="Sohbet alınamadı"
-          description={friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Sohbet alınamadı')}
+          description={friendlyMessage(loadError, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={() => void loadThread(threadIdRef.current)}
         />
       </View>
     );
   }
 
-  const greetingLine = greeting?.text ?? `Merhaba, ben ${personaName}. Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?`;
+  const greetingLine = greeting?.text ?? tr('Merhaba, ben {name}. Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?', { name: personaName });
 
   return (
     <View style={chat.screen}>
@@ -578,7 +579,7 @@ export function AssistantScreen({ navigation }: Props) {
                 <AssistantAvatar
                   size={t.size.thumb + t.space[10]}
                   state={avatarState}
-                  accessibilityLabel={`${personaName}, asistan`}
+                  accessibilityLabel={tr('{name}, asistan', { name: personaName })}
                 />
                 <View
                   style={{
@@ -594,11 +595,11 @@ export function AssistantScreen({ navigation }: Props) {
                   <Text style={[t.type.body16, { color: t.colors.ink }]}>{greetingLine}</Text>
                 </View>
                 <Text style={[t.type.body14, { color: t.colors.ink2, textAlign: 'center' }]}>
-                  {WELCOME} {skillCount} beceri hazır.
+                  {welcomeText()} {tr('{n} beceri hazır.', { n: skillCount })}
                 </Text>
               </View>
               <View style={chat.examples}>
-                {EXAMPLES.map((example) => (
+                {examples().map((example) => (
                   <ExampleRow key={example} label={example} onPress={() => send(example)} />
                 ))}
               </View>
@@ -611,7 +612,7 @@ export function AssistantScreen({ navigation }: Props) {
                   <AssistantAvatar
                     size={chatAvatarSize}
                     state="thinking"
-                    accessibilityLabel={`${personaName} düşünüyor`}
+                    accessibilityLabel={tr('{name} düşünüyor', { name: personaName })}
                   />
                   <ThinkingBubble />
                 </View>
@@ -649,7 +650,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry?: () => vo
     >
       <Icon name="warning" size={t.size.iconSm} color="danger" />
       <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{message}</Text>
-      {onRetry ? <Button kind="quiet" label="Tekrar dene" onPress={onRetry} /> : null}
+      {onRetry ? <Button kind="quiet" label={tr('Tekrar dene')} onPress={onRetry} /> : null}
     </View>
   );
 }
@@ -669,31 +670,31 @@ function MemorySuggestionCard({
   const t = useTheme();
   if (state === 'dismissed') return null;
 
-  const value = typeof suggestion.value === 'number' ? suggestion.value.toLocaleString('tr-TR') : suggestion.value;
+  const value = typeof suggestion.value === 'number' ? suggestion.value.toLocaleString(locale()) : suggestion.value;
 
   if (state === 'saved') {
-    return <SavedCard text={`Kaydedildi: ${suggestion.label} ${value}`} />;
+    return <SavedCard text={tr('Kaydedildi: {label} {value}', { label: suggestion.label, value })} />;
   }
 
   return (
     <Card style={{ gap: t.space[2] }}>
-      <Text style={[t.type.title18, { color: t.colors.ink }]}>Hafızaya kaydedilsin mi?</Text>
+      <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Hafızaya kaydedilsin mi?')}</Text>
       <Text style={[t.type.body16, { color: t.colors.ink }]}>
         {suggestion.label}: <Text style={t.type.mono14}>{value}</Text>
       </Text>
       <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{suggestion.reason}</Text>
       {state === 'error' ? (
-        <Text style={[t.type.body14, { color: t.colors.danger }]}>Kaydedilemedi, tekrar deneyin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.danger }]}>{tr('Kaydedilemedi, tekrar deneyin.')}</Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
         <Button
           kind="secondary"
-          label="Kaydet"
+          label={tr('Kaydet')}
           onPress={onSave}
-          accessibilityLabel={`Kaydet: ${suggestion.label} ${value}`}
+          accessibilityLabel={tr('Kaydet: {label} {value}', { label: suggestion.label, value })}
           style={{ flex: 1 }}
         />
-        <Button kind="quiet" label="Şimdi değil" onPress={onDismiss} style={{ flex: 1 }} />
+        <Button kind="quiet" label={tr('Şimdi değil')} onPress={onDismiss} style={{ flex: 1 }} />
       </View>
     </Card>
   );
@@ -716,31 +717,31 @@ function WatchSuggestionCard({
   if (state === 'dismissed') return null;
 
   if (state === 'saved') {
-    return <SavedCard text={`İzlemeye alındı: ${suggestion.name}`} />;
+    return <SavedCard text={tr('İzlemeye alındı: {name}', { name: suggestion.name })} />;
   }
 
   return (
     <Card style={{ gap: t.space[2] }}>
-      <Text style={[t.type.title18, { color: t.colors.ink }]}>İzleme kurulsun mu?</Text>
+      <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('İzleme kurulsun mu?')}</Text>
       <Text style={[t.type.body16, { color: t.colors.ink }]}>{suggestion.name}</Text>
       <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{suggestion.reason}</Text>
       {state === 'limit' ? (
         <Text style={[t.type.body14, { color: t.colors.danger }]}>
-          İzleme sınırına ulaştınız. Profil {'>'} İzlediklerim listesinden birini silin.
+          {tr('İzleme sınırına ulaştınız. Profil > İzlediklerim listesinden birini silin.')}
         </Text>
       ) : null}
       {state === 'error' ? (
-        <Text style={[t.type.body14, { color: t.colors.danger }]}>İzleme kurulamadı, tekrar deneyin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.danger }]}>{tr('İzleme kurulamadı, tekrar deneyin.')}</Text>
       ) : null}
       <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
         <Button
           kind="secondary"
-          label="İzlemeye al"
+          label={tr('İzlemeye al')}
           onPress={onSave}
-          accessibilityLabel={`İzlemeye al: ${suggestion.name}`}
+          accessibilityLabel={tr('İzlemeye al: {name}', { name: suggestion.name })}
           style={{ flex: 1 }}
         />
-        <Button kind="quiet" label="Şimdi değil" onPress={onDismiss} style={{ flex: 1 }} />
+        <Button kind="quiet" label={tr('Şimdi değil')} onPress={onDismiss} style={{ flex: 1 }} />
       </View>
     </Card>
   );

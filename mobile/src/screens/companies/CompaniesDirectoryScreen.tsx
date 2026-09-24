@@ -13,6 +13,7 @@ import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -45,7 +46,7 @@ const SHORT_LABELS: Record<string, string> = {
   diger: 'Diğer',
 };
 
-const shortLabel = (key: string, fallback: string) => SHORT_LABELS[key] ?? fallback;
+const shortLabel = (key: string, fallback: string) => (SHORT_LABELS[key] ? tr(SHORT_LABELS[key]) : fallback);
 
 export function CompaniesDirectoryScreen({ navigation }: Props) {
   const t = useTheme();
@@ -82,7 +83,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
       if (res.categories?.length) setCategories(res.categories);
     } catch (err) {
       if (id !== seq.current) return;
-      setError(friendlyMessage(err, 'Firmalar alınamadı'));
+      setError(friendlyMessage(err, tr('Firmalar alınamadı')));
       setCompanies([]);
       setNextOffset(null);
     } finally {
@@ -107,7 +108,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
       });
       setNextOffset(res.nextOffset);
     } catch (err) {
-      if (id === seq.current) setError(friendlyMessage(err, 'Devamı alınamadı'));
+      if (id === seq.current) setError(friendlyMessage(err, tr('Devamı alınamadı')));
     } finally {
       setLoadingMore(false);
     }
@@ -118,15 +119,15 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
   const header = (
     <View style={{ gap: t.space[3], paddingTop: t.space[4], paddingBottom: t.space[2] }}>
       <SearchBox
-        placeholder="Firma adı ara"
+        placeholder={tr('Firma adı ara')}
         value={text}
         onChangeText={setText}
-        accessibilityLabel="Firma ara"
+        accessibilityLabel={tr('Firma ara')}
         testID="directory-search"
       />
       <ChipRow>
         <Chip
-          label="Tümü"
+          label={tr('Tümü')}
           selected={category === null}
           onPress={() => {
             haptics.selection();
@@ -146,7 +147,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
         ))}
       </ChipRow>
       {!loading && companies.length > 0 ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{total} firma</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('{n} firma', { n: total })}</Text>
       ) : null}
     </View>
   );
@@ -158,13 +159,13 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
       ))}
     </View>
   ) : error ? (
-    <EmptyState icon="warning" title="Firmalar alınamadı" description={error} actionLabel="Tekrar dene" onAction={load} />
+    <EmptyState icon="warning" title={tr('Firmalar alınamadı')} description={error} actionLabel={tr('Tekrar dene')} onAction={load} />
   ) : (
     <EmptyState
       icon="business-outline"
-      title="Firma bulunamadı"
-      description={filtered ? 'Başka bir ad ya da kategori deneyin.' : 'Rehberde henüz firma yok.'}
-      actionLabel={filtered ? 'Süzgeci temizle' : undefined}
+      title={tr('Firma bulunamadı')}
+      description={filtered ? tr('Başka bir ad ya da kategori deneyin.') : tr('Rehberde henüz firma yok.')}
+      actionLabel={filtered ? tr('Süzgeci temizle') : undefined}
       onAction={
         filtered
           ? () => {
@@ -182,14 +183,14 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
       <View style={{ paddingTop: t.space[4], gap: t.space[2] }}>
         {error ? <Text style={[t.type.body14, { color: t.colors.danger }]}>{error}</Text> : null}
         {nextOffset !== null ? (
-          <Button kind="secondary" label="Daha fazla" loading={loadingMore} onPress={loadMore} fullWidth />
+          <Button kind="secondary" label={tr('Daha fazla')} loading={loadingMore} onPress={loadMore} fullWidth />
         ) : null}
       </View>
     ) : null;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Firmalar" />
+      <AppBar title={tr('Firmalar')} />
       <Screen scroll={false} contentStyle={{ flex: 1, gap: 0 }}>
         <FlatList
           data={loading ? [] : companies}
@@ -217,7 +218,7 @@ export function CompaniesDirectoryScreen({ navigation }: Props) {
                 }
                 right={
                   !item.claimed ? (
-                    <Badge kind="info" label="LİSTEDE" />
+                    <Badge kind="info" label={tr('LİSTEDE')} />
                   ) : item.verification === 'dogrulanmis' ? (
                     <Badge kind="verified" />
                   ) : undefined

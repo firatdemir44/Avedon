@@ -5,6 +5,7 @@ import { saveBuyerLead, type BuyerLeadStatus } from '../../api/client';
 import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import type { ColorTokens } from '../../theme/tokens';
 import { BottomSheet, Button, Chip, Input } from '../../ui';
 import type { BadgeKind } from '../../ui';
@@ -58,7 +59,7 @@ export function LeadStatusSheet({
       onSaved(buyer.id, res.lead);
       onClose();
     } catch (err) {
-      setError(friendlyMessage(err, 'Kaydedilemedi'));
+      setError(friendlyMessage(err, tr('Kaydedilemedi')));
     } finally {
       setSaving(false);
     }
@@ -67,12 +68,12 @@ export function LeadStatusSheet({
   return (
     <BottomSheet visible={!!buyer} onClose={onClose} title={buyer?.name}>
       <View style={{ gap: t.space[4] }}>
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bu firmayla nerede olduğunuzu işaretleyin; takip listenizde durumuna göre görünür.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Bu firmayla nerede olduğunuzu işaretleyin; takip listenizde durumuna göre görünür.')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
           {LEAD_STATUS.map((s) => (
             <Chip
               key={s.key}
-              label={s.label}
+              label={tr(s.label)}
               selected={status === s.key}
               onPress={() => {
                 haptics.selection();
@@ -81,9 +82,9 @@ export function LeadStatusSheet({
             />
           ))}
         </View>
-        <Input label="Not (isteğe bağlı)" value={note} onChangeText={setNote} placeholder="Ör. satın almacıya e-posta atıldı" multiline maxLength={1000} />
+        <Input label={tr('Not (isteğe bağlı)')} value={note} onChangeText={setNote} placeholder={tr('Ör. satın almacıya e-posta atıldı')} multiline maxLength={1000} />
         {error ? <Text style={[t.type.body14, { color: t.colors.danger }]}>{error}</Text> : null}
-        <Button kind="primary" label="Kaydet" onPress={save} loading={saving} fullWidth />
+        <Button kind="primary" label={tr('Kaydet')} onPress={save} loading={saving} fullWidth />
       </View>
     </BottomSheet>
   );

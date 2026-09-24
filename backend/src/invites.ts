@@ -70,7 +70,8 @@ export async function applyInvitesOnRegistration(newUser: { id: string; phone: s
     });
     await notify(invite.inviterId, {
       kind: 'invite_joined',
-      title: `${newUser.firstName} ${newUser.lastName} davetinizle katıldı`,
+      title: '{name} davetinizle katıldı',
+      vars: { name: `${newUser.firstName} ${newUser.lastName}` },
       body: direct ? 'Artık bağlantınız; ürünlerini görebilir, mesaj yazabilirsiniz.' : 'Bağlantı isteği gönderdi; onaylarsanız bağlantınız olur.',
       data: { userId: newUser.id, inviteId: invite.id },
     });

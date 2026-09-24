@@ -54,6 +54,7 @@ import {
   SegmentControl,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'QuoteRequestDetail'>;
 
@@ -61,13 +62,13 @@ const UNIT_OPTIONS = STOCK_UNITS.map((unit) => ({ value: unit, label: STOCK_UNIT
 const CURRENCY_OPTIONS = PRICE_CURRENCIES.map((currency) => ({ value: currency, label: currency }));
 
 // Teklif isteği durumu → rozet (components/QuoteStatusBadge ile aynı eşleme).
-const STATUS_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> = {
-  open: { kind: 'pending', label: 'Teklif bekleniyor' },
-  quoted: { kind: 'info', label: 'Teklif verildi' },
-  accepted: { kind: 'delivered', label: 'Kabul edildi' },
-  declined: { kind: 'cancelled', label: 'Reddedildi' },
-  cancelled: { kind: 'cancelled', label: 'Geri çekildi' },
-};
+const STATUS_BADGE = (): Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> => ({
+  open: { kind: 'pending', label: tr('Teklif bekleniyor') },
+  quoted: { kind: 'info', label: tr('Teklif verildi') },
+  accepted: { kind: 'delivered', label: tr('Kabul edildi') },
+  declined: { kind: 'cancelled', label: tr('Reddedildi') },
+  cancelled: { kind: 'cancelled', label: tr('Geri çekildi') },
+});
 
 // Satıcının teklif formunun alanları (hepsi metin: kullanıcı ne yazdıysa o).
 interface QuoteForm {
@@ -252,7 +253,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
 
   const shell = (children: React.ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Teklif" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Teklif')} leading="back" onBack={() => navigation.goBack()} />
       {children}
     </View>
   );
@@ -267,16 +268,16 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
         {error && !isNotFound(error) ? (
           <EmptyState
             icon="warning"
-            title="Yüklenemedi"
-            description={friendlyMessage(error, 'Teklif isteği alınamadı')}
-            actionLabel="Tekrar dene"
+            title={tr('Yüklenemedi')}
+            description={friendlyMessage(error, tr('Teklif isteği alınamadı'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         ) : (
           <EmptyState
             icon="quote"
-            title="Teklif isteği bulunamadı"
-            description="İstek kaldırılmış ya da size ait olmayabilir."
+            title={tr('Teklif isteği bulunamadı')}
+            description={tr('İstek kaldırılmış ya da size ait olmayabilir.')}
           />
         )}
       </Screen>
@@ -289,7 +290,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const isOpen = request.status === 'open' || request.status === 'quoted';
   // Satıcının daha önce gönderdiği teklif (revize ederken üstte özet olarak).
   const lastSent = request.quotes.find((q) => q.status !== 'draft') ?? null;
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Teklif isteği yenilenemedi') : null);
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, tr('Teklif isteği yenilenemedi')) : null);
 
   const updateForm = (patch: Partial<QuoteForm>) =>
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
@@ -310,16 +311,16 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
       haptics.error();
       const code = err instanceof ApiError ? err.code : undefined;
       if (code === 'price_required') {
-        setPriceError('Teklif göndermek için birim fiyat girin.');
-        setActionError('Birim fiyat olmadan teklif gönderilemez.');
+        setPriceError(tr('Teklif göndermek için birim fiyat girin.'));
+        setActionError(tr('Birim fiyat olmadan teklif gönderilemez.'));
       } else if (code === 'quote_expired') {
-        setActionError('Bu teklifin geçerlilik süresi dolmuş. Satıcıdan yeni teklif isteyin.');
+        setActionError(tr('Bu teklifin geçerlilik süresi dolmuş. Satıcıdan yeni teklif isteyin.'));
       } else if (code === 'no_active_quote') {
-        setActionError('Yanıtlanacak bir teklif yok.');
+        setActionError(tr('Yanıtlanacak bir teklif yok.'));
       } else if (code === 'no_draft') {
-        setActionError('Önce teklifi kaydedin, sonra gönderin.');
+        setActionError(tr('Önce teklifi kaydedin, sonra gönderin.'));
       } else if (code === 'request_closed') {
-        setActionError('Bu istek kapandı, üzerinde işlem yapılamaz.');
+        setActionError(tr('Bu istek kapandı, üzerinde işlem yapılamaz.'));
       } else {
         setActionError(friendlyMessage(err, fallback));
       }
@@ -341,7 +342,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
       haptics.success();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Ürün kaydından doldurulamadı'));
+      setActionError(friendlyMessage(err, tr('Ürün kaydından doldurulamadı')));
     } finally {
       setBusy(null);
     }
@@ -356,7 +357,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
   const send = async () => {
     if (!form) return;
     if (dateInvalid(form.validUntil)) {
-      setActionError('Geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).');
+      setActionError(tr('Geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).'));
       return;
     }
     setPriceError(null);
@@ -374,12 +375,12 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
       haptics.error();
       const code = err instanceof ApiError ? err.code : undefined;
       if (code === 'price_required') {
-        setPriceError('Teklif göndermek için birim fiyat girin.');
-        setActionError('Birim fiyat olmadan teklif gönderilemez.');
+        setPriceError(tr('Teklif göndermek için birim fiyat girin.'));
+        setActionError(tr('Birim fiyat olmadan teklif gönderilemez.'));
       } else if (code === 'request_closed') {
-        setActionError('Bu istek kapandı, teklif gönderilemez.');
+        setActionError(tr('Bu istek kapandı, teklif gönderilemez.'));
       } else {
-        setActionError(friendlyMessage(err, 'Teklif gönderilemedi'));
+        setActionError(friendlyMessage(err, tr('Teklif gönderilemedi')));
       }
     } finally {
       setBusy(null);
@@ -388,16 +389,16 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
 
   const respond = async (action: 'accept' | 'decline') => {
     const confirmed = await confirmAction({
-      title: action === 'accept' ? 'Teklifi kabul et' : 'Teklifi reddet',
+      title: action === 'accept' ? tr('Teklifi kabul et') : tr('Teklifi reddet'),
       message:
         action === 'accept'
-          ? 'Teklifi kabul ettiğinizde satıcı firmaya bildirilir.'
-          : 'Teklifi reddettiğinizde satıcı firmaya bildirilir.',
-      confirmLabel: action === 'accept' ? 'Kabul et' : 'Reddet',
+          ? tr('Teklifi kabul ettiğinizde satıcı firmaya bildirilir.')
+          : tr('Teklifi reddettiğinizde satıcı firmaya bildirilir.'),
+      confirmLabel: action === 'accept' ? tr('Kabul et') : tr('Reddet'),
       destructive: action === 'decline',
     });
     if (!confirmed) return;
-    const result = await runAction(action, () => respondQuote(request.id, action), 'Teklif yanıtlanamadı');
+    const result = await runAction(action, () => respondQuote(request.id, action), tr('Teklif yanıtlanamadı'));
     // Kabul edilince sunucu sipariş kaydını açıyor ve kimliğini yanıtta veriyor.
     if (result && action === 'accept' && result.dealId) {
       setDealId(result.dealId);
@@ -407,19 +408,19 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
 
   const cancel = async () => {
     const confirmed = await confirmAction({
-      title: 'İsteği geri çek',
-      message: 'Teklif isteğiniz kapatılır, satıcı artık teklif gönderemez.',
-      confirmLabel: 'Geri çek',
+      title: tr('İsteği geri çek'),
+      message: tr('Teklif isteğiniz kapatılır, satıcı artık teklif gönderemez.'),
+      confirmLabel: tr('Geri çek'),
       destructive: true,
     });
     if (!confirmed) return;
-    await runAction('cancel', () => cancelQuoteRequest(request.id), 'İstek geri çekilemedi');
+    await runAction('cancel', () => cancelQuoteRequest(request.id), tr('İstek geri çekilemedi'));
   };
 
   const counterparty = isSeller
     ? [request.buyer.name, request.buyer.company?.name].filter(Boolean).join(' · ')
     : request.sellerCompany.name;
-  const badge = STATUS_BADGE[request.status] ?? STATUS_BADGE.open;
+  const badge = STATUS_BADGE()[request.status] ?? STATUS_BADGE().open;
 
   // Yapışkan alt çubuk: ekranda en fazla 1 dolu düğme.
   let sticky: React.ReactNode = null;
@@ -427,12 +428,12 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
     sticky = (
       <View style={{ flexDirection: 'row', gap: t.space[2] }}>
         <View style={{ flex: 1 }}>
-          <Button kind="secondary" size="lg" label="Kaydet" loading={busy === 'save'} disabled={!!busy} onPress={save} />
+          <Button kind="secondary" size="lg" label={tr('Kaydet')} loading={busy === 'save'} disabled={!!busy} onPress={save} />
         </View>
         <View style={{ flex: 1 }}>
           <Button
             size="lg"
-            label={lastSent ? 'Revize teklifi gönder' : 'Teklifi gönder'}
+            label={lastSent ? tr('Revize teklifi gönder') : tr('Teklifi gönder')}
             loading={busy === 'send'}
             disabled={!!busy}
             onPress={send}
@@ -450,7 +451,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
             <Button
               kind="danger"
               size="lg"
-              label="Reddet"
+              label={tr('Reddet')}
               loading={busy === 'decline'}
               disabled={!!busy || expired}
               onPress={() => respond('decline')}
@@ -459,7 +460,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
           <View style={{ flex: 1 }}>
             <Button
               size="lg"
-              label="Teklifi kabul et"
+              label={tr('Teklifi kabul et')}
               loading={busy === 'accept'}
               disabled={!!busy || expired}
               onPress={() => respond('accept')}
@@ -467,7 +468,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
       ) : (
-        <Button kind="danger" size="lg" label="İsteği geri çek" loading={busy === 'cancel'} disabled={!!busy} onPress={cancel} />
+        <Button kind="danger" size="lg" label={tr('İsteği geri çek')} loading={busy === 'cancel'} disabled={!!busy} onPress={cancel} />
       );
   }
 
@@ -489,20 +490,20 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
               <Badge kind={badge.kind} label={badge.label} />
             </View>
             <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
-              {isSeller ? `İsteyen: ${counterparty}` : counterparty}
+              {isSeller ? tr('İsteyen: {name}', { name: counterparty }) : counterparty}
             </Text>
             <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatRelativeTime(request.createdAt)}</Text>
             <View>
-              <SpecRow label="İstenen miktar" value={formatQuantity(request.quantity, request.unit)} last={!request.targetDate} />
+              <SpecRow label={tr('İstenen miktar')} value={formatQuantity(request.quantity, request.unit)} last={!request.targetDate} />
               {request.targetDate ? (
-                <SpecRow label="İstenen termin" value={formatQuoteDate(request.targetDate)} last />
+                <SpecRow label={tr('İstenen termin')} value={formatQuoteDate(request.targetDate)} last />
               ) : null}
             </View>
             {request.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>“{request.note}”</Text> : null}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
               <Button
                 kind="quiet"
-                label="Ürün sayfasını aç"
+                label={tr('Ürün sayfasını aç')}
                 icon="fabric"
                 onPress={() => navigation.navigate('ProductDetail', { productId: request.product.id })}
               />
@@ -511,7 +512,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
               {!isSeller && request.rfqId ? (
                 <Button
                   kind="quiet"
-                  label="Karşılaştırmayı aç"
+                  label={tr('Karşılaştırmayı aç')}
                   icon="git-compare-outline"
                   onPress={() => navigation.navigate('RfqCompare', { rfqId: request.rfqId! })}
                 />
@@ -525,13 +526,13 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
           <View style={{ gap: t.space[3] }}>
             {justAccepted ? (
               <Notice tone="success">
-                <Text style={[t.type.body14, { color: t.colors.success }]}>Teklifi kabul ettiniz. Sipariş kaydı açıldı.</Text>
+                <Text style={[t.type.body14, { color: t.colors.success }]}>{tr('Teklifi kabul ettiniz. Sipariş kaydı açıldı.')}</Text>
               </Notice>
             ) : null}
             <Button
               kind="secondary"
               fullWidth
-              label="Siparişi aç"
+              label={tr('Siparişi aç')}
               icon="sample"
               onPress={() => navigation.navigate('DealDetail', { dealId })}
             />
@@ -559,7 +560,7 @@ export function QuoteRequestDetailScreen({ route, navigation }: Props) {
             <Notice tone="danger">
               <Text style={[t.type.body14, { color: t.colors.danger }]}>{bannerMessage}</Text>
             </Notice>
-            {actionError ? null : <Button kind="secondary" label="Tekrar dene" onPress={reload} />}
+            {actionError ? null : <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} />}
           </View>
         ) : null}
       </ScrollView>
@@ -584,8 +585,8 @@ function BuyerSection({
       <Notice tone="info">
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
           {request.status === 'cancelled'
-            ? 'Bu isteği geri çektiniz.'
-            : 'Satıcı teklif hazırlıyor. Teklif gelince bildirim alacaksınız.'}
+            ? tr('Bu isteği geri çektiniz.')
+            : tr('Satıcı teklif hazırlıyor. Teklif gelince bildirim alacaksınız.')}
         </Text>
       </Notice>
     );
@@ -594,12 +595,12 @@ function BuyerSection({
   return (
     <>
       <View style={{ gap: t.space[3] }}>
-        <SectionTitle title="Gelen teklif" />
+        <SectionTitle title={tr('Gelen teklif')} />
         <QuoteCard quote={activeQuote} request={request} />
         {expired ? (
           <Notice tone="warning">
             <Text style={[t.type.body14, { color: t.colors.warning }]}>
-              Bu teklifin geçerlilik süresi doldu; kabul edilemez.
+              {tr('Bu teklifin geçerlilik süresi doldu; kabul edilemez.')}
             </Text>
           </Notice>
         ) : null}
@@ -616,26 +617,26 @@ function QuoteCard({ quote, request }: { quote: Quote; request: QuoteRequestRow 
   const t = useTheme();
   const total = quoteTotal(quote, request);
   const rows: { label: string; value: string }[] = [
-    ...(total ? [{ label: 'Toplam', value: total }] : []),
+    ...(total ? [{ label: tr('Toplam'), value: total }] : []),
     ...(quote.moq != null
-      ? [{ label: 'En az sipariş', value: `${formatMeasure(quote.moq)} ${unitShort(quote.moqUnit || request.unit)}` }]
+      ? [{ label: tr('En az sipariş'), value: `${formatMeasure(quote.moq)} ${unitShort(quote.moqUnit || request.unit)}` }]
       : []),
-    ...(quote.leadTimeDays != null ? [{ label: 'Termin', value: `${quote.leadTimeDays} gün` }] : []),
-    ...(quote.validUntil ? [{ label: 'Geçerlilik', value: formatQuoteDate(quote.validUntil) }] : []),
-    ...(quote.paymentTerms ? [{ label: 'Ödeme', value: quote.paymentTerms }] : []),
+    ...(quote.leadTimeDays != null ? [{ label: tr('Termin'), value: tr('{n} gün', { n: quote.leadTimeDays }) }] : []),
+    ...(quote.validUntil ? [{ label: tr('Geçerlilik'), value: formatQuoteDate(quote.validUntil) }] : []),
+    ...(quote.paymentTerms ? [{ label: tr('Ödeme'), value: quote.paymentTerms }] : []),
   ];
 
   return (
     <Card>
       <View style={{ gap: t.space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[3] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Birim fiyat</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Birim fiyat')}</Text>
           {quote.sentAt ? (
             <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>{formatRelativeTime(quote.sentAt)}</Text>
           ) : null}
         </View>
         <Text style={[t.type.mono20, { color: t.colors.ink }]}>
-          {quote.price ? formatUnitPrice(quote.price) : 'Fiyat girilmedi'}
+          {quote.price ? formatUnitPrice(quote.price) : tr('Fiyat girilmedi')}
         </Text>
         {rows.length ? (
           <View>
@@ -679,17 +680,17 @@ function SellerSection({
       <View style={{ gap: t.space[3] }}>
         {lastSent ? (
           <>
-            <SectionTitle title="Gönderilen teklif" />
+            <SectionTitle title={tr('Gönderilen teklif')} />
             <QuoteCard quote={lastSent} request={request} />
           </>
         ) : null}
         <Notice tone="info">
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
             {request.status === 'accepted'
-              ? 'Alıcı teklifi kabul etti.'
+              ? tr('Alıcı teklifi kabul etti.')
               : request.status === 'declined'
-                ? 'Alıcı teklifi reddetti.'
-                : 'Alıcı isteği geri çekti.'}
+                ? tr('Alıcı teklifi reddetti.')
+                : tr('Alıcı isteği geri çekti.')}
           </Text>
         </Notice>
       </View>
@@ -700,16 +701,20 @@ function SellerSection({
 
   const notices: string[] = [];
   if (draftInfo) {
-    if (draftInfo.missing.includes('fiyat')) notices.push('Üründe fiyat kayıtlı değil, fiyatı siz girin.');
-    if (draftInfo.missing.includes('termin')) notices.push('Üründe termin kayıtlı değil, gün olarak siz girin.');
+    if (draftInfo.missing.includes('fiyat')) notices.push(tr('Üründe fiyat kayıtlı değil, fiyatı siz girin.'));
+    if (draftInfo.missing.includes('termin')) notices.push(tr('Üründe termin kayıtlı değil, gün olarak siz girin.'));
     if (draftInfo.missing.some((m) => m.startsWith('birim çevirisi')))
-      notices.push('Fiyatı istenen birime çevirmek için üründe gramaj ve en gerekiyor.');
-    if (draftInfo.belowMoq) notices.push('İstenen miktar MOQ’nun altında.');
+      notices.push(tr('Fiyatı istenen birime çevirmek için üründe gramaj ve en gerekiyor.'));
+    if (draftInfo.belowMoq) notices.push(tr('İstenen miktar MOQ’nun altında.'));
     if (draftInfo.converted)
       notices.push(
         draftInfo.total != null
-          ? `Fiyat ${request.unit === 'm' ? 'kg’dan metreye' : 'metreden kg’a'} çevrildi; toplam ${formatMeasure(draftInfo.total)}.`
-          : `Fiyat ${request.unit === 'm' ? 'kg’dan metreye' : 'metreden kg’a'} çevrildi.`
+          ? request.unit === 'm'
+            ? tr('Fiyat kg’dan metreye çevrildi; toplam {total}.', { total: formatMeasure(draftInfo.total) })
+            : tr('Fiyat metreden kg’a çevrildi; toplam {total}.', { total: formatMeasure(draftInfo.total) })
+          : request.unit === 'm'
+            ? tr('Fiyat kg’dan metreye çevrildi.')
+            : tr('Fiyat metreden kg’a çevrildi.')
       );
   }
 
@@ -717,7 +722,7 @@ function SellerSection({
     <>
       {lastSent ? (
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Gönderilen son teklif" />
+          <SectionTitle title={tr('Gönderilen son teklif')} />
           <QuoteCard quote={lastSent} request={request} />
         </View>
       ) : null}
@@ -728,11 +733,11 @@ function SellerSection({
       <PriceIndexCard productId={request.product.id} />
 
       <View style={{ gap: t.space[4] }}>
-        <SectionTitle title={lastSent ? 'Revize teklif' : 'Teklifiniz'} />
+        <SectionTitle title={lastSent ? tr('Revize teklif') : tr('Teklifiniz')} />
         <Button
           kind="secondary"
           fullWidth
-          label="Ürün kaydından doldur"
+          label={tr('Ürün kaydından doldur')}
           icon="sparkles-outline"
           loading={busy === 'draft'}
           disabled={!!busy}
@@ -750,30 +755,30 @@ function SellerSection({
         ) : null}
 
         <Input
-          label="Birim fiyat"
+          label={tr('Birim fiyat')}
           value={form.priceValue}
           onChangeText={(priceValue) => onChange({ priceValue })}
           inputMode="decimal"
           keyboardType="decimal-pad"
-          placeholder="Örn. 4,50"
+          placeholder={tr('Örn. 4,50')}
           unit={`${form.priceCurrency}/${unitShort(form.priceUnit)}`}
           error={priceError}
         />
         <View style={{ gap: t.space[1] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Para birimi</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Para birimi')}</Text>
           <SegmentControl<PriceCurrency>
             stretch
-            accessibilityLabel="Para birimi"
+            accessibilityLabel={tr('Para birimi')}
             options={CURRENCY_OPTIONS}
             value={form.priceCurrency}
             onChange={(priceCurrency) => onChange({ priceCurrency })}
           />
         </View>
         <View style={{ gap: t.space[1] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Fiyat birimi</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Fiyat birimi')}</Text>
           <SegmentControl<StockUnit>
             stretch
-            accessibilityLabel="Fiyat birimi"
+            accessibilityLabel={tr('Fiyat birimi')}
             options={UNIT_OPTIONS}
             value={form.priceUnit}
             onChange={(priceUnit) => onChange({ priceUnit })}
@@ -781,19 +786,19 @@ function SellerSection({
         </View>
 
         <Input
-          label="En az sipariş (isteğe bağlı)"
+          label={tr('En az sipariş (isteğe bağlı)')}
           value={form.moq}
           onChangeText={(moq) => onChange({ moq })}
           inputMode="decimal"
           keyboardType="decimal-pad"
-          placeholder="Örn. 300"
+          placeholder={tr('Örn. 300')}
           unit={unitShort(form.moqUnit)}
         />
         <View style={{ gap: t.space[1] }}>
-          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>En az sipariş birimi</Text>
+          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('En az sipariş birimi')}</Text>
           <SegmentControl<StockUnit>
             stretch
-            accessibilityLabel="En az sipariş birimi"
+            accessibilityLabel={tr('En az sipariş birimi')}
             options={UNIT_OPTIONS}
             value={form.moqUnit}
             onChange={(moqUnit) => onChange({ moqUnit })}
@@ -801,37 +806,37 @@ function SellerSection({
         </View>
 
         <Input
-          label="Termin (isteğe bağlı)"
+          label={tr('Termin (isteğe bağlı)')}
           value={form.leadTimeDays}
           onChangeText={(leadTimeDays) => onChange({ leadTimeDays })}
           inputMode="numeric"
           keyboardType="number-pad"
-          placeholder="Örn. 12"
-          unit="gün"
+          placeholder={tr('Örn. 12')}
+          unit={tr('gün')}
         />
         <Input
-          label="Geçerlilik tarihi (isteğe bağlı)"
+          label={tr('Geçerlilik tarihi (isteğe bağlı)')}
           value={form.validUntil}
           onChangeText={(validUntil) => onChange({ validUntil })}
           placeholder="2026-11-15"
           autoCapitalize="none"
-          helper="YYYY-AA-GG biçiminde yazın."
-          error={dateInvalid(form.validUntil) ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+          helper={tr('YYYY-AA-GG biçiminde yazın.')}
+          error={dateInvalid(form.validUntil) ? tr('Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).') : null}
         />
         <Input
-          label="Ödeme koşulu (isteğe bağlı)"
+          label={tr('Ödeme koşulu (isteğe bağlı)')}
           value={form.paymentTerms}
           onChangeText={(paymentTerms) => onChange({ paymentTerms })}
-          placeholder="Örn. %50 peşin, kalanı teslimatta"
+          placeholder={tr('Örn. %50 peşin, kalanı teslimatta')}
         />
         <Input
-          label="Not (isteğe bağlı)"
+          label={tr('Not (isteğe bağlı)')}
           value={form.note}
           onChangeText={(note) => onChange({ note })}
-          placeholder="Örn. Fiyat ekru içindir, boya ayrıca hesaplanır"
+          placeholder={tr('Örn. Fiyat ekru içindir, boya ayrıca hesaplanır')}
           multiline
         />
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Fiyatı yalnızca siz ve isteği açan taraf görüyor.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Fiyatı yalnızca siz ve isteği açan taraf görüyor.')}</Text>
       </View>
     </>
   );

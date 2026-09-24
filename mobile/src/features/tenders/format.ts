@@ -4,21 +4,23 @@ import type { AccessoryType, FeedTender, GarmentDelivery, GarmentType, Tender, T
 import type { BadgeKind } from '../../ui';
 import { formatMeasure } from '../calculators/parse';
 import { DATE_PATTERN } from '../quotes/format';
+import { locale, tp, tr } from '../../i18n';
+import { trLabels } from '../trLabels';
 
-export const TENDER_CATEGORIES: { value: TenderCategory; label: string }[] = [
+export const TENDER_CATEGORIES: { value: TenderCategory; label: string }[] = trLabels([
   { value: 'iplik', label: 'İplik' },
   { value: 'kumas', label: 'Kumaş' },
   { value: 'konfeksiyon', label: 'Konfeksiyon' },
   { value: 'aksesuar', label: 'Aksesuar' },
   { value: 'diger', label: 'Diğer' },
-];
+]);
 
-export const TENDER_UNITS: { value: TenderUnit; label: string }[] = [
+export const TENDER_UNITS: { value: TenderUnit; label: string }[] = trLabels([
   { value: 'kg', label: 'kg' },
   { value: 'ton', label: 'ton' },
   { value: 'm', label: 'metre' },
   { value: 'adet', label: 'adet' },
-];
+]);
 
 export function tenderUnitShort(unit: string): string {
   return unit === 'm' ? 'm' : unit;
@@ -33,7 +35,7 @@ export function formatTenderQuantity(quantity: number, unit: string): string {
 export function formatTenderDate(iso: string | null | undefined): string {
   if (!iso) return '';
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('tr-TR');
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(locale());
 }
 
 // Formdaki "YYYY-AA-GG" → sunucunun istediği ISO zaman. Son teklif tarihi o
@@ -54,22 +56,22 @@ export function isValidDateInput(value: string): boolean {
 export function tenderBadge(
   tender: Pick<Tender, 'status' | 'offerCount'> & { expired?: boolean }
 ): { kind: BadgeKind; label: string } {
-  if (tender.status === 'awarded') return { kind: 'delivered', label: 'Seçildi' };
-  if (tender.status === 'closed' || tender.expired) return { kind: 'cancelled', label: 'Kapandı' };
-  if (tender.offerCount > 0) return { kind: 'new', label: `${tender.offerCount} teklif` };
-  return { kind: 'pending', label: 'Açık' };
+  if (tender.status === 'awarded') return { kind: 'delivered', label: tr('Seçildi') };
+  if (tender.status === 'closed' || tender.expired) return { kind: 'cancelled', label: tr('Kapandı') };
+  if (tender.offerCount > 0) return { kind: 'new', label: tp('1 teklif', '{n} teklif', tender.offerCount) };
+  return { kind: 'pending', label: tr('Açık') };
 }
 
 // "3 teklif · son teklif: 30.09.2026"
 export function tenderMetaLine(tender: Pick<FeedTender, 'offerCount' | 'deadline'>): string {
-  const parts = [tender.offerCount > 0 ? `${tender.offerCount} teklif` : 'Henüz teklif yok'];
-  if (tender.deadline) parts.push(`son teklif: ${formatTenderDate(tender.deadline)}`);
+  const parts = [tender.offerCount > 0 ? tp('1 teklif', '{n} teklif', tender.offerCount) : tr('Henüz teklif yok')];
+  if (tender.deadline) parts.push(tr('son teklif: {date}', { date: formatTenderDate(tender.deadline) }));
   return parts.join(' · ');
 }
 
 // --- Konfeksiyon (fason) talebi ---------------------------------------------
 
-export const GARMENT_TYPES: { value: GarmentType; label: string }[] = [
+export const GARMENT_TYPES: { value: GarmentType; label: string }[] = trLabels([
   { value: 'tisort', label: 'Tişört' },
   { value: 'sweatshirt', label: 'Sweatshirt' },
   { value: 'gomlek', label: 'Gömlek' },
@@ -82,9 +84,9 @@ export const GARMENT_TYPES: { value: GarmentType; label: string }[] = [
   { value: 'ic_giyim', label: 'İç giyim' },
   { value: 'bebek_cocuk', label: 'Bebek / çocuk' },
   { value: 'diger', label: 'Diğer' },
-];
+]);
 
-export const GARMENT_DELIVERY: { value: GarmentDelivery; label: string }[] = [
+export const GARMENT_DELIVERY: { value: GarmentDelivery; label: string }[] = trLabels([
   { value: 'kesim', label: 'Kesim' },
   { value: 'dikim', label: 'Dikim' },
   { value: 'utu', label: 'Ütü' },
@@ -93,12 +95,12 @@ export const GARMENT_DELIVERY: { value: GarmentDelivery; label: string }[] = [
   { value: 'poset', label: 'Poşet' },
   { value: 'koli', label: 'Koli' },
   { value: 'tam_teslim', label: 'Tam teslim' },
-];
+]);
 
-export const FABRIC_SUPPLIERS: { value: 'alici' | 'uretici'; label: string }[] = [
+export const FABRIC_SUPPLIERS: { value: 'alici' | 'uretici'; label: string }[] = trLabels([
   { value: 'alici', label: 'Alıcı' },
   { value: 'uretici', label: 'Üretici' },
-];
+]);
 
 export function garmentTypeLabel(value: string | undefined): string {
   return GARMENT_TYPES.find((g) => g.value === value)?.label ?? '';
@@ -119,12 +121,12 @@ export const TENDER_CAPTION_MAX = 40;
 // Liste/kart: "3 ek" (fotoğraf + PDF + video). Ek yoksa boş.
 export function tenderAttachmentText(t: { mediaCount?: number; videoCount?: number }): string {
   const n = (t.mediaCount ?? 0) + (t.videoCount ?? 0);
-  return n > 0 ? `${n} ek` : '';
+  return n > 0 ? tr('{n} ek', { n }) : '';
 }
 
 // --- Aksesuar talebi -------------------------------------------------------
 
-export const ACCESSORY_TYPES: { value: AccessoryType; label: string }[] = [
+export const ACCESSORY_TYPES: { value: AccessoryType; label: string }[] = trLabels([
   { value: 'dugme', label: 'Düğme' },
   { value: 'fermuar', label: 'Fermuar' },
   { value: 'etiket', label: 'Etiket' },
@@ -134,7 +136,7 @@ export const ACCESSORY_TYPES: { value: AccessoryType; label: string }[] = [
   { value: 'baski_nakis', label: 'Baskı / nakış' },
   { value: 'ambalaj', label: 'Ambalaj' },
   { value: 'diger', label: 'Diğer' },
-];
+]);
 
 export function accessoryTypeLabel(value: string | undefined): string {
   return ACCESSORY_TYPES.find((a) => a.value === value)?.label ?? '';

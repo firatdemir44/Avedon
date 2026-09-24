@@ -23,6 +23,7 @@ import { haptics } from '../../features/haptics';
 import { DocumentPickError, pickImportFile } from '../../features/documentPicker';
 import { categoryLabel, usageLabel } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { locale, tr } from '../../i18n';
 import { AppBar, Badge, Button, ButtonRow, Card, Chip, ChipRow, EmptyState, Icon, Input, Screen, SegmentControl, SkeletonText } from '../../ui';
 
 type Props = RootStackScreenProps<'CatalogImport'>;
@@ -60,10 +61,10 @@ function specLine(item: CatalogImportItem) {
 function commerceLine(item: CatalogImportItem) {
   const c = item.commerce;
   return [
-    c.priceValue != null ? `Fiyat ${num(c.priceValue)}${c.priceCurrency ? ` ${c.priceCurrency}` : ''}${c.priceUnit ? `/${c.priceUnit}` : ''}` : null,
-    c.stock != null ? `Stok ${num(c.stock)} ${c.stockUnit}` : null,
+    c.priceValue != null ? tr('Fiyat') + ` ${num(c.priceValue)}${c.priceCurrency ? ` ${c.priceCurrency}` : ''}${c.priceUnit ? `/${c.priceUnit}` : ''}` : null,
+    c.stock != null ? tr('Stok {n} {unit}', { n: num(c.stock), unit: c.stockUnit }) : null,
     c.moq != null ? `MOQ ${num(c.moq)}` : null,
-    c.leadTimeDays != null ? `Termin ${c.leadTimeDays} gün` : null,
+    c.leadTimeDays != null ? tr('Termin {n} gün', { n: c.leadTimeDays }) : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -122,14 +123,14 @@ export function CatalogImportScreen({ navigation, route }: Props) {
           haptics.success();
         } else {
           setPhase('start');
-          setError((next.error && ERRORS[next.error]) || next.notices[0] || 'Okuma tamamlanamadı, tekrar deneyin.');
+          setError((next.error && ERRORS[next.error] && tr(ERRORS[next.error])) || next.notices[0] || tr('Okuma tamamlanamadı, tekrar deneyin.'));
           haptics.error();
         }
       } catch (err) {
         if (!alive.current) return;
         if (err instanceof ApiError && err.code === 'job_not_found') {
           setPhase('start');
-          setError(ERRORS.job_not_found);
+          setError(tr(ERRORS.job_not_found));
           return;
         }
         // Geçici ağ hatası: sormaya devam.
@@ -141,13 +142,13 @@ export function CatalogImportScreen({ navigation, route }: Props) {
   const showStartError = (err: unknown) => {
     haptics.error();
     setPhase('start');
-    if (err instanceof ApiError && err.code && ERRORS[err.code]) setError(ERRORS[err.code]);
-    else setError(friendlyMessage(err, 'Başlatılamadı, tekrar deneyin.'));
+    if (err instanceof ApiError && err.code && ERRORS[err.code]) setError(tr(ERRORS[err.code]));
+    else setError(friendlyMessage(err, tr('Başlatılamadı, tekrar deneyin.')));
   };
 
   const scan = async () => {
     if (!url.trim()) {
-      setError('Web sitenizin adresini yazın.');
+      setError(tr('Web sitenizin adresini yazın.'));
       return;
     }
     setError(null);
@@ -170,7 +171,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
     try {
       picked = await pickImportFile();
     } catch (err) {
-      setError(err instanceof DocumentPickError && err.code === 'too_large' ? ERRORS.file_too_large : 'Dosya okunamadı.');
+      setError(err instanceof DocumentPickError && err.code === 'too_large' ? tr(ERRORS.file_too_large) : tr('Dosya okunamadı.'));
       return;
     }
     if (!picked) return;
@@ -197,7 +198,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
       poll(job.jobId);
     } catch (err) {
       haptics.error();
-      setError(err instanceof ApiError && err.code && ERRORS[err.code] ? ERRORS[err.code] : friendlyMessage(err, 'Ürünler eklenemedi, tekrar deneyin.'));
+      setError(err instanceof ApiError && err.code && ERRORS[err.code] ? tr(ERRORS[err.code]) : friendlyMessage(err, tr('Ürünler eklenemedi, tekrar deneyin.')));
     } finally {
       setBusy(false);
     }
@@ -242,14 +243,14 @@ export function CatalogImportScreen({ navigation, route }: Props) {
     </View>
   );
 
-  const bar = <AppBar title="Toplu ürün aktar" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Toplu ürün aktar')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (!user?.companyId) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
         <Screen>
-          <EmptyState icon="sample" title="Ürünler firmaya bağlı" description="Bir firmaya bağlandığında ürünlerini toplu aktarabilirsin." />
+          <EmptyState icon="sample" title={tr('Ürünler firmaya bağlı')} description={tr('Bir firmaya bağlandığında ürünlerini toplu aktarabilirsin.')} />
         </Screen>
       </View>
     );
@@ -259,11 +260,13 @@ export function CatalogImportScreen({ navigation, route }: Props) {
   const readingText =
     source === 'web'
       ? progress && progress.total
-        ? `${progress.total} üründen ${progress.done}'${progress.done === 1 ? 'i' : 'si'} okundu`
-        : 'Sitedeki ürün listesi aranıyor…'
+        ? progress.done === 1
+          ? tr('{total} üründen {done}\'i okundu', { total: progress.total, done: progress.done })
+          : tr('{total} üründen {done}\'si okundu', { total: progress.total, done: progress.done })
+        : tr('Sitedeki ürün listesi aranıyor…')
       : progress && progress.total
-        ? `${progress.total} satır okundu`
-        : 'Dosya okunuyor…';
+        ? tr('{n} satır okundu', { n: progress.total })
+        : tr('Dosya okunuyor…');
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
@@ -273,7 +276,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
           phase === 'review' ? (
             <Button
               size="lg"
-              label={selected.size ? `${selected.size} ürünü ekle` : 'Eklenecek ürün seçin'}
+              label={selected.size ? tr('{n} ürünü ekle', { n: selected.size }) : tr('Eklenecek ürün seçin')}
               loading={busy}
               disabled={busy || !selected.size}
               onPress={() => void commit()}
@@ -284,7 +287,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
         {phase === 'start' ? (
           <View style={{ gap: t.space[4] }}>
             <SegmentControl
-              accessibilityLabel="Aktarma kaynağı"
+              accessibilityLabel={tr('Aktarma kaynağı')}
               stretch
               value={source}
               onChange={(v) => {
@@ -292,19 +295,19 @@ export function CatalogImportScreen({ navigation, route }: Props) {
                 setError(null);
               }}
               options={[
-                { value: 'web', label: 'Web sitesinden' },
-                { value: 'file', label: 'Dosyadan' },
+                { value: 'web', label: tr('Web sitesinden') },
+                { value: 'file', label: tr('Dosyadan') },
               ]}
             />
             {source === 'web' ? (
               <Card>
                 <View style={{ gap: t.space[3] }}>
-                  <Text style={[t.type.title18, { color: t.colors.ink }]}>Sitenizdeki ürünleri tek seferde ekleyin</Text>
+                  <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Sitenizdeki ürünleri tek seferde ekleyin')}</Text>
                   <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
-                    Ürün sayfalarındaki kod, gramaj, en, içerik ve fotoğraflar okunur. Eklemeden önce listeyi kontrol edip seçersiniz.
+                    {tr('Ürün sayfalarındaki kod, gramaj, en, içerik ve fotoğraflar okunur. Eklemeden önce listeyi kontrol edip seçersiniz.')}
                   </Text>
                   <Input
-                    label="Web sitesi adresi"
+                    label={tr('Web sitesi adresi')}
                     value={url}
                     onChangeText={setUrl}
                     placeholder="www.firmaniz.com.tr"
@@ -315,21 +318,20 @@ export function CatalogImportScreen({ navigation, route }: Props) {
                     returnKeyType="go"
                     onSubmitEditing={() => void scan()}
                   />
-                  <Button label="Tara" icon="search" loading={busy} disabled={busy} onPress={() => void scan()} />
+                  <Button label={tr('Tara')} icon="search" loading={busy} disabled={busy} onPress={() => void scan()} />
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    Yalnızca kendi sitenizi taratın. Okuma yavaş ve sitenin kurallarına uyarak yapılır; 60 ürünlük bir site birkaç dakika sürebilir.
+                    {tr('Yalnızca kendi sitenizi taratın. Okuma yavaş ve sitenin kurallarına uyarak yapılır; 60 ürünlük bir site birkaç dakika sürebilir.')}
                   </Text>
                 </View>
               </Card>
             ) : (
               <Card>
                 <View style={{ gap: t.space[3] }}>
-                  <Text style={[t.type.title18, { color: t.colors.ink }]}>Ürün listenizi dosyadan ekleyin</Text>
+                  <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Ürün listenizi dosyadan ekleyin')}</Text>
                   <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
-                    Excel, CSV, PDF katalog ya da fiyat listesinin fotoğrafı (en fazla 10 MB). Kod, ad, tür, gramaj, en, içerik, kullanım,
-                    fiyat ve stok sütunları tanınır.
+                    {tr('Excel, CSV, PDF katalog ya da fiyat listesinin fotoğrafı (en fazla 10 MB). Kod, ad, tür, gramaj, en, içerik, kullanım, fiyat ve stok sütunları tanınır.')}
                   </Text>
-                  <Button kind="secondary" label="Dosya seç" icon="document-outline" loading={busy} disabled={busy} onPress={() => void chooseFile()} />
+                  <Button kind="secondary" label={tr('Dosya seç')} icon="document-outline" loading={busy} disabled={busy} onPress={() => void chooseFile()} />
                 </View>
               </Card>
             )}
@@ -342,12 +344,12 @@ export function CatalogImportScreen({ navigation, route }: Props) {
               <Text style={[t.type.body16Strong, { color: t.colors.ink }]} accessibilityLiveRegion="polite">
                 {phase === 'committing'
                   ? job?.commit
-                    ? `${job.commit.total} üründen ${job.commit.done} tanesi eklendi`
-                    : 'Ekleniyor…'
+                    ? tr('{total} üründen {done} tanesi eklendi', { total: job.commit.total, done: job.commit.done })
+                    : tr('Ekleniyor…')
                   : readingText}
               </Text>
               <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                {phase === 'committing' ? 'Fotoğraflar sitenizden indiriliyor. Bu ekrandan çıkabilirsiniz; işlem sürer.' : 'Bu ekrandan çıkarsanız okuma sürer ama listeyi göremezsiniz.'}
+                {phase === 'committing' ? tr('Fotoğraflar sitenizden indiriliyor. Bu ekrandan çıkabilirsiniz; işlem sürer.') : tr('Bu ekrandan çıkarsanız okuma sürer ama listeyi göremezsiniz.')}
               </Text>
               <SkeletonText lines={3} />
             </View>
@@ -357,18 +359,14 @@ export function CatalogImportScreen({ navigation, route }: Props) {
         {phase === 'review' && job ? (
           <View style={{ gap: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              <Text style={[t.type.mono14, { color: t.colors.ink }]}>{items.length}</Text> ürün okundu
-              {existing ? (
-                <>
-                  , <Text style={[t.type.mono14, { color: t.colors.ink }]}>{existing}</Text> tanesi kataloğunuzda zaten var
-                </>
-              ) : null}
-              .
+              {existing
+                ? tr('{n} ürün okundu, {m} tanesi kataloğunuzda zaten var.', { n: items.length, m: existing })
+                : tr('{n} ürün okundu.', { n: items.length })}
             </Text>
             {job.notices.map((n) => banner(n, 'warning'))}
             <ChipRow>
               <Chip
-                label="Tümünü seç"
+                label={tr('Tümünü seç')}
                 icon="checkmark"
                 onPress={() => {
                   haptics.selection();
@@ -376,7 +374,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
                 }}
               />
               <Chip
-                label="Hiçbirini seçme"
+                label={tr('Hiçbirini seçme')}
                 onPress={() => {
                   haptics.selection();
                   setSelected(new Set());
@@ -394,7 +392,7 @@ export function CatalogImportScreen({ navigation, route }: Props) {
                 />
               ))}
             </Card>
-            <Button kind="quiet" label="Baştan başla" icon="refresh" onPress={reset} />
+            <Button kind="quiet" label={tr('Baştan başla')} icon="refresh" onPress={reset} />
           </View>
         ) : null}
 
@@ -403,24 +401,24 @@ export function CatalogImportScreen({ navigation, route }: Props) {
             <View style={{ gap: t.space[3] }}>
               <Icon name="checkmark-circle-outline" color="success" />
               <Text style={[t.type.title18, { color: t.colors.ink }]} accessibilityLiveRegion="polite">
-                {job.commit.created} ürün eklendi
+                {tr('{n} ürün eklendi', { n: job.commit.created })}
               </Text>
               <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
                 {[
-                  job.commit.skipped ? `${job.commit.skipped} ürün atlandı (aynı kod kataloğunuzda var ya da bilgisi eksik)` : null,
-                  job.commit.failed ? `${job.commit.failed} ürün eklenemedi` : null,
-                  'Eklenen ürünlerde okunan alanlar "onay bekliyor" olarak işaretli; ürün sayfasından kontrol edip onaylayın. Stok 0 olarak girildi.',
+                  job.commit.skipped ? tr('{n} ürün atlandı (aynı kod kataloğunuzda var ya da bilgisi eksik)', { n: job.commit.skipped }) : null,
+                  job.commit.failed ? tr('{n} ürün eklenemedi', { n: job.commit.failed }) : null,
+                  tr('Eklenen ürünlerde okunan alanlar "onay bekliyor" olarak işaretli; ürün sayfasından kontrol edip onaylayın. Stok 0 olarak girildi.'),
                 ]
                   .filter(Boolean)
                   .join('. ')}
               </Text>
               <ButtonRow>
                 <Button
-                  label="Kataloğu gör"
+                  label={tr('Kataloğu gör')}
                   icon="catalog"
                   onPress={() => navigation.navigate('CompanyProfile', { companyId: user.companyId!, initialTab: 'products' })}
                 />
-                <Button kind="secondary" label="Başka aktarım" icon="refresh" onPress={reset} />
+                <Button kind="secondary" label={tr('Başka aktarım')} icon="refresh" onPress={reset} />
               </ButtonRow>
             </View>
           </Card>
@@ -436,7 +434,7 @@ function ImportRow({ item, checked, last, onPress }: { item: CatalogImportItem; 
   const t = useTheme();
   const specs = specLine(item);
   const commerce = commerceLine(item);
-  const usages = [...item.usages.map(usageLabel), ...item.unmappedUses.map((u) => u.toLocaleLowerCase('tr-TR'))].join(', ');
+  const usages = [...item.usages.map(usageLabel), ...item.unmappedUses.map((u) => u.toLocaleLowerCase(locale()))].join(', ');
   const disabled = !item.canImport;
   const thumb = item.imageUrls[0];
   return (
@@ -446,7 +444,7 @@ function ImportRow({ item, checked, last, onPress }: { item: CatalogImportItem; 
       accessibilityRole="checkbox"
       accessibilityState={{ checked, disabled }}
       aria-checked={checked}
-      accessibilityLabel={[item.name || item.code, item.code, specs, item.exists ? 'kataloğunuzda zaten var' : null, disabled ? 'eklenemez' : null]
+      accessibilityLabel={[item.name || item.code, item.code, specs, item.exists ? tr('kataloğunuzda zaten var') : null, disabled ? tr('eklenemez') : null]
         .filter(Boolean)
         .join(', ')}
       style={({ pressed }) => ({
@@ -478,12 +476,12 @@ function ImportRow({ item, checked, last, onPress }: { item: CatalogImportItem; 
         {thumb ? <Image source={{ uri: thumb }} resizeMode="cover" style={{ width: '100%', height: '100%' }} /> : <Icon name="fabric" color="ink3" />}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-        <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{item.name || item.code || 'Adsız ürün'}</Text>
+        <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{item.name || item.code || tr('Adsız ürün')}</Text>
         {item.code ? <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{item.code}</Text> : null}
         {specs ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{specs}</Text> : null}
-        {usages ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Kullanım: {usages}</Text> : null}
+        {usages ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Kullanım: {usages}', { usages })}</Text> : null}
         {commerce ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{commerce}</Text> : null}
-        {item.exists ? <Badge kind="pending" label="Zaten var" style={{ alignSelf: 'flex-start' }} /> : null}
+        {item.exists ? <Badge kind="pending" label={tr('Zaten var')} style={{ alignSelf: 'flex-start' }} /> : null}
         {item.warnings.map((w) => (
           <View key={w} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
             <Icon name="warning" size={t.size.iconSm} color={w.startsWith('Eksik') ? 'danger' : 'warning'} />

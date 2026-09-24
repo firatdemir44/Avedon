@@ -58,6 +58,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <I18nProvider>
       <ThemeProvider>
         <SessionProvider>
           <RegistrationProvider>
@@ -65,6 +66,7 @@ export default function App() {
           </RegistrationProvider>
         </SessionProvider>
       </ThemeProvider>
+      </I18nProvider>
     </SafeAreaProvider>
   );
 }

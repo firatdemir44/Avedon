@@ -1,4 +1,5 @@
 import React from 'react';
+import { tr } from '../i18n';
 import { View, Text, Pressable } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
@@ -29,7 +30,7 @@ export function CollapsibleSection({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${title}${count !== undefined ? `, ${count}` : ''}, ${open ? 'kapat' : 'aç'}`}
+        accessibilityLabel={`${title}${count !== undefined ? `, ${count}` : ''}, ${open ? tr('kapat') : tr('aç')}`}
         style={({ pressed }) => ({
           flexDirection: 'row',
           alignItems: 'center',

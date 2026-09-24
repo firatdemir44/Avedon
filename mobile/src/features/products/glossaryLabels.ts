@@ -2,8 +2,10 @@
 // yalnızca sunucuda (backend/src/domain/glossary); uygulama yalnızca etiket
 // gösterir. Anahtarlar sunucudakiyle birebir aynı olmalı; backend'de
 // `npm run check:catalog` eşitliği denetler.
+import { tr } from '../../i18n';
+import { trLabels } from '../trLabels';
 
-export const FIBERS = [
+export const FIBERS = trLabels([
   { key: 'pamuk', label: 'Pamuk' },
   { key: 'polyester', label: 'Polyester' },
   { key: 'elastan', label: 'Elastan' },
@@ -20,9 +22,9 @@ export const FIBERS = [
   { key: 'kasmir', label: 'Kaşmir' },
   { key: 'metalik', label: 'Metalik iplik' },
   { key: 'diger', label: 'Diğer' },
-] as const;
+] as const);
 
-export const CERTIFICATES = [
+export const CERTIFICATES = trLabels([
   { key: 'oeko_tex_100', label: 'OEKO-TEX Standard 100' },
   { key: 'oeko_tex_made_in_green', label: 'OEKO-TEX Made in Green' },
   { key: 'gots', label: 'GOTS (Organik Tekstil)' },
@@ -37,21 +39,21 @@ export const CERTIFICATES = [
   { key: 'zdhc', label: 'ZDHC' },
   { key: 'higg', label: 'Higg Index' },
   { key: 'diger', label: 'Diğer' },
-] as const;
+] as const);
 
 export const WIDTH_TYPES = ['acik', 'tup'] as const;
 export type WidthType = (typeof WIDTH_TYPES)[number];
-export const WIDTH_TYPE_LABELS: Record<WidthType, string> = { acik: 'Açık en', tup: 'Tüp en' };
+export const WIDTH_TYPE_LABELS: Record<WidthType, string> = trLabels({ acik: 'Açık en', tup: 'Tüp en' });
 
 // Enin anlamı (Faz 1, Adım 4 madde 2): tüp kumaşta girilen en tek yüzün eni
 // olabilir (açık en = 2×) ya da zaten açık en olabilir. Otomatik çarpma her
 // zaman doğru olmadığı için kullanıcı seçmeden boş kalır.
 export const WIDTH_MEANINGS = ['tup_tek_yuz', 'acik'] as const;
 export type WidthMeaning = (typeof WIDTH_MEANINGS)[number];
-export const WIDTH_MEANING_LABELS: Record<WidthMeaning, string> = {
+export const WIDTH_MEANING_LABELS: Record<WidthMeaning, string> = trLabels({
   tup_tek_yuz: 'Tek yüz tüp eni',
   acik: 'Açık en',
-};
+});
 
 export function widthMeaningLabel(key: string) {
   return WIDTH_MEANING_LABELS[key as WidthMeaning] ?? '';
@@ -65,11 +67,11 @@ export function effectiveWidthCm(widthCm: number, widthMeaning: string) {
 // Pasaport kartındaki En sütununun altındaki küçük gri yazı; tek satır.
 export function widthHintLabel(widthType: string, widthMeaning: string) {
   if (widthType === 'tup') {
-    if (widthMeaning === 'tup_tek_yuz') return 'tüp, tek yüz';
-    if (widthMeaning === 'acik') return 'tüp, açık en';
-    return 'tüp en';
+    if (widthMeaning === 'tup_tek_yuz') return tr('tüp, tek yüz');
+    if (widthMeaning === 'acik') return tr('tüp, açık en');
+    return tr('tüp en');
   }
-  if (widthType === 'acik') return 'açık en';
+  if (widthType === 'acik') return tr('açık en');
   return '';
 }
 

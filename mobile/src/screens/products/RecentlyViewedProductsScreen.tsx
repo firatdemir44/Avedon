@@ -1,7 +1,7 @@
-// "Son baktıklarım" — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
+// {tr('Son baktıklarım')} — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
 // fetchRecentlyViewedProducts (güne göre gruplu, en yeni üstte) +
 // clearRecentlyViewedProducts. Görünüm: AppBar · gün başlıkları (SectionTitle)
-// · ProductCard listesi · altta kenarlıklı "Geçmişi temizle".
+// · ProductCard listesi · altta kenarlıklı {tr('Geçmişi temizle')}.
 // Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { SectionList, View } from 'react-native';
@@ -16,6 +16,7 @@ import { refreshControl } from '../../components/refresh';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, Button, EmptyState, ProductCard, Screen, SectionTitle, SkeletonRow } from '../../ui';
 import { categoryLabel } from '../../features/products/catalog';
+import { tr } from '../../i18n';
 import { ErrorBanner, productSpecs, useProductImage } from './FavoriteProductsScreen';
 
 type Props = RootStackScreenProps<'RecentlyViewedProducts'>;
@@ -66,9 +67,9 @@ export function RecentlyViewedProductsScreen({ navigation }: Props) {
 
   const clearHistory = async () => {
     const confirmed = await confirmAction({
-      title: 'Geçmişi temizle',
-      message: 'Son baktığınız ürünlerin listesi silinsin mi?',
-      confirmLabel: 'Temizle',
+      title: tr('Geçmişi temizle'),
+      message: tr('Son baktığınız ürünlerin listesi silinsin mi?'),
+      confirmLabel: tr('Temizle'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -86,7 +87,7 @@ export function RecentlyViewedProductsScreen({ navigation }: Props) {
     }
   };
 
-  const appBar = <AppBar title="Son baktıklarım" leading="back" onBack={() => navigation.goBack()} />;
+  const appBar = <AppBar title={tr('Son baktıklarım')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -106,8 +107,8 @@ export function RecentlyViewedProductsScreen({ navigation }: Props) {
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {appBar}
         <Screen>
-          <ErrorBanner message={friendlyMessage(error, 'Son baktıklarınız alınamadı')} />
-          <Button kind="secondary" label="Tekrar dene" onPress={reload} />
+          <ErrorBanner message={friendlyMessage(error, tr('Son baktıklarınız alınamadı'))} />
+          <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} />
         </Screen>
       </View>
     );
@@ -133,20 +134,20 @@ export function RecentlyViewedProductsScreen({ navigation }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="clock"
-              title="Baktığın ürünleri burada bul"
-              description="Açtığın ürünler burada gün gün listelenir. Kendi firmanın ürünleri eklenmez."
-              actionLabel="Ürünlere göz at"
+              title={tr('Baktığın ürünleri burada bul')}
+              description={tr('Açtığın ürünler burada gün gün listelenir. Kendi firmanın ürünleri eklenmez.')}
+              actionLabel={tr('Ürünlere göz at')}
               onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
             />
           }
           ListFooterComponent={
             data.length > 0 ? (
               <View style={{ paddingTop: t.space[6], gap: t.space[3] }}>
-                {clearError ? <ErrorBanner message="Geçmiş temizlenemedi, tekrar deneyin." /> : null}
+                {clearError ? <ErrorBanner message={tr('Geçmiş temizlenemedi, tekrar deneyin.')} /> : null}
                 <Button
                   kind="danger"
                   fullWidth
-                  label="Geçmişi temizle"
+                  label={tr('Geçmişi temizle')}
                   loading={clearing}
                   onPress={() => void clearHistory()}
                 />

@@ -27,19 +27,20 @@ import {
   SkeletonRow,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'QuoteRequests'>;
 
 type Role = 'buyer' | 'seller';
 
 // Teklif isteği durumu → rozet (components/QuoteStatusBadge ile aynı eşleme).
-const QUOTE_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> = {
-  open: { kind: 'pending', label: 'Teklif bekleniyor' },
-  quoted: { kind: 'info', label: 'Teklif verildi' },
-  accepted: { kind: 'delivered', label: 'Kabul edildi' },
-  declined: { kind: 'cancelled', label: 'Reddedildi' },
-  cancelled: { kind: 'cancelled', label: 'Geri çekildi' },
-};
+const QUOTE_BADGE = (): Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> => ({
+  open: { kind: 'pending', label: tr('Teklif bekleniyor') },
+  quoted: { kind: 'info', label: tr('Teklif verildi') },
+  accepted: { kind: 'delivered', label: tr('Kabul edildi') },
+  declined: { kind: 'cancelled', label: tr('Reddedildi') },
+  cancelled: { kind: 'cancelled', label: tr('Geri çekildi') },
+});
 
 // Faz 2, Adım 2. İki sekme tek yüklemede geliyor: sekme değişince ekran
 // yeniden istek atmıyor, liste anında değişiyor.
@@ -77,7 +78,7 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
 
   const shell = (children: React.ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Tekliflerim" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Tekliflerim')} leading="back" onBack={() => navigation.goBack()} />
       {children}
     </View>
   );
@@ -99,9 +100,9 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
       <Screen>
         <EmptyState
           icon="warning"
-          title="Yüklenemedi"
-          description={friendlyMessage(error, 'Teklif istekleri alınamadı')}
-          actionLabel="Tekrar dene"
+          title={tr('Yüklenemedi')}
+          description={friendlyMessage(error, tr('Teklif istekleri alınamadı'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -113,12 +114,12 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
       {hasCompany ? (
         <SegmentControl<Role>
           stretch
-          accessibilityLabel="Yön"
+          accessibilityLabel={tr('Yön')}
           value={role}
           onChange={switchRole}
           options={[
-            { value: 'buyer', label: 'Verdiğim istekler' },
-            { value: 'seller', label: 'Gelen istekler' },
+            { value: 'buyer', label: tr('Verdiğim istekler') },
+            { value: 'seller', label: tr('Gelen istekler') },
           ]}
         />
       ) : null}
@@ -137,22 +138,22 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
           >
             <Icon name="warning" size={t.size.iconSm} color="danger" />
             <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
-              {friendlyMessage(error, 'Teklif istekleri alınamadı')}
+              {friendlyMessage(error, tr('Teklif istekleri alınamadı'))}
             </Text>
           </View>
-          <Button kind="secondary" label="Tekrar dene" onPress={reload} />
+          <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} />
         </View>
       ) : null}
       {/* Çoklu istekler (Faz 3, Adım 1): her satır bir karşılaştırma. */}
       {rfqs.length ? (
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title={`Karşılaştırmalar (${rfqs.length})`} />
+          <SectionTitle title={tr('Karşılaştırmalar ({n})', { n: rfqs.length })} />
           <View>
             {rfqs.map((rfq, index) => (
               <ListRow
                 key={rfq.id}
                 title={rfq.title}
-                subtitle={`${rfq.requestCount} firmadan ${rfq.quotedCount} teklif · ${formatQuantity(rfq.quantity, rfq.unit)} · ${formatRelativeTime(rfq.createdAt)}`}
+                subtitle={`${tr('{a} firmadan {b} teklif', { a: rfq.requestCount, b: rfq.quotedCount })} · ${formatQuantity(rfq.quantity, rfq.unit)} · ${formatRelativeTime(rfq.createdAt)}`}
                 left={
                   <View
                     style={{
@@ -172,7 +173,7 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
               />
             ))}
           </View>
-          <SectionTitle title={`Tek tek istekler (${requests.length})`} style={{ paddingTop: t.space[3] }} />
+          <SectionTitle title={tr('Tek tek istekler ({n})', { n: requests.length })} style={{ paddingTop: t.space[3] }} />
         </View>
       ) : null}
     </View>
@@ -182,15 +183,15 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
     role === 'seller' ? (
       <EmptyState
         icon="quote"
-        title="Henüz gelen teklif isteği yok"
-        description="Ürünlerinize teklif isteği geldiğinde burada görünür ve teklifinizi buradan hazırlarsınız."
+        title={tr('Henüz gelen teklif isteği yok')}
+        description={tr('Ürünlerinize teklif isteği geldiğinde burada görünür ve teklifinizi buradan hazırlarsınız.')}
       />
     ) : (
       <EmptyState
         icon="quote"
-        title="Henüz teklif isteğiniz yok"
-        description="Beğendiğiniz ürünün sayfasından teklif isteyebilir, gelen teklifi buradan yanıtlayabilirsiniz."
-        actionLabel="Ürünlere göz at"
+        title={tr('Henüz teklif isteğiniz yok')}
+        description={tr('Beğendiğiniz ürünün sayfasından teklif isteyebilir, gelen teklifi buradan yanıtlayabilirsiniz.')}
+        actionLabel={tr('Ürünlere göz at')}
         onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
       />
     );
@@ -210,7 +211,7 @@ export function QuoteRequestsScreen({ route, navigation }: Props) {
             role === 'seller'
               ? [item.buyer.name, item.buyer.company?.name].filter(Boolean).join(' · ')
               : item.sellerCompany.name;
-          const badge = QUOTE_BADGE[item.status] ?? QUOTE_BADGE.open;
+          const badge = QUOTE_BADGE()[item.status] ?? QUOTE_BADGE().open;
           return (
             <ListRow
               title={item.product.code}

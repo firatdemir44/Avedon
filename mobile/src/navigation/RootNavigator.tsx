@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
+import { tr } from '../i18n';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { DefaultTheme, NavigationContainer, useNavigationContainerRef, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -203,20 +204,20 @@ export function RootNavigator() {
             <Stack.Screen
               name="MyProfile"
               component={MyProfileScreen}
-              options={{ headerShown: true, title: 'Profilim' }}
+              options={{ headerShown: true, title: tr('Profilim') }}
             />
             {/* Üst başlıktaki "Arama Yap" kutusu. */}
             <Stack.Screen
               name="GlobalSearch"
               component={GlobalSearchScreen}
-              options={{ headerShown: true, title: 'Arama' }}
+              options={{ headerShown: true, title: tr('Arama') }}
             />
             <Stack.Screen
               name="CompanyProfile"
               component={CompanyProfileScreen}
               // Başlık ekranın kendisinde güncellenir: kendi firman "Firmam",
               // başka firma kendi adı.
-              options={{ headerShown: true, title: 'Firma' }}
+              options={{ headerShown: true, title: tr('Firma') }}
             />
             <Stack.Screen name="Calculators" component={CalculatorsListScreen} />
             <Stack.Screen name="Requests" component={RequestsScreen} />
@@ -227,265 +228,265 @@ export function RootNavigator() {
             <Stack.Screen
               name="EditCompany"
               component={EditCompanyScreen}
-              options={{ headerShown: true, title: 'Firmayı Düzenle' }}
+              options={{ headerShown: true, title: tr('Firmayı Düzenle') }}
             />
             <Stack.Screen
               name="CompanySetup"
               component={CompanySetupScreen}
-              options={{ headerShown: true, title: 'Firma Sayfanı Tamamla' }}
+              options={{ headerShown: true, title: tr('Firma Sayfanı Tamamla') }}
             />
             <Stack.Screen
               name="AddProduct"
               component={AddProductScreen}
-              options={{ headerShown: true, title: 'Ürün Ekle' }}
+              options={{ headerShown: true, title: tr('Ürün Ekle') }}
             />
             <Stack.Screen
               name="PassportReview"
               component={PassportReviewScreen}
-              options={{ headerShown: true, title: 'Etiketten Okunanlar' }}
+              options={{ headerShown: true, title: tr('Etiketten Okunanlar') }}
             />
             {/* WhatsApp'tan gelen ürün taslakları (bekleyenler). */}
             <Stack.Screen
               name="ProductDrafts"
               component={ProductDraftsScreen}
-              options={{ headerShown: true, title: 'WhatsApp Taslakları' }}
+              options={{ headerShown: true, title: tr('WhatsApp Taslakları') }}
             />
             <Stack.Screen
               name="ProductDetail"
               component={ProductDetailScreen}
               // Başlık ürün kodu olarak ekranın kendisi tarafından güncelleniyor.
-              options={{ headerShown: true, title: 'Ürün' }}
+              options={{ headerShown: true, title: tr('Ürün') }}
             />
             <Stack.Screen
               name="ProductFilters"
               component={ProductFiltersScreen}
-              options={{ headerShown: true, title: 'Filtrele' }}
+              options={{ headerShown: true, title: tr('Filtrele') }}
             />
             {/* Faz 3, Adım 3: fotoğrafla benzer kumaş arama. */}
             <Stack.Screen
               name="SimilarSearch"
               component={SimilarSearchScreen}
-              options={{ headerShown: true, title: 'Fotoğrafla Kumaş Ara' }}
+              options={{ headerShown: true, title: tr('Fotoğrafla Kumaş Ara') }}
             />
             <Stack.Screen
               name="FavoriteProducts"
               component={FavoriteProductsScreen}
-              options={{ headerShown: true, title: 'Takip Ettiklerim' }}
+              options={{ headerShown: true, title: tr('Takip Ettiklerim') }}
             />
             <Stack.Screen
               name="RecentlyViewedProducts"
               component={RecentlyViewedProductsScreen}
-              options={{ headerShown: true, title: 'Son Baktıklarım' }}
+              options={{ headerShown: true, title: tr('Son Baktıklarım') }}
             />
             <Stack.Screen
               name="Notifications"
               component={NotificationsScreen}
-              options={{ headerShown: true, title: 'Bildirimler' }}
+              options={{ headerShown: true, title: tr('Bildirimler') }}
             />
             <Stack.Screen
               name="WatchRules"
               component={WatchRulesScreen}
-              options={{ headerShown: true, title: 'İzlediklerim' }}
+              options={{ headerShown: true, title: tr('İzlediklerim') }}
             />
             <Stack.Screen
               name="AssistantThreads"
               component={AssistantThreadsScreen}
-              options={{ headerShown: true, title: 'Sohbetler' }}
+              options={{ headerShown: true, title: tr('Sohbetler') }}
             />
             <Stack.Screen
               name="AssistantMemory"
               component={AssistantMemoryScreen}
-              options={{ headerShown: true, title: 'Firma Hafızası' }}
+              options={{ headerShown: true, title: tr('Firma Hafızası') }}
             />
             {/* Satıcı asistanı (Faz 2, Adım 3): başlık ekranın kendisinde
                 firma adıyla ayarlanıyor. */}
             <Stack.Screen
               name="SellerAssistant"
               component={SellerAssistantScreen}
-              options={{ headerShown: true, title: 'Firma asistanı' }}
+              options={{ headerShown: true, title: tr('Firma asistanı') }}
             />
             <Stack.Screen name="AssistantReport" component={AssistantReportScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CompanyQuestions"
               component={CompanyQuestionsScreen}
-              options={{ headerShown: true, title: 'Asistana Gelen Sorular' }}
+              options={{ headerShown: true, title: tr('Asistana Gelen Sorular') }}
             />
             <Stack.Screen
               name="CompanyFaq"
               component={CompanyFaqScreen}
-              options={{ headerShown: true, title: 'Sık Sorulanlar' }}
+              options={{ headerShown: true, title: tr('Sık Sorulanlar') }}
             />
             {/* Makine parkı ve fason kapasite (Faz 2, Adım 5). MachineForm
                 başlığını ekranın kendisi ayarlıyor (ekle/düzenle). */}
             <Stack.Screen
               name="MachinePark"
               component={MachineParkScreen}
-              options={{ headerShown: true, title: 'Makine Parkı' }}
+              options={{ headerShown: true, title: tr('Makine Parkı') }}
             />
             <Stack.Screen
               name="MachineForm"
               component={MachineFormScreen}
-              options={{ headerShown: true, title: 'Makine Ekle' }}
+              options={{ headerShown: true, title: tr('Makine Ekle') }}
             />
             <Stack.Screen name="MachineImport" component={MachineImportScreen} options={{ headerShown: false }} />
             <Stack.Screen name="CatalogImport" component={CatalogImportScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CapacitySearch"
               component={CapacitySearchScreen}
-              options={{ headerShown: true, title: 'Fason Kapasite Ara' }}
+              options={{ headerShown: true, title: tr('Fason Kapasite Ara') }}
             />
             {/* İplik dizini (Faz 2, Adım 6). YarnForm başlığını ekranın
                 kendisi ayarlıyor (ekle/düzenle). */}
             <Stack.Screen
               name="YarnDirectory"
               component={YarnDirectoryScreen}
-              options={{ headerShown: true, title: 'İplik Dizini' }}
+              options={{ headerShown: true, title: tr('İplik Dizini') }}
             />
             <Stack.Screen
               name="YarnForm"
               component={YarnFormScreen}
-              options={{ headerShown: true, title: 'İplik Ekle' }}
+              options={{ headerShown: true, title: tr('İplik Ekle') }}
             />
             <Stack.Screen
               name="FabricCostCalculator"
               component={FabricCostCalculator}
-              options={{ headerShown: true, title: 'Maliyet ve Satış Fiyatı' }}
+              options={{ headerShown: true, title: tr('Maliyet ve Satış Fiyatı') }}
             />
             <Stack.Screen
               name="GarmentCostCalculator"
               component={GarmentCostCalculator}
-              options={{ headerShown: true, title: 'Konfeksiyon Ürün Maliyeti' }}
+              options={{ headerShown: true, title: tr('Konfeksiyon Ürün Maliyeti') }}
             />
             <Stack.Screen
               name="YarnCountCalculator"
               component={YarnCountCalculator}
-              options={{ headerShown: true, title: 'İplik Numarası' }}
+              options={{ headerShown: true, title: tr('İplik Numarası') }}
             />
             <Stack.Screen
               name="YarnUsageCalculator"
               component={YarnUsageCalculator}
-              options={{ headerShown: true, title: 'İplik Kullanım Miktarı' }}
+              options={{ headerShown: true, title: tr('İplik Kullanım Miktarı') }}
             />
             <Stack.Screen
               name="YarnRatioCalculator"
               component={YarnRatioCalculator}
-              options={{ headerShown: true, title: 'İplik Kullanım Oranı' }}
+              options={{ headerShown: true, title: tr('İplik Kullanım Oranı') }}
             />
             <Stack.Screen
               name="FabricWeightCalculator"
               component={FabricWeightCalculator}
-              options={{ headerShown: true, title: 'Kumaş Gramajı' }}
+              options={{ headerShown: true, title: tr('Kumaş Gramajı') }}
             />
             <Stack.Screen
               name="ProductionCalculator"
               component={ProductionCalculator}
-              options={{ headerShown: true, title: 'Kumaş Üretimi' }}
+              options={{ headerShown: true, title: tr('Kumaş Üretimi') }}
             />
             <Stack.Screen
               name="SampleRequestForm"
               component={SampleRequestFormScreen}
-              options={{ headerShown: true, title: 'Numune Talebi' }}
+              options={{ headerShown: true, title: tr('Numune Talebi') }}
             />
             <Stack.Screen
               name="SampleRequestTracking"
               component={SampleRequestTrackingScreen}
-              options={{ headerShown: true, title: 'Numune Takibi' }}
+              options={{ headerShown: true, title: tr('Numune Takibi') }}
             />
             <Stack.Screen
               name="MySampleRequests"
               component={MySampleRequestsScreen}
-              options={{ headerShown: true, title: 'Taleplerim' }}
+              options={{ headerShown: true, title: tr('Taleplerim') }}
             />
             <Stack.Screen
               name="IncomingSampleRequests"
               component={IncomingSampleRequestsScreen}
-              options={{ headerShown: true, title: 'Gelen Talepler' }}
+              options={{ headerShown: true, title: tr('Gelen Talepler') }}
             />
             <Stack.Screen
               name="QuoteRequestForm"
               component={QuoteRequestFormScreen}
-              options={{ headerShown: true, title: 'Teklif İste' }}
+              options={{ headerShown: true, title: tr('Teklif İste') }}
             />
             <Stack.Screen
               name="QuoteRequestDetail"
               component={QuoteRequestDetailScreen}
-              options={{ headerShown: true, title: 'Teklif' }}
+              options={{ headerShown: true, title: tr('Teklif') }}
             />
             <Stack.Screen
               name="QuoteRequests"
               component={QuoteRequestsScreen}
-              options={{ headerShown: true, title: 'Tekliflerim' }}
+              options={{ headerShown: true, title: tr('Tekliflerim') }}
             />
             {/* Faz 3, Adım 4: kabul edilen teklifin sipariş kaydı. */}
             <Stack.Screen
               name="DealDetail"
               component={DealDetailScreen}
-              options={{ headerShown: true, title: 'Sipariş' }}
+              options={{ headerShown: true, title: tr('Sipariş') }}
             />
             <Stack.Screen
               name="Deals"
               component={DealsScreen}
-              options={{ headerShown: true, title: 'Siparişlerim' }}
+              options={{ headerShown: true, title: tr('Siparişlerim') }}
             />
             <Stack.Screen
               name="RfqForm"
               component={RfqFormScreen}
-              options={{ headerShown: true, title: 'Çoklu Teklif İste' }}
+              options={{ headerShown: true, title: tr('Çoklu Teklif İste') }}
             />
             <Stack.Screen
               name="RfqCompare"
               component={RfqCompareScreen}
-              options={{ headerShown: true, title: 'Teklif Karşılaştırma' }}
+              options={{ headerShown: true, title: tr('Teklif Karşılaştırma') }}
             />
             <Stack.Screen name="TenderForm" component={TenderFormScreen} options={{ headerShown: false }} />
             <Stack.Screen name="TenderDetail" component={TenderDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="GarmentVisualCost"
               component={GarmentVisualCostScreen}
-              options={{ headerShown: true, title: 'Görsel Maliyet Tablosu' }}
+              options={{ headerShown: true, title: tr('Görsel Maliyet Tablosu') }}
             />
             {/* Yönetici ekranı. Başlıkta "Admin" yazmaz: yöneticinin kim
                 olduğu hiçbir yerde görünmemeli (2026-09-22). */}
             <Stack.Screen
               name="Admin"
               component={AdminScreen}
-              options={{ headerShown: true, title: 'Yönetim' }}
+              options={{ headerShown: true, title: tr('Yönetim') }}
             />
             <Stack.Screen
               name="FeedMutes"
               component={FeedMutesScreen}
-              options={{ headerShown: true, title: 'Gizlediğim Firmalar' }}
+              options={{ headerShown: true, title: tr('Gizlediğim Firmalar') }}
             />
             {/* Firma tarafı doğrulama başvurusu. */}
             <Stack.Screen
               name="Verification"
               component={VerificationScreen}
-              options={{ headerShown: true, title: 'Firma Doğrulama' }}
+              options={{ headerShown: true, title: tr('Firma Doğrulama') }}
             />
-            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: 'Profil' }} />
+            <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: true, title: tr('Profil') }} />
             {/* Kişi profili düzenleme ve deneyim formu (2026-09-22). */}
             <Stack.Screen
               name="ProfileEdit"
               component={ProfileEditScreen}
-              options={{ headerShown: true, title: 'Profili Düzenle' }}
+              options={{ headerShown: true, title: tr('Profili Düzenle') }}
             />
             <Stack.Screen
               name="ExperienceForm"
               component={ExperienceFormScreen}
-              options={{ headerShown: true, title: 'Deneyim Ekle' }}
+              options={{ headerShown: true, title: tr('Deneyim Ekle') }}
             />
             <Stack.Screen
               name="Connections"
               component={ConnectionsListScreen}
-              options={{ headerShown: true, title: 'Bağlantılarım' }}
+              options={{ headerShown: true, title: tr('Bağlantılarım') }}
             />
             <Stack.Screen
               name="ConnectionRequests"
               component={ConnectionRequestsScreen}
-              options={{ headerShown: true, title: 'Bağlantı İstekleri' }}
+              options={{ headerShown: true, title: tr('Bağlantı İstekleri') }}
             />
             {/* Faz 2, Adım 4: tedarikçi/müşteri daveti. */}
-            <Stack.Screen name="Invites" component={InvitesScreen} options={{ headerShown: true, title: 'Davet Et' }} />
+            <Stack.Screen name="Invites" component={InvitesScreen} options={{ headerShown: true, title: tr('Davet Et') }} />
             <Stack.Screen
               name="Chat"
               component={ChatScreen}
@@ -502,27 +503,27 @@ export function RootNavigator() {
             <Stack.Screen
               name="NewConversation"
               component={NewConversationScreen}
-              options={{ headerShown: true, title: 'Yeni Mesaj' }}
+              options={{ headerShown: true, title: tr('Yeni Mesaj') }}
             />
             <Stack.Screen
               name="SectorNews"
               component={SectorNewsScreen}
-              options={{ headerShown: true, title: 'Sektör gündemi' }}
+              options={{ headerShown: true, title: tr('Sektör gündemi') }}
             />
             <Stack.Screen
               name="CreatePost"
               component={CreatePostScreen}
-              options={{ headerShown: true, title: 'Gönderi Paylaş' }}
+              options={{ headerShown: true, title: tr('Gönderi Paylaş') }}
             />
             <Stack.Screen
               name="SelectProduct"
               component={SelectProductScreen}
-              options={{ headerShown: true, title: 'Ürün Seç' }}
+              options={{ headerShown: true, title: tr('Ürün Seç') }}
             />
             <Stack.Screen
               name="PostComments"
               component={PostCommentsScreen}
-              options={{ headerShown: true, title: 'Yorumlar' }}
+              options={{ headerShown: true, title: tr('Yorumlar') }}
             />
           </Stack.Group>
         ) : (

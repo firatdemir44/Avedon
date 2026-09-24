@@ -56,6 +56,8 @@ export interface WatchSuggestion {
 export interface ToolContext {
   userId: string;
   companyId: string | null;
+  /** Arayüz dili; araç kartları gösterimde bu dile çevrilir. */
+  lang?: import('../i18n').Lang;
 }
 
 export interface ToolSet {
@@ -82,7 +84,7 @@ export function buildTools(ctx: ToolContext): ToolSet {
       run: async (args) => {
         // Kur verilmediyse (0/boş) TCMB döviz satış kuru sunucuda doldurulur.
         await fillFxDefaults((skill.inputSchema as { shape?: Record<string, unknown> }).shape, args);
-        const result = runSkill(skill, args);
+        const result = runSkill(skill, args, ctx.lang);
         if (!result.ok) return `Girdi hatası: ${JSON.stringify(result.details)}`;
         calls.push({ name: skill.name, title: skill.title, input: args, output: result.output, summary: result.summary, formula: skill.formula });
         return JSON.stringify({ summary: result.summary, output: result.output });

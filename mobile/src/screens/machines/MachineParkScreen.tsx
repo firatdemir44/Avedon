@@ -25,6 +25,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { toInputNumber } from '../../features/calculators/parse';
 import { groupMachines, machineSummary } from '../../features/machines/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -80,7 +81,7 @@ export function MachineParkScreen({ navigation }: Props) {
   const save = useCallback(async () => {
     const trimmed = tons.trim();
     if (trimmed && !NUMBER_PATTERN.test(trimmed)) {
-      setFormError('Aylık kapasiteye yalnızca rakam girin (ondalık için virgül).');
+      setFormError(tr('Aylık kapasiteye yalnızca rakam girin (ondalık için virgül).'));
       haptics.error();
       return;
     }
@@ -99,9 +100,9 @@ export function MachineParkScreen({ navigation }: Props) {
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'no_company') {
-        setFormError('Kapasite firmaya bağlıdır.');
+        setFormError(tr('Kapasite firmaya bağlıdır.'));
       } else {
-        setFormError(friendlyMessage(err, 'Kaydedilemedi, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Kaydedilemedi, tekrar deneyin.')));
       }
     } finally {
       setSaving(false);
@@ -111,9 +112,9 @@ export function MachineParkScreen({ navigation }: Props) {
   const remove = useCallback(
     async (machine: Machine) => {
       const ok = await confirmAction({
-        title: 'Makine silinsin mi?',
-        message: `"${machine.kind}" makine parkınızdan silinecek. Fason kapasite aramalarında artık görünmez.`,
-        confirmLabel: 'Sil',
+        title: tr('Makine silinsin mi?'),
+        message: tr('"{kind}" makine parkınızdan silinecek. Fason kapasite aramalarında artık görünmez.', { kind: machine.kind }),
+        confirmLabel: tr('Sil'),
         destructive: true,
       });
       if (!ok) return;
@@ -123,13 +124,13 @@ export function MachineParkScreen({ navigation }: Props) {
         await reload();
       } catch (err) {
         haptics.error();
-        setFormError(friendlyMessage(err, 'Silinemedi, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Silinemedi, tekrar deneyin.')));
       }
     },
     [reload]
   );
 
-  const bar = <AppBar title="Makine parkı" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Makine parkı')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (!companyId) {
     return (
@@ -138,8 +139,8 @@ export function MachineParkScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="machine"
-            title="Makine parkı firmaya bağlı"
-            description="Bir firmaya bağlandığında makine parkını ve aylık kapasiteni girebilirsin."
+            title={tr('Makine parkı firmaya bağlı')}
+            description={tr('Bir firmaya bağlandığında makine parkını ve aylık kapasiteni girebilirsin.')}
           />
         </Screen>
       </View>
@@ -163,7 +164,7 @@ export function MachineParkScreen({ navigation }: Props) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
-        <ErrorState error={error} fallback="Makine parkı alınamadı" onRetry={reload} />
+        <ErrorState error={error} fallback={tr('Makine parkı alınamadı')} onRetry={reload} />
       </View>
     );
   }
@@ -182,7 +183,7 @@ export function MachineParkScreen({ navigation }: Props) {
         sticky={
           <Button
             size="lg"
-            label="Makine ekle"
+            label={tr('Makine ekle')}
             icon="plus"
             onPress={() => navigation.navigate('MachineForm')}
           />
@@ -196,22 +197,22 @@ export function MachineParkScreen({ navigation }: Props) {
         >
           <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], gap: t.space[6] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Makine parkın ve aylık kapasiten firma sayfanda görünür; fason iş arayan alıcılar buradan seni bulur.
+              {tr('Makine parkın ve aylık kapasiten firma sayfanda görünür; fason iş arayan alıcılar buradan seni bulur.')}
             </Text>
 
             <View style={{ gap: t.space[2] }}>
-              <SectionTitle title="Kapasite" />
+              <SectionTitle title={tr('Kapasite')} />
               <Card>
                 <View style={{ gap: t.space[3] }}>
                   <Input
-                    label="Aylık kapasite"
+                    label={tr('Aylık kapasite')}
                     unit="ton"
                     value={tons}
                     onChangeText={(text) => {
                       setTons(text);
                       setSaved(false);
                     }}
-                    placeholder="Örn. 120"
+                    placeholder={tr('Örn. 120')}
                     inputMode="decimal"
                     keyboardType="decimal-pad"
                   />
@@ -225,9 +226,9 @@ export function MachineParkScreen({ navigation }: Props) {
                     }}
                   >
                     <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
-                      <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Fason kapasitesi açık</Text>
+                      <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Fason kapasitesi açık')}</Text>
                       <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                        Açıkken fason arayanların aramalarında öne çıkarsın.
+                        {tr('Açıkken fason arayanların aramalarında öne çıkarsın.')}
                       </Text>
                     </View>
                     <Switch
@@ -238,18 +239,18 @@ export function MachineParkScreen({ navigation }: Props) {
                         setSaved(false);
                       }}
                       trackColor={{ true: t.colors.brand, false: t.colors.lineStrong }}
-                      accessibilityLabel="Fason kapasitesi açık"
+                      accessibilityLabel={tr('Fason kapasitesi açık')}
                     />
                   </View>
 
                   <Input
-                    label="Not"
+                    label={tr('Not')}
                     value={note}
                     onChangeText={(text) => {
                       setNote(text);
                       setSaved(false);
                     }}
-                    placeholder="Örn. Ekim ortasından itibaren boş kapasite"
+                    placeholder={tr('Örn. Ekim ortasından itibaren boş kapasite')}
                     maxLength={300}
                     multiline
                   />
@@ -273,7 +274,7 @@ export function MachineParkScreen({ navigation }: Props) {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
                       <Icon name="check" size={t.size.iconSm} color="success" />
                       <Text style={[t.type.body14, { color: t.colors.success, flex: 1, minWidth: 0 }]}>
-                        Kapasite bilgisi kaydedildi.
+                        {tr('Kapasite bilgisi kaydedildi.')}
                       </Text>
                     </View>
                   ) : null}
@@ -283,7 +284,7 @@ export function MachineParkScreen({ navigation }: Props) {
                   <Button
                     kind="secondary"
                     fullWidth
-                    label="Kapasiteyi kaydet"
+                    label={tr('Kapasiteyi kaydet')}
                     loading={saving}
                     disabled={saving}
                     onPress={() => void save()}
@@ -326,7 +327,7 @@ export function MachineParkScreen({ navigation }: Props) {
                           <Pressable
                             onPress={() => void remove(machine)}
                             accessibilityRole="button"
-                            accessibilityLabel={`Sil: ${machine.kind}`}
+                            accessibilityLabel={tr('Sil: {kind}', { kind: machine.kind })}
                             style={({ pressed }) => [
                               {
                                 width: t.size.touchMin,
@@ -348,8 +349,8 @@ export function MachineParkScreen({ navigation }: Props) {
             ) : (
               <EmptyState
                 icon="machine"
-                title="Henüz makine eklemedin"
-                description="Makinelerini girdiğinde fason iş arayanlar seni pus, fayn ve çalışma enine göre bulabilir."
+                title={tr('Henüz makine eklemedin')}
+                description={tr('Makinelerini girdiğinde fason iş arayanlar seni pus, fayn ve çalışma enine göre bulabilir.')}
               />
             )}
           </View>

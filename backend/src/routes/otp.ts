@@ -16,7 +16,7 @@ otpRouter.post('/request', async (req, res) => {
   }
 
   const phone = normalizePhone(parsed.data.phone);
-  const result = await issueOtp(phone);
+  const result = await issueOtp(phone, req.lang);
   if (!result.ok) {
     if (result.error === 'sms_failed') return res.status(502).json({ error: 'sms_failed' });
     return res.status(429).json({ error: result.error, retryAfterSeconds: result.retryAfterSeconds });

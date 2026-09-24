@@ -26,6 +26,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { formatMonthYear } from '../../features/time';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   Badge,
   Button,
@@ -43,9 +44,9 @@ type Props = RootStackScreenProps<'Verification'>;
 const NOTE_LIMIT = 300;
 
 function levelText(level: string): string {
-  if (level === 'belge') return 'Belge ile';
-  if (level === 'ziyaret') return 'Yerinde ziyaretle';
-  return 'Doğrulandı';
+  if (level === 'belge') return tr('Belge ile');
+  if (level === 'ziyaret') return tr('Yerinde ziyaretle');
+  return tr('Doğrulandı');
 }
 
 export function VerificationScreen(_props: Props) {
@@ -59,7 +60,7 @@ export function VerificationScreen(_props: Props) {
 
   const submit = async () => {
     if (doc.kind !== 'new') {
-      setFormError('Önce bir belge yükleyin.');
+      setFormError(tr('Önce bir belge yükleyin.'));
       return;
     }
     setSending(true);
@@ -75,12 +76,12 @@ export function VerificationScreen(_props: Props) {
       const code = err instanceof ApiError ? err.code : undefined;
       setFormError(
         code === 'request_pending'
-          ? 'Zaten inceleme bekleyen bir başvurunuz var.'
+          ? tr('Zaten inceleme bekleyen bir başvurunuz var.')
           : code === 'already_verified'
-            ? 'Firmanız zaten doğrulanmış.'
+            ? tr('Firmanız zaten doğrulanmış.')
             : code === 'no_company'
-              ? 'Önce bir firmaya bağlı olmanız gerekiyor.'
-              : friendlyMessage(err, 'Başvuru gönderilemedi')
+              ? tr('Önce bir firmaya bağlı olmanız gerekiyor.')
+              : friendlyMessage(err, tr('Başvuru gönderilemedi'))
       );
     } finally {
       setSending(false);
@@ -103,8 +104,8 @@ export function VerificationScreen(_props: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Önce bir firmaya bağlanın"
-            description="Doğrulama başvurusu için önce bir firmaya bağlı olmanız gerekiyor."
+            title={tr('Önce bir firmaya bağlanın')}
+            description={tr('Doğrulama başvurusu için önce bir firmaya bağlı olmanız gerekiyor.')}
           />
         </Screen>
       );
@@ -113,9 +114,9 @@ export function VerificationScreen(_props: Props) {
       <Screen>
         <EmptyState
           icon="warning"
-          title="Doğrulama durumu alınamadı"
-          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Doğrulama durumu alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -148,31 +149,31 @@ export function VerificationScreen(_props: Props) {
           <View style={{ gap: t.space[2], minWidth: 0 }}>
             <Badge
               kind={verified ? 'verified' : pending ? 'pending' : 'cancelled'}
-              label={verified ? 'Doğrulandı' : pending ? 'İnceleniyor' : 'Doğrulanmamış'}
+              label={verified ? tr('Doğrulandı') : pending ? tr('İnceleniyor') : tr('Doğrulanmamış')}
             />
             <Text style={[t.type.body16, { color: t.colors.ink }]}>
               {verified
                 ? `${levelText(state.level)}${state.verifiedAt ? ` · ${formatMonthYear(state.verifiedAt)}` : ''}`
                 : pending
-                  ? 'Takyon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.'
-                  : 'Firma sayfanızda doğrulanmış rozeti yok.'}
+                  ? tr('Takyon ekibi belgenizi inceliyor. Sonuç bildirimle gelecek.')
+                  : tr('Firma sayfanızda doğrulanmış rozeti yok.')}
             </Text>
           </View>
         </Card>
 
         {rejected && state.request ? (
           <View style={{ gap: t.space[3], minWidth: 0 }}>
-            <SectionTitle title="Önceki başvuru" />
+            <SectionTitle title={tr('Önceki başvuru')} />
             <Card>
               <View style={{ gap: t.space[2], minWidth: 0 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
                   <Icon name="warning" size={t.size.iconSm} color="danger" />
                   <Text style={[t.type.body16Strong, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
-                    Başvurunuz kabul edilmedi.
+                    {tr('Başvurunuz kabul edilmedi.')}
                   </Text>
                 </View>
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  {state.request.adminNote || 'Belgeyi kontrol edip yeniden başvurabilirsiniz.'}
+                  {state.request.adminNote || tr('Belgeyi kontrol edip yeniden başvurabilirsiniz.')}
                 </Text>
               </View>
             </Card>
@@ -181,12 +182,11 @@ export function VerificationScreen(_props: Props) {
 
         {!verified && !pending ? (
           <View style={{ gap: t.space[3], minWidth: 0 }}>
-            <SectionTitle title="Doğrulama iste" />
+            <SectionTitle title={tr('Doğrulama iste')} />
             <Card>
               <View style={{ gap: t.space[4], minWidth: 0 }}>
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Vergi levhası ya da faaliyet belgesi yeterlidir. Belge yalnızca inceleme için kullanılır,
-                  karar sonrası silinir.
+                  {tr('Vergi levhası ya da faaliyet belgesi yeterlidir. Belge yalnızca inceleme için kullanılır, karar sonrası silinir.')}
                 </Text>
                 <DocField
                   image={doc}
@@ -198,17 +198,17 @@ export function VerificationScreen(_props: Props) {
                   onBusyChange={setPicking}
                   onError={setFormError}
                   disabled={sending}
-                  labelPrefix="Doğrulama"
+                  labelPrefix={tr('Doğrulama')}
                 />
                 <Input
-                  label="Not (isteğe bağlı)"
+                  label={tr('Not (isteğe bağlı)')}
                   value={note}
                   onChangeText={(value) => setNote(value.slice(0, NOTE_LIMIT))}
-                  placeholder="Eklemek istediğiniz kısa bir not"
+                  placeholder={tr('Eklemek istediğiniz kısa bir not')}
                   multiline
                   editable={!sending}
                   maxLength={NOTE_LIMIT}
-                  accessibilityLabel="Başvuru notu"
+                  accessibilityLabel={tr('Başvuru notu')}
                 />
                 {formError ? (
                   <View
@@ -231,7 +231,7 @@ export function VerificationScreen(_props: Props) {
                 {/* Ekranın tek dolu düğmesi. */}
                 <Button
                   size="lg"
-                  label="Doğrulama iste"
+                  label={tr('Doğrulama iste')}
                   loading={sending}
                   disabled={sending || picking || doc.kind !== 'new'}
                   onPress={submit}
@@ -242,7 +242,7 @@ export function VerificationScreen(_props: Props) {
         ) : null}
 
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Doğrulamayı Takyon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.
+          {tr('Doğrulamayı Takyon ekibi yapar. Belgeniz başka firmalarla paylaşılmaz.')}
         </Text>
       </View>
     </ScrollView>

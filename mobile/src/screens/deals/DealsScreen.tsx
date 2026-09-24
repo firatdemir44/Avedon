@@ -17,6 +17,7 @@ import { formatQuantity, formatQuoteDate } from '../../features/quotes/format';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -72,18 +73,18 @@ export function DealsScreen({ route, navigation }: Props) {
     setRole(next);
   };
 
-  const bar = <AppBar title="Siparişler" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Siparişler')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'error') {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
         {bar}
-        <ErrorState error={error} fallback="Siparişler alınamadı" onRetry={reload} />
+        <ErrorState error={error} fallback={tr('Siparişler alınamadı')} onRetry={reload} />
       </View>
     );
   }
 
-  const banner = error ? friendlyMessage(error, 'Siparişler alınamadı') : null;
+  const banner = error ? friendlyMessage(error, tr('Siparişler alınamadı')) : null;
 
   const header = (
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
@@ -91,12 +92,12 @@ export function DealsScreen({ route, navigation }: Props) {
       {hasCompany ? (
         <SegmentControl<Role>
           stretch
-          accessibilityLabel="Sipariş yönü"
+          accessibilityLabel={tr('Sipariş yönü')}
           value={role}
           onChange={switchRole}
           options={[
-            { value: 'buyer', label: 'Aldıklarım' },
-            { value: 'seller', label: 'Sattıklarım' },
+            { value: 'buyer', label: tr('Aldıklarım') },
+            { value: 'seller', label: tr('Sattıklarım') },
           ]}
         />
       ) : null}
@@ -122,15 +123,15 @@ export function DealsScreen({ route, navigation }: Props) {
     role === 'seller' ? (
       <EmptyState
         icon="cube-outline"
-        title="Henüz satış kaydın yok"
-        description="Alıcı teklifini kabul ettiğinde sipariş kaydı burada açılır."
+        title={tr('Henüz satış kaydın yok')}
+        description={tr('Alıcı teklifini kabul ettiğinde sipariş kaydı burada açılır.')}
       />
     ) : (
       <EmptyState
         icon="cube-outline"
-        title="Henüz sipariş kaydın yok"
-        description="Bir teklifi kabul ettiğinde sipariş kaydı burada açılır."
-        actionLabel="Tekliflerime git"
+        title={tr('Henüz sipariş kaydın yok')}
+        description={tr('Bir teklifi kabul ettiğinde sipariş kaydı burada açılır.')}
+        actionLabel={tr('Tekliflerime git')}
         onAction={() => navigation.navigate('QuoteRequests')}
       />
     );
@@ -158,13 +159,13 @@ export function DealsScreen({ route, navigation }: Props) {
             renderItem={({ item, index }) => {
               const counterparty =
                 role === 'seller'
-                  ? [item.buyer?.name, item.buyer?.company?.name].filter(Boolean).join(' · ') || 'Alıcı'
-                  : (item.sellerCompany?.name ?? 'Satıcı firma');
+                  ? [item.buyer?.name, item.buyer?.company?.name].filter(Boolean).join(' · ') || tr('Alıcı')
+                  : (item.sellerCompany?.name ?? tr('Satıcı firma'));
               const meta = [
                 counterparty,
                 formatQuantity(item.quantity, item.unit),
-                item.agreedDeliveryDate ? `termin ${formatQuoteDate(item.agreedDeliveryDate)}` : '',
-                item.canReview ? 'değerlendirme bekliyor' : '',
+                item.agreedDeliveryDate ? tr('termin {date}', { date: formatQuoteDate(item.agreedDeliveryDate) }) : '',
+                item.canReview ? tr('değerlendirme bekliyor') : '',
               ]
                 .filter(Boolean)
                 .join(' · ');

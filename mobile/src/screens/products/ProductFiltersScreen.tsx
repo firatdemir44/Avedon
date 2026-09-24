@@ -1,7 +1,7 @@
 // Süzgeç ekranı — yeni tasarım (DESIGN.md §2/§3). Süzgeç parametreleri,
 // doğrulama, "Uygula" (ProductList'e geri) ve izleme kipi (createWatchRule)
 // AYNEN korunur; yalnızca görünüm: SectionTitle + Chip/ChipRow, ui/Input
-// (birim sağda), yapışkan alt çubukta tek dolu "Uygula" + kenarlıklı "Temizle".
+// (birim sağda), yapışkan alt çubukta tek dolu "Uygula" + kenarlıklı {tr('Temizle')}.
 // Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
 import React, { useLayoutEffect, useState } from 'react';
 import { Text, View } from 'react-native';
@@ -28,21 +28,22 @@ import { toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Button, Chip, ChipRow, Input, Screen, SectionTitle } from '../../ui';
+import { tr } from '../../i18n';
 import { ErrorBanner } from './FavoriteProductsScreen';
 
 type Props = RootStackScreenProps<'ProductFilters'>;
 
-const TYPE_OPTIONS: { value: ProductType | ''; label: string }[] = [
-  { value: '', label: 'Tümü' },
+const TYPE_OPTIONS = (): { value: ProductType | ''; label: string }[] => [
+  { value: '', label: tr('Tümü') },
   ...PRODUCT_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] })),
 ];
-const UNIT_OPTIONS: { value: StockUnit | ''; label: string }[] = [
-  { value: '', label: 'Hepsi' },
-  { value: 'm', label: 'Metre' },
-  { value: 'kg', label: 'Kilogram' },
+const UNIT_OPTIONS = (): { value: StockUnit | ''; label: string }[] => [
+  { value: '', label: tr('Hepsi') },
+  { value: 'm', label: tr('Metre') },
+  { value: 'kg', label: tr('Kilogram') },
 ];
-const WIDTH_TYPE_OPTIONS: { value: WidthType | ''; label: string }[] = [
-  { value: '', label: 'Hepsi' },
+const WIDTH_TYPE_OPTIONS = (): { value: WidthType | ''; label: string }[] => [
+  { value: '', label: tr('Hepsi') },
   ...WIDTH_TYPES.map((value) => ({ value, label: WIDTH_TYPE_LABELS[value] })),
 ];
 
@@ -164,26 +165,26 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
 
   const errors: string[] = [];
   if ([stock, gsmLow, gsmHigh, widthLow, widthHigh, fiberPercent, moq, leadTime].some((n) => n.invalid)) {
-    errors.push('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).');
+    errors.push(tr('Sayı alanlarına yalnızca rakam girin (ondalık için virgül).'));
   }
   if (fiberPercent.value !== undefined && fiberPercent.value > 100) {
-    errors.push('Lif oranı en fazla 100 olabilir.');
+    errors.push(tr('Lif oranı en fazla 100 olabilir.'));
   }
   if (gsmLow.value !== undefined && gsmHigh.value !== undefined && gsmLow.value > gsmHigh.value) {
-    errors.push('Gramajda en az değer en çok değerden büyük olamaz.');
+    errors.push(tr('Gramajda en az değer en çok değerden büyük olamaz.'));
   }
   if (widthLow.value !== undefined && widthHigh.value !== undefined && widthLow.value > widthHigh.value) {
-    errors.push('Ende en az değer en çok değerden büyük olamaz.');
+    errors.push(tr('Ende en az değer en çok değerden büyük olamaz.'));
   }
 
   // Alan altı hata metinleri (aynı kurallar, alanın altında da görünsün).
-  const invalidText = 'Yalnızca rakam girin.';
+  const invalidText = tr('Yalnızca rakam girin.');
   const gsmRangeText = gsmLow.value !== undefined && gsmHigh.value !== undefined && gsmLow.value > gsmHigh.value
-    ? 'En az, en çoktan büyük olamaz.'
+    ? tr('En az, en çoktan büyük olamaz.')
     : null;
   const widthRangeText =
     widthLow.value !== undefined && widthHigh.value !== undefined && widthLow.value > widthHigh.value
-      ? 'En az, en çoktan büyük olamaz.'
+      ? tr('En az, en çoktan büyük olamaz.')
       : null;
 
   const changeType = (next: ProductType | '') => {
@@ -251,7 +252,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
     const query = watchQueryFromFilters('', collect());
     if (!query) {
       haptics.error();
-      setWatchError('İzleme kurmak için en az bir süzgeç seçin.');
+      setWatchError(tr('İzleme kurmak için en az bir süzgeç seçin.'));
       return;
     }
     setSaving(true);
@@ -264,11 +265,11 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'too_many_rules') {
-        setWatchError('İzleme sınırına ulaştınız. Yeni bir izleme için önce listeden birini silin.');
+        setWatchError(tr('İzleme sınırına ulaştınız. Yeni bir izleme için önce listeden birini silin.'));
       } else if (err instanceof ApiError && err.code === 'invalid_body') {
-        setWatchError('Bu süzgeç izlemeye çevrilemedi. Çeşit, lif, gramaj ya da sertifika seçmeyi deneyin.');
+        setWatchError(tr('Bu süzgeç izlemeye çevrilemedi. Çeşit, lif, gramaj ya da sertifika seçmeyi deneyin.'));
       } else {
-        setWatchError('İzleme kurulamadı, tekrar deneyin.');
+        setWatchError(tr('İzleme kurulamadı, tekrar deneyin.'));
       }
     } finally {
       setSaving(false);
@@ -276,7 +277,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
   };
 
   const subtypeOptions = type
-    ? [{ value: '', label: 'Tümü' }, ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label }))]
+    ? [{ value: '', label: tr('Tümü') }, ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label }))]
     : [];
 
   const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
@@ -285,15 +286,15 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title={watchMode ? 'Yeni izleme' : 'Süzgeçler'} leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={watchMode ? tr('Yeni izleme') : tr('Süzgeçler')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
-            <Button kind="secondary" label="Temizle" onPress={clearAll} />
+            <Button kind="secondary" label={tr('Temizle')} onPress={clearAll} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Button
                 size="lg"
-                label={watchMode ? 'Bu süzgeci izle' : 'Uygula'}
+                label={watchMode ? tr('Bu süzgeci izle') : tr('Uygula')}
                 onPress={watchMode ? () => void saveWatch() : apply}
                 disabled={errors.length > 0}
                 loading={saving}
@@ -303,36 +304,36 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
         }
       >
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Çeşit" />
-          <SingleChips options={TYPE_OPTIONS} value={type} onChange={changeType} />
+          <SectionTitle title={tr('Çeşit')} />
+          <SingleChips options={TYPE_OPTIONS()} value={type} onChange={changeType} />
           {type && SUBTYPES[type].length > 0 ? (
             <>
-              {subLabel('Alt çeşit')}
+              {subLabel(tr('Alt çeşit'))}
               <SingleChips options={subtypeOptions} value={subtype} onChange={setSubtype} />
             </>
           ) : null}
         </View>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Kullanım amacı" />
-          {hint('Seçtiklerinden herhangi birine uyan kumaşlar gelir.')}
+          <SectionTitle title={tr('Kullanım amacı')} />
+          {hint(tr('Seçtiklerinden herhangi birine uyan kumaşlar gelir.'))}
           <MultiChips options={USAGES} values={usages} onChange={setUsages} />
         </View>
 
         {watchMode ? null : (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Stok" />
-            <SingleChips options={UNIT_OPTIONS} value={stockUnit} onChange={setStockUnit} />
+            <SectionTitle title={tr('Stok')} />
+            <SingleChips options={UNIT_OPTIONS()} value={stockUnit} onChange={setStockUnit} />
             <Input
-              label="En az stok"
+              label={tr('En az stok')}
               unit={stockUnit ? STOCK_UNIT_LABELS[stockUnit].short : undefined}
               value={stockMin}
               onChangeText={setStockMin}
-              placeholder="Örn. 500"
+              placeholder={tr('Örn. 500')}
               error={stock.invalid ? invalidText : null}
               helper={
                 stock.value !== undefined && !stockUnit
-                  ? 'Birim seçilmezse metre ve kilogramla satılan kumaşlar aynı sayıyla karşılaştırılır.'
+                  ? tr('Birim seçilmezse metre ve kilogramla satılan kumaşlar aynı sayıyla karşılaştırılır.')
                   : undefined
               }
               {...numericProps}
@@ -341,11 +342,11 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
         )}
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Ölçüler" />
+          <SectionTitle title={tr('Ölçüler')} />
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
             <Input
               containerStyle={half}
-              label="Gramaj en az"
+              label={tr('Gramaj en az')}
               unit="gr/m²"
               value={gsmMin}
               onChangeText={setGsmMin}
@@ -355,7 +356,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
             />
             <Input
               containerStyle={half}
-              label="Gramaj en çok"
+              label={tr('Gramaj en çok')}
               unit="gr/m²"
               value={gsmMax}
               onChangeText={setGsmMax}
@@ -367,7 +368,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
             <Input
               containerStyle={half}
-              label="En en az"
+              label={tr('En en az')}
               unit="cm"
               value={widthMin}
               onChangeText={setWidthMin}
@@ -377,7 +378,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
             />
             <Input
               containerStyle={half}
-              label="En en çok"
+              label={tr('En en çok')}
               unit="cm"
               value={widthMax}
               onChangeText={setWidthMax}
@@ -388,28 +389,28 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
           </View>
           {watchMode ? null : (
             <>
-              {subLabel('En tipi')}
-              <SingleChips options={WIDTH_TYPE_OPTIONS} value={widthType} onChange={setWidthType} />
+              {subLabel(tr('En tipi'))}
+              <SingleChips options={WIDTH_TYPE_OPTIONS()} value={widthType} onChange={setWidthType} />
             </>
           )}
         </View>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Lif" />
-          {hint('Seçtiklerinden herhangi birini içeren kumaşlar gelir.')}
+          <SectionTitle title={tr('Lif')} />
+          {hint(tr('Seçtiklerinden herhangi birini içeren kumaşlar gelir.'))}
           <MultiChips options={FIBERS} values={fibers} onChange={setFibers} />
           {fibers.length ? (
             <Input
-              label="Seçilen lif en az"
+              label={tr('Seçilen lif en az')}
               unit="%"
               value={fiberMinPercent}
               onChangeText={setFiberMinPercent}
-              placeholder="Örn. 5"
+              placeholder={tr('Örn. 5')}
               error={
                 fiberPercent.invalid
                   ? invalidText
                   : fiberPercent.value !== undefined && fiberPercent.value > 100
-                    ? 'En fazla 100 olabilir.'
+                    ? tr('En fazla 100 olabilir.')
                     : null
               }
               {...numericProps}
@@ -418,30 +419,30 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
         </View>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Sertifika" />
-          {hint('Seçtiklerinden herhangi birine sahip kumaşlar gelir.')}
+          <SectionTitle title={tr('Sertifika')} />
+          {hint(tr('Seçtiklerinden herhangi birine sahip kumaşlar gelir.'))}
           <MultiChips options={CERTIFICATES} values={certificates} onChange={setCertificates} />
         </View>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Ticari" />
+          <SectionTitle title={tr('Ticari')} />
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
             <Input
               containerStyle={half}
-              label="MOQ en çok"
+              label={tr('MOQ en çok')}
               value={moqMax}
               onChangeText={setMoqMax}
-              placeholder="Örn. 500"
+              placeholder={tr('Örn. 500')}
               error={moq.invalid ? invalidText : null}
               {...numericProps}
             />
             <Input
               containerStyle={half}
-              label="Termin en çok"
-              unit="gün"
+              label={tr('Termin en çok')}
+              unit={tr('gün')}
               value={leadTimeMax}
               onChangeText={setLeadTimeMax}
-              placeholder="Örn. 15"
+              placeholder={tr('Örn. 15')}
               error={leadTime.invalid ? invalidText : null}
               {...numericProps}
             />
@@ -450,12 +451,12 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
 
         {watchMode ? null : (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="İçerik" />
+            <SectionTitle title={tr('İçerik')} />
             <Input
-              label="İçerikte geçen"
+              label={tr('İçerikte geçen')}
               value={content}
               onChangeText={setContent}
-              placeholder="Örn. Pamuk, Elastan"
+              placeholder={tr('Örn. Pamuk, Elastan')}
             />
           </View>
         )}
@@ -467,7 +468,7 @@ export function ProductFiltersScreen({ navigation, route }: Props) {
             ))}
             {watchError ? <ErrorBanner message={watchError} /> : null}
             {watchMode
-              ? hint('Bu süzgece uyan yeni bir ürün eklendiğinde bildirim alırsın. Kendi firmanın ürünleri sayılmaz.')
+              ? hint(tr('Bu süzgece uyan yeni bir ürün eklendiğinde bildirim alırsın. Kendi firmanın ürünleri sayılmaz.'))
               : null}
           </View>
         ) : null}

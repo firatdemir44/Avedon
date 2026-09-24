@@ -126,8 +126,10 @@ quotesRouter.post(
       product.company.users.map((u) => u.id),
       {
         kind: 'quote_request_new',
-        title: `Yeni teklif isteği: ${product.code}`,
+        title: 'Yeni teklif isteği: {code}',
+        vars: { code: product.code },
         body: `${me.firstName} ${me.lastName} · ${parsed.data.quantity} ${parsed.data.unit}`,
+        rawBody: true,
         data: { quoteRequestId: created.id, productId: product.id },
       }
     );
@@ -254,8 +256,10 @@ quotesRouter.post(
     ]);
     await notify(row.buyerId, {
       kind: 'quote_received',
-      title: `Teklif geldi: ${row.product.code}`,
+      title: 'Teklif geldi: {code}',
+      vars: { code: row.product.code },
       body: row.product.company.name,
+      rawBody: true,
       data: { quoteRequestId: row.id, productId: row.productId },
     });
     await postQuoteToChat(req.user!.id, row.buyerId, row.id, row.product.code, draft).catch((err) => console.error('[quotes] sohbete düşürülemedi:', err));
@@ -323,8 +327,10 @@ quotesRouter.post(
       sellers.map((u) => u.id),
       {
         kind: accepted ? 'quote_accepted' : 'quote_declined',
-        title: `${row.product.code}: teklif ${accepted ? 'kabul edildi' : 'reddedildi'}`,
+        title: accepted ? '{code}: teklif kabul edildi' : '{code}: teklif reddedildi',
+        vars: { code: row.product.code },
         body: `${row.buyer.firstName} ${row.buyer.lastName}`,
+        rawBody: true,
         data: { quoteRequestId: row.id, productId: row.productId, ...(deal ? { dealId: deal.id } : {}) },
       }
     );

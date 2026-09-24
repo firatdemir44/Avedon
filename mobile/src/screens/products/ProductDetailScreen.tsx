@@ -53,6 +53,7 @@ import { optionLabel, otherCountLabels, useYarnOptions } from '../../features/ya
 import { formatMeasure, toInputNumber } from '../../features/calculators/parse';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { locale, tr } from '../../i18n';
 import { AppBar, Badge, Button, ButtonRow, Card, Icon, Screen, SectionTitle } from '../../ui';
 
 type Props = RootStackScreenProps<'ProductDetail'>;
@@ -71,7 +72,7 @@ const FIELD_LABELS: Record<string, string> = {
   widthCm: 'en',
 };
 
-const fieldLabel = (field: string) => FIELD_LABELS[field] ?? field;
+const fieldLabel = (field: string) => (FIELD_LABELS[field] ? tr(FIELD_LABELS[field]) : field);
 
 // Ana görselin yüksekliği ve küçük görsel karesi (DESIGN.md'de adı olmayan
 // ekran-içi ölçüler; token eklemeden önce burada tanımlı).
@@ -82,7 +83,7 @@ const THUMB_SIZE = 60;
 function formatDocDate(iso: string | null) {
   if (!iso) return '';
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('tr-TR');
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(locale());
 }
 
 // "4,50 USD / kg"
@@ -116,7 +117,7 @@ function yarnDirectoryPreset(yarn: { count: number; unit: string; yarnType: stri
 // "30 Ne · 2 kat · Penye (ring)" (rol varsa başta).
 function formatYarn(yarn: { role: string; count: number; unit: string; ply: number; yarnType: string }) {
   const parts = [`${formatMeasure(yarn.count)} ${yarnUnitLabel(yarn.unit)}`];
-  if (yarn.ply > 1) parts.push(`${yarn.ply} kat`);
+  if (yarn.ply > 1) parts.push(tr('{n} kat', { n: yarn.ply }));
   if (yarn.yarnType) parts.push(yarnTypeLabel(yarn.yarnType));
   return parts.join(' · ');
 }
@@ -254,7 +255,7 @@ function Gallery({
         }}
       >
         <Icon name="fabric" size={t.size.emptyIcon} color="ink3" />
-        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>Bu ürünün fotoğrafı yok</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{tr('Bu ürünün fotoğrafı yok')}</Text>
       </View>
     );
   }
@@ -266,8 +267,8 @@ function Gallery({
         onPress={() => current && onOpenImage(current)}
         disabled={!current}
         accessibilityRole="imagebutton"
-        accessibilityLabel={`Fotoğraf ${index + 1} / ${imageCount}`}
-        accessibilityHint="Tam ekran büyütür"
+        accessibilityLabel={tr('Fotoğraf {i} / {n}', { i: index + 1, n: imageCount })}
+        accessibilityHint={tr('Tam ekran büyütür')}
         style={({ pressed }) => [
           { height: HERO_HEIGHT, backgroundColor: t.colors.surface2 },
           pressed ? { opacity: 0.9 } : null,
@@ -294,7 +295,7 @@ function Gallery({
               onPress={() => setIndex(i)}
               accessibilityRole="button"
               accessibilityState={{ selected: i === index }}
-              accessibilityLabel={`Fotoğraf ${i + 1}`}
+              accessibilityLabel={tr('Fotoğraf {i}', { i: i + 1 })}
               style={{
                 width: THUMB_SIZE,
                 height: THUMB_SIZE,
@@ -351,7 +352,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     setFieldsConfirmed(false);
   }, [productId]);
 
-  // Faz 3, Adım 3: "Benzer kumaşlar". Sayfanın ana yüklenmesini beklemeyen
+  // Faz 3, Adım 3: {tr('Benzer kumaşlar')}. Sayfanın ana yüklenmesini beklemeyen
   // ayrı ve SESSİZ istek: hata olursa (ya da ürünün görünüm kartı yoksa)
   // bölüm hiç görünmez.
   const [similar, setSimilar] = useState<SimilarProductResult[]>([]);
@@ -370,7 +371,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     };
   }, [productId]);
 
-  // Faz 3, Adım 7: "Dijital pasaport" (AB Dijital Ürün Pasaportu'na hazırlık).
+  // Faz 3, Adım 7: {tr('Dijital pasaport')} (AB Dijital Ürün Pasaportu'na hazırlık).
   // Benzer kumaşlar gibi AYRI ve SESSİZ istek: sayfanın ana yüklenmesini
   // beklemez, hata olursa bölüm hiç çizilmez. `missing` yalnızca sahibine gelir.
   const [dpp, setDpp] = useState<DppResult | null>(null);
@@ -394,7 +395,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   if (status === 'loading') {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-        <AppBar title="Ürün" leading="back" onBack={() => navigation.goBack()} />
+        <AppBar title={tr('Ürün')} leading="back" onBack={() => navigation.goBack()} />
         <SkeletonDetail variant="product" />
       </View>
     );
@@ -403,11 +404,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   if (!product) {
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-        <AppBar title="Ürün" leading="back" onBack={() => navigation.goBack()} />
+        <AppBar title={tr('Ürün')} leading="back" onBack={() => navigation.goBack()} />
         {error && !isNotFound(error) ? (
-          <ErrorState error={error} fallback="Ürün alınamadı" onRetry={reload} />
+          <ErrorState error={error} fallback={tr('Ürün alınamadı')} onRetry={reload} />
         ) : (
-          <LegacyEmptyState icon="cube-outline" title="Ürün bulunamadı" message="Ürün kaldırılmış olabilir." />
+          <LegacyEmptyState icon="cube-outline" title={tr('Ürün bulunamadı')} message={tr('Ürün kaldırılmış olabilir.')} />
         )}
       </View>
     );
@@ -421,7 +422,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const isYarn = isYarnType(product.type);
   const yarnSpec = product.yarn ?? null;
   const usages = isYarn ? '' : (product.usages ?? []).map(usageLabel).join(', ');
-  // Ürün adı: alt çeşit varsa o ("Özel Polar"), yoksa çeşit ("Örme" / "İplik").
+  // Ürün adı: alt çeşit varsa o ("Özel Polar"), yoksa çeşit ("Örme" / {tr('İplik')}).
   const productName = subtypeLabel(product.type, product.subtype) || typeLabel(product.type);
 
   // --- Kumaş pasaportu ---
@@ -471,27 +472,27 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   // menşe/marka/bobin. Boş alanlar hiç satır açmaz.
   const yarnSpecs: { label: string; value: string; sans?: boolean }[] = yarnSpec
     ? [
-        { label: 'Numara', value: yarnSpec.countLabel },
-        ...(yarnSpec.ply > 1 ? [{ label: 'Kat', value: String(yarnSpec.ply) }] : []),
-        { label: 'İplik çeşidi', value: optionLabel(yarnOptions.families, yarnSpec.family), sans: true },
-        ...(yarnSpec.variety ? [{ label: 'Çeşit / yapı', value: yarnSpec.variety, sans: true }] : []),
+        { label: tr('Numara'), value: yarnSpec.countLabel },
+        ...(yarnSpec.ply > 1 ? [{ label: tr('Kat'), value: String(yarnSpec.ply) }] : []),
+        { label: tr('İplik çeşidi'), value: optionLabel(yarnOptions.families, yarnSpec.family), sans: true },
+        ...(yarnSpec.variety ? [{ label: tr('Çeşit / yapı'), value: yarnSpec.variety, sans: true }] : []),
         ...(yarnSpec.spinning
-          ? [{ label: 'Eğirme', value: optionLabel(yarnOptions.spinnings, yarnSpec.spinning), sans: true }]
+          ? [{ label: tr('Eğirme'), value: optionLabel(yarnOptions.spinnings, yarnSpec.spinning), sans: true }]
           : []),
         ...(yarnSpec.combing
-          ? [{ label: 'Penye / karde', value: optionLabel(yarnOptions.combings, yarnSpec.combing), sans: true }]
+          ? [{ label: tr('Penye / karde'), value: optionLabel(yarnOptions.combings, yarnSpec.combing), sans: true }]
           : []),
-        ...(yarnSpec.filaments != null ? [{ label: 'Filament sayısı', value: String(yarnSpec.filaments) }] : []),
+        ...(yarnSpec.filaments != null ? [{ label: tr('Filament sayısı'), value: String(yarnSpec.filaments) }] : []),
         ...(yarnSpec.filamentType
-          ? [{ label: 'Filament tipi', value: optionLabel(yarnOptions.filamentTypes, yarnSpec.filamentType), sans: true }]
+          ? [{ label: tr('Filament tipi'), value: optionLabel(yarnOptions.filamentTypes, yarnSpec.filamentType), sans: true }]
           : []),
         ...(yarnSpec.luster
-          ? [{ label: 'Parlaklık', value: optionLabel(yarnOptions.lusters, yarnSpec.luster), sans: true }]
+          ? [{ label: tr('Parlaklık'), value: optionLabel(yarnOptions.lusters, yarnSpec.luster), sans: true }]
           : []),
         ...(yarnSpec.twistDirection || yarnSpec.twistTpm != null
           ? [
               {
-                label: 'Büküm',
+                label: tr('Büküm'),
                 value: [yarnSpec.twistDirection, yarnSpec.twistTpm != null ? `${formatMeasure(yarnSpec.twistTpm)} T/m` : '']
                   .filter(Boolean)
                   .join(' · '),
@@ -501,7 +502,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         ...(yarnSpec.endUses.length
           ? [
               {
-                label: 'Kullanım yeri',
+                label: tr('Kullanım yeri'),
                 value: yarnSpec.endUses.map((key) => optionLabel(yarnOptions.endUses, key)).join(', '),
                 sans: true,
               },
@@ -510,7 +511,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         ...(yarnSpec.colorState || yarnSpec.color
           ? [
               {
-                label: 'Renk',
+                label: tr('Renk'),
                 value: [optionLabel(yarnOptions.colorStates, yarnSpec.colorState), yarnSpec.color]
                   .filter(Boolean)
                   .join(' · '),
@@ -518,16 +519,16 @@ export function ProductDetailScreen({ route, navigation }: Props) {
               },
             ]
           : []),
-        ...(yarnSpec.origin ? [{ label: 'Menşe', value: yarnSpec.origin, sans: true }] : []),
-        ...(yarnSpec.brand ? [{ label: 'Marka', value: yarnSpec.brand, sans: true }] : []),
+        ...(yarnSpec.origin ? [{ label: tr('Menşe'), value: yarnSpec.origin, sans: true }] : []),
+        ...(yarnSpec.brand ? [{ label: tr('Marka'), value: yarnSpec.brand, sans: true }] : []),
         ...(yarnSpec.coneWeightKg != null
-          ? [{ label: 'Bobin', value: `${formatMeasure(yarnSpec.coneWeightKg)} kg` }]
+          ? [{ label: tr('Bobin'), value: `${formatMeasure(yarnSpec.coneWeightKg)} kg` }]
           : []),
-        { label: 'Stok', value: `${formatMeasure(product.stock)} kg` },
+        { label: tr('Stok'), value: `${formatMeasure(product.stock)} kg` },
         ...(yarnSpec.sellerRole
-          ? [{ label: 'Satıcı', value: optionLabel(yarnOptions.sellerRoles, yarnSpec.sellerRole), sans: true }]
+          ? [{ label: tr('Satıcı'), value: optionLabel(yarnOptions.sellerRoles, yarnSpec.sellerRole), sans: true }]
           : []),
-        ...(moqText ? [{ label: 'Min. sipariş', value: moqText }] : []),
+        ...(moqText ? [{ label: tr('Min. sipariş'), value: moqText }] : []),
       ]
     : [];
 
@@ -539,25 +540,25 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   const specs: { label: string; value: string; sans?: boolean }[] = isYarn
     ? yarnSpecs
     : [
-        { label: 'Kumaş tipi', value: categoryLabel(product.type, product.subtype), sans: true },
-        ...(product.weightGsm ? [{ label: 'Gramaj', value: `${formatMeasure(product.weightGsm)} gr/m²` }] : []),
-        ...(product.widthCm ? [{ label: 'En', value: widthSpec }] : []),
+        { label: tr('Kumaş tipi'), value: categoryLabel(product.type, product.subtype), sans: true },
+        ...(product.weightGsm ? [{ label: tr('Gramaj'), value: `${formatMeasure(product.weightGsm)} gr/m²` }] : []),
+        ...(product.widthCm ? [{ label: tr('En'), value: widthSpec }] : []),
         ...(compositionText || product.content
-          ? [{ label: 'İçerik', value: compositionText || product.content }]
+          ? [{ label: tr('İçerik'), value: compositionText || product.content }]
           : []),
-        { label: 'Stok', value: stockText },
-        ...(usages ? [{ label: 'Kullanım', value: usages, sans: true }] : []),
-        ...(moqText ? [{ label: 'Min. sipariş', value: moqText }] : []),
-        ...(product.useArea ? [{ label: 'Not', value: product.useArea, sans: true }] : []),
+        { label: tr('Stok'), value: stockText },
+        ...(usages ? [{ label: tr('Kullanım'), value: usages, sans: true }] : []),
+        ...(moqText ? [{ label: tr('Min. sipariş'), value: moqText }] : []),
+        ...(product.useArea ? [{ label: tr('Not'), value: product.useArea, sans: true }] : []),
       ];
 
   const commercial: { label: string; value: string }[] = [
-    ...(product.leadTimeDays != null ? [{ label: 'Termin', value: `${product.leadTimeDays} gün` }] : []),
+    ...(product.leadTimeDays != null ? [{ label: tr('Termin'), value: tr('{n} gün', { n: product.leadTimeDays }) }] : []),
     // Fiyat yanıtta yalnızca sahibine geliyor; başkasına alan hiç gelmiyor.
-    ...(product.price ? [{ label: 'Fiyat', value: formatPrice(product.price) }] : []),
+    ...(product.price ? [{ label: tr('Fiyat'), value: formatPrice(product.price) }] : []),
     // Döviz fiyatın TL karşılığı: TCMB döviz satış kuru (kullanıcı kuralı 2026-10-02).
     ...(product.price && product.price.currency !== 'TRY' && tlEquivalent(product.price.value, product.price.currency, fx)
-      ? [{ label: 'TL karşılığı', value: tlEquivalent(product.price.value, product.price.currency, fx)! }]
+      ? [{ label: tr('TL karşılığı'), value: tlEquivalent(product.price.value, product.price.currency, fx)! }]
       : []),
   ];
 
@@ -622,7 +623,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
   };
   const sharePassportLink = async () => {
     if (!passportUrl) return;
-    const message = `${product.code} dijital pasaportu:\n${passportUrl}`;
+    const message = `${tr('{code} dijital pasaportu:', { code: product.code })}\n${passportUrl}`;
     if (Platform.OS === 'web') {
       // Web'de paylaşım penceresi yok: bağlantı panoya kopyalanır.
       const clipboard = (globalThis as { navigator?: { clipboard?: { writeText(text: string): Promise<void> } } })
@@ -659,31 +660,31 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       : [
           {
             icon: (favorite ? 'heart' : 'heart-outline') as 'heart',
-            label: favorite ? 'Takipten çık' : 'Takibe al',
+            label: favorite ? tr('Takipten çık') : tr('Takibe al'),
             onPress: toggleFavorite,
           },
         ]),
     ...(passportUrl
-      ? [{ icon: 'share' as const, label: linkCopied ? 'Bağlantı kopyalandı' : 'Paylaş', onPress: sharePassportLink }]
+      ? [{ icon: 'share' as const, label: linkCopied ? tr('Bağlantı kopyalandı') : tr('Paylaş'), onPress: sharePassportLink }]
       : []),
   ];
 
-  // Yapışkan alt çubuk: ekranın tek dolu düğmesi "Numune talep et"; altında iki
+  // Yapışkan alt çubuk: ekranın tek dolu düğmesi {tr('Numune talep et')}; altında iki
   // eşit sütun kenarlıklı eylem. Kendi ürününde düzenleme eylemleri.
   // Düğme metinleri kısaltılmaz: sığmazsa ButtonRow alt alta dizer.
   const sticky = isOwnProduct ? (
     <ButtonRow>
       <Button
         kind="secondary"
-        label={isYarn ? 'İpliği düzenle' : 'Ürünü düzenle'}
+        label={isYarn ? tr('İpliği düzenle') : tr('Ürünü düzenle')}
         icon="create-outline"
         onPress={openEdit}
       />
       <Button
         kind="secondary"
-        label="Paylaş"
+        label={tr('Paylaş')}
         icon="share"
-        accessibilityLabel="Bu ürünü gönderide paylaş"
+        accessibilityLabel={tr('Bu ürünü gönderide paylaş')}
         onPress={() => navigation.navigate('CreatePost', { productId: product.id })}
       />
     </ButtonRow>
@@ -691,7 +692,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     <View style={{ gap: t.space[2] }}>
       <Button
         size="lg"
-        label="Numune talep et"
+        label={tr('Numune talep et')}
         icon="sample"
         onPress={() =>
           navigation.navigate('SampleRequestForm', { productId: product.id, productCode: product.code })
@@ -700,7 +701,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
       <ButtonRow>
         <Button
           kind="secondary"
-          label="Teklif iste"
+          label={tr('Teklif iste')}
           icon="quote"
           onPress={() =>
             navigation.navigate('QuoteRequestForm', {
@@ -713,9 +714,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
         {company ? (
           <Button
             kind="secondary"
-            label="Asistana sor"
+            label={tr('Asistana sor')}
             icon="message"
-            accessibilityLabel={`${company.name} asistanına ${product.code} hakkında sor`}
+            accessibilityLabel={tr('{company} asistanına {code} hakkında sor', { company: company.name, code: product.code })}
             onPress={() =>
               navigation.navigate('SellerAssistant', {
                 companyId: company.id,
@@ -751,7 +752,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             <View style={{ gap: t.space[2] }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
                 <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{product.code}</Text>
-                {product.stock > 0 ? <Badge kind="info" label="Stokta" /> : null}
+                {product.stock > 0 ? <Badge kind="info" label={tr('Stokta')} /> : null}
               </View>
               <Text accessibilityRole="header" style={[t.type.title22, { color: t.colors.ink }]}>
                 {productName}
@@ -764,20 +765,20 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
                     <Icon name="warning" size={t.size.iconSm} color="warning" />
                     <Text style={[t.type.body14, { color: t.colors.ink, flex: 1 }]}>
-                      Bu ürünün {pendingFields.map(fieldLabel).join(', ')} alanı metinden otomatik çıkarıldı. Doğru mu?
+                      {tr('Bu ürünün {fields} alanı metinden otomatik çıkarıldı. Doğru mu?', { fields: pendingFields.map(fieldLabel).join(', ') })}
                     </Text>
                   </View>
                   <ButtonRow>
                     <Button
                       kind="secondary"
-                      label={confirmBusy ? 'Onaylanıyor…' : 'Onayla'}
+                      label={confirmBusy ? tr('Onaylanıyor…') : tr('Onayla')}
                       icon="check"
                       disabled={confirmBusy}
                       onPress={confirmFields}
                     />
                     <Button
                       kind="secondary"
-                      label="Düzenle"
+                      label={tr('Düzenle')}
                       icon="create-outline"
                       onPress={openEdit}
                     />
@@ -785,16 +786,16 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                 </Card>
               ) : null}
 
-              {/* Fotoğrafı olmayan kendi ürününde doğrudan "Fotoğraf ekle". */}
+              {/* Fotoğrafı olmayan kendi ürününde doğrudan {tr('Fotoğraf ekle')}. */}
               {isOwnProduct && (product.imageCount ?? (product.hasImage ? 1 : 0)) === 0 ? (
-                <Button kind="secondary" icon="camera" label="Fotoğraf ekle" onPress={openEdit} />
+                <Button kind="secondary" icon="camera" label={tr('Fotoğraf ekle')} onPress={openEdit} />
               ) : null}
 
               {company ? (
                 <Pressable
                   onPress={openCompany}
                   accessibilityRole="button"
-                  accessibilityLabel={`${company.name}, firma sayfasını aç`}
+                  accessibilityLabel={tr('{name}, firma sayfasını aç', { name: company.name })}
                   style={({ pressed }) => [
                     {
                       flexDirection: 'row',
@@ -818,7 +819,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                     {company.verification === 'dogrulanmis' ? <Badge kind="verified" /> : null}
                   </View>
                   <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flexShrink: 0 }]}>
-                    {product.companyProductCount} ürün
+                    {tr('{n} ürün', { n: product.companyProductCount })}
                   </Text>
                 </Pressable>
               ) : null}
@@ -838,20 +839,20 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                 ))}
                 {isYarn && otherCounts ? (
                   <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
-                    Diğer birimlerde: {otherCounts}
+                    {tr('Diğer birimlerde: {v}', { v: otherCounts })}
                   </Text>
                 ) : null}
               </Card>
             ) : null}
 
             {commercial.length ? (
-              <Section title="Ticari">
+              <Section title={tr('Ticari')}>
                 {commercial.map((row, index) => (
                   <SpecRow key={row.label} label={row.label} value={row.value} last={index === commercial.length - 1} />
                 ))}
                 {product.price ? (
                   <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
-                    Fiyatı yalnızca siz görüyorsunuz.
+                    {tr('Fiyatı yalnızca siz görüyorsunuz.')}
                   </Text>
                 ) : null}
               </Section>
@@ -860,13 +861,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             {/* Kumaş pasaportu kartı (iplikte gösterilmez: gramaj/en 0) */}
             {!isYarn ? (
               <View style={{ gap: t.space[2] }}>
-                <SectionTitle title="Kumaş pasaportu" />
+                <SectionTitle title={tr('Kumaş pasaportu')} />
                 <PassportCard product={passportCardProduct} />
               </View>
             ) : null}
 
             {composition.length ? (
-              <Section title="Kompozisyon">
+              <Section title={tr('Kompozisyon')}>
                 {composition.map((item) => (
                   <View key={`${item.fiber}-${item.percent}`} style={{ paddingVertical: t.space[1], gap: t.space[1] }}>
                     <View
@@ -903,7 +904,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                 ))}
                 {compositionTotal !== 100 ? (
                   <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[2] }]}>
-                    Toplam %{formatMeasure(compositionTotal)}
+                    {tr('Toplam %{v}', { v: formatMeasure(compositionTotal) })}
                   </Text>
                 ) : null}
               </Section>
@@ -914,11 +915,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             <ProductVideos productId={product.id} isOwner={isOwnProduct} />
 
             {certificates.length ? (
-              <Section title="Sertifikalar" count={certificates.length}>
+              <Section title={tr('Sertifikalar')} count={certificates.length}>
                 {certificates.map((certificate, index) => {
                   const meta = [
-                    certificate.number ? `No ${certificate.number}` : '',
-                    certificate.validUntil ? `${formatDocDate(certificate.validUntil)} tarihine kadar` : '',
+                    certificate.number ? tr('No {n}', { n: certificate.number }) : '',
+                    certificate.validUntil ? tr('{d} tarihine kadar', { d: formatDocDate(certificate.validUntil) }) : '',
                   ]
                     .filter(Boolean)
                     .join(' · ');
@@ -929,7 +930,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                       onPress={
                         certificate.hasImage ? () => openDocImage('certificate', certificate.position) : undefined
                       }
-                      accessibilityLabel={`${certificateLabel(certificate.name)} belgesini aç`}
+                      accessibilityLabel={tr('{name} belgesini aç', { name: certificateLabel(certificate.name) })}
                     >
                       <Icon name="checkmark-circle-outline" size={t.size.iconSm} color="success" />
                       <View style={{ flex: 1, minWidth: 0 }}>
@@ -947,7 +948,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
             {/* Bakım sembolleri: etiketteki işaretler yatay sırada (yalnızca kumaşta). */}
             {!isYarn && careSymbols.length ? (
-              <Section title="Bakım">
+              <Section title={tr('Bakım')}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[4] }}>
                   {careSymbols.map((symbol) => (
                     <View
@@ -971,7 +972,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             ) : null}
 
             {finishTags.length ? (
-              <Section title="Apre / boya">
+              <Section title={tr('Apre / boya')}>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
                   {finishTags.map((tag) => (
                     <View
@@ -992,13 +993,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
             {/* İplik görünümü: kumaşın iplikleri + iplik dizinine bağlantı. */}
             {yarns.length ? (
-              <Section title="İplik" count={yarns.length}>
+              <Section title={tr('İplik')} count={yarns.length}>
                 {yarns.map((yarn, index) => (
                   <DocRow key={yarn.position} last={index === yarns.length - 1}>
                     <Icon name="yarn" size={t.size.iconSm} color="ink2" />
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Text style={[t.type.body16, { color: t.colors.ink }]}>
-                        {yarn.role ? yarnRoleLabel(yarn.role) : `${index + 1}. iplik`}
+                        {yarn.role ? yarnRoleLabel(yarn.role) : tr('{n}. iplik', { n: index + 1 })}
                       </Text>
                       <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatYarn(yarn)}</Text>
                     </View>
@@ -1012,13 +1013,13 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                         })
                       }
                       accessibilityRole="button"
-                      accessibilityLabel={`${formatYarn(yarn)} ipliğini kimler satıyor, iplik dizininde ara`}
+                      accessibilityLabel={tr('{yarn} ipliğini kimler satıyor, iplik dizininde ara', { yarn: formatYarn(yarn) })}
                       style={({ pressed }) => [
                         { minHeight: t.size.touchMin, justifyContent: 'center', paddingLeft: t.space[2] },
                         pressed ? { opacity: 0.6 } : null,
                       ]}
                     >
-                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Kim satıyor?</Text>
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Kim satıyor?')}</Text>
                     </Pressable>
                   </DocRow>
                 ))}
@@ -1026,7 +1027,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             ) : null}
 
             {testReports.length ? (
-              <Section title="Test raporları" count={testReports.length}>
+              <Section title={tr('Test raporları')} count={testReports.length}>
                 {testReports.map((report, index) => {
                   const meta = [report.result, formatDocDate(report.testedAt)].filter(Boolean).join(' · ');
                   return (
@@ -1034,7 +1035,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                       key={report.position}
                       last={index === testReports.length - 1}
                       onPress={report.hasImage ? () => openDocImage('report', report.position) : undefined}
-                      accessibilityLabel={`${report.kind} raporunu aç`}
+                      accessibilityLabel={tr('{kind} raporunu aç', { kind: report.kind })}
                     >
                       <Icon name="requests" size={t.size.iconSm} color="ink2" />
                       <View style={{ flex: 1, minWidth: 0 }}>
@@ -1055,10 +1056,10 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             {/* Görünüşçe benzeyen kumaşlar (yalnızca kumaşta ve sonuç varsa). */}
             {!isYarn && similar.length ? (
               <View style={{ gap: t.space[2] }}>
-                <SectionTitle title="Benzer kumaşlar" />
+                <SectionTitle title={tr('Benzer kumaşlar')} />
                 <Card noPadding style={{ paddingVertical: t.space[4] }}>
                   <Text style={[t.type.body14, { color: t.colors.ink3, paddingHorizontal: t.space[4] }]}>
-                    Görünüşe göre benzer
+                    {tr('Görünüşe göre benzer')}
                   </Text>
                   <ScrollView
                     horizontal
@@ -1070,9 +1071,11 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                         key={item.product.id}
                         onPress={() => navigation.push('ProductDetail', { productId: item.product.id })}
                         accessibilityRole="button"
-                        accessibilityLabel={`${item.product.code}, ${
-                          item.product.company?.name ?? ''
-                        }, yüzde ${item.similarity} benzer`}
+                        accessibilityLabel={tr('{code}, {company}, yüzde {n} benzer', {
+                          code: item.product.code,
+                          company: item.product.company?.name ?? '',
+                          n: item.similarity,
+                        })}
                         style={({ pressed }) => [
                           { width: t.size.quickAction, gap: t.space[1] },
                           pressed ? { opacity: 0.6 } : null,
@@ -1091,7 +1094,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                             {item.product.company.name}
                           </Text>
                         ) : null}
-                        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>%{item.similarity} benzer</Text>
+                        <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{tr('%{n} benzer', { n: item.similarity })}</Text>
                         {item.reasons[0] ? (
                           <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3 }]}>
                             {item.reasons[0]}
@@ -1107,22 +1110,22 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             {/* AB Dijital Ürün Pasaportu'na HAZIRLIK. Herkes pasaport sayfasını
                 açıp paylaşabilir; doluluk, eksik listesi ve QR yalnızca sahibine. */}
             {dpp ? (
-              <Section title="Dijital pasaport">
+              <Section title={tr('Dijital pasaport')}>
                 <View style={{ gap: t.space[3] }}>
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    Bu ürünün herkese açık pasaport sayfası hazır. Sayfada fiyat ve stok görünmez.
+                    {tr('Bu ürünün herkese açık pasaport sayfası hazır. Sayfada fiyat ve stok görünmez.')}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                     <Button
                       kind="secondary"
-                      label="Pasaportu aç"
+                      label={tr('Pasaportu aç')}
                       icon="open-outline"
                       onPress={openPassportPage}
                       style={{ flex: 1 }}
                     />
                     <Button
                       kind="secondary"
-                      label={linkCopied ? 'Kopyalandı' : 'Bağlantıyı paylaş'}
+                      label={linkCopied ? tr('Kopyalandı') : tr('Bağlantıyı paylaş')}
                       icon={linkCopied ? 'check' : 'share'}
                       onPress={sharePassportLink}
                       style={{ flex: 1 }}
@@ -1132,7 +1135,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                   {isOwnProduct ? (
                     <>
                       <View style={{ gap: t.space[1] }}>
-                        <Text style={[t.type.mono14, { color: t.colors.ink }]}>%{dpp.completenessPercent} hazır</Text>
+                        <Text style={[t.type.mono14, { color: t.colors.ink }]}>{tr('%{n} hazır', { n: dpp.completenessPercent })}</Text>
                         <View
                           style={{
                             height: t.space[1],
@@ -1154,7 +1157,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
 
                       {dppMissing.length ? (
                         <View style={{ gap: t.space[1] }}>
-                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Eksik bilgiler</Text>
+                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Eksik bilgiler')}</Text>
                           {dppMissing.map((item) => (
                             <View
                               key={item.key}
@@ -1166,7 +1169,7 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                           ))}
                           <Button
                             kind="secondary"
-                            label="Düzenle"
+                            label={tr('Düzenle')}
                             icon="create-outline"
                             onPress={openPassportEdit}
                             style={{ alignSelf: 'flex-start', marginTop: t.space[1] }}
@@ -1185,32 +1188,31 @@ export function ProductDetailScreen({ route, navigation }: Props) {
                             backgroundColor: t.colors.surface1,
                           }}
                           resizeMode="contain"
-                          accessibilityLabel={`${product.code} pasaport sayfasının QR kodu`}
+                          accessibilityLabel={tr('{code} pasaport sayfasının QR kodu', { code: product.code })}
                         />
                         <Text style={[t.type.body14, { color: t.colors.ink3, textAlign: 'center' }]}>
-                          QR'ı etiketinize ya da kartelanıza basabilirsiniz; okutan kişi fiyatsız, stoksuz pasaport
-                          sayfasını görür.
+                          {tr("QR'ı etiketinize ya da kartelanıza basabilirsiniz; okutan kişi fiyatsız, stoksuz pasaport sayfasını görür.")}
                         </Text>
-                        <Button kind="secondary" label="QR'ı aç / indir" icon="qr-code-outline" onPress={openQr} />
+                        <Button kind="secondary" label={tr("QR'ı aç / indir")} icon="qr-code-outline" onPress={openQr} />
                       </View>
                     </>
                   ) : null}
 
                   <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-                    AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır.
+                    {tr("AB'nin tekstil için zorunlu alanları henüz yayımlanmadı; bu bir hazırlıktır.")}
                   </Text>
                 </View>
               </Section>
             ) : null}
 
             {error ? (
-              <InlineError message={friendlyMessage(error, 'Ürün bilgisi yenilenemedi')} onRetry={reload} />
+              <InlineError message={friendlyMessage(error, tr('Ürün bilgisi yenilenemedi'))} onRetry={reload} />
             ) : null}
 
             {/* Yasal / bilgi notu: yapışkan çubuğun hemen üstünde. */}
             {!isOwnProduct ? (
               <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-                Numune ücretsizdir; kargo alıcıya aittir. Teklif için miktar ve teslim tarihini belirtin.
+                {tr('Numune ücretsizdir; kargo alıcıya aittir. Teklif için miktar ve teslim tarihini belirtin.')}
               </Text>
             ) : null}
           </View>

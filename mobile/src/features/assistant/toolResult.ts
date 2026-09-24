@@ -2,6 +2,7 @@ import type { AssistantToolCall } from '../../api/client';
 import { categoryLabel, STOCK_UNIT_LABELS, type StockUnit } from '../products/catalog';
 import { certificateLabel, formatComposition, widthTypeLabel } from '../products/glossaryLabels';
 import { YARN_END_USES, optionLabel } from '../yarns/catalog';
+import { locale, tr } from '../../i18n';
 
 // Asistanın çağırdığı aracın çıktısını sonuç kartındaki satırlara çevirir.
 //
@@ -37,7 +38,7 @@ export interface ToolResultView {
 export function formatNumber(value: unknown, digits = 2): string {
   const n = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(n)) return '';
-  return n.toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  return n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
 
 function asObject(value: unknown): Record<string, unknown> {
@@ -158,7 +159,7 @@ function catalogRows(output: unknown): ResultRow[] {
     const category = categoryLabel(asText(p.type), asText(p.subtype));
 
     return {
-      label: asText(p.code) || 'Ürün',
+      label: asText(p.code) || tr('Ürün'),
       value: measures.join(' · '),
       note: [category, note].filter(Boolean).join(' · ') || undefined,
       productId: asText(p.id) || undefined,
@@ -173,13 +174,13 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
 
   switch (call.name) {
     case 'fabricPricing': {
-      pushMoney(rows, 'İplik', out.yarnCostPerKg);
-      pushMoney(rows, 'Ham maliyet', out.greigeCostPerKg);
-      pushMoney(rows, 'Ham satış', out.greigeSalePerKg);
-      pushMoney(rows, 'Boyalı maliyet', out.dyedCostPerKg);
-      pushMoney(rows, 'Boyalı satış', out.dyedSalePerKg, true);
-      pushNumber(rows, 'Metre / kg', out.metersPerKg, 'm');
-      return { ...base, unit: 'kg başına', rows, text: rows.length ? undefined : call.summary };
+      pushMoney(rows, tr('İplik'), out.yarnCostPerKg);
+      pushMoney(rows, tr('Ham maliyet'), out.greigeCostPerKg);
+      pushMoney(rows, tr('Ham satış'), out.greigeSalePerKg);
+      pushMoney(rows, tr('Boyalı maliyet'), out.dyedCostPerKg);
+      pushMoney(rows, tr('Boyalı satış'), out.dyedSalePerKg, true);
+      pushNumber(rows, tr('Metre / kg'), out.metersPerKg, 'm');
+      return { ...base, unit: tr('kg başına'), rows, text: rows.length ? undefined : call.summary };
     }
     case 'yarnCount':
     case 'yarnCountFromSample': {
@@ -187,36 +188,36 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
     case 'fabricLengthWeight': {
-      pushNumber(rows, 'Hesap eni', out.effectiveWidthCm, 'cm', 0);
-      pushNumber(rows, '1 kilo', out.metersPerKg, 'm');
-      pushNumber(rows, '1 metre', out.kgPerMeter, 'kg', 3);
-      pushNumber(rows, 'Hesaplanan kilo', out.kg, 'kg', 1);
-      pushNumber(rows, 'Hesaplanan metre', out.meters, 'm', 1);
+      pushNumber(rows, tr('Hesap eni'), out.effectiveWidthCm, 'cm', 0);
+      pushNumber(rows, tr('1 kilo'), out.metersPerKg, 'm');
+      pushNumber(rows, tr('1 metre'), out.kgPerMeter, 'kg', 3);
+      pushNumber(rows, tr('Hesaplanan kilo'), out.kg, 'kg', 1);
+      pushNumber(rows, tr('Hesaplanan metre'), out.meters, 'm', 1);
       if (rows.length) rows[rows.length - 1].strong = true;
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
     case 'yarnUsage': {
-      pushNumber(rows, 'Gereken iplik', out.yarnKg, 'kg', 1);
-      pushNumber(rows, '1 metre', out.kgPerMeter, 'kg', 3);
-      pushNumber(rows, '1 kilo', out.metersPerKg, 'm');
+      pushNumber(rows, tr('Gereken iplik'), out.yarnKg, 'kg', 1);
+      pushNumber(rows, tr('1 metre'), out.kgPerMeter, 'kg', 3);
+      pushNumber(rows, tr('1 kilo'), out.metersPerKg, 'm');
       if (rows.length) rows[0].strong = true;
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
     case 'knitProduction': {
-      pushNumber(rows, 'Saatlik üretim', out.kgPerHour, 'kg', 1);
-      pushNumber(rows, 'Günlük üretim', out.kgPerDay, 'kg', 1);
+      pushNumber(rows, tr('Saatlik üretim'), out.kgPerHour, 'kg', 1);
+      pushNumber(rows, tr('Günlük üretim'), out.kgPerDay, 'kg', 1);
       const machines = asNumber(out.machineCount);
       if (machines != null && machines > 1) {
-        pushNumber(rows, `Makine başına (${formatNumber(machines, 0)} makine)`, out.perMachineKgPerDay, 'kg/gün', 1);
+        pushNumber(rows, tr('Makine başına ({n} makine)', { n: formatNumber(machines, 0) }), out.perMachineKgPerDay, 'kg/gün', 1);
       }
       const feedRows = asArray(asObject(call.input).rows);
       asArray(out.percents).forEach((p, index) => {
         const n = asNumber(p);
         if (n == null) return;
-        const label = asText(asObject(feedRows[index]).label) || `${index + 1}. iplik`;
-        rows.push({ label: `${label} payı`, value: `%${formatNumber(n, 1)}` });
+        const label = asText(asObject(feedRows[index]).label) || tr('{n}. iplik', { n: index + 1 });
+        rows.push({ label: tr('{label} payı', { label }), value: `%${formatNumber(n, 1)}` });
       });
-      pushNumber(rows, 'Günlük fason geliri', out.dailyFeeIncome, '₺', 0);
+      pushNumber(rows, tr('Günlük fason geliri'), out.dailyFeeIncome, '₺', 0);
       if (rows.length > 1) rows[1].strong = true;
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
@@ -226,49 +227,49 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
         const n = asNumber(p);
         if (n == null) return;
         const row = asObject(feedRows[index]);
-        const label = asText(row.label) || `${formatNumber(row.count, 0)} ${asText(row.system)}`.trim() || `${index + 1}. iplik`;
+        const label = asText(row.label) || `${formatNumber(row.count, 0)} ${asText(row.system)}`.trim() || tr('{n}. iplik', { n: index + 1 });
         rows.push({ label, value: `%${formatNumber(n, 1)}` });
       });
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
     case 'fabricGsmSample':
     case 'fabricGsmKnit': {
-      pushNumber(rows, 'Gramaj', out.gsm, 'gr/m²', 1);
-      pushNumber(rows, 'Tahmini mamul gramaj', out.estimatedFinishedGsm, 'gr/m²', 1);
-      pushNumber(rows, 'Ölçülen mamul gramaj', out.measuredFinishedGsm, 'gr/m²', 1);
-      pushNumber(rows, 'Sapma', out.deviationPercent, '%', 1);
-      pushNumber(rows, 'İlmek boyu', out.loopLengthMm, 'mm', 2);
-      pushNumber(rows, 'İplik', out.yarnTex, 'tex', 1);
+      pushNumber(rows, tr('Gramaj'), out.gsm, 'gr/m²', 1);
+      pushNumber(rows, tr('Tahmini mamul gramaj'), out.estimatedFinishedGsm, 'gr/m²', 1);
+      pushNumber(rows, tr('Ölçülen mamul gramaj'), out.measuredFinishedGsm, 'gr/m²', 1);
+      pushNumber(rows, tr('Sapma'), out.deviationPercent, '%', 1);
+      pushNumber(rows, tr('İlmek boyu'), out.loopLengthMm, 'mm', 2);
+      pushNumber(rows, tr('İplik'), out.yarnTex, 'tex', 1);
       if (rows.length) rows[0].strong = true;
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
     case 'yarnRequirement': {
-      pushNumber(rows, 'Dikilmiş üründe kumaş', out.garmentFabricKg, 'kg', 1);
-      pushNumber(rows, 'Mamul kumaş', out.finishedKg, 'kg', 1);
-      pushNumber(rows, 'Ham kumaş', out.greigeKg, 'kg', 1);
-      pushNumber(rows, 'Alınacak iplik', out.yarnKg, 'kg', 1);
+      pushNumber(rows, tr('Dikilmiş üründe kumaş'), out.garmentFabricKg, 'kg', 1);
+      pushNumber(rows, tr('Mamul kumaş'), out.finishedKg, 'kg', 1);
+      pushNumber(rows, tr('Ham kumaş'), out.greigeKg, 'kg', 1);
+      pushNumber(rows, tr('Alınacak iplik'), out.yarnKg, 'kg', 1);
       if (rows.length) rows[rows.length - 1].strong = true;
       return { ...base, unit: 'kg', rows, text: rows.length ? undefined : call.summary };
     }
     case 'garmentCost': {
       const currency = asText(asObject(call.input).currency) || 'TRY';
-      pushNumber(rows, 'Kumaş', out.fabricCost, '', 2);
+      pushNumber(rows, tr('Kumaş'), out.fabricCost, '', 2);
       for (const item of asArray(out.items)) {
         const o = asObject(item);
         const amount = asNumber(o.amount);
         if (amount == null || amount === 0) continue;
         rows.push({ label: asText(o.label) || asText(o.key), value: formatNumber(amount) });
       }
-      pushNumber(rows, 'Adet maliyeti', out.totalCost, '', 2);
-      pushNumber(rows, 'Sipariş toplamı', out.orderTotal, '', 2);
+      pushNumber(rows, tr('Adet maliyeti'), out.totalCost, '', 2);
+      pushNumber(rows, tr('Sipariş toplamı'), out.orderTotal, '', 2);
       if (rows.length) rows[rows.length - 1].strong = true;
-      return { ...base, unit: `${currency} / adet`, rows, text: rows.length ? undefined : call.summary };
+      return { ...base, unit: tr('{currency} / adet', { currency }), rows, text: rows.length ? undefined : call.summary };
     }
     case 'katalog_ara': {
       const productRows = catalogRows(call.output);
       return {
         ...base,
-        unit: productRows.length ? `${productRows.length} ürün` : undefined,
+        unit: productRows.length ? tr('{n} ürün', { n: productRows.length }) : undefined,
         rows: productRows,
         text: productRows.length ? undefined : call.summary,
       };
@@ -281,8 +282,8 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
         const a = asObject(item);
         const answer = asText(a.answer);
         rows.push({
-          label: asText(a.companyName) || 'Firma',
-          value: a.error ? 'ulaşılamadı' : a.forwarded === true ? 'firmaya iletildi' : 'cevapladı',
+          label: asText(a.companyName) || tr('Firma'),
+          value: a.error ? tr('ulaşılamadı') : a.forwarded === true ? tr('firmaya iletildi') : tr('cevapladı'),
           note: answer ? (answer.length > 220 ? answer.slice(0, 220) + '…' : answer) : asText(a.error) || undefined,
           companyId: asText(a.companyId) || undefined,
         });
@@ -292,7 +293,7 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
     case 'firma_bul': {
       for (const item of asArray(out.companies)) {
         const c = asObject(item);
-        rows.push({ label: asText(c.name) || 'Firma', value: c.verification === 'dogrulanmis' ? 'doğrulanmış' : '', note: asText(c.city) || undefined, companyId: asText(c.id) || undefined });
+        rows.push({ label: asText(c.name) || tr('Firma'), value: c.verification === 'dogrulanmis' ? tr('doğrulanmış') : '', note: asText(c.city) || undefined, companyId: asText(c.id) || undefined });
       }
       return { ...base, rows, text: rows.length ? undefined : call.summary };
     }
@@ -306,14 +307,14 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
         const tons = asNumber(capacity.monthlyCapacityTons);
         const note = [
           asText(company.city),
-          capacity.contractOpen === true ? 'fason açık' : 'fason kapalı',
-          matchedCount != null ? `${formatNumber(matchedCount, 0)} makine` : null,
-          tons != null ? `aylık ${formatNumber(tons, 0)} ton` : null,
+          capacity.contractOpen === true ? tr('fason açık') : tr('fason kapalı'),
+          matchedCount != null ? tr('{n} makine', { n: formatNumber(matchedCount, 0) }) : null,
+          tons != null ? tr('aylık {n} ton', { n: formatNumber(tons, 0) }) : null,
         ]
           .filter(Boolean)
           .join(' · ');
         rows.push({
-          label: asText(company.name) || 'Firma',
+          label: asText(company.name) || tr('Firma'),
           value: tons != null ? `${formatNumber(tons, 0)} ton` : '',
           note: note || undefined,
           companyId: asText(company.id) || undefined,
@@ -321,7 +322,7 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
       }
       return {
         ...base,
-        unit: rows.length ? `${rows.length} firma` : undefined,
+        unit: rows.length ? tr('{n} firma', { n: rows.length }) : undefined,
         rows,
         text: rows.length ? undefined : call.summary,
       };
@@ -346,13 +347,14 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
       }
       return {
         ...base,
-        unit: rows.length ? `${rows.length} iplik` : undefined,
+        unit: rows.length ? tr('{n} iplik', { n: rows.length }) : undefined,
         rows,
         text: rows.length ? undefined : call.summary,
       };
     }
     case 'pasaport_cikar': {
-      for (const [field, label] of Object.entries(PASSPORT_FIELD_LABELS)) {
+      for (const [field, trLabel] of Object.entries(PASSPORT_FIELD_LABELS)) {
+        const label = tr(trLabel);
         const entry = asObject(out[field]);
         if (!('value' in entry) || entry.value == null) continue;
         const value = passportValue(field, entry.value);
@@ -421,9 +423,9 @@ export function rfqCandidatesView(call: AssistantToolCall): RfqCandidatesView {
 
       return {
         id: asText(c.id),
-        code: asText(c.code) || 'Ürün',
+        code: asText(c.code) || tr('Ürün'),
         companyId: asText(c.companyId),
-        companyName: asText(c.companyName) || 'Firma',
+        companyName: asText(c.companyName) || tr('Firma'),
         verified: c.verification === 'dogrulanmis',
         type: asText(c.type),
         stockUnit,
@@ -457,7 +459,7 @@ export function rfqSummaryView(call: AssistantToolCall): RfqSummaryView | null {
   if (!rfqId) return null;
   return {
     rfqId,
-    title: asText(out.title) || 'Teklif karşılaştırması',
+    title: asText(out.title) || tr('Teklif karşılaştırması'),
     requestCount: asNumber(out.requestCount) ?? 0,
     quotedCount: asNumber(out.quotedCount) ?? 0,
   };

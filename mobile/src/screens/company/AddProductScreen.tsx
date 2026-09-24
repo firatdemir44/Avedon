@@ -93,6 +93,7 @@ import { formatMeasure, parseNumber, toInputNumber } from '../../features/calcul
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -144,13 +145,13 @@ interface TestReportRow {
 }
 
 // Test türü için öneri çipleri (serbest metni doldurur, kısıtlamaz).
-const TEST_KIND_SUGGESTIONS = [
-  'Çekme',
-  'Boncuklanma (pilling)',
-  'Renk haslığı',
-  'Yıkama sonrası boyut değişimi',
-  'Gramaj',
-  'Patlama mukavemeti',
+const testKindSuggestions = () => [
+  tr('Çekme'),
+  tr('Boncuklanma (pilling)'),
+  tr('Renk haslığı'),
+  tr('Yıkama sonrası boyut değişimi'),
+  tr('Gramaj'),
+  tr('Patlama mukavemeti'),
 ];
 
 // Sunucudaki testReportSchema ile aynı (backend/src/passport.ts).
@@ -158,13 +159,14 @@ const MAX_TEST_KIND_CHARS = 80;
 const MAX_TEST_RESULT_CHARS = 200;
 
 const TYPE_OPTIONS = PRODUCT_TYPES.map((value) => ({ value, label: TYPE_LABELS[value] }));
-const UNIT_OPTIONS = STOCK_UNITS.map((value) => ({
-  value,
-  label: value === 'm' ? 'Metre (m)' : 'Kilogram (kg)',
-}));
+const unitOptions = () =>
+  STOCK_UNITS.map((value) => ({
+    value,
+    label: value === 'm' ? tr('Metre (m)') : tr('Kilogram (kg)'),
+  }));
 // ChipSelect tek seçim; boş değer "belirtilmemiş" demek.
-const WIDTH_TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Belirtilmemiş' },
+const widthTypeOptions = (): { value: string; label: string }[] => [
+  { value: '', label: tr('Belirtilmemiş') },
   ...WIDTH_TYPES.map((value) => ({ value, label: WIDTH_TYPE_LABELS[value] })),
 ];
 // Tüp ende: girilen en tek yüzün eni mi, yoksa zaten açık en mi. Varsayılan
@@ -176,17 +178,17 @@ const WIDTH_MEANING_OPTIONS: { value: string; label: string }[] = WIDTH_MEANINGS
 const YARN_ROLE_OPTIONS: { value: string; label: string }[] = YARN_ROLES.map((r) => ({ value: r.key, label: r.label }));
 const YARN_UNIT_OPTIONS: { value: string; label: string }[] = YARN_UNITS.map((u) => ({ value: u.key, label: u.label }));
 const YARN_TYPE_OPTIONS: { value: string; label: string }[] = YARN_TYPES.map((t) => ({ value: t.key, label: t.label }));
-const MOQ_UNIT_OPTIONS: { value: StockUnit; label: string }[] = [
-  { value: 'm', label: 'Metre' },
-  { value: 'kg', label: 'Kilogram' },
+const moqUnitOptions = (): { value: StockUnit; label: string }[] => [
+  { value: 'm', label: tr('Metre') },
+  { value: 'kg', label: tr('Kilogram') },
 ];
 const CURRENCY_OPTIONS: { value: string; label: string }[] = PRICE_CURRENCIES.map((value) => ({
   value,
   label: value,
 }));
-const PRICE_UNIT_OPTIONS: { value: StockUnit; label: string }[] = [
-  { value: 'm', label: 'metre başına' },
-  { value: 'kg', label: 'kilogram başına' },
+const priceUnitOptions = (): { value: StockUnit; label: string }[] => [
+  { value: 'm', label: tr('metre başına') },
+  { value: 'kg', label: tr('kilogram başına') },
 ];
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -198,8 +200,8 @@ function careSymbolError(err: unknown): string | null {
   if (!(err instanceof ApiError)) return null;
   const fieldErrors = (err.details as { fieldErrors?: Record<string, string[]> } | undefined)?.fieldErrors;
   const codes = fieldErrors?.careSymbols ?? [];
-  if (codes.includes('one_symbol_per_group')) return 'Bakım sembollerinde her gruptan yalnızca bir sembol seçilebilir.';
-  if (codes.includes('unknown_care_symbol')) return 'Tanınmayan bir bakım sembolü seçildi. Seçimi yenileyip tekrar deneyin.';
+  if (codes.includes('one_symbol_per_group')) return tr('Bakım sembollerinde her gruptan yalnızca bir sembol seçilebilir.');
+  if (codes.includes('unknown_care_symbol')) return tr('Tanınmayan bir bakım sembolü seçildi. Seçimi yenileyip tekrar deneyin.');
   return null;
 }
 // Sunucudaki MAX_EXTRACT_IMAGES ile aynı.
@@ -210,12 +212,12 @@ const MAX_EXTRACT_TEXT = 4000;
 // Etiket okuma hataları (sunucu kodları) → ekranda görünen Türkçe metin.
 function extractErrorMessage(err: unknown) {
   const code = err instanceof ApiError ? err.code : undefined;
-  if (code === 'extract_not_configured') return 'Fotoğraftan doldurma bu sunucuda etkin değil.';
-  if (code === 'image_too_large') return 'Fotoğraf çok büyük. Daha küçük bir fotoğraf seçin.';
-  if (code === 'document_too_large') return 'PDF çok büyük (en fazla 10 MB).';
-  if (code === 'extract_input_required') return 'Okunacak bir fotoğraf, PDF ya da metin seçin.';
-  if (err instanceof ApiError && err.status === 0) return 'Etiket okuma zaman aşımına uğradı, tekrar deneyin.';
-  return 'Etiket okunamadı, tekrar deneyin ya da elle girin.';
+  if (code === 'extract_not_configured') return tr('Fotoğraftan doldurma bu sunucuda etkin değil.');
+  if (code === 'image_too_large') return tr('Fotoğraf çok büyük. Daha küçük bir fotoğraf seçin.');
+  if (code === 'document_too_large') return tr('PDF çok büyük (en fazla 10 MB).');
+  if (code === 'extract_input_required') return tr('Okunacak bir fotoğraf, PDF ya da metin seçin.');
+  if (err instanceof ApiError && err.status === 0) return tr('Etiket okuma zaman aşımına uğradı, tekrar deneyin.');
+  return tr('Etiket okunamadı, tekrar deneyin ya da elle girin.');
 }
 
 const emptyYarnRow = (): YarnRow => ({ key: newKey('iplik'), role: '', count: '', unit: 'ne', ply: '1', yarnType: '' });
@@ -354,7 +356,7 @@ export function AddProductScreen({ navigation, route }: Props) {
             setPhotos([{ key: newKey('taslak'), uri: fitted.uri, dataUrl: fitted.dataUrl }]);
             setPhotosDirty(true);
           } else {
-            setDraftNote('Etiket fotoğrafı ürün fotoğrafı olarak eklenemedi (çok büyük).');
+            setDraftNote(tr('Etiket fotoğrafı ürün fotoğrafı olarak eklenemedi (çok büyük).'));
           }
         }
         setDraftLoading(false);
@@ -367,8 +369,8 @@ export function AddProductScreen({ navigation, route }: Props) {
         setDraftLoading(false);
         setDraftError(
           err instanceof ApiError && err.status === 404
-            ? 'Bu taslak kullanılmış ya da silinmiş.'
-            : 'Taslak açılamadı, lütfen tekrar deneyin.'
+            ? tr('Bu taslak kullanılmış ya da silinmiş.')
+            : tr('Taslak açılamadı, lütfen tekrar deneyin.')
         );
       });
     return () => {
@@ -380,9 +382,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   const handleDismissDraft = async () => {
     if (!draftId || draftDismissing) return;
     const confirmed = await confirmAction({
-      title: 'Taslağı sil',
-      message: "WhatsApp'tan gelen bu taslak silinsin mi? Girdiğiniz bilgiler kaydedilmez.",
-      confirmLabel: 'Sil',
+      title: tr('Taslağı sil'),
+      message: tr("WhatsApp'tan gelen bu taslak silinsin mi? Girdiğiniz bilgiler kaydedilmez."),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -393,7 +395,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       navigation.goBack();
     } catch {
       haptics.error();
-      setDraftError('Taslak silinemedi, lütfen tekrar deneyin.');
+      setDraftError(tr('Taslak silinemedi, lütfen tekrar deneyin.'));
       setDraftDismissing(false);
     }
   };
@@ -538,7 +540,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Ürün yüklenemedi, lütfen tekrar deneyin.');
+        if (!cancelled) setError(tr('Ürün yüklenemedi, lütfen tekrar deneyin.'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -635,8 +637,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     } catch (err) {
       setExtractError(
         err instanceof Error && err.message === 'camera_permission_denied'
-          ? 'Kameraya erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen tekrar deneyin.'
+          ? tr('Kameraya erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen tekrar deneyin.')
       );
     }
   };
@@ -652,8 +654,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     } catch (err) {
       setExtractError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     }
   };
@@ -667,8 +669,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     } catch (err) {
       setExtractError(
         err instanceof DocumentPickError && err.code === 'too_large'
-          ? 'PDF çok büyük (en fazla 10 MB).'
-          : 'PDF okunamadı, lütfen başka bir dosya deneyin.'
+          ? tr('PDF çok büyük (en fazla 10 MB).')
+          : tr('PDF okunamadı, lütfen başka bir dosya deneyin.')
       );
     }
   };
@@ -779,8 +781,8 @@ export function AddProductScreen({ navigation, route }: Props) {
     } catch (err) {
       setError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     } finally {
       setPickingImage(false);
@@ -868,10 +870,11 @@ export function AddProductScreen({ navigation, route }: Props) {
   const effectiveWidthText =
     widthType === 'tup' && widthCmNum > 0
       ? widthMeaning === 'tup_tek_yuz'
-        ? `Hesap eni: ${formatMeasure(effectiveWidthCm(widthCmNum, widthMeaning))} cm (${formatMeasure(
-            widthCmNum
-          )} × 2)`
-        : `Hesap eni: ${formatMeasure(widthCmNum)} cm`
+        ? tr('Hesap eni: {w} cm ({x} × 2)', {
+            w: formatMeasure(effectiveWidthCm(widthCmNum, widthMeaning)),
+            x: formatMeasure(widthCmNum),
+          })
+        : tr('Hesap eni: {w} cm', { w: formatMeasure(widthCmNum) })
       : '';
 
   const {
@@ -896,16 +899,16 @@ export function AddProductScreen({ navigation, route }: Props) {
   );
 
   const formErrors: string[] = [];
-  if (compositionIncomplete) formErrors.push('Kompozisyon satırlarında lif ve yüzdeyi birlikte doldurun (yüzde 0 ile 100 arası).');
-  if (yarnIncomplete) formErrors.push('İplik satırlarında numara sıfırdan büyük olmalı ve birim seçilmeli.');
-  if (certificateIncomplete(certificateRows)) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
+  if (compositionIncomplete) formErrors.push(tr('Kompozisyon satırlarında lif ve yüzdeyi birlikte doldurun (yüzde 0 ile 100 arası).'));
+  if (yarnIncomplete) formErrors.push(tr('İplik satırlarında numara sıfırdan büyük olmalı ve birim seçilmeli.'));
+  if (certificateIncomplete(certificateRows)) formErrors.push(tr('Her sertifika satırında bir sertifika adı seçin.'));
   if (certificateDateInvalid(certificateRows))
-    formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
-  if (testReportIncomplete) formErrors.push('Her test raporu satırında test türünü yazın.');
-  if (testReportDateInvalid) formErrors.push('Test tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+    formErrors.push(tr('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).'));
+  if (testReportIncomplete) formErrors.push(tr('Her test raporu satırında test türünü yazın.'));
+  if (testReportDateInvalid) formErrors.push(tr('Test tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).'));
   // AB pasaportuna hazırlık: oran 0-100 arası (0 geçerli, boş "belirtilmedi").
   if (recycledPercent.trim() && !(parseNumber(recycledPercent) >= 0 && parseNumber(recycledPercent) <= 100))
-    formErrors.push('Geri dönüştürülmüş içerik oranı 0 ile 100 arasında olmalı.');
+    formErrors.push(tr('Geri dönüştürülmüş içerik oranı 0 ile 100 arasında olmalı.'));
 
   // Mevcut fotoğraflardan biri henüz yüklenmediyse önizleme boş ama sırası
   // biliniyor; kaydetmeyi engellemez.
@@ -996,10 +999,10 @@ export function AddProductScreen({ navigation, route }: Props) {
   // yığında bırakılmaz (kayıt bitti, forma geri dönülmez).
   const offerFeedShare = async (newProductId: string) => {
     const share = await confirmAction({
-      title: 'Ürün kaydedildi',
-      message: 'Ürün kaydedildi. Akışta paylaşılsın mı?',
-      confirmLabel: 'Akışta paylaş',
-      cancelLabel: 'Şimdi değil',
+      title: tr('Ürün kaydedildi'),
+      message: tr('Ürün kaydedildi. Akışta paylaşılsın mı?'),
+      confirmLabel: tr('Akışta paylaş'),
+      cancelLabel: tr('Şimdi değil'),
     });
     if (share) navigation.replace('CreatePost', { productId: newProductId, pickedAt: Date.now() });
     else navigation.goBack();
@@ -1059,7 +1062,7 @@ export function AddProductScreen({ navigation, route }: Props) {
       }
     } catch (err) {
       haptics.error();
-      setError(careSymbolError(err) ?? 'Ürün kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.');
+      setError(careSymbolError(err) ?? tr('Ürün kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.'));
     } finally {
       setSubmitting(false);
     }
@@ -1068,9 +1071,9 @@ export function AddProductScreen({ navigation, route }: Props) {
   const handleDelete = async () => {
     if (!productId) return;
     const confirmed = await confirmAction({
-      title: 'Ürünü sil',
-      message: `${code || 'Bu ürün'} silinsin mi? Ürüne gelen numune talepleri de silinir.`,
-      confirmLabel: 'Sil',
+      title: tr('Ürünü sil'),
+      message: tr('{name} silinsin mi? Ürüne gelen numune talepleri de silinir.', { name: code || tr('Bu ürün') }),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -1085,18 +1088,18 @@ export function AddProductScreen({ navigation, route }: Props) {
       else navigation.goBack();
     } catch {
       haptics.error();
-      setError('Ürün silinemedi, lütfen tekrar deneyin.');
+      setError(tr('Ürün silinemedi, lütfen tekrar deneyin.'));
       setDeleting(false);
     }
   };
 
   const subtypeOptions = [
-    { value: '', label: 'Belirtilmemiş' },
+    { value: '', label: tr('Belirtilmemiş') },
     ...SUBTYPES[type].map((s) => ({ value: s.key, label: s.label })),
   ];
 
   const appBar = (
-    <AppBar title={isEditing ? 'Ürünü düzenle' : 'Ürün ekle'} leading="back" onBack={() => navigation.goBack()} />
+    <AppBar title={isEditing ? tr('Ürünü düzenle') : tr('Ürün ekle')} leading="back" onBack={() => navigation.goBack()} />
   );
 
   if (loading || draftLoading) {
@@ -1153,7 +1156,7 @@ export function AddProductScreen({ navigation, route }: Props) {
         }}
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${title}, ${open ? 'kapat' : 'aç'}`}
+        accessibilityLabel={open ? tr('{title}, kapat', { title }) : tr('{title}, aç', { title })}
         style={{
           minHeight: t.size.touchMin,
           flexDirection: 'row',
@@ -1286,7 +1289,7 @@ export function AddProductScreen({ navigation, route }: Props) {
     </View>
   );
 
-  const submitLabel = isEditing ? 'Değişiklikleri kaydet' : 'Ürünü kaydet';
+  const submitLabel = isEditing ? tr('Değişiklikleri kaydet') : tr('Ürünü kaydet');
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
@@ -1298,7 +1301,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           savedWarnings ? (
             <Button
               size="lg"
-              label="Devam"
+              label={tr('Devam')}
               onPress={() => {
                 if (createdProductId) void offerFeedShare(createdProductId);
                 else navigation.goBack();
@@ -1328,12 +1331,12 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
                   <Icon name="whatsapp" size={t.size.iconSm} color="ink2" />
                   <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
-                    WhatsApp&apos;tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.
+                    {tr("WhatsApp'tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.")}
                   </Text>
                 </View>
                 {draftNote ? hint(draftNote) : null}
                 {draftError ? dangerBanner(draftError) : null}
-                <Button kind="danger" label="Taslağı sil" loading={draftDismissing} onPress={handleDismissDraft} />
+                <Button kind="danger" label={tr('Taslağı sil')} loading={draftDismissing} onPress={handleDismissDraft} />
               </View>
             </Card>
           ) : null}
@@ -1352,7 +1355,7 @@ export function AddProductScreen({ navigation, route }: Props) {
             >
               <Icon name="warning" size={t.size.iconSm} color="warning" />
               <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-                <Text style={[t.type.label14, { color: t.colors.warning }]}>Kaydedildi. Dikkat:</Text>
+                <Text style={[t.type.label14, { color: t.colors.warning }]}>{tr('Kaydedildi. Dikkat:')}</Text>
                 {savedWarnings.map((note) => (
                   <Text key={note} style={[t.type.body14, { color: t.colors.ink }]}>
                     {note}
@@ -1363,7 +1366,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           ) : null}
 
           {section(
-            `Fotoğraflar (${photos.length}/${MAX_PRODUCT_IMAGES})`,
+            tr('Fotoğraflar ({n}/{max})', { n: photos.length, max: MAX_PRODUCT_IMAGES }),
             <>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
                 {photos.map((photo, index) => (
@@ -1375,7 +1378,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                       // iç içe <button> oluşmasın.
                       accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
                       accessibilityLabel={
-                        index === 0 ? `Fotoğraf ${index + 1}, kapak` : `Fotoğraf ${index + 1}, kapak yap`
+                        index === 0 ? tr('Fotoğraf {n}, kapak', { n: index + 1 }) : tr('Fotoğraf {n}, kapak yap', { n: index + 1 })
                       }
                       style={({ pressed }) => ({
                         width: t.size.thumb,
@@ -1399,7 +1402,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                     {index === 0 ? (
                       <Badge
                         kind="info"
-                        label="Kapak"
+                        label={tr('Kapak')}
                         style={{ position: 'absolute', left: t.space[1], bottom: t.space[1] }}
                       />
                     ) : null}
@@ -1407,7 +1410,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                       onPress={() => removePhoto(photo.key)}
                       hitSlop={t.space[2]}
                       accessibilityRole="button"
-                      accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
+                      accessibilityLabel={tr('Fotoğraf {n}, kaldır', { n: index + 1 })}
                       style={({ pressed }) => ({
                         position: 'absolute',
                         top: t.space[1],
@@ -1429,7 +1432,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                     onPress={addPhoto}
                     disabled={pickingImage}
                     accessibilityRole="button"
-                    accessibilityLabel="Fotoğraf ekle"
+                    accessibilityLabel={tr('Fotoğraf ekle')}
                     style={({ pressed }) => ({
                       width: t.size.thumb,
                       height: t.size.thumb,
@@ -1448,26 +1451,26 @@ export function AddProductScreen({ navigation, route }: Props) {
                     ) : (
                       <>
                         <Icon name="plus" color="brand" />
-                        <Text style={[t.type.caption12, { color: t.colors.brand }]}>Fotoğraf</Text>
+                        <Text style={[t.type.caption12, { color: t.colors.brand }]}>{tr('Fotoğraf')}</Text>
                       </>
                     )}
                   </Pressable>
                 ) : null}
               </View>
-              {hint('İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokunun.')}
+              {hint(tr('İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokunun.'))}
             </>
           )}
 
           {section(
-            'Etiketten doldur',
+            tr('Etiketten doldur'),
             <>
               {hint(
-                'Etiket, kartela ya da test raporundan bilgileri okuyup forma dolduralım. Aktarmadan önce siz onaylarsınız.'
+                tr('Etiket, kartela ya da test raporundan bilgileri okuyup forma dolduralım. Aktarmadan önce siz onaylarsınız.')
               )}
               <Button
                 kind="secondary"
                 fullWidth
-                label="Etiketten doldur"
+                label={tr('Etiketten doldur')}
                 icon="scan-outline"
                 loading={extracting}
                 onPress={() => {
@@ -1481,23 +1484,23 @@ export function AddProductScreen({ navigation, route }: Props) {
                 <View>
                   {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
                   {Platform.OS !== 'web' ? (
-                    <ListRow title="Fotoğraf çek" left={iconSquare('camera')} onPress={extractFromCamera} />
+                    <ListRow title={tr('Fotoğraf çek')} left={iconSquare('camera')} onPress={extractFromCamera} />
                   ) : null}
                   <ListRow
-                    title="Galeriden seç"
-                    subtitle={`En fazla ${MAX_EXTRACT_IMAGES} fotoğraf`}
+                    title={tr('Galeriden seç')}
+                    subtitle={tr('En fazla {n} fotoğraf', { n: MAX_EXTRACT_IMAGES })}
                     left={iconSquare('images-outline')}
                     onPress={extractFromGallery}
                   />
                   <ListRow
-                    title="PDF seç"
-                    subtitle="Test raporu ya da kartela belgesi"
+                    title={tr('PDF seç')}
+                    subtitle={tr('Test raporu ya da kartela belgesi')}
                     left={iconSquare('quote')}
                     onPress={extractFromPdf}
                   />
                   <ListRow
-                    title="Metin yapıştır"
-                    subtitle="WhatsApp'tan gelen etiket bilgisi"
+                    title={tr('Metin yapıştır')}
+                    subtitle={tr('WhatsApp\'tan gelen etiket bilgisi')}
                     left={iconSquare('clipboard-outline')}
                     divider={false}
                     onPress={() => {
@@ -1512,24 +1515,24 @@ export function AddProductScreen({ navigation, route }: Props) {
               {pasteOpen ? (
                 <View style={{ gap: t.space[3] }}>
                   <Input
-                    label="Etiket metni"
+                    label={tr('Etiket metni')}
                     value={pasteText}
                     onChangeText={setPasteText}
-                    placeholder="Örn. 95% CO 5% EA, 220 gsm, 180 cm tubular"
+                    placeholder={tr('Örn. 95% CO 5% EA, 220 gsm, 180 cm tubular')}
                     multiline
                     maxLength={MAX_EXTRACT_TEXT}
                   />
                   <View style={{ flexDirection: 'row', gap: t.space[3] }}>
                     <Button
                       kind="secondary"
-                      label="Oku"
+                      label={tr('Oku')}
                       disabled={!pasteText.trim() || extracting}
                       onPress={extractFromText}
                       style={{ flex: 1 }}
                     />
                     <Button
                       kind="quiet"
-                      label="Kapat"
+                      label={tr('Kapat')}
                       onPress={() => {
                         haptics.selection();
                         setPasteOpen(false);
@@ -1545,53 +1548,53 @@ export function AddProductScreen({ navigation, route }: Props) {
           )}
 
           {section(
-            'Kumaş',
+            tr('Kumaş'),
             <>
-              {singleChips('Çeşit', TYPE_OPTIONS, type, changeType)}
-              {SUBTYPES[type].length > 0 ? singleChips('Alt çeşit', subtypeOptions, subtype, changeSubtype) : null}
-              {singleChips('En tipi', WIDTH_TYPE_OPTIONS, widthType, changeWidthType)}
+              {singleChips(tr('Çeşit'), TYPE_OPTIONS, type, changeType)}
+              {SUBTYPES[type].length > 0 ? singleChips(tr('Alt çeşit'), subtypeOptions, subtype, changeSubtype) : null}
+              {singleChips(tr('En tipi'), widthTypeOptions(), widthType, changeWidthType)}
               {widthType === 'tup' ? (
                 <>
-                  {hint('Tüp en genellikle ham kumaşta olur; boyalı kumaş çoğunlukla açık endir.')}
-                  {singleChips('Girdiğiniz en neyi gösteriyor?', WIDTH_MEANING_OPTIONS, widthMeaning, setWidthMeaning)}
+                  {hint(tr('Tüp en genellikle ham kumaşta olur; boyalı kumaş çoğunlukla açık endir.'))}
+                  {singleChips(tr('Girdiğiniz en neyi gösteriyor?'), WIDTH_MEANING_OPTIONS, widthMeaning, setWidthMeaning)}
                   {effectiveWidthText ? (
                     <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{effectiveWidthText}</Text>
                   ) : null}
                 </>
               ) : null}
               {multiChips(
-                'Kullanım amaçları',
+                tr('Kullanım amaçları'),
                 USAGES,
                 usages,
                 changeUsages,
-                'Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.'
+                tr('Birden fazla seçebilirsiniz; alıcılar bu başlıklarla arıyor.')
               )}
-              {multiChips('Apre / boya', FINISH_TAGS, finishTags, changeFinishTags, 'Kumaşa uygulanan işlemler.')}
+              {multiChips(tr('Apre / boya'), FINISH_TAGS, finishTags, changeFinishTags, tr('Kumaşa uygulanan işlemler.'))}
             </>
           )}
 
           {section(
-            'Bilgiler',
+            tr('Bilgiler'),
             <>
-              <Input label="Ürün kodu" value={code} onChangeText={changeCode} placeholder="Örn. ORM-1042" autoCapitalize="characters" />
+              <Input label={tr('Ürün kodu')} value={code} onChangeText={changeCode} placeholder={tr('Örn. ORM-1042')} autoCapitalize="characters" />
 
               <View style={{ gap: t.space[2] }}>
-                {fieldLabel('Kompozisyon')}
+                {fieldLabel(tr('Kompozisyon'))}
                 {compositionRowMode ? (
                   <>
                     <CompositionEditor
                       rows={compositionRows}
                       onChange={changeCompositionRows}
-                      hint="Her satırda bir lif ve oranı. Toplam genelde 100 olur."
-                      percentPlaceholder="Örn. 95"
+                      hint={tr('Her satırda bir lif ve oranı. Toplam genelde 100 olur.')}
+                      percentPlaceholder={tr('Örn. 95')}
                       totalWarning={compositionTotal !== 100}
-                      totalSuffix={compositionTotal !== 100 ? ' (genelde 100 olur, yine de kaydedebilirsiniz)' : ''}
+                      totalSuffix={compositionTotal !== 100 ? tr(' (genelde 100 olur, yine de kaydedebilirsiniz)') : ''}
                     />
                     {/* Listede olmayan bir lif ya da serbest bir açıklama gerekiyorsa metne dönüş. */}
                     <Button
                       kind="quiet"
-                      label="Metin olarak yazmak istiyorum"
-                      accessibilityLabel="İçeriği metin olarak yaz"
+                      label={tr('Metin olarak yazmak istiyorum')}
+                      accessibilityLabel={tr('İçeriği metin olarak yaz')}
                       onPress={() => {
                         haptics.selection();
                         setCompositionRowMode(false);
@@ -1601,15 +1604,15 @@ export function AddProductScreen({ navigation, route }: Props) {
                   </>
                 ) : (
                   <>
-                    <Input label="İçerik" value={content} onChangeText={setContent} placeholder="Örn. %95 Pamuk %5 Elastan" />
+                    <Input label={tr('İçerik')} value={content} onChangeText={setContent} placeholder={tr('Örn. %95 Pamuk %5 Elastan')} />
                     <Button
                       kind="secondary"
-                      label="Satırlara böl"
+                      label={tr('Satırlara böl')}
                       icon="yarn"
-                      accessibilityLabel="İçeriği kompozisyon satırlarına böl"
+                      accessibilityLabel={tr('İçeriği kompozisyon satırlarına böl')}
                       onPress={switchToCompositionRows}
                     />
-                    {hint('Satırlara bölerseniz alıcılar lif ve orana göre arayabilir.')}
+                    {hint(tr('Satırlara bölerseniz alıcılar lif ve orana göre arayabilir.'))}
                   </>
                 )}
               </View>
@@ -1617,59 +1620,59 @@ export function AddProductScreen({ navigation, route }: Props) {
               <View style={{ flexDirection: 'row', gap: t.space[3] }}>
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="Gramaj"
+                  label={tr('Gramaj')}
                   unit="gr/m²"
                   value={weightGsm}
                   onChangeText={changeWeightGsm}
-                  placeholder="Örn. 220"
+                  placeholder={tr('Örn. 220')}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
                 />
                 <Input
                   containerStyle={{ flex: 1 }}
-                  label="En"
+                  label={tr('En')}
                   unit="cm"
                   value={widthCm}
                   onChangeText={changeWidthCm}
-                  placeholder="Örn. 150"
+                  placeholder={tr('Örn. 150')}
                   inputMode="decimal"
                   keyboardType="decimal-pad"
                 />
               </View>
-              {singleChips('Stok birimi', UNIT_OPTIONS, stockUnit, setStockUnit)}
+              {singleChips(tr('Stok birimi'), unitOptions(), stockUnit, setStockUnit)}
               <Input
-                label="Stok"
+                label={tr('Stok')}
                 unit={STOCK_UNIT_LABELS[stockUnit].long}
                 value={stock}
                 onChangeText={setStock}
-                placeholder={stockUnit === 'm' ? 'Örn. 1200' : 'Örn. 450'}
+                placeholder={stockUnit === 'm' ? tr('Örn. 1200') : tr('Örn. 450')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
               />
               <Input
-                label="Not (isteğe bağlı)"
+                label={tr('Not (isteğe bağlı)')}
                 value={useArea}
                 onChangeText={setUseArea}
-                placeholder="Örn. Şardonlu, yıkamalı"
+                placeholder={tr('Örn. Şardonlu, yıkamalı')}
               />
               {/* Pasaport alanları diğer ürün bilgileriyle birlikte girilir; ayrı
                   bir "pasaport için yeniden gir" bölümü YOK (Fırat 2026-09-21). */}
               <Input
-                label="Menşe ülke (isteğe bağlı)"
+                label={tr('Menşe ülke (isteğe bağlı)')}
                 value={originCountry}
                 onChangeText={setOriginCountry}
-                placeholder="Örn. Türkiye"
+                placeholder={tr('Örn. Türkiye')}
                 maxLength={60}
               />
               <Input
-                label="Geri dönüştürülmüş içerik"
+                label={tr('Geri dönüştürülmüş içerik')}
                 unit="%"
                 value={recycledPercent}
                 onChangeText={setRecycledPercent}
-                placeholder="Örn. 30"
+                placeholder={tr('Örn. 30')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                helper="Dijital pasaportta görünür."
+                helper={tr('Dijital pasaportta görünür.')}
               />
             </>
           )}
@@ -1678,45 +1681,45 @@ export function AddProductScreen({ navigation, route }: Props) {
               sembol (Fırat 2026-09-21). Sembol listesi ve çizim tarifi tek
               kaynaktan: backend/src/domain/care.ts → features/care/symbols.ts. */}
           {collapsible(
-            careSymbols.length ? `Bakım sembolleri · ${careSymbols.length} seçili` : 'Bakım sembolleri',
+            careSymbols.length ? tr('Bakım sembolleri · {n} seçili', { n: careSymbols.length }) : tr('Bakım sembolleri'),
             careOpen,
             () => setCareOpen((v) => !v),
             <CareSymbolPicker value={careSymbols} onChange={setCareSymbols} />
           )}
 
           {section(
-            'Ticari',
+            tr('Ticari'),
             <>
               <Input
-                label="En az sipariş (MOQ)"
+                label={tr('En az sipariş (MOQ)')}
                 unit={moqUnit}
                 value={moq}
                 onChangeText={setMoq}
-                placeholder="Örn. 300"
+                placeholder={tr('Örn. 300')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
               />
-              {singleChips('MOQ birimi', MOQ_UNIT_OPTIONS, moqUnit, setMoqUnit, 'Stok biriminden farklı olabilir.')}
+              {singleChips(tr('MOQ birimi'), moqUnitOptions(), moqUnit, setMoqUnit, tr('Stok biriminden farklı olabilir.'))}
               <Input
-                label="Termin"
-                unit="gün"
+                label={tr('Termin')}
+                unit={tr('gün')}
                 value={leadTimeDays}
                 onChangeText={setLeadTimeDays}
-                placeholder="Örn. 15"
+                placeholder={tr('Örn. 15')}
                 inputMode="numeric"
                 keyboardType="number-pad"
               />
               <Input
-                label="Fiyat"
+                label={tr('Fiyat')}
                 unit={`${priceCurrency}/${priceUnit}`}
                 value={priceValue}
                 onChangeText={setPriceValue}
-                placeholder="Örn. 4,50"
+                placeholder={tr('Örn. 4,50')}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
               />
-              {singleChips('Para birimi', CURRENCY_OPTIONS, priceCurrency, setPriceCurrency)}
-              {singleChips('Fiyat birimi', PRICE_UNIT_OPTIONS, priceUnit, setPriceUnit)}
+              {singleChips(tr('Para birimi'), CURRENCY_OPTIONS, priceCurrency, setPriceCurrency)}
+              {singleChips(tr('Fiyat birimi'), priceUnitOptions(), priceUnit, setPriceUnit)}
               <View
                 style={{
                   flexDirection: 'row',
@@ -1729,41 +1732,41 @@ export function AddProductScreen({ navigation, route }: Props) {
               >
                 <Icon name="info" size={t.size.iconSm} color="ink2" />
                 <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
-                  Fiyat yalnızca size görünür. Diğer firmalar ürün sayfasında fiyatı görmez.
+                  {tr('Fiyat yalnızca size görünür. Diğer firmalar ürün sayfasında fiyatı görmez.')}
                 </Text>
               </View>
             </>
           )}
 
           {collapsible(
-            filledYarnRows.length ? `İplik (${filledYarnRows.length})` : 'İplik',
+            filledYarnRows.length ? tr('İplik ({n})', { n: filledYarnRows.length }) : tr('İplik'),
             yarnOpen,
             () => setYarnOpen((v) => !v),
             <>
               {yarnRows.length === 0
-                ? hint('İplik numarası ve tipi girilirse alıcı kumaşın tuşesini tahmin edebilir.')
+                ? hint(tr('İplik numarası ve tipi girilirse alıcı kumaşın tuşesini tahmin edebilir.'))
                 : null}
               {yarnRows.map((row, index) =>
                 rowCard(
                   row.key,
-                  `${index + 1}. iplik`,
-                  `${index + 1}. iplik satırını kaldır`,
+                  tr('{n}. iplik', { n: index + 1 }),
+                  tr('{n}. iplik satırını kaldır', { n: index + 1 }),
                   () => removeYarnRow(row.key),
                   <>
-                    {singleChips('Rol', YARN_ROLE_OPTIONS, row.role, (role) => updateYarnRow(row.key, { role }))}
+                    {singleChips(tr('Rol'), YARN_ROLE_OPTIONS, row.role, (role) => updateYarnRow(row.key, { role }))}
                     <View style={{ flexDirection: 'row', gap: t.space[3] }}>
                       <Input
                         containerStyle={{ flex: 1 }}
-                        label="Numara"
+                        label={tr('Numara')}
                         value={row.count}
                         onChangeText={(count) => updateYarnRow(row.key, { count })}
-                        placeholder="Örn. 30"
+                        placeholder={tr('Örn. 30')}
                         inputMode="decimal"
                         keyboardType="decimal-pad"
                       />
                       <Input
                         containerStyle={{ flex: 1 }}
-                        label="Kat"
+                        label={tr('Kat')}
                         value={row.ply}
                         onChangeText={(ply) => updateYarnRow(row.key, { ply })}
                         placeholder="1"
@@ -1771,29 +1774,29 @@ export function AddProductScreen({ navigation, route }: Props) {
                         keyboardType="number-pad"
                       />
                     </View>
-                    {singleChips('Numara sistemi', YARN_UNIT_OPTIONS, row.unit, (unit) =>
+                    {singleChips(tr('Numara sistemi'), YARN_UNIT_OPTIONS, row.unit, (unit) =>
                       updateYarnRow(row.key, { unit })
                     )}
-                    {singleChips('İplik tipi', YARN_TYPE_OPTIONS, row.yarnType, (yarnType) =>
+                    {singleChips(tr('İplik tipi'), YARN_TYPE_OPTIONS, row.yarnType, (yarnType) =>
                       updateYarnRow(row.key, { yarnType })
                     )}
                   </>
                 )
               )}
               {yarnRows.length < MAX_YARNS ? (
-                <Button kind="secondary" label="İplik ekle" icon="plus" accessibilityLabel="İplik satırı ekle" onPress={addYarnRow} />
+                <Button kind="secondary" label={tr('İplik ekle')} icon="plus" accessibilityLabel={tr('İplik satırı ekle')} onPress={addYarnRow} />
               ) : null}
             </>
           )}
 
           {collapsible(
-            certificateRows.length ? `Sertifikalar (${certificateRows.length})` : 'Sertifikalar',
+            certificateRows.length ? tr('Sertifikalar ({n})', { n: certificateRows.length }) : tr('Sertifikalar'),
             certificateOpen,
             () => setCertificateOpen((v) => !v),
             <CertificatesEditor
               rows={certificateRows}
               onChange={changeCertificateRows}
-              hint="Sertifika eklenen ürünler aramalarda öne çıkar."
+              hint={tr('Sertifika eklenen ürünler aramalarda öne çıkar.')}
               onError={setError}
               picking={pickingDoc}
               onPickingChange={setPickingDoc}
@@ -1801,30 +1804,30 @@ export function AddProductScreen({ navigation, route }: Props) {
           )}
 
           {collapsible(
-            filledTestReportRows.length ? `Test raporları (${filledTestReportRows.length})` : 'Test raporları',
+            filledTestReportRows.length ? tr('Test raporları ({n})', { n: filledTestReportRows.length }) : tr('Test raporları'),
             testReportOpen,
             () => setTestReportOpen((v) => !v),
             <>
               {testReportRows.length === 0
-                ? hint('Laboratuvar sonuçları (çekme, haslık, boncuklanma) alıcının güvenini artırır.')
+                ? hint(tr('Laboratuvar sonuçları (çekme, haslık, boncuklanma) alıcının güvenini artırır.'))
                 : null}
               {testReportRows.map((row, index) =>
                 rowCard(
                   row.key,
-                  `${index + 1}. test`,
-                  `${index + 1}. test raporu satırını kaldır`,
+                  tr('{n}. test', { n: index + 1 }),
+                  tr('{n}. test raporu satırını kaldır', { n: index + 1 }),
                   () => removeTestReportRow(row.key),
                   <>
                     <Input
-                      label="Test türü"
+                      label={tr('Test türü')}
                       value={row.kind}
                       onChangeText={(kind) => updateTestReportRow(row.key, { kind })}
-                      placeholder="Örn. Renk haslığı"
+                      placeholder={tr('Örn. Renk haslığı')}
                       maxLength={MAX_TEST_KIND_CHARS}
                     />
                     {/* Öneri çipleri serbest metni doldurur, kısıtlamaz. */}
                     <ChipRow>
-                      {TEST_KIND_SUGGESTIONS.map((suggestion) => (
+                      {testKindSuggestions().map((suggestion) => (
                         <Chip
                           key={suggestion}
                           label={suggestion}
@@ -1837,18 +1840,18 @@ export function AddProductScreen({ navigation, route }: Props) {
                       ))}
                     </ChipRow>
                     <Input
-                      label="Sonuç (isteğe bağlı)"
+                      label={tr('Sonuç (isteğe bağlı)')}
                       value={row.result}
                       onChangeText={(result) => updateTestReportRow(row.key, { result })}
-                      placeholder="Örn. 4-5 (iyi)"
+                      placeholder={tr('Örn. 4-5 (iyi)')}
                       maxLength={MAX_TEST_RESULT_CHARS}
                     />
                     <Input
-                      label="Test tarihi (isteğe bağlı)"
-                      helper="YYYY-AA-GG biçiminde."
+                      label={tr('Test tarihi (isteğe bağlı)')}
+                      helper={tr('YYYY-AA-GG biçiminde.')}
                       value={row.testedAt}
                       onChangeText={(testedAt) => updateTestReportRow(row.key, { testedAt })}
-                      placeholder="Örn. 2026-05-14"
+                      placeholder={tr('Örn. 2026-05-14')}
                       autoCapitalize="none"
                     />
                     <DocField
@@ -1858,7 +1861,7 @@ export function AddProductScreen({ navigation, route }: Props) {
                       onBusyChange={(active) => setPickingDoc(active ? row.key : null)}
                       onError={setError}
                       disabled={pickingDoc !== null && pickingDoc !== row.key}
-                      labelPrefix={`${index + 1}. test raporu`}
+                      labelPrefix={tr('{n}. test raporu', { n: index + 1 })}
                     />
                   </>
                 )
@@ -1866,9 +1869,9 @@ export function AddProductScreen({ navigation, route }: Props) {
               {testReportRows.length < MAX_TEST_REPORTS ? (
                 <Button
                   kind="secondary"
-                  label="Test raporu ekle"
+                  label={tr('Test raporu ekle')}
                   icon="plus"
-                  accessibilityLabel="Test raporu satırı ekle"
+                  accessibilityLabel={tr('Test raporu satırı ekle')}
                   onPress={addTestReportRow}
                 />
               ) : null}
@@ -1883,7 +1886,7 @@ export function AddProductScreen({ navigation, route }: Props) {
           ) : null}
 
           {isEditing ? (
-            <Button kind="danger" fullWidth label="Ürünü sil" loading={deleting} onPress={handleDelete} />
+            <Button kind="danger" fullWidth label={tr('Ürünü sil')} loading={deleting} onPress={handleDelete} />
           ) : null}
         </ScrollView>
       </Screen>

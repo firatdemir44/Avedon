@@ -1,5 +1,6 @@
 import { Alert, Platform } from 'react-native';
 import { haptics } from './haptics';
+import { tr } from '../i18n';
 
 // Geri alınamaz işlemlerden önce onay. react-native-web'in Alert.alert'i boş
 // bir fonksiyon: web'de hiçbir şey göstermiyor ve düğme geri çağrıları hiç
@@ -9,8 +10,8 @@ import { haptics } from './haptics';
 export function confirmAction({
   title,
   message,
-  confirmLabel = 'Tamam',
-  cancelLabel = 'Vazgeç',
+  confirmLabel = tr('Tamam'),
+  cancelLabel = tr('Vazgeç'),
   destructive = false,
 }: {
   title: string;

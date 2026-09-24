@@ -21,6 +21,7 @@ import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { ExperienceSection } from './ExperienceSection';
 import { InlineError } from '../../components/StateView';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, EmptyState, Icon, Screen, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
 import type { ColorTokens } from '../../theme/tokens';
@@ -74,7 +75,7 @@ export function ProfileScreen({ navigation, route }: Props) {
       await sendConnectionRequest(userId);
       haptics.success();
       refresh();
-    }, 'İstek gönderilemedi');
+    }, tr('İstek gönderilemedi'));
 
   const handleOpenChat = () =>
     runAction(async () => {
@@ -86,7 +87,7 @@ export function ProfileScreen({ navigation, route }: Props) {
         userId: profile.id,
         avatarUpdatedAt: profile.avatarUpdatedAt,
       });
-    }, 'Sohbet açılamadı');
+    }, tr('Sohbet açılamadı'));
 
   const handleRespond = (nextStatus: 'accepted' | 'rejected') =>
     runAction(async () => {
@@ -94,7 +95,7 @@ export function ProfileScreen({ navigation, route }: Props) {
       await respondToConnectionRequest(status.connectionId, nextStatus);
       if (nextStatus === 'accepted') haptics.success();
       refresh();
-    }, 'İşlem yapılamadı');
+    }, tr('İşlem yapılamadı'));
 
   if (loading) {
     return (
@@ -114,13 +115,13 @@ export function ProfileScreen({ navigation, route }: Props) {
         {loadError ? (
           <EmptyState
             icon="cloud-offline-outline"
-            title="Profil yüklenemedi"
+            title={tr('Profil yüklenemedi')}
             description={loadError}
-            actionLabel="Tekrar dene"
+            actionLabel={tr('Tekrar dene')}
             onAction={refresh}
           />
         ) : (
-          <EmptyState icon="user" title="Profil bulunamadı" description="Bu kişi kaldırılmış olabilir." />
+          <EmptyState icon="user" title={tr('Profil bulunamadı')} description={tr('Bu kişi kaldırılmış olabilir.')} />
         )}
       </Screen>
     );
@@ -145,31 +146,31 @@ export function ProfileScreen({ navigation, route }: Props) {
             <Button
               size="lg"
               icon="person-add-outline"
-              label="Bağlantı kur"
+              label={tr('Bağlantı kur')}
               loading={actionLoading}
               onPress={handleConnect}
             />
           ) : null}
 
           {status.status === 'pending_sent' ? (
-            <StateLine icon="clock" color="warning" text="Bağlantı isteği gönderildi, yanıt bekleniyor." />
+            <StateLine icon="clock" color="warning" text={tr('Bağlantı isteği gönderildi, yanıt bekleniyor.')} />
           ) : null}
 
           {status.status === 'pending_received' ? (
             <>
-              <StateLine icon="person-add-outline" color="brand" text="Size bağlantı isteği gönderdi." />
+              <StateLine icon="person-add-outline" color="brand" text={tr('Size bağlantı isteği gönderdi.')} />
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                 <Button
                   style={{ flex: 1, minWidth: 0 }}
                   icon="check"
-                  label="Kabul et"
+                  label={tr('Kabul et')}
                   loading={actionLoading}
                   onPress={() => handleRespond('accepted')}
                 />
                 <Button
                   style={{ flex: 1, minWidth: 0 }}
                   kind="secondary"
-                  label="Reddet"
+                  label={tr('Reddet')}
                   disabled={actionLoading}
                   onPress={() => handleRespond('rejected')}
                 />
@@ -179,11 +180,11 @@ export function ProfileScreen({ navigation, route }: Props) {
 
           {status.status === 'accepted' ? (
             <>
-              <StateLine icon="check" color="success" text="Bağlantıdasınız." />
+              <StateLine icon="check" color="success" text={tr('Bağlantıdasınız.')} />
               <Button
                 size="lg"
                 icon="message"
-                label="Mesaj gönder"
+                label={tr('Mesaj gönder')}
                 loading={actionLoading}
                 onPress={handleOpenChat}
               />

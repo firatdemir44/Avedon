@@ -51,6 +51,7 @@ import {
   SkeletonRow,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'Requests'>;
 
@@ -59,14 +60,14 @@ type Side = 'outgoing' | 'incoming';
 // Durum grupları: farklı türlerin durumları süzgeçte tek dilde toplanır.
 type StatusGroup = 'waiting' | 'active' | 'done' | 'closed';
 
-const KIND_LABEL: Record<Kind, string> = { sample: 'Numune', quote: 'Teklif', tender: 'Açık talep' };
+const KIND_LABEL = (): Record<Kind, string> => ({ sample: tr('Numune'), quote: tr('Teklif'), tender: tr('Açık talep') });
 const KIND_ORDER: Kind[] = ['sample', 'quote', 'tender'];
-const STATUS_LABEL: Record<StatusGroup, string> = {
-  waiting: 'Bekliyor',
-  active: 'Sürüyor',
-  done: 'Tamamlandı',
-  closed: 'Kapandı',
-};
+const STATUS_LABEL = (): Record<StatusGroup, string> => ({
+  waiting: tr('Bekliyor'),
+  active: tr('Sürüyor'),
+  done: tr('Tamamlandı'),
+  closed: tr('Kapandı'),
+});
 const STATUS_ORDER: StatusGroup[] = ['waiting', 'active', 'done', 'closed'];
 
 // Rozet türü → durum grubu (rozet rengiyle süzgeç grubu aynı anlamı taşır).
@@ -86,13 +87,13 @@ const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {
   teslim_edildi: 'delivered',
 };
 
-const QUOTE_BADGE: Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> = {
-  open: { kind: 'pending', label: 'Teklif bekliyor' },
-  quoted: { kind: 'new', label: 'Teklif geldi' },
-  accepted: { kind: 'delivered', label: 'Kabul edildi' },
-  declined: { kind: 'cancelled', label: 'Reddedildi' },
-  cancelled: { kind: 'cancelled', label: 'İptal' },
-};
+const QUOTE_BADGE = (): Record<QuoteRequestRow['status'], { kind: BadgeKind; label: string }> => ({
+  open: { kind: 'pending', label: tr('Teklif bekliyor') },
+  quoted: { kind: 'new', label: tr('Teklif geldi') },
+  accepted: { kind: 'delivered', label: tr('Kabul edildi') },
+  declined: { kind: 'cancelled', label: tr('Reddedildi') },
+  cancelled: { kind: 'cancelled', label: tr('İptal') },
+});
 
 type RowBadge = { kind: BadgeKind; label: string };
 type Item =
@@ -164,7 +165,7 @@ export function RequestsScreen({ navigation }: Props) {
         kind: 'quote',
         id: `q-${row.id}`,
         date: row.updatedAt,
-        badge: QUOTE_BADGE[row.status],
+        badge: QUOTE_BADGE()[row.status],
         row,
       })),
       ...tenders.map<Item>((row) => ({
@@ -203,32 +204,32 @@ export function RequestsScreen({ navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
+      setActionError(friendlyMessage(err, tr('Durum güncellenemedi')));
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const banner = actionError ?? (error ? friendlyMessage(error, 'Talepler alınamadı') : null);
+  const banner = actionError ?? (error ? friendlyMessage(error, tr('Talepler alınamadı')) : null);
 
   const header = (
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
       <SegmentControl<Side>
         stretch
-        accessibilityLabel="Yön"
+        accessibilityLabel={tr('Yön')}
         value={side}
         onChange={setSide}
         options={[
-          { value: 'outgoing', label: 'Gönderdiğim' },
-          { value: 'incoming', label: 'Gelen' },
+          { value: 'outgoing', label: tr('Gönderdiğim') },
+          { value: 'incoming', label: tr('Gelen') },
         ]}
       />
       {filterCount > 0 ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2] }}>
           <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
-            {[...kindFilter.map((k) => KIND_LABEL[k]), ...statusFilter.map((s) => STATUS_LABEL[s])].join(' · ')}
+            {[...kindFilter.map((k) => KIND_LABEL()[k]), ...statusFilter.map((s) => STATUS_LABEL()[s])].join(' · ')}
           </Text>
-          <Button kind="quiet" label="Temizle" onPress={clearFilters} />
+          <Button kind="quiet" label={tr('Temizle')} onPress={clearFilters} />
         </View>
       ) : null}
       {banner ? (
@@ -253,34 +254,34 @@ export function RequestsScreen({ navigation }: Props) {
     filterCount > 0 && allItems.length > 0 ? (
       <EmptyState
         icon="filter"
-        title="Bu süzgece uyan talep yok"
-        description="Süzgeci temizleyip tüm talepleri görebilirsin."
-        actionLabel="Süzgeci temizle"
+        title={tr('Bu süzgece uyan talep yok')}
+        description={tr('Süzgeci temizleyip tüm talepleri görebilirsin.')}
+        actionLabel={tr('Süzgeci temizle')}
         onAction={clearFilters}
       />
     ) : side === 'incoming' ? (
       <EmptyState
         icon="sample"
-        title="Henüz gelen talep yok"
+        title={tr('Henüz gelen talep yok')}
         description={
           hasCompany
-            ? 'Ürünlerinize numune ya da teklif isteği geldiğinde veya yeni açık talep yayınlandığında burada görünür.'
-            : 'Yeni açık talepler yayınlandığında burada görünür.'
+            ? tr('Ürünlerinize numune ya da teklif isteği geldiğinde veya yeni açık talep yayınlandığında burada görünür.')
+            : tr('Yeni açık talepler yayınlandığında burada görünür.')
         }
       />
     ) : (
       <EmptyState
         icon="sample"
-        title="İlk talebini gönder"
-        description='Katalogdan bir kumaş seçip "Numune talep et" ya da teklif iste; gönderdiğin talepler burada listelenir.'
-        actionLabel="Kataloğa git"
+        title={tr('İlk talebini gönder')}
+        description={tr('Katalogdan bir kumaş seçip "Numune talep et" ya da teklif iste; gönderdiğin talepler burada listelenir.')}
+        actionLabel={tr('Kataloğa git')}
         onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
       />
     );
 
   const rightBadges = (it: Item) => (
     <View style={{ alignItems: 'flex-end', gap: t.space[1] }}>
-      <Badge kind="info" label={KIND_LABEL[it.kind]} />
+      <Badge kind="info" label={KIND_LABEL()[it.kind]} />
       <Badge kind={it.badge.kind} label={it.badge.label} />
     </View>
   );
@@ -308,7 +309,7 @@ export function RequestsScreen({ navigation }: Props) {
                 kind="secondary"
                 fullWidth
                 loading={updatingId === row.id}
-                label={`${row.nextStep.label} olarak işaretle`}
+                label={tr('{step} olarak işaretle', { step: row.nextStep.label })}
                 onPress={() => advanceSample(row)}
               />
             </View>
@@ -352,19 +353,19 @@ export function RequestsScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
-        title="Talepler"
+        title={tr('Talepler')}
         leading="back"
         onBack={() => navigation.goBack()}
         actions={[
           {
             icon: 'filter',
-            label: filterCount > 0 ? `Süzgeç, ${filterCount} seçili` : 'Süzgeç',
+            label: filterCount > 0 ? tr('Süzgeç, {n} seçili', { n: filterCount }) : tr('Süzgeç'),
             dot: filterCount > 0,
             onPress: () => setFilterOpen(true),
           },
           {
             icon: 'bell',
-            label: 'Bildirimler',
+            label: tr('Bildirimler'),
             onPress: () => navigation.navigate('Notifications'),
           },
         ]}
@@ -374,7 +375,7 @@ export function RequestsScreen({ navigation }: Props) {
         noPadding
         sticky={
           side === 'outgoing' ? (
-            <Button size="lg" icon="plus" label="Açık talep yayınla" onPress={() => navigation.navigate('TenderForm')} />
+            <Button size="lg" icon="plus" label={tr('Açık talep yayınla')} onPress={() => navigation.navigate('TenderForm')} />
           ) : undefined
         }
       >
@@ -398,15 +399,15 @@ export function RequestsScreen({ navigation }: Props) {
           />
         )}
       </Screen>
-      <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} title="Süzgeç">
+      <BottomSheet visible={filterOpen} onClose={() => setFilterOpen(false)} title={tr('Süzgeç')}>
         <View style={{ gap: t.space[4] }}>
           <View style={{ gap: t.space[2] }}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Tür</Text>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Tür')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
               {KIND_ORDER.map((k) => (
                 <Chip
                   key={k}
-                  label={KIND_LABEL[k]}
+                  label={KIND_LABEL()[k]}
                   selected={kindFilter.includes(k)}
                   onPress={() => setKindFilter((l) => toggle(l, k))}
                 />
@@ -414,12 +415,12 @@ export function RequestsScreen({ navigation }: Props) {
             </View>
           </View>
           <View style={{ gap: t.space[2] }}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Durum</Text>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Durum')}</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
               {STATUS_ORDER.map((s) => (
                 <Chip
                   key={s}
-                  label={STATUS_LABEL[s]}
+                  label={STATUS_LABEL()[s]}
                   selected={statusFilter.includes(s)}
                   onPress={() => setStatusFilter((l) => toggle(l, s))}
                 />
@@ -427,8 +428,8 @@ export function RequestsScreen({ navigation }: Props) {
             </View>
           </View>
           <ButtonRow>
-            <Button kind="secondary" label="Temizle" disabled={filterCount === 0} onPress={clearFilters} />
-            <Button label={`Göster (${items.length})`} onPress={() => setFilterOpen(false)} />
+            <Button kind="secondary" label={tr('Temizle')} disabled={filterCount === 0} onPress={clearFilters} />
+            <Button label={tr('Göster ({n})', { n: items.length })} onPress={() => setFilterOpen(false)} />
           </ButtonRow>
         </View>
       </BottomSheet>

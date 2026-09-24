@@ -18,6 +18,7 @@ import { MAX_COMPANY_PHOTOS } from '../../features/companies/limits';
 import { MIN_COMPANY_NAME_LENGTH, foundedYearError, foundedYearPayload } from '../../features/companies/validation';
 import { COMPANY_TYPES } from '../../features/products/catalog';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import type { VerificationStatus } from '../../types';
 import {
   AppBar,
@@ -100,7 +101,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Firma bilgisi alınamadı');
+        if (!cancelled) setError(err instanceof Error ? err.message : tr('Firma bilgisi alınamadı'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -148,9 +149,9 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'invalid_body') {
-        setError('Bilgileri kontrol edin: firma adı en az 2 karakter olmalı, e-posta geçerli bir adres olmalı.');
+        setError(tr('Bilgileri kontrol edin: firma adı en az 2 karakter olmalı, e-posta geçerli bir adres olmalı.'));
       } else {
-        setError(err instanceof Error ? err.message : 'Değişiklikler kaydedilemedi');
+        setError(err instanceof Error ? err.message : tr('Değişiklikler kaydedilemedi'));
       }
     } finally {
       setSaving(false);
@@ -171,10 +172,11 @@ export function EditCompanyScreen({ route, navigation }: Props) {
     // göstermediği için bu uyarı web'de hiç çıkmıyor ve kayıt hiç yapılmıyordu.)
     if (nameChanged && verification === 'dogrulanmis') {
       const confirmed = await confirmAction({
-        title: 'Firma adı değişiyor',
-        message:
-          'Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.',
-        confirmLabel: 'Devam et',
+        title: tr('Firma adı değişiyor'),
+        message: tr(
+          'Doğrulanmış bir firmanın adı değişince doğrulama yeniden incelemeye alınır ve onay rozeti inceleme bitene kadar kalkar.'
+        ),
+        confirmLabel: tr('Devam et'),
         destructive: true,
       });
       if (!confirmed) return;
@@ -204,7 +206,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Firmayı düzenle" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Firmayı düzenle')} leading="back" onBack={() => navigation.goBack()} />
       {loading ? (
         <Screen>
           <Skeleton height={t.size.thumb} width={t.size.thumb} />
@@ -216,7 +218,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           sticky={
             <Button
               size="lg"
-              label="Kaydet"
+              label={tr('Kaydet')}
               loading={saving}
               disabled={name.trim().length < MIN_COMPANY_NAME_LENGTH || !!yearError}
               onPress={handleSave}
@@ -226,7 +228,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           {banner}
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Logo" />
+            <SectionTitle title={tr('Logo')} />
             <Card>
               <CompanyLogoPicker
                 companyName={name}
@@ -241,9 +243,9 @@ export function EditCompanyScreen({ route, navigation }: Props) {
           </View>
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Firma" />
+            <SectionTitle title={tr('Firma')} />
             <Input
-              label="Firma adı"
+              label={tr('Firma adı')}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -251,19 +253,19 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               textContentType="organizationName"
             />
             <Input
-              label="Hakkında"
+              label={tr('Hakkında')}
               value={about}
               onChangeText={setAbout}
               multiline
-              placeholder="Ürettiğiniz kumaşlar, makine parkınız, çalıştığınız pazarlar..."
+              placeholder={tr('Ürettiğiniz kumaşlar, makine parkınız, çalıştığınız pazarlar...')}
             />
             <View style={{ gap: t.space[1] }}>
-              {fieldLabel('Şirket tipi')}
+              {fieldLabel(tr('Şirket tipi'))}
               <ChipRow>
                 {TYPE_OPTIONS.map((o) => (
                   <Chip
                     key={o.value || 'bos'}
-                    label={o.label}
+                    label={tr(o.label)}
                     selected={o.value === companyType}
                     onPress={() => setCompanyType(o.value)}
                   />
@@ -273,7 +275,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
             <View style={{ flexDirection: 'row', gap: t.space[3] }}>
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Kuruluş yılı"
+                label={tr('Kuruluş yılı')}
                 value={foundedYear}
                 onChangeText={setFoundedYear}
                 keyboardType="number-pad"
@@ -284,21 +286,21 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               />
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Ana pazarlar"
+                label={tr('Ana pazarlar')}
                 value={mainMarkets}
                 onChangeText={setMainMarkets}
-                placeholder="Avrupa, Türkiye"
+                placeholder={tr('Avrupa, Türkiye')}
               />
             </View>
             {hint(
-              'Bu bilgiler firma sayfanızdaki "Şirket genel bakışı" bölümünde görünür. Ürün gruplarınız eklediğiniz ürünlerden otomatik çıkar.'
+              tr('Bu bilgiler firma sayfanızdaki "Şirket genel bakışı" bölümünde görünür. Ürün gruplarınız eklediğiniz ürünlerden otomatik çıkar.')
             )}
           </View>
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="İletişim" />
+            <SectionTitle title={tr('İletişim')} />
             <Input
-              label="İletişim e-postası"
+              label={tr('İletişim e-postası')}
               value={contactEmail}
               onChangeText={setContactEmail}
               keyboardType="email-address"
@@ -309,7 +311,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               placeholder="ornek@firma.com"
             />
             <Input
-              label="İletişim telefonu"
+              label={tr('İletişim telefonu')}
               value={contactPhone}
               onChangeText={setContactPhone}
               keyboardType="phone-pad"
@@ -319,7 +321,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               placeholder="0212 000 00 00"
             />
             <Input
-              label="Web sitesi"
+              label={tr('Web sitesi')}
               value={website}
               onChangeText={setWebsite}
               autoCapitalize="none"
@@ -330,7 +332,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
             <View style={{ flexDirection: 'row', gap: t.space[3] }}>
               <Input
                 containerStyle={{ flex: 1 }}
-                label="Şehir"
+                label={tr('Şehir')}
                 value={city}
                 onChangeText={setCity}
                 placeholder="İstanbul"
@@ -338,24 +340,24 @@ export function EditCompanyScreen({ route, navigation }: Props) {
               />
               <Input
                 containerStyle={{ flex: 1 }}
-                label="İlçe / bölge"
+                label={tr('İlçe / bölge')}
                 value={district}
                 onChangeText={setDistrict}
                 placeholder="Bağcılar"
                 autoCapitalize="words"
               />
             </View>
-            <Input label="Adres" value={address} onChangeText={setAddress} multiline placeholder="Cadde, sokak, no" />
+            <Input label={tr('Adres')} value={address} onChangeText={setAddress} multiline placeholder={tr('Cadde, sokak, no')} />
             {hint(
-              'Bu iletişim bilgileri firma sayfanızda herkese görünür. Vergi numarası ve şirket kodu değiştirilemez.'
+              tr('Bu iletişim bilgileri firma sayfanızda herkese görünür. Vergi numarası ve şirket kodu değiştirilemez.')
             )}
           </View>
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Firmadan görseller (${gallery.photos.office.length}/${MAX_COMPANY_PHOTOS})`} />
+            <SectionTitle title={tr('Firmadan görseller ({n}/{max})', { n: gallery.photos.office.length, max: MAX_COMPANY_PHOTOS })} />
             <Card>
               <View style={{ gap: t.space[3] }}>
-                {hint('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.')}
+                {hint(tr('Ofis, fabrika ve üretim fotoğrafları firma sayfanızda görünür.'))}
                 <PhotoGridEditor
                   photos={gallery.photos.office}
                   max={MAX_COMPANY_PHOTOS}
@@ -363,7 +365,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
                   onAdd={() => addPhoto('office')}
                   onRemove={(key) => gallery.remove('office', key)}
                   onMoveFirst={(key) => gallery.moveFirst('office', key)}
-                  firstBadge="İlk"
+                  firstBadge={tr('İlk')}
                 />
               </View>
             </Card>
@@ -371,11 +373,11 @@ export function EditCompanyScreen({ route, navigation }: Props) {
 
           <View style={{ gap: t.space[3] }}>
             <SectionTitle
-              title={`Sertifikalar ve başarılar (${gallery.photos.certificate.length}/${MAX_COMPANY_PHOTOS})`}
+              title={tr('Sertifikalar ve başarılar ({n}/{max})', { n: gallery.photos.certificate.length, max: MAX_COMPANY_PHOTOS })}
             />
             <Card>
               <View style={{ gap: t.space[3] }}>
-                {hint('Kalite belgeleri ve ödüller; alıcıların güveni için önemli.')}
+                {hint(tr('Kalite belgeleri ve ödüller; alıcıların güveni için önemli.'))}
                 <PhotoGridEditor
                   photos={gallery.photos.certificate}
                   max={MAX_COMPANY_PHOTOS}
@@ -383,7 +385,7 @@ export function EditCompanyScreen({ route, navigation }: Props) {
                   onAdd={() => addPhoto('certificate')}
                   onRemove={(key) => gallery.remove('certificate', key)}
                   onMoveFirst={(key) => gallery.moveFirst('certificate', key)}
-                  firstBadge="İlk"
+                  firstBadge={tr('İlk')}
                 />
               </View>
             </Card>

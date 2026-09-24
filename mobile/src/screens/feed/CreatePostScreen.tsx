@@ -32,6 +32,7 @@ import { haptics } from '../../features/haptics';
 import { MAX_VIDEO_SECONDS } from '../../features/videoUpload';
 import { formatVideoDuration, useVideoUpload } from '../../features/useVideoUpload';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   AppBar,
   Button,
@@ -162,7 +163,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Gönderi yüklenemedi');
+        if (!cancelled) setError(err instanceof Error ? err.message : tr('Gönderi yüklenemedi'));
       })
       .finally(() => {
         if (!cancelled) setLoadingPost(false);
@@ -294,8 +295,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
     } catch (err) {
       setError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     } finally {
       setPickingImage(false);
@@ -314,7 +315,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
       setImageDataUrl(url);
       haptics.selection();
     } catch {
-      setError('Ürün fotoğrafı alınamadı, galeriden fotoğraf seçebilirsiniz.');
+      setError(tr('Ürün fotoğrafı alınamadı, galeriden fotoğraf seçebilirsiniz.'));
     } finally {
       setUsingProductPhoto(false);
     }
@@ -380,7 +381,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const submitLinkDraft = () => {
     const url = normalizeUrl(linkDraft);
     if (!url) {
-      setLinkDraftError('Geçerli bir adres yazın (ör. https://site.com/haber).');
+      setLinkDraftError(tr('Geçerli bir adres yazın (ör. https://site.com/haber).'));
       return;
     }
     setLinkDraftError(null);
@@ -459,7 +460,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         err.code === 'not_textile'
       ) {
         // İçerik kuralı (tekstil dışı, siyasi, dini): görünürlük değiştirmek çözüm değil, yalnızca açıklama.
-        setError(typeof err.body?.message === 'string' ? err.body.message : 'Bu paylaşım kabul edilmedi.');
+        setError(typeof err.body?.message === 'string' ? err.body.message : tr('Bu paylaşım kabul edilmedi.'));
         setOfferConnections(false);
         haptics.error();
         return;
@@ -469,7 +470,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         err.code === 'public_not_allowed' &&
         visibility === 'public'
       ) {
-        const message = typeof err.body?.message === 'string' ? err.body.message : 'Bu gönderi herkese açık paylaşılamıyor.';
+        const message = typeof err.body?.message === 'string' ? err.body.message : tr('Bu gönderi herkese açık paylaşılamıyor.');
         setError(message);
         setOfferConnections(true);
         if (err.code === 'public_not_allowed' && err.body?.rule && typeof err.body.rule === 'object') {
@@ -478,13 +479,13 @@ export function CreatePostScreen({ navigation, route }: Props) {
         haptics.error();
         return;
       }
-      setError(err instanceof Error ? err.message : isEditing ? 'Değişiklikler kaydedilemedi' : 'Gönderi paylaşılamadı');
+      setError(err instanceof Error ? err.message : isEditing ? tr('Değişiklikler kaydedilemedi') : tr('Gönderi paylaşılamadı'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  const title = isEditing ? 'Gönderiyi düzenle' : 'Gönderi paylaş';
+  const title = isEditing ? tr('Gönderiyi düzenle') : tr('Gönderi paylaş');
   const appBar = <AppBar title={title} leading="back" onBack={() => navigation.goBack()} />;
 
   if (loadingPost) {
@@ -534,10 +535,9 @@ export function CreatePostScreen({ navigation, route }: Props) {
   // Firması olmayan (bireysel/alıcı) hesaplarda ürün bölümü hiç yok.
   const productSection = user?.companyId ? (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Ürün ekle (isteğe bağlı)" />
+      <SectionTitle title={tr('Ürün ekle (isteğe bağlı)')} />
       <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-        Ürün eklerseniz gönderinizde ürünün ölçüleri ve "Talep et" düğmesi çıkar; alıcılar doğrudan numune
-        isteyebilir.
+        {tr('Ürün eklerseniz gönderinizde ürünün ölçüleri ve "Talep et" düğmesi çıkar; alıcılar doğrudan numune isteyebilir.')}
       </Text>
       {selectedProduct ? (
         <Card>
@@ -546,22 +546,22 @@ export function CreatePostScreen({ navigation, route }: Props) {
             <View style={{ flexDirection: 'row', gap: t.space[2] }}>
               <Button
                 kind="secondary"
-                label="Değiştir"
-                accessibilityLabel="Başka ürün seç"
+                label={tr('Değiştir')}
+                accessibilityLabel={tr('Başka ürün seç')}
                 onPress={openProductPicker}
                 style={{ flex: 1 }}
               />
-              <Button kind="secondary" label="Kaldır" onPress={clearProduct} style={{ flex: 1 }} />
+              <Button kind="secondary" label={tr('Kaldır')} onPress={clearProduct} style={{ flex: 1 }} />
             </View>
           </View>
         </Card>
       ) : productTotal === 0 ? (
         <Card>
           <View style={{ gap: t.space[3] }}>
-            <Text style={[t.type.body16, { color: t.colors.ink2 }]}>Firmanızın henüz ürünü yok.</Text>
+            <Text style={[t.type.body16, { color: t.colors.ink2 }]}>{tr('Firmanızın henüz ürünü yok.')}</Text>
             <Button
               kind="secondary"
-              label="Ürün ekle"
+              label={tr('Ürün ekle')}
               icon="plus"
               fullWidth
               onPress={() => navigation.navigate('AddProduct')}
@@ -569,12 +569,12 @@ export function CreatePostScreen({ navigation, route }: Props) {
           </View>
         </Card>
       ) : (
-        <Button kind="secondary" label="Ürün seç" icon="fabric" fullWidth onPress={openProductPicker} />
+        <Button kind="secondary" label={tr('Ürün seç')} icon="fabric" fullWidth onPress={openProductPicker} />
       )}
       {!isEditing && selectedProduct?.hasImage && !hasMedia ? (
         <Button
           kind="secondary"
-          label={usingProductPhoto ? 'Fotoğraf alınıyor…' : 'Ürün fotoğrafını gönderiye ekle'}
+          label={usingProductPhoto ? tr('Fotoğraf alınıyor…') : tr('Ürün fotoğrafını gönderiye ekle')}
           icon="image-outline"
           fullWidth
           disabled={usingProductPhoto}
@@ -600,7 +600,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
     <Card>
       <View style={{ gap: t.space[3] }}>
         <Input
-          label="Bağlantı adresi"
+          label={tr('Bağlantı adresi')}
           placeholder="https://…"
           value={linkDraft}
           onChangeText={(v) => {
@@ -618,7 +618,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         <View style={{ flexDirection: 'row', gap: t.space[2] }}>
           <Button
             kind="secondary"
-            label="Vazgeç"
+            label={tr('Vazgeç')}
             onPress={() => {
               setLinkInputOpen(false);
               setLinkDraft('');
@@ -626,45 +626,43 @@ export function CreatePostScreen({ navigation, route }: Props) {
             }}
             style={{ flex: 1 }}
           />
-          <Button label="Ekle" icon="link-outline" onPress={submitLinkDraft} style={{ flex: 1 }} />
+          <Button label={tr('Ekle')} icon="link-outline" onPress={submitLinkDraft} style={{ flex: 1 }} />
         </View>
       </View>
     </Card>
   ) : isEditing && canAddLink ? (
-    <Button kind="secondary" label="Bağlantı ekle" icon="link-outline" fullWidth onPress={() => setLinkInputOpen(true)} />
+    <Button kind="secondary" label={tr('Bağlantı ekle')} icon="link-outline" fullWidth onPress={() => setLinkInputOpen(true)} />
   ) : null;
 
   const mediaSection = isEditing ? (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Fotoğraf veya video" />
+      <SectionTitle title={tr('Fotoğraf veya video')} />
       <Card>
         <View style={{ gap: t.space[2] }}>
           <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
             {existingMedia === 'video'
-              ? 'Gönderide video var'
+              ? tr('Gönderide video var')
               : existingMedia === 'image'
-                ? 'Gönderide fotoğraf var'
-                : 'Gönderide fotoğraf veya video yok'}
+                ? tr('Gönderide fotoğraf var')
+                : tr('Gönderide fotoğraf veya video yok')}
           </Text>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Düzenlemede yazı, görünürlük ve ürün değiştirilebilir. Fotoğrafı ya da videoyu değiştirmek için
-            gönderiyi silip yeniden paylaşın.
+            {tr('Düzenlemede yazı, görünürlük ve ürün değiştirilebilir. Fotoğrafı ya da videoyu değiştirmek için gönderiyi silip yeniden paylaşın.')}
           </Text>
         </View>
       </Card>
     </View>
   ) : (
     <View style={{ gap: t.space[3] }}>
-      <SectionTitle title="Fotoğraf veya video" />
+      <SectionTitle title={tr('Fotoğraf veya video')} />
       <Card>
         <View style={{ gap: t.space[3] }}>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Bir gönderiye bir fotoğraf, en fazla {MAX_VIDEO_SECONDS} saniyelik bir video ya da bir haber/makale
-            bağlantısı eklenebilir.
+            {tr('Bir gönderiye bir fotoğraf, en fazla {n} saniyelik bir video ya da bir haber/makale bağlantısı eklenebilir.', { n: MAX_VIDEO_SECONDS })}
           </Text>
           {link ? (
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Gönderide bağlantı var; fotoğraf veya video eklemek için önce bağlantıyı kaldırın.
+              {tr('Gönderide bağlantı var; fotoğraf veya video eklemek için önce bağlantıyı kaldırın.')}
             </Text>
           ) : null}
 
@@ -688,9 +686,9 @@ export function CreatePostScreen({ navigation, route }: Props) {
               <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
                 {video.phase === 'uploading'
                   ? video.progress >= 0.999
-                    ? 'Yükleme tamamlanıyor, onay bekleniyor…'
-                    : `Video yükleniyor %${Math.round(video.progress * 100)}`
-                  : `Video yüklendi${video.durationSeconds != null ? ` · ${formatVideoDuration(video.durationSeconds)}` : ''}`}
+                    ? tr('Yükleme tamamlanıyor, onay bekleniyor…')
+                    : tr('Video yükleniyor %{p}', { p: Math.round(video.progress * 100) })
+                  : tr('Video yüklendi') + `${video.durationSeconds != null ? ` · ${formatVideoDuration(video.durationSeconds)}` : ''}`}
               </Text>
               <View
                 style={{
@@ -710,7 +708,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
               </View>
               {video.phase === 'uploaded' ? (
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Paylaştıktan sonra kısa bir süre işlenir, sonra akışta izlenebilir.
+                  {tr('Paylaştıktan sonra kısa bir süre işlenir, sonra akışta izlenebilir.')}
                 </Text>
               ) : null}
             </View>
@@ -720,7 +718,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
             {!video && !link ? (
               <Button
                 kind="secondary"
-                label={pickingImage ? 'İşleniyor…' : imageUri ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
+                label={pickingImage ? tr('İşleniyor…') : imageUri ? tr('Fotoğrafı değiştir') : tr('Fotoğraf ekle')}
                 icon="camera"
                 disabled={pickingImage}
                 onPress={pickImage}
@@ -730,7 +728,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
             {!imageUri && !video && !link ? (
               <Button
                 kind="secondary"
-                label="Video ekle"
+                label={tr('Video ekle')}
                 icon="videocam-outline"
                 onPress={pickAndUploadVideo}
                 style={{ flex: 1 }}
@@ -739,8 +737,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
             {canAddLink ? (
               <Button
                 kind="secondary"
-                label="Bağlantı"
-                accessibilityLabel="Bağlantı ekle"
+                label={tr('Bağlantı')}
+                accessibilityLabel={tr('Bağlantı ekle')}
                 icon="link-outline"
                 onPress={() => setLinkInputOpen(true)}
                 style={{ flex: 1 }}
@@ -749,7 +747,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
             {hasMedia && !uploadingVideo ? (
               <Button
                 kind="secondary"
-                label="Kaldır"
+                label={tr('Kaldır')}
                 onPress={() => {
                   if (video) {
                     videoUpload.remove();
@@ -769,13 +767,13 @@ export function CreatePostScreen({ navigation, route }: Props) {
 
   const submitLabel = submitting
     ? isEditing
-      ? 'Kaydediliyor…'
-      : 'Paylaşılıyor…'
+      ? tr('Kaydediliyor…')
+      : tr('Paylaşılıyor…')
     : uploadingVideo
-      ? 'Video yükleniyor…'
+      ? tr('Video yükleniyor…')
       : isEditing
-        ? 'Kaydet'
-        : 'Paylaş';
+        ? tr('Kaydet')
+        : tr('Paylaş');
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
@@ -792,8 +790,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
         }
       >
         <Input
-          label="Gönderi metni"
-          placeholder="Ne paylaşmak istersiniz?"
+          label={tr('Gönderi metni')}
+          placeholder={tr('Ne paylaşmak istersiniz?')}
           value={body}
           onChangeText={(text) => setBody(text.slice(0, MAX_BODY))}
           multiline
@@ -807,10 +805,10 @@ export function CreatePostScreen({ navigation, route }: Props) {
         {mediaSection}
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Kimler görebilir?" />
+          <SectionTitle title={tr('Kimler görebilir?')} />
           <SegmentControl<PostVisibility>
             stretch
-            accessibilityLabel="Görünürlük"
+            accessibilityLabel={tr('Görünürlük')}
             value={visibilityChoice}
             onChange={(v) => {
               haptics.selection();
@@ -818,8 +816,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
               setOfferConnections(false);
             }}
             options={[
-              { value: 'public', label: publicLocked ? 'Herkese açık (kapalı)' : 'Herkese açık', disabled: publicLocked },
-              { value: 'connections', label: 'Bağlantılarım' },
+              { value: 'public', label: publicLocked ? tr('Herkese açık (kapalı)') : tr('Herkese açık'), disabled: publicLocked },
+              { value: 'connections', label: tr('Bağlantılarım') },
             ]}
           />
           {publicLocked && rule?.message ? (
@@ -832,18 +830,18 @@ export function CreatePostScreen({ navigation, route }: Props) {
             <Button
               kind="secondary"
               icon="shield-checkmark-outline"
-              label="Firma doğrulama başvurusu"
+              label={tr('Firma doğrulama başvurusu')}
               onPress={() => navigation.navigate('Verification')}
               fullWidth
             />
           ) : null}
           {!publicLocked && rule?.allowed && !keepsPublic && user?.companyId ? (
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Bugün kalan herkese açık paylaşım: {Math.max(0, rule.limitPerDay - rule.usedToday)}/{rule.limitPerDay}
+              {tr('Bugün kalan herkese açık paylaşım: {left}/{limit}', { left: Math.max(0, rule.limitPerDay - rule.usedToday), limit: rule.limitPerDay })}
             </Text>
           ) : null}
           <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
-            Herkese açık akış yalnızca tekstille ilgili paylaşımlara açıktır.
+            {tr('Herkese açık akış yalnızca tekstille ilgili paylaşımlara açıktır.')}
           </Text>
         </View>
 
@@ -866,7 +864,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
           <Button
             kind="secondary"
             icon="people-outline"
-            label="Bağlantılarımla paylaş"
+            label={tr('Bağlantılarımla paylaş')}
             loading={submitting}
             disabled={!canSubmit}
             onPress={() => handleSubmit('connections')}

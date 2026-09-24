@@ -86,7 +86,7 @@ directoryRouter.post(
     await prisma.company.update({ where: { id: company.id }, data: { verification: 'inceleniyor' } });
     const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { id: true } });
     for (const a of admins) {
-      await notify(a.id, { kind: 'verification_request', title: `Firma sahiplenme: ${company.name}`, body: `${me.firstName} ${me.lastName} bu firmanın kendisine ait olduğunu belgeyle bildirdi.`, data: { companyId: company.id, verificationRequestId: row.id } });
+      await notify(a.id, { kind: 'verification_request', title: 'Firma sahiplenme: {company}', body: '{name} bu firmanın kendisine ait olduğunu belgeyle bildirdi.', vars: { company: company.name, name: `${me.firstName} ${me.lastName}` }, data: { companyId: company.id, verificationRequestId: row.id } });
     }
     res.status(201).json({ request: row });
   })

@@ -37,6 +37,7 @@ import {
   SegmentControl,
   Skeleton,
 } from '../../ui';
+import { tr, tp } from '../../i18n';
 
 type Props = RootStackScreenProps<'GlobalSearch'>;
 
@@ -53,12 +54,12 @@ const MAX_RECENT = 5;
 // gelen üç grup burada gizlenir/gösterilir (fazladan ağ trafiği yok).
 type Kind = 'all' | 'companies' | 'fabrics' | 'yarns' | 'machines';
 
-const KIND_OPTIONS: { value: Kind; label: string }[] = [
-  { value: 'all', label: 'Tümü' },
-  { value: 'companies', label: 'Firma' },
-  { value: 'fabrics', label: 'Kumaş' },
-  { value: 'yarns', label: 'İplik' },
-  { value: 'machines', label: 'Makine' },
+const kindOptions = (): { value: Kind; label: string }[] => [
+  { value: 'all', label: tr('Tümü') },
+  { value: 'companies', label: tr('Firma') },
+  { value: 'fabrics', label: tr('Kumaş') },
+  { value: 'yarns', label: tr('İplik') },
+  { value: 'machines', label: tr('Makine') },
 ];
 
 // Kart özellik satırı: "165 gr/m² · 160 cm · %94 PES %6 EA" (DESIGN.md §3).
@@ -139,7 +140,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
       .catch((err) => {
         if (requestIdRef.current !== id) return;
         setResult(null);
-        setError(friendlyMessage(err, 'Arama yapılamadı'));
+        setError(friendlyMessage(err, tr('Arama yapılamadı')));
       })
       .finally(() => {
         if (requestIdRef.current !== id) return;
@@ -202,18 +203,18 @@ export function GlobalSearchScreen({ navigation }: Props) {
         <SearchBox
           value={query}
           onChangeText={setQuery}
-          placeholder="Firma, kumaş ya da iplik ara"
-          accessibilityLabel="Firma, kumaş ya da iplik ara"
+          placeholder={tr('Firma, kumaş ya da iplik ara')}
+          accessibilityLabel={tr('Firma, kumaş ya da iplik ara')}
           autoFocus
           onSubmitEditing={() => run(query)}
         />
         {trimmed.length >= MIN_QUERY ? (
           <SegmentControl<Kind>
             stretch
-            accessibilityLabel="Sonuç türü"
+            accessibilityLabel={tr('Sonuç türü')}
             value={kind}
             onChange={setKind}
-            options={KIND_OPTIONS}
+            options={kindOptions()}
           />
         ) : null}
       </View>
@@ -238,18 +239,18 @@ export function GlobalSearchScreen({ navigation }: Props) {
               <Icon name="warning" size={t.size.iconSm} color="danger" />
               <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>{error}</Text>
             </View>
-            <Button kind="secondary" label="Tekrar dene" onPress={() => run(query)} />
+            <Button kind="secondary" label={tr('Tekrar dene')} onPress={() => run(query)} />
           </View>
         ) : null}
 
         {trimmed.length < MIN_QUERY ? (
           <View style={{ paddingHorizontal: t.space[4], gap: t.space[4] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Firma adı, kumaş kodu, çeşit, iplik ya da makine yazın. Örn. süprem, 30/1, Bursa, raschel 28 fine
+              {tr('Firma adı, kumaş kodu, çeşit, iplik ya da makine yazın. Örn. süprem, 30/1, Bursa, raschel 28 fine')}
             </Text>
             {recent.length ? (
               <View style={{ gap: t.space[2] }}>
-                <SectionTitle title="Son aramalar" linkLabel="Temizle" onLinkPress={clearRecent} />
+                <SectionTitle title={tr('Son aramalar')} linkLabel={tr('Temizle')} onLinkPress={clearRecent} />
                 {/* Çipler yatay kaydırılır, satır kırmaz (DESIGN.md §3). */}
                 <ChipRow>
                   {recent.map((item) => (
@@ -269,9 +270,9 @@ export function GlobalSearchScreen({ navigation }: Props) {
           visibleCount === 0 ? (
             <EmptyState
               icon="search"
-              title="Bu türde sonuç yok"
-              description="Başka bir sonuç türü seçin ya da aramayı değiştirin."
-              actionLabel="Tüm sonuçlar"
+              title={tr('Bu türde sonuç yok')}
+              description={tr('Başka bir sonuç türü seçin ya da aramayı değiştirin.')}
+              actionLabel={tr('Tüm sonuçlar')}
               onAction={() => setKind('all')}
             />
           ) : (
@@ -279,7 +280,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
               {show.companies && result.companies.items.length ? (
                 <View style={{ gap: t.space[2] }}>
                   <View style={{ paddingHorizontal: t.space[4] }}>
-                    <SectionTitle title="Firmalar" />
+                    <SectionTitle title={tr('Firmalar')} />
                   </View>
                   <View>
                     {result.companies.items.map((company, index) => (
@@ -299,8 +300,8 @@ export function GlobalSearchScreen({ navigation }: Props) {
                 <View style={{ gap: t.space[3] }}>
                   <View style={{ paddingHorizontal: t.space[4] }}>
                     <SectionTitle
-                      title="Kumaşlar"
-                      linkLabel={result.fabrics.hasMore ? 'Tümünü gör' : undefined}
+                      title={tr('Kumaşlar')}
+                      linkLabel={result.fabrics.hasMore ? tr('Tümünü gör') : undefined}
                       onLinkPress={
                         result.fabrics.hasMore
                           ? () =>
@@ -327,7 +328,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
               {show.machines && result.machines?.items.length ? (
                 <View style={{ gap: t.space[2] }}>
                   <View style={{ paddingHorizontal: t.space[4] }}>
-                    <SectionTitle title="Fason makine" />
+                    <SectionTitle title={tr('Fason makine')} />
                   </View>
                   <View>
                     {result.machines.items.map((machine, index) => (
@@ -350,8 +351,8 @@ export function GlobalSearchScreen({ navigation }: Props) {
                 <View style={{ gap: t.space[3] }}>
                   <View style={{ paddingHorizontal: t.space[4] }}>
                     <SectionTitle
-                      title="İplikler"
-                      linkLabel={result.yarns.hasMore ? 'Tümünü gör' : undefined}
+                      title={tr('İplikler')}
+                      linkLabel={result.yarns.hasMore ? tr('Tümünü gör') : undefined}
                       onLinkPress={
                         result.yarns.hasMore
                           ? () =>
@@ -379,9 +380,9 @@ export function GlobalSearchScreen({ navigation }: Props) {
         ) : error ? null : (
           <EmptyState
             icon="search"
-            title="Sonuç bulunamadı"
-            description={`“${trimmed}” için sonuç bulunamadı. Fotoğrafla benzer kumaş arayabilirsiniz.`}
-            actionLabel="Fotoğrafla kumaş ara"
+            title={tr('Sonuç bulunamadı')}
+            description={tr('“{q}” için sonuç bulunamadı. Fotoğrafla benzer kumaş arayabilirsiniz.', { q: trimmed })}
+            actionLabel={tr('Fotoğrafla kumaş ara')}
             onAction={() => navigation.navigate('SimilarSearch')}
           />
         )}
@@ -419,7 +420,7 @@ function CompanyResultRow({
   onPress: () => void;
 }) {
   const t = useTheme();
-  const meta = [company.city, companyTypeLabel(company.companyType), `${company.productCount} ürün`]
+  const meta = [company.city, companyTypeLabel(company.companyType), tp('{n} ürün', '{n} ürün', company.productCount, { n: company.productCount })]
     .filter(Boolean)
     .join(' · ');
   return (
@@ -458,7 +459,7 @@ function MachineResultRow({
   const t = useTheme();
   const { title } = machineCardTitle(machine);
   // Alt satır: "Örnek Tekstil · 28 fine · 30 inç · 4 adet"
-  const unitOf: Record<string, string> = { Fine: ' fine', Sistem: ' sistem', İğne: ' iğne', Adet: ' adet' };
+  const unitOf: Record<string, string> = { Fine: ' fine', Sistem: ' ' + tr('sistem'), İğne: ' ' + tr('iğne'), Adet: ' ' + tr('adet') };
   const specs = machineSpecRows(machine)
     .map((row) => row.value + (unitOf[row.label] ?? ''))
     .join(' · ');

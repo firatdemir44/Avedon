@@ -12,6 +12,7 @@ import {
 import { getCachedGalleryImage, loadGalleryImage } from '../features/products/productImageCache';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
+import { tr } from '../i18n';
 
 // Ürün sayfası galerisinin varsayılan yüksekliği (DESIGN.md'de adı olmayan
 // ekran-içi ölçü; ProductDetailScreen'deki HERO_HEIGHT ile aynı dilde).
@@ -83,7 +84,7 @@ export function ProductGallery({ productId, imageCount, height = GALLERY_HEIGHT,
     return (
       <View style={[frame, placeholder, { height }]}>
         <Icon name="image-outline" size={t.size.emptyIcon} color="ink3" />
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bu ürünün fotoğrafı yok</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Bu ürünün fotoğrafı yok')}</Text>
         {overlay}
       </View>
     );
@@ -104,7 +105,7 @@ export function ProductGallery({ productId, imageCount, height = GALLERY_HEIGHT,
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={32}
-          accessibilityLabel={`Ürün fotoğrafları, ${imageCount} fotoğraf`}
+          accessibilityLabel={tr('Ürün fotoğrafları, {n} fotoğraf', { n: imageCount })}
         >
           {Array.from({ length: imageCount }, (_, i) => {
             const url = urls[i];
@@ -114,8 +115,8 @@ export function ProductGallery({ productId, imageCount, height = GALLERY_HEIGHT,
                 onPress={() => url && onOpenImage?.(url)}
                 disabled={!url || !onOpenImage}
                 accessibilityRole="imagebutton"
-                accessibilityLabel={`Fotoğraf ${i + 1} / ${imageCount}`}
-                accessibilityHint="Tam ekran büyütür"
+                accessibilityLabel={tr('Fotoğraf {i} / {n}', { i: i + 1, n: imageCount })}
+                accessibilityHint={tr('Tam ekran büyütür')}
                 style={({ pressed }) => [{ width, height }, pressed && { opacity: 0.9 }]}
               >
                 {url ? (

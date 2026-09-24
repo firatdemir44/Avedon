@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Button, Input } from '../ui';
+import { tr } from '../i18n';
 
 interface Props {
   code: string;
@@ -33,7 +34,7 @@ export function OtpCodeField({ code, onChangeCode, onResend, resendCooldownSecon
   return (
     <View style={{ gap: t.space[2], minWidth: 0 }}>
       <Input
-        label="Doğrulama kodu"
+        label={tr('Doğrulama kodu')}
         value={code}
         onChangeText={onChangeCode}
         placeholder="123456"
@@ -51,10 +52,10 @@ export function OtpCodeField({ code, onChangeCode, onResend, resendCooldownSecon
         onPress={onResend}
         label={
           remaining > 0
-            ? `Kodu tekrar gönder (${remaining} sn)`
+            ? tr('Kodu tekrar gönder ({n} sn)', { n: remaining })
             : resending
-              ? 'Gönderiliyor…'
-              : 'Kodu tekrar gönder'
+              ? tr('Gönderiliyor…')
+              : tr('Kodu tekrar gönder')
         }
       />
     </View>

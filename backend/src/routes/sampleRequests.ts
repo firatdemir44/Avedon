@@ -90,8 +90,10 @@ sampleRequestsRouter.post(
       product.company.users.map((u) => u.id).filter((id) => id !== req.user!.id),
       {
         kind: 'sample_request_new',
-        title: `Yeni numune talebi: ${product.code}`,
+        title: 'Yeni numune talebi: {code}',
+        vars: { code: product.code },
         body: `${req.user!.firstName} ${req.user!.lastName}`,
+        rawBody: true,
         data: { sampleRequestId: created.id, productId: product.id },
       }
     );
@@ -226,7 +228,9 @@ sampleRequestsRouter.patch(
       });
       await notify(request.requesterId, {
         kind: 'sample_request_status',
-        title: `${request.product.code}: ${chipLabelFor(parsed.data.status, request.deliveryMode)}`,
+        title: '{code}: {status}',
+        vars: { code: request.product.code, status: chipLabelFor(parsed.data.status, request.deliveryMode) },
+        translateVars: ['status'],
         body: 'Numune talebinizin durumu güncellendi.',
         data: { sampleRequestId: request.id, productId: request.productId },
       });

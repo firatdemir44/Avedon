@@ -101,7 +101,7 @@ rfqsRouter.post(
       // Bildirim tekil istekle AYNI: satıcı bunun çoklu istek olduğunu anlamaz.
       await notifyMany(
         p.company.users.map((u) => u.id),
-        { kind: 'quote_request_new', title: `Yeni teklif isteği: ${p.code}`, body: `${me.firstName} ${me.lastName} · ${d.quantity} ${d.unit}`, data: { quoteRequestId: requestId, productId: p.id } }
+        { kind: 'quote_request_new', title: 'Yeni teklif isteği: {code}', vars: { code: p.code }, body: `${me.firstName} ${me.lastName} · ${d.quantity} ${d.unit}`, rawBody: true, data: { quoteRequestId: requestId, productId: p.id } }
       );
     }
     res.status(201).json({ rfq: await compareView(rfq.id, me.id), skipped });

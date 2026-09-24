@@ -16,6 +16,7 @@ import { yarnCountFromSample } from './calc/yarnCountFromSample';
 import { yarnUsage } from './calc/yarnUsage';
 import { yarnUsageRatio } from './calc/yarnUsageRatio';
 import type { AnySkill } from './types';
+import { t, type Lang } from '../i18n';
 
 export * from './types';
 
@@ -48,11 +49,11 @@ export interface SkillListing {
   inputSchema: unknown; // JSON şema (asistan aracı ve ileride web formu için)
 }
 
-export function listSkills(): SkillListing[] {
+export function listSkills(lang?: Lang): SkillListing[] {
   return SKILLS.map((s) => ({
     name: s.name,
-    title: s.title,
-    description: s.description,
+    title: t(lang, s.title),
+    description: t(lang, s.description),
     formula: s.formula,
     inputSchema: z.toJSONSchema(s.inputSchema),
   }));
@@ -63,9 +64,12 @@ export type SkillRunResult =
   | { ok: false; error: 'invalid_input'; details: z.core.$ZodIssue[] };
 
 // Girdi doğrulanır (varsayılanlar doldurulur), saf hesap çalışır, özet üretilir.
-export function runSkill(skill: AnySkill, rawInput: unknown): SkillRunResult {
+export function runSkill(skill: AnySkill, rawInput: unknown, lang?: Lang): SkillRunResult {
   const parsed = skill.inputSchema.safeParse(rawInput);
-  if (!parsed.success) return { ok: false, error: 'invalid_input', details: parsed.error.issues };
+  if (!parsed.success) {
+    const details = parsed.error.issues.map((i: z.core.$ZodIssue) => ({ ...i, message: t(lang, i.message) }));
+    return { ok: false, error: 'invalid_input', details };
+  }
   const output = skill.run(parsed.data);
-  return { ok: true, output, summary: skill.summarize(parsed.data, output) };
+  return { ok: true, output, summary: skill.summarize(parsed.data, output, lang) };
 }

@@ -3,6 +3,7 @@
 // `onPress` verilirse yazılamaz, yalnızca dokunulabilir bir kutu olur
 // (ana sayfadaki "GlobalSearch'ü aç" kutusu gibi).
 import React from 'react';
+import { tr } from '../i18n';
 import { Pressable, TextInput, View, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon, type AnyIconName } from './Icon';
@@ -100,7 +101,7 @@ export function SearchBox({
         <Pressable
           onPress={() => onChangeText?.('')}
           accessibilityRole="button"
-          accessibilityLabel="Aramayı temizle"
+          accessibilityLabel={tr('Aramayı temizle')}
           hitSlop={t.space[2]}
           style={({ pressed }) => pressed && { opacity: 0.6 }}
         >

@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { ApiError, updateMyProfile } from '../../api/client';
 import { InlineError } from '../../components/StateView';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Input, Screen } from '../../ui';
 
@@ -29,8 +30,8 @@ export function ProfileEditScreen({ navigation, route }: Props) {
     } catch (err) {
       setError(
         err instanceof ApiError && err.code === 'invalid_body'
-          ? 'Girilen bilgiler çok uzun ya da geçersiz.'
-          : 'Kaydedilemedi, tekrar deneyin.'
+          ? tr('Girilen bilgiler çok uzun ya da geçersiz.')
+          : tr('Kaydedilemedi, tekrar deneyin.')
       );
     } finally {
       setSaving(false);
@@ -40,24 +41,24 @@ export function ProfileEditScreen({ navigation, route }: Props) {
   return (
     <Screen
       contentStyle={{ gap: t.space[4] }}
-      sticky={<Button size="lg" label="Kaydet" loading={saving} onPress={save} />}
+      sticky={<Button size="lg" label={tr('Kaydet')} loading={saving} onPress={save} />}
     >
       <Input
-        label="Başlık"
+        label={tr('Başlık')}
         value={headline}
         onChangeText={setHeadline}
         placeholder="Genel Müdür · Melide Tekstil"
         maxLength={120}
-        helper="Boş bırakırsanız unvanınız ve firma adınız yazılır."
+        helper={tr('Boş bırakırsanız unvanınız ve firma adınız yazılır.')}
       />
 
-      <Input label="Konum" value={location} onChangeText={setLocation} placeholder="Bursa, Türkiye" maxLength={80} />
+      <Input label={tr('Konum')} value={location} onChangeText={setLocation} placeholder={tr('Bursa, Türkiye')} maxLength={80} />
 
       <Input
-        label="Hakkında"
+        label={tr('Hakkında')}
         value={about}
         onChangeText={setAbout}
-        placeholder="Kısaca kendinizden ve işinizden bahsedin"
+        placeholder={tr('Kısaca kendinizden ve işinizden bahsedin')}
         multiline
         // `Input` stil prop'u almıyor; çok satırlı alan numberOfLines ile açılıyor.
         numberOfLines={4}

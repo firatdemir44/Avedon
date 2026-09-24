@@ -3,6 +3,7 @@ import { Animated, Easing, View, type DimensionValue, type StyleProp, type ViewS
 import { useReduceMotion } from '../features/useReduceMotion';
 import { useTheme } from '../theme/ThemeContext';
 import { Skeleton, SkeletonRow, SkeletonText } from '../ui';
+import { tr } from '../i18n';
 
 // Yükleniyor iskeleti (DESIGN.md §3): surface-2 bloklar, radius-sm; içeriğin
 // gelecek yerini gösterir, veri gelince yerleşim zıplamaz. Kemikler ui/Skeleton;
@@ -23,7 +24,7 @@ const BUBBLE_WIDTH: DimensionValue = '62%';
 export function SkeletonPulse({
   children,
   style,
-  label = 'Yükleniyor',
+  label = tr('Yükleniyor'),
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;

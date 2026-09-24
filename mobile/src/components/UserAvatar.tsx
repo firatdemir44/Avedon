@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
 import { getCachedUserAvatar, loadUserAvatar, userAvatarKey } from '../features/users/userAvatarCache';
+import { tr } from '../i18n';
 
 interface Props {
   userId?: string | null;
@@ -73,7 +74,7 @@ export function UserAvatar({ userId, firstName, lastName, avatarUpdatedAt, size,
           },
         ]}
         resizeMode="cover"
-        accessibilityLabel={name ? `${name} profil fotoğrafı` : 'Profil fotoğrafı'}
+        accessibilityLabel={name ? tr('{name} profil fotoğrafı', { name }) : tr('Profil fotoğrafı')}
       />
     );
   }

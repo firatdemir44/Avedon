@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchFx, type FxRates } from '../../api/client';
+import { locale, tr } from '../../i18n';
 
 // TCMB döviz satış kurları; istemci önbelleği 1 saat (fetchFx içinde).
 export function useFx(): { fx: FxRates | null; failed: boolean } {
@@ -28,6 +29,6 @@ export function tlEquivalent(amount: number, currency: string, fx: FxRates | nul
   if (!fx || !(amount > 0)) return null;
   const rate = currency === 'USD' ? fx.usd : currency === 'EUR' ? fx.eur : currency === 'GBP' ? fx.gbp : null;
   if (!rate) return null;
-  const tl = (amount * rate).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `≈ ${tl} ₺ (TCMB satış)`;
+  const tl = (amount * rate).toLocaleString(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return tr('≈ {tl} ₺ (TCMB satış)', { tl });
 }

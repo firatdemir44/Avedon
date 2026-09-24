@@ -5,6 +5,7 @@
 import * as z from 'zod/v4';
 import { calculateGarmentCost } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const money = (desc: string) => z.number().nonnegative().default(0).describe(desc);
 
@@ -63,16 +64,23 @@ export const garmentCost = defineSkill<typeof inputSchema, GarmentCostOutput>({
     const totalCost = fabricCost + items.reduce((s, i) => s + i.amount, 0);
     return { fabricCost, items, totalCost, orderTotal: input.quantity ? totalCost * input.quantity : null };
   },
-  summarize: (input, out) => {
-    const filled = out.items.filter((i) => i.amount > 0).map((i) => `${i.label.toLowerCase()} ${fmt(i.amount)}`);
-    const empty = out.items.filter((i) => i.amount === 0).map((i) => i.label.toLowerCase());
+  summarize: (input, out, lang) => {
+    const filled = out.items.filter((i) => i.amount > 0).map((i) => `${t(lang, i.label).toLowerCase()} ${fmt(i.amount)}`);
+    const empty = out.items.filter((i) => i.amount === 0).map((i) => t(lang, i.label).toLowerCase());
     const parts = [
-      `Kumaş ${fmt(out.fabricCost)} ${input.currency} (${fmt(input.fabricConsumptionMeters, 3)} m, kesim firesi %${fmt(input.wastagePercent, 1)} dahil)`,
+      t(lang, 'Kumaş {cost} {cur} ({m} m, kesim firesi %{w} dahil)', {
+        cost: fmt(out.fabricCost),
+        cur: input.currency,
+        m: fmt(input.fabricConsumptionMeters, 3),
+        w: fmt(input.wastagePercent, 1),
+      }),
     ];
     if (filled.length) parts.push(filled.join(', '));
-    parts.push(`adet maliyeti ${fmt(out.totalCost)} ${input.currency}`);
-    if (out.orderTotal != null) parts.push(`${fmt(input.quantity, 0)} adet için ${fmt(out.orderTotal)} ${input.currency}`);
-    if (empty.length) parts.push(`boş kalemler: ${empty.join(', ')}`);
+    parts.push(t(lang, 'adet maliyeti {v} {cur}', { v: fmt(out.totalCost), cur: input.currency }));
+    if (out.orderTotal != null) {
+      parts.push(t(lang, '{q} adet için {v} {cur}', { q: fmt(input.quantity, 0), v: fmt(out.orderTotal), cur: input.currency }));
+    }
+    if (empty.length) parts.push(t(lang, 'boş kalemler: {list}', { list: empty.join(', ') }));
     return parts.join('; ') + '.';
   },
 });

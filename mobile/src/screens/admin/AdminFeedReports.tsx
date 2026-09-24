@@ -20,18 +20,19 @@ import { confirmAction } from '../../features/confirm';
 import { formatRelativeTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { locale, tp, tr } from '../../i18n';
 import { useBottomPadding, Badge, Button, Card, EmptyState, Icon, SectionTitle, SkeletonRow } from '../../ui';
 
 const EXCERPT_MAX = 240;
 
 function reasonLabel(key: string) {
-  return POST_REPORT_REASONS.find((r) => r.key === key)?.label ?? key;
+  return tr(POST_REPORT_REASONS.find((r) => r.key === key)?.label ?? key);
 }
 
 function formatDate(iso: string | null) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 type Row = { type: 'post'; post: AdminReportedPost } | { type: 'company'; company: AdminBlockedCompany } | { type: 'title'; title: string; key: string };
@@ -68,9 +69,9 @@ export function AdminFeedReports() {
     return (
       <EmptyState
         icon="warning"
-        title="Şikâyetler alınamadı"
-        description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-        actionLabel="Tekrar dene"
+        title={tr('Şikâyetler alınamadı')}
+        description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+        actionLabel={tr('Tekrar dene')}
         onAction={reload}
       />
     );
@@ -80,11 +81,11 @@ export function AdminFeedReports() {
   const blocked = data?.blockedCompanies ?? [];
   const rows: Row[] = [];
   if (blocked.length) {
-    rows.push({ type: 'title', title: 'Kısıtlı firmalar', key: 't-blocked' });
+    rows.push({ type: 'title', title: tr('Kısıtlı firmalar'), key: 't-blocked' });
     blocked.forEach((company) => rows.push({ type: 'company', company }));
   }
   if (posts.length) {
-    rows.push({ type: 'title', title: 'Şikâyet edilen gönderiler', key: 't-posts' });
+    rows.push({ type: 'title', title: tr('Şikâyet edilen gönderiler'), key: 't-posts' });
     posts.forEach((post) => rows.push({ type: 'post', post }));
   }
 
@@ -113,7 +114,7 @@ export function AdminFeedReports() {
         ) : null
       }
       ListEmptyComponent={
-        <EmptyState icon="checkmark-circle-outline" title="Şikâyet yok" description="Akışta incelenecek bir şikâyet bulunmuyor." />
+        <EmptyState icon="checkmark-circle-outline" title={tr('Şikâyet yok')} description={tr('Akışta incelenecek bir şikâyet bulunmuyor.')} />
       }
       renderItem={({ item }) => {
         if (item.type === 'title') return <SectionTitle title={item.title} />;
@@ -124,20 +125,22 @@ export function AdminFeedReports() {
               <View style={{ gap: t.space[3] }}>
                 <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{c.name}</Text>
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Herkese açık paylaşım kapalı{c.publicPostBlockedUntil ? ` · ${formatDate(c.publicPostBlockedUntil)} tarihine kadar` : ''}
+                  {c.publicPostBlockedUntil
+                    ? tr('Herkese açık paylaşım kapalı · {date} tarihine kadar', { date: formatDate(c.publicPostBlockedUntil) })
+                    : tr('Herkese açık paylaşım kapalı')}
                 </Text>
                 <Button
                   kind="secondary"
-                  label="Kısıtı kaldır"
+                  label={tr('Kısıtı kaldır')}
                   loading={busyId === c.id}
                   disabled={!!busyId}
                   onPress={async () => {
                     const ok = await confirmAction({
-                      title: 'Kısıtı kaldır',
-                      message: `${c.name} yeniden herkese açık paylaşım yapabilecek.`,
-                      confirmLabel: 'Kaldır',
+                      title: tr('Kısıtı kaldır'),
+                      message: tr('{name} yeniden herkese açık paylaşım yapabilecek.', { name: c.name }),
+                      confirmLabel: tr('Kaldır'),
                     });
-                    if (ok) run(c.id, () => adminUnblockCompanyPublic(c.id), 'Kısıt kaldırılamadı');
+                    if (ok) run(c.id, () => adminUnblockCompanyPublic(c.id), tr('Kısıt kaldırılamadı'));
                   }}
                 />
               </View>
@@ -145,7 +148,7 @@ export function AdminFeedReports() {
           );
         }
         const p = item.post;
-        const companyName = p.author?.company?.name ?? (p.author ? `${p.author.firstName} ${p.author.lastName}` : 'Bilinmeyen');
+        const companyName = p.author?.company?.name ?? (p.author ? `${p.author.firstName} ${p.author.lastName}` : tr('Bilinmeyen'));
         const excerpt = p.body.length > EXCERPT_MAX ? `${p.body.slice(0, EXCERPT_MAX)}…` : p.body;
         const hidden = !!p.hiddenAt;
         return (
@@ -155,21 +158,22 @@ export function AdminFeedReports() {
                 <Text numberOfLines={1} style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
                   {companyName}
                 </Text>
-                {hidden ? <Badge kind="cancelled" label="Gizli" /> : <Badge kind="verified" label="Yayında" />}
+                {hidden ? <Badge kind="cancelled" label={tr('Gizli')} /> : <Badge kind="verified" label={tr('Yayında')} />}
               </View>
               {p.author ? (
                 <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
                   {p.author.firstName} {p.author.lastName} · {formatRelativeTime(p.createdAt)}
-                  {p.visibility === 'connections' ? ' · Bağlantılarım' : ' · Herkese açık'}
+                  {p.visibility === 'connections' ? ` · ${tr('Bağlantılarım')}` : ` · ${tr('Herkese açık')}`}
                 </Text>
               ) : null}
               {excerpt ? <Text style={[t.type.body14, { color: t.colors.ink }]}>{excerpt}</Text> : null}
               <View style={{ gap: t.space[1] }}>
                 <Text style={[t.type.label14, { color: t.colors.danger }]}>
-                  {p.reportCount} şikâyet{p.lastReportAt ? ` · son: ${formatRelativeTime(p.lastReportAt)}` : ''}
+                  {tp('{n} şikâyet', '{n} şikâyet', p.reportCount)}
+                  {p.lastReportAt ? ` · ${tr('son: {time}', { time: formatRelativeTime(p.lastReportAt) })}` : ''}
                 </Text>
                 {p.reasons.length ? (
-                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Nedenler: {p.reasons.map(reasonLabel).join(', ')}</Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Nedenler:')} {p.reasons.map(reasonLabel).join(', ')}</Text>
                 ) : null}
                 {p.notes.map((n, i) => (
                   <Text key={i} style={[t.type.body14, { color: t.colors.ink2 }]}>“{n}”</Text>
@@ -179,18 +183,18 @@ export function AdminFeedReports() {
                 <Button
                   style={{ flex: 1 }}
                   kind="secondary"
-                  label="Yayında kalsın"
+                  label={tr('Yayında kalsın')}
                   disabled={!!busyId}
                   loading={busyId === p.id + ':r'}
-                  onPress={() => run(p.id + ':r', () => adminRestorePost(p.id), 'Gönderi yayına alınamadı')}
+                  onPress={() => run(p.id + ':r', () => adminRestorePost(p.id), tr('Gönderi yayına alınamadı'))}
                 />
                 <Button
                   style={{ flex: 1 }}
                   kind="danger"
-                  label="Gizli kalsın"
+                  label={tr('Gizli kalsın')}
                   disabled={!!busyId}
                   loading={busyId === p.id + ':h'}
-                  onPress={() => run(p.id + ':h', () => adminHidePost(p.id), 'Gönderi gizlenemedi')}
+                  onPress={() => run(p.id + ':h', () => adminHidePost(p.id), tr('Gönderi gizlenemedi'))}
                 />
               </View>
             </View>

@@ -2,6 +2,7 @@
 // bellekte tutulur (2 saat). Sunucu yeniden başlarsa iş kaybolur; kullanıcı
 // yeniden tarar (günlük sınır yalnızca başarılı başlatmayı sayar).
 import { randomUUID } from 'node:crypto';
+import { tx, type Lang } from '../i18n';
 import { prisma } from '../db';
 import { isLlmConfigured, isLlmMock } from '../llm';
 import { runPassportExtract, MIN_CONFIDENCE } from '../skills/passportExtract';
@@ -370,18 +371,18 @@ export function startCommit(job: ImportJob, keys: string[]) {
 }
 
 // API yanıtı: indirme için tutulan iç alanlar (tam boy adresler) dönmez.
-export function toJobView(job: ImportJob) {
+export function toJobView(job: ImportJob, lang?: Lang) {
   return {
     jobId: job.id,
     source: job.source,
     url: job.url,
     fileName: job.fileName,
-    notices: job.notices,
+    notices: job.notices.map((n) => tx(lang, n)),
     status: job.status,
     error: job.error,
     progress: job.progress,
     commit: job.commit,
-    items: job.status === 'scanning' ? [] : job.items.map(({ images: _images, llmFields: _llm, unmappedUses, ...rest }) => ({ ...rest, unmappedUses, canImport: missingRequired(rest as ImportItem).length === 0, duplicate: !!rest.duplicate })),
+    items: job.status === 'scanning' ? [] : job.items.map(({ images: _images, llmFields: _llm, unmappedUses, ...rest }) => ({ ...rest, warnings: rest.warnings.map((w) => tx(lang, w)), unmappedUses, canImport: missingRequired(rest as ImportItem).length === 0, duplicate: !!rest.duplicate })),
   };
 }
 

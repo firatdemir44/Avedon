@@ -22,6 +22,7 @@ import {
   SkeletonRow,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'MySampleRequests'>;
 
@@ -44,7 +45,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const banner = error ? friendlyMessage(error, 'Talepler alınamadı') : null;
+  const banner = error ? friendlyMessage(error, tr('Talepler alınamadı')) : null;
 
   const header = banner ? (
     <View style={{ paddingBottom: t.space[3] }}>
@@ -64,7 +65,7 @@ export function MySampleRequestsScreen({ navigation }: Props) {
     </View>
   ) : null;
 
-  const bar = <AppBar title="Taleplerim" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Taleplerim')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -86,9 +87,9 @@ export function MySampleRequestsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Talepler alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
-            actionLabel="Yeniden dene"
+            title={tr('Talepler alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip yeniden dene.'))}
+            actionLabel={tr('Yeniden dene')}
             onAction={reload}
           />
         </Screen>
@@ -110,9 +111,9 @@ export function MySampleRequestsScreen({ navigation }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="sample"
-              title="İlk numune talebini gönder"
-              description="Beğendiğin ürünün sayfasından numune isteyebilir, süreci buradan adım adım takip edebilirsin."
-              actionLabel="Kataloğa git"
+              title={tr('İlk numune talebini gönder')}
+              description={tr('Beğendiğin ürünün sayfasından numune isteyebilir, süreci buradan adım adım takip edebilirsin.')}
+              actionLabel={tr('Kataloğa git')}
               onAction={() => navigation.navigate('MainTabs', { screen: 'ProductList' })}
             />
           }

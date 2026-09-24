@@ -47,6 +47,7 @@ import { pickDocPdf } from '../../components/passport/rows';
 import { formatVideoDuration, useVideoUpload, type VideoUploadState } from '../../features/useVideoUpload';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { AppBar, Button, Card, Chip, ChipRow, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
 
 type Props = RootStackScreenProps<'TenderForm'>;
@@ -55,10 +56,10 @@ type CountUnit = NonNullable<TenderYarnSpec['countUnit']>;
 type ColorState = NonNullable<TenderYarnSpec['colorState']>;
 
 // Sunucu açık talepte yalnızca bu üç renk durumunu kabul ediyor.
-const COLOR_STATES: { key: ColorState; label: string }[] = [
-  { key: 'ham', label: 'Ham' },
-  { key: 'ekru', label: 'Ekru' },
-  { key: 'boyali', label: 'Boyalı' },
+const colorStates = (): { key: ColorState; label: string }[] => [
+  { key: 'ham', label: tr('Ham') },
+  { key: 'ekru', label: tr('Ekru') },
+  { key: 'boyali', label: tr('Boyalı') },
 ];
 
 // "Viskon / Rejenere (modal, liyosel)" → "Viskon" (başlık önerisi için kısa ad).
@@ -140,25 +141,25 @@ export function TenderFormScreen({ navigation }: Props) {
   // Otomatik başlık önerisi: kullanıcı başlığa dokunana kadar alanlardan üretilir.
   const suggestedTitle = useMemo(() => {
     if (category === 'iplik') {
-      const parts = [family ? `${shortFamily(optionLabel(yarnOptions.families, family))} iplik` : 'İplik'];
-      if (parseNumber(filaments) > 0) parts.push(`${parseNumber(filaments)} filament`);
+      const parts = [family ? tr('{family} iplik', { family: shortFamily(optionLabel(yarnOptions.families, family)) }) : tr('İplik')];
+      if (parseNumber(filaments) > 0) parts.push(tr('{n} filament', { n: parseNumber(filaments) }));
       if (parseNumber(count) > 0) parts.push(`${count.trim()} ${optionLabel(yarnOptions.countUnits, countUnit)}`);
       return parts.join(' · ');
     }
     if (category === 'kumas') {
       const sub = fabricType ? SUBTYPES[fabricType].find((s) => s.key === subtype)?.label : undefined;
-      const parts = [sub ?? (fabricType ? `${TYPE_LABELS[fabricType]} kumaş` : 'Kumaş')];
+      const parts = [sub ?? (fabricType ? tr('{type} kumaş', { type: TYPE_LABELS[fabricType] }) : tr('Kumaş'))];
       if (parseNumber(weight) > 0) parts.push(`${weight.trim()} gr/m²`);
       if (content.trim()) parts.push(content.trim());
       return parts.join(' · ');
     }
     if (category === 'konfeksiyon') {
-      const parts = [`${garmentType ? garmentTypeLabel(garmentType) : 'Konfeksiyon'} fason üretim`];
+      const parts = [tr('{type} fason üretim', { type: garmentType ? garmentTypeLabel(garmentType) : tr('Konfeksiyon') })];
       if (parseNumber(quantity) > 0) parts.push(`${formatMeasure(parseNumber(quantity))} ${tenderUnitShort(unit)}`);
       return parts.join(' · ');
     }
     if (category === 'aksesuar') {
-      const parts = [accessoryType ? accessoryTypeLabel(accessoryType) : 'Aksesuar'];
+      const parts = [accessoryType ? accessoryTypeLabel(accessoryType) : tr('Aksesuar')];
       if (material.trim()) parts.push(material.trim());
       if (accSize.trim()) parts.push(accSize.trim());
       return parts.join(' · ');
@@ -194,7 +195,7 @@ export function TenderFormScreen({ navigation }: Props) {
       added.push({ key: `img-${++attachmentSeq}`, kind: 'image', dataUrl: fitted.dataUrl, caption: '' });
     }
     if (added.length) setAttachments((prev) => [...prev, ...added]);
-    if (tooLarge) setMediaError('Bir fotoğraf çok büyük olduğu için eklenemedi.');
+    if (tooLarge) setMediaError(tr('Bir fotoğraf çok büyük olduğu için eklenemedi.'));
   };
 
   const pickPhotos = async (camera: boolean) => {
@@ -214,10 +215,10 @@ export function TenderFormScreen({ navigation }: Props) {
       const msg = err instanceof Error ? err.message : '';
       setMediaError(
         msg === 'camera_permission_denied'
-          ? 'Kameraya erişim izni verilmedi.'
+          ? tr('Kameraya erişim izni verilmedi.')
           : msg === 'permission_denied'
-            ? 'Galeriye erişim izni verilmedi.'
-            : 'Fotoğraf eklenemedi, tekrar deneyin.'
+            ? tr('Galeriye erişim izni verilmedi.')
+            : tr('Fotoğraf eklenemedi, tekrar deneyin.')
       );
     } finally {
       setPicking(false);
@@ -330,17 +331,17 @@ export function TenderFormScreen({ navigation }: Props) {
       haptics.error();
       const apiError = err instanceof ApiError ? err : null;
       if (apiError?.code === 'daily_limit') {
-        setError('Bugün en fazla 10 açık talep yayınlanabilir. Yarın tekrar deneyin.');
+        setError(tr('Bugün en fazla 10 açık talep yayınlanabilir. Yarın tekrar deneyin.'));
       } else if (apiError?.code === 'too_many_images') {
-        setError(`En fazla ${TENDER_MAX_IMAGES} fotoğraf eklenebilir.`);
+        setError(tr('En fazla {n} fotoğraf eklenebilir.', { n: TENDER_MAX_IMAGES }));
       } else if (apiError?.code === 'too_many_pdfs') {
-        setError(`En fazla ${TENDER_MAX_PDFS} PDF eklenebilir.`);
+        setError(tr('En fazla {n} PDF eklenebilir.', { n: TENDER_MAX_PDFS }));
       } else if (apiError?.code?.startsWith('video_')) {
-        setError('Videolardan biri eklenemedi. Videoyu kaldırıp yeniden deneyin.');
+        setError(tr('Videolardan biri eklenemedi. Videoyu kaldırıp yeniden deneyin.'));
       } else if (apiError?.code === 'invalid_spec' || apiError?.code === 'invalid_body') {
-        setError('Bazı bilgiler geçersiz. Sayıları ve tarihleri kontrol edin.');
+        setError(tr('Bazı bilgiler geçersiz. Sayıları ve tarihleri kontrol edin.'));
       } else {
-        setError(friendlyMessage(err, 'Talep yayınlanamadı'));
+        setError(friendlyMessage(err, tr('Talep yayınlanamadı')));
       }
       setSubmitting(false);
     }
@@ -350,12 +351,12 @@ export function TenderFormScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Açık talep yayınla" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Açık talep yayınla')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         sticky={
           <Button
             size="lg"
-            label={busyMedia ? 'Ekler yükleniyor…' : 'Talebi yayınla'}
+            label={busyMedia ? tr('Ekler yükleniyor…') : tr('Talebi yayınla')}
             loading={submitting}
             disabled={!canSubmit}
             onPress={submit}
@@ -364,12 +365,12 @@ export function TenderFormScreen({ navigation }: Props) {
       >
         <Card>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Ne aradığınızı yazın; bu işi yapan firmalara haber gider, teklifleri tek yerde karşılaştırırsınız.
+            {tr('Ne aradığınızı yazın; bu işi yapan firmalara haber gider, teklifleri tek yerde karşılaştırırsınız.')}
           </Text>
         </Card>
 
         <View style={{ gap: t.space[4] }}>
-          <SectionTitle title="Ne arıyorsunuz?" />
+          <SectionTitle title={tr('Ne arıyorsunuz?')} />
           {/* Dört seçenek 375 px'te segmente sığmıyor: çip satırı. */}
           <ChipRow>
             {TENDER_CATEGORIES.map((c) => (
@@ -380,7 +381,7 @@ export function TenderFormScreen({ navigation }: Props) {
           {category === 'iplik' ? (
             <>
               <View style={{ gap: t.space[2] }}>
-                <Label text="Lif ailesi" />
+                <Label text={tr('Lif ailesi')} />
                 <ChipRow>
                   {yarnOptions.families.map((f) => (
                     <Chip
@@ -393,24 +394,24 @@ export function TenderFormScreen({ navigation }: Props) {
                 </ChipRow>
               </View>
               <Input
-                label="Filament sayısı (isteğe bağlı)"
+                label={tr('Filament sayısı (isteğe bağlı)')}
                 value={filaments}
                 onChangeText={setFilaments}
                 inputMode="numeric"
                 keyboardType="number-pad"
-                placeholder="Örn. 96"
+                placeholder={tr('Örn. 96')}
               />
               <Input
-                label="Numara (isteğe bağlı)"
+                label={tr('Numara (isteğe bağlı)')}
                 value={count}
                 onChangeText={setCount}
                 inputMode="decimal"
                 keyboardType="decimal-pad"
-                placeholder="Örn. 150"
+                placeholder={tr('Örn. 150')}
                 unit={optionLabel(yarnOptions.countUnits, countUnit)}
               />
               <View style={{ gap: t.space[2] }}>
-                <Label text="Numara birimi" />
+                <Label text={tr('Numara birimi')} />
                 <ChipRow>
                   {yarnOptions.countUnits.map((u) => (
                     <Chip
@@ -423,9 +424,9 @@ export function TenderFormScreen({ navigation }: Props) {
                 </ChipRow>
               </View>
               <View style={{ gap: t.space[2] }}>
-                <Label text="Renk durumu" />
+                <Label text={tr('Renk durumu')} />
                 <ChipRow>
-                  {COLOR_STATES.map((c) => (
+                  {colorStates().map((c) => (
                     <Chip
                       key={c.key}
                       label={c.label}
@@ -441,7 +442,7 @@ export function TenderFormScreen({ navigation }: Props) {
           {category === 'kumas' ? (
             <>
               <View style={{ gap: t.space[2] }}>
-                <Label text="Kumaş çeşidi" />
+                <Label text={tr('Kumaş çeşidi')} />
                 <ChipRow>
                   {PRODUCT_TYPES.map((type) => (
                     <Chip
@@ -458,7 +459,7 @@ export function TenderFormScreen({ navigation }: Props) {
               </View>
               {subtypes.length ? (
                 <View style={{ gap: t.space[2] }}>
-                  <Label text="Alt çeşit" />
+                  <Label text={tr('Alt çeşit')} />
                   <ChipRow>
                     {subtypes.map((s) => (
                       <Chip
@@ -474,7 +475,7 @@ export function TenderFormScreen({ navigation }: Props) {
               <View style={{ flexDirection: 'row', gap: t.space[3] }}>
                 <Input
                   containerStyle={{ flex: 1, minWidth: 0 }}
-                  label="Gramaj"
+                  label={tr('Gramaj')}
                   value={weight}
                   onChangeText={setWeight}
                   inputMode="decimal"
@@ -484,7 +485,7 @@ export function TenderFormScreen({ navigation }: Props) {
                 />
                 <Input
                   containerStyle={{ flex: 1, minWidth: 0 }}
-                  label="En"
+                  label={tr('En')}
                   value={width}
                   onChangeText={setWidth}
                   inputMode="decimal"
@@ -494,10 +495,10 @@ export function TenderFormScreen({ navigation }: Props) {
                 />
               </View>
               <Input
-                label="İçerik (isteğe bağlı)"
+                label={tr('İçerik (isteğe bağlı)')}
                 value={content}
                 onChangeText={setContent}
-                placeholder="Örn. %95 pamuk %5 elastan"
+                placeholder={tr('Örn. %95 pamuk %5 elastan')}
               />
             </>
           ) : null}
@@ -505,7 +506,7 @@ export function TenderFormScreen({ navigation }: Props) {
           {category === 'konfeksiyon' ? (
             <>
               <View style={{ gap: t.space[2] }}>
-                <Label text="Ürün" />
+                <Label text={tr('Ürün')} />
                 <ChipRow>
                   {GARMENT_TYPES.map((g) => (
                     <Chip
@@ -518,32 +519,32 @@ export function TenderFormScreen({ navigation }: Props) {
                 </ChipRow>
               </View>
               <Input
-                label="Kumaş (isteğe bağlı)"
+                label={tr('Kumaş (isteğe bağlı)')}
                 value={garmentFabric}
                 onChangeText={setGarmentFabric}
-                placeholder="Örn. 30/1 penye süprem, 160 gr"
+                placeholder={tr('Örn. 30/1 penye süprem, 160 gr')}
               />
               <View style={{ gap: t.space[2] }}>
-                <Label text="Kumaşı kim sağlar?" />
+                <Label text={tr('Kumaşı kim sağlar?')} />
                 <SegmentControl<'alici' | 'uretici'>
                   stretch
-                  accessibilityLabel="Kumaşı kim sağlar"
+                  accessibilityLabel={tr('Kumaşı kim sağlar')}
                   value={fabricSupplied}
                   onChange={setFabricSupplied}
                   options={FABRIC_SUPPLIERS}
                 />
               </View>
               <Input
-                label="Beden dağılımı (isteğe bağlı)"
+                label={tr('Beden dağılımı (isteğe bağlı)')}
                 value={sizes}
                 onChangeText={setSizes}
                 placeholder="S:1000 M:2000 L:1500"
-                helper="Örn. S:1000 M:2000 L:1500"
+                helper={tr('Örn. S:1000 M:2000 L:1500')}
                 autoCapitalize="characters"
               />
-              <Input label="Renkler (isteğe bağlı)" value={colors} onChangeText={setColors} placeholder="Örn. Siyah, beyaz, lacivert" />
+              <Input label={tr('Renkler (isteğe bağlı)')} value={colors} onChangeText={setColors} placeholder={tr('Örn. Siyah, beyaz, lacivert')} />
               <View style={{ gap: t.space[2] }}>
-                <Label text="Teslim kapsamı" />
+                <Label text={tr('Teslim kapsamı')} />
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
                   {GARMENT_DELIVERY.map((d) => (
                     <Chip
@@ -561,7 +562,7 @@ export function TenderFormScreen({ navigation }: Props) {
           {category === 'aksesuar' ? (
             <>
               <View style={{ gap: t.space[2] }}>
-                <Label text="Aksesuar türü" />
+                <Label text={tr('Aksesuar türü')} />
                 <ChipRow>
                   {ACCESSORY_TYPES.map((a) => (
                     <Chip
@@ -573,13 +574,13 @@ export function TenderFormScreen({ navigation }: Props) {
                   ))}
                 </ChipRow>
               </View>
-              <Input label="Malzeme (isteğe bağlı)" value={material} onChangeText={setMaterial} placeholder="Örn. Polyester, metal, dokuma" />
-              <Input label="Ölçü (isteğe bağlı)" value={accSize} onChangeText={setAccSize} placeholder="Örn. 18 mm, 20 cm" />
+              <Input label={tr('Malzeme (isteğe bağlı)')} value={material} onChangeText={setMaterial} placeholder={tr('Örn. Polyester, metal, dokuma')} />
+              <Input label={tr('Ölçü (isteğe bağlı)')} value={accSize} onChangeText={setAccSize} placeholder={tr('Örn. 18 mm, 20 cm')} />
             </>
           ) : null}
 
           {category === 'iplik' || category === 'kumas' || category === 'aksesuar' ? (
-            <Input label="Renk (isteğe bağlı)" value={color} onChangeText={setColor} placeholder="Örn. Siyah" />
+            <Input label={tr('Renk (isteğe bağlı)')} value={color} onChangeText={setColor} placeholder={tr('Örn. Siyah')} />
           ) : null}
         </View>
 
@@ -602,9 +603,9 @@ export function TenderFormScreen({ navigation }: Props) {
         />
 
         <View style={{ gap: t.space[4] }}>
-          <SectionTitle title="Talep bilgileri" />
+          <SectionTitle title={tr('Talep bilgileri')} />
           <Input
-            label="Başlık"
+            label={tr('Başlık')}
             value={effectiveTitle}
             onChangeText={(v) => {
               setTitleEdited(true);
@@ -612,50 +613,50 @@ export function TenderFormScreen({ navigation }: Props) {
             }}
             placeholder={
               category === 'diger'
-                ? 'Örn. Etiket baskısı'
+                ? tr('Örn. Etiket baskısı')
                 : category === 'konfeksiyon'
-                  ? 'Örn. Tişört fason üretim · 5000 adet'
-                  : 'Örn. Polyester iplik · 96 filament'
+                  ? tr('Örn. Tişört fason üretim · 5000 adet')
+                  : tr('Örn. Polyester iplik · 96 filament')
             }
-            helper={titleEdited ? undefined : 'Seçtiklerinize göre önerildi; değiştirebilirsiniz.'}
-            error={titleEdited && titleInvalid ? 'Başlık en az 3 harf olmalı.' : null}
+            helper={titleEdited ? undefined : tr('Seçtiklerinize göre önerildi; değiştirebilirsiniz.')}
+            error={titleEdited && titleInvalid ? tr('Başlık en az 3 harf olmalı.') : null}
           />
           <Input
-            label="Miktar"
+            label={tr('Miktar')}
             value={quantity}
             onChangeText={setQuantity}
             inputMode="decimal"
             keyboardType="decimal-pad"
-            placeholder="Örn. 7"
+            placeholder={tr('Örn. 7')}
             unit={tenderUnitShort(unit)}
           />
           <View style={{ gap: t.space[2] }}>
-            <Label text="Birim" />
-            <SegmentControl<TenderUnit> stretch accessibilityLabel="Birim" value={unit} onChange={setUnit} options={TENDER_UNITS} />
+            <Label text={tr('Birim')} />
+            <SegmentControl<TenderUnit> stretch accessibilityLabel={tr('Birim')} value={unit} onChange={setUnit} options={TENDER_UNITS} />
           </View>
           <Input
-            label="İstenen termin (isteğe bağlı)"
+            label={tr('İstenen termin (isteğe bağlı)')}
             value={targetDate}
             onChangeText={setTargetDate}
             placeholder="2026-11-15"
             autoCapitalize="none"
-            helper="YYYY-AA-GG biçiminde yazın."
-            error={targetInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).' : null}
+            helper={tr('YYYY-AA-GG biçiminde yazın.')}
+            error={targetInvalid ? tr('Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-11-15).') : null}
           />
           <Input
-            label="Son teklif tarihi (isteğe bağlı)"
+            label={tr('Son teklif tarihi (isteğe bağlı)')}
             value={deadline}
             onChangeText={setDeadline}
             placeholder="2026-10-01"
             autoCapitalize="none"
-            helper="Boş bırakırsanız talebi siz kapatana kadar teklif gelir."
-            error={deadlineInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-10-01).' : null}
+            helper={tr('Boş bırakırsanız talebi siz kapatana kadar teklif gelir.')}
+            error={deadlineInvalid ? tr('Tarihi YYYY-AA-GG biçiminde yazın (örn. 2026-10-01).') : null}
           />
           <Input
-            label="Not (isteğe bağlı)"
+            label={tr('Not (isteğe bağlı)')}
             value={note}
             onChangeText={setNote}
-            placeholder="Örn. Teslim İstanbul, parçalı sevkiyat olabilir"
+            placeholder={tr('Örn. Teslim İstanbul, parçalı sevkiyat olabilir')}
             multiline
           />
           <View
@@ -667,8 +668,8 @@ export function TenderFormScreen({ navigation }: Props) {
             }}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Akışta da paylaş</Text>
-              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Talep ana sayfa akışında görünür.</Text>
+              <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Akışta da paylaş')}</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Talep ana sayfa akışında görünür.')}</Text>
             </View>
             <Switch
               value={shareToFeed}
@@ -677,7 +678,7 @@ export function TenderFormScreen({ navigation }: Props) {
                 setShareToFeed(v);
               }}
               trackColor={{ true: t.colors.brand, false: t.colors.lineStrong }}
-              accessibilityLabel="Akışta da paylaş"
+              accessibilityLabel={tr('Akışta da paylaş')}
             />
           </View>
         </View>
@@ -728,10 +729,10 @@ function MediaSection(props: {
   const pdfs = attachments.filter((a) => a.kind === 'pdf');
   const hint =
     category === 'kumas'
-      ? "Kumaşın yakından (doku), 30 cm'den ve uzaktan (genel görünüm) fotoğrafını çekin."
+      ? tr('Kumaşın yakından (doku), 30 cm\'den ve uzaktan (genel görünüm) fotoğrafını çekin.')
       : category === 'konfeksiyon'
-        ? "Ön, arka ve detay fotoğrafı; varsa teknik föy PDF'i ekleyin."
-        : 'Numune ya da ürün fotoğrafı teklif verenlerin işini kolaylaştırır.';
+        ? tr('Ön, arka ve detay fotoğrafı; varsa teknik föy PDF\'i ekleyin.')
+        : tr('Numune ya da ürün fotoğrafı teklif verenlerin işini kolaylaştırır.');
   const rowStyle = {
     flexDirection: 'row' as const,
     gap: t.space[3],
@@ -742,7 +743,7 @@ function MediaSection(props: {
 
   return (
     <View style={{ gap: t.space[4] }}>
-      <SectionTitle title="Fotoğraf ve video" />
+      <SectionTitle title={tr('Fotoğraf ve video')} />
       <Card>
         <View style={{ gap: t.space[3] }}>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{hint}</Text>
@@ -750,7 +751,7 @@ function MediaSection(props: {
             <Button
               kind="secondary"
               icon="camera"
-              label="Fotoğraf çek"
+              label={tr('Fotoğraf çek')}
               disabled={imageRoom <= 0 || busy}
               onPress={props.onCamera}
               style={{ flex: 1, minWidth: 0 }}
@@ -758,8 +759,8 @@ function MediaSection(props: {
             <Button
               kind="secondary"
               icon="images-outline"
-              label="Galeriden"
-              accessibilityLabel="Galeriden seç"
+              label={tr('Galeriden')}
+              accessibilityLabel={tr('Galeriden seç')}
               disabled={imageRoom <= 0 || busy}
               onPress={props.onGallery}
               style={{ flex: 1, minWidth: 0 }}
@@ -769,7 +770,7 @@ function MediaSection(props: {
             <Button
               kind="secondary"
               icon="videocam-outline"
-              label="Video ekle"
+              label={tr('Video ekle')}
               disabled={videoRoom <= 0 || busy}
               onPress={props.onVideo}
               style={{ flex: 1, minWidth: 0 }}
@@ -777,22 +778,22 @@ function MediaSection(props: {
             <Button
               kind="secondary"
               icon="document-attach-outline"
-              label="PDF ekle"
-              accessibilityLabel="Dosya ekle (PDF): teknik föy, ölçü tablosu"
+              label={tr('PDF ekle')}
+              accessibilityLabel={tr('Dosya ekle (PDF): teknik föy, ölçü tablosu')}
               disabled={pdfRoom <= 0 || busy}
               onPress={props.onPdf}
               style={{ flex: 1, minWidth: 0 }}
             />
           </View>
           <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
-            {`En çok ${TENDER_MAX_IMAGES} fotoğraf, ${TENDER_MAX_VIDEOS} video ve ${TENDER_MAX_PDFS} PDF (teknik föy, ölçü tablosu).`}
+            {tr('En çok {images} fotoğraf, {videos} video ve {pdfs} PDF (teknik föy, ölçü tablosu).', { images: TENDER_MAX_IMAGES, videos: TENDER_MAX_VIDEOS, pdfs: TENDER_MAX_PDFS })}
           </Text>
 
           {images.map((a, i) => (
             <View key={a.key} style={rowStyle}>
               <Image
                 source={{ uri: a.dataUrl }}
-                accessibilityLabel={`Fotoğraf ${i + 1}`}
+                accessibilityLabel={tr('Fotoğraf {n}', { n: i + 1 })}
                 style={{ width: t.size.thumb, height: t.size.thumb, borderRadius: t.radius.md, backgroundColor: t.colors.surface2 }}
               />
               <View style={{ flex: 1, minWidth: 0, gap: t.space[2] }}>
@@ -807,14 +808,14 @@ function MediaSection(props: {
                   ))}
                 </ChipRow>
                 <Input
-                  label="Açıklama"
+                  label={tr('Açıklama')}
                   value={a.caption}
                   onChangeText={(v) => props.onCaption(a.key, v)}
-                  placeholder="Örn. Yakın çekim, doku"
+                  placeholder={tr('Örn. Yakın çekim, doku')}
                   maxLength={TENDER_CAPTION_MAX}
                 />
               </View>
-              <RemoveButton label={`Fotoğraf ${i + 1} kaldır`} onPress={() => props.onRemove(a.key)} />
+              <RemoveButton label={tr('Fotoğraf {n} kaldır', { n: i + 1 })} onPress={() => props.onRemove(a.key)} />
             </View>
           ))}
 
@@ -823,14 +824,14 @@ function MediaSection(props: {
               <Icon name="document-text-outline" size={t.size.icon} color="ink2" />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Input
-                  label="PDF açıklaması"
+                  label={tr('PDF açıklaması')}
                   value={a.caption}
                   onChangeText={(v) => props.onCaption(a.key, v)}
-                  placeholder="Örn. Teknik föy, ölçü tablosu"
+                  placeholder={tr('Örn. Teknik föy, ölçü tablosu')}
                   maxLength={TENDER_CAPTION_MAX}
                 />
               </View>
-              <RemoveButton label={`PDF ${i + 1} kaldır`} onPress={() => props.onRemove(a.key)} />
+              <RemoveButton label={tr('PDF {n} kaldır', { n: i + 1 })} onPress={() => props.onRemove(a.key)} />
             </View>
           ))}
 
@@ -841,8 +842,8 @@ function MediaSection(props: {
                 <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
                   <Text style={[t.type.body14, { color: t.colors.ink }]}>
                     {v.phase === 'uploading'
-                      ? `Video yükleniyor · %${Math.round(v.progress * 100)}`
-                      : `Video eklendi${v.durationSeconds != null ? ` · ${formatVideoDuration(v.durationSeconds)}` : ''}`}
+                      ? tr('Video yükleniyor · %{n}', { n: Math.round(v.progress * 100) })
+                      : `${tr('Video eklendi')}${v.durationSeconds != null ? ` · ${formatVideoDuration(v.durationSeconds)}` : ''}`}
                   </Text>
                   {v.phase === 'uploading' ? (
                     <View style={{ height: t.space[1], borderRadius: t.radius.full, backgroundColor: t.colors.surface2, overflow: 'hidden' }}>
@@ -856,7 +857,7 @@ function MediaSection(props: {
                     </View>
                   ) : null}
                 </View>
-                <RemoveButton label={`Video ${i + 1} kaldır`} onPress={() => props.onRemoveVideo(i)} />
+                <RemoveButton label={tr('Video {n} kaldır', { n: i + 1 })} onPress={() => props.onRemoveVideo(i)} />
               </View>
             ) : null
           )}

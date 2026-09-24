@@ -61,7 +61,7 @@ verificationRouter.post(
     await prisma.company.update({ where: { id: companyId }, data: { verification: 'inceleniyor' } });
     const admins = await adminIds();
     for (const adminId of admins) {
-      await notify(adminId, { kind: 'verification_request', title: `Doğrulama başvurusu: ${company.name}`, body: 'Belgeyi inceleyip karar verin.', data: { companyId, verificationRequestId: row.id } });
+      await notify(adminId, { kind: 'verification_request', title: 'Doğrulama başvurusu: {company}', vars: { company: company.name }, body: 'Belgeyi inceleyip karar verin.', data: { companyId, verificationRequestId: row.id } });
     }
     res.status(201).json({ request: row });
   })
@@ -126,7 +126,9 @@ adminVerificationRouter.post(
     for (const m of members) {
       await notify(m.id, {
         kind: approve ? 'verification_approved' : 'verification_rejected',
-        title: approve ? (row.claim ? `${company.name} artık sizin` : `${company.name} doğrulandı`) : row.claim ? 'Firma sahiplenme başvurusu kabul edilmedi' : 'Doğrulama başvurusu kabul edilmedi',
+        vars: { company: company.name },
+        rawBody: !approve && !!parsed.data.adminNote,
+        title: approve ? (row.claim ? '{company} artık sizin' : '{company} doğrulandı') : row.claim ? 'Firma sahiplenme başvurusu kabul edilmedi' : 'Doğrulama başvurusu kabul edilmedi',
         body: approve ? 'Firma sayfanızda doğrulanmış rozeti görünüyor.' : parsed.data.adminNote || 'Belgeyi kontrol edip yeniden başvurabilirsiniz.',
         data: { companyId: row.companyId },
       });

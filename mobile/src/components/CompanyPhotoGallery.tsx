@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { tr } from '../i18n';
 import { View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import type { CompanyPhotoKind } from '../api/client';
 import { getCachedCompanyPhoto, loadCompanyPhoto } from '../features/companies/companyPhotoCache';
@@ -73,7 +74,7 @@ export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSi
               disabled={!url}
               accessibilityRole="imagebutton"
               accessibilityLabel={`${itemLabel} ${i + 1} / ${count}`}
-              accessibilityHint="Tam ekran büyütür"
+              accessibilityHint={tr('Tam ekran büyütür')}
               style={({ pressed }) => [thumb, pressed && { opacity: 0.85 }]}
             >
               {url ? (
@@ -87,7 +88,7 @@ export function CompanyPhotoGallery({ companyId, kind, count, itemLabel, thumbSi
           );
         })}
       </ScrollView>
-      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Büyütmek için fotoğrafa dokunun.</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Büyütmek için fotoğrafa dokunun.')}</Text>
       <ImageViewerModal imageUrl={viewerUrl} visible={!!viewerUrl} onClose={() => setViewerUrl(null)} />
     </View>
   );

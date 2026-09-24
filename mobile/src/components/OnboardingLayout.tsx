@@ -11,6 +11,7 @@ import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Screen } from '../ui';
+import { tr } from '../i18n';
 
 interface Props {
   step: number;
@@ -34,7 +35,7 @@ export function OnboardingLayout({ step, totalSteps, title, subtitle, children, 
       {/* İlerleme: dolu kısım `brand`, kalanı `surface2`. Ekran okuyucuya oran. */}
       <View
         accessibilityRole="progressbar"
-        accessibilityLabel={`Adım ${step} / ${totalSteps}`}
+        accessibilityLabel={tr('Adım {step} / {total}', { step, total: totalSteps })}
         style={{
           flexDirection: 'row',
           height: t.space[1],
@@ -48,7 +49,7 @@ export function OnboardingLayout({ step, totalSteps, title, subtitle, children, 
       <Screen sticky={footer}>
         <View style={{ gap: t.space[2], minWidth: 0 }}>
           <Text style={[t.type.caption12, { color: t.colors.ink3 }]}>
-            Adım {step} / {totalSteps}
+            {tr('Adım {step} / {total}', { step, total: totalSteps })}
           </Text>
           <Text style={[t.type.title22, { color: t.colors.ink }]}>{title}</Text>
           {subtitle ? <Text style={[t.type.body16, { color: t.colors.ink2 }]}>{subtitle}</Text> : null}

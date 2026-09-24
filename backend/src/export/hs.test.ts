@@ -72,3 +72,18 @@ test('yorum: yükselen pazar, kazanılabilir pazar, fiyat verisi tutarsızsa kul
   assert.equal(referenceShare([row]), 3);
   assert.equal(overview([{ ...row, insight: ins }]).top[0].name, 'Mısır');
 });
+
+test('yorum İngilizce: aynı veri, lang=en ile İngilizce cümle; HS önerisi ve ülke adı çevrilir', async () => {
+  const { insightFor, overview } = await import('./insight');
+  const eg = TARGET_COUNTRIES.find((c) => c.iso2 === 'EG')!;
+  const cur = { year: 2025, total: 62_000_000, totalKg: 6_800_000, partners: [{ partner: 0, value: 62_000_000, kg: 6_800_000 }, { partner: 156, value: 30_000_000, kg: 2_450_000 }, { partner: 792, value: 1_180_000, kg: 97_000 }] };
+  const row = scoreMarket(eg, cur, { ...cur, year: 2024, total: 30_000_000 });
+  const en = insightFor(row, 10, 'en');
+  assert.match(en.summary, /^Egypt imports \$62 million of this product a year, up 107% on last year\./);
+  assert.equal(en.typeLabel, 'Rising opportunity');
+  assert.equal(overview([{ ...row, insight: en }], 'en').top[0].name, 'Egypt');
+  assert.match(insightFor(row, 10).summary, /^Mısır bu üründen yılda 62 milyon \$ ithal ediyor, geçen yıla göre %107 arttı\./);
+  const hs = suggestHs({ type: 'orme', composition: [{ fiber: 'pamuk', percent: 100 }], finishTags: ['duz_boya'] }, 'en');
+  assert.equal(hs.label, 'Weft-knitted fabric, cotton, dyed');
+  assert.deepEqual(hs.reasons, ['Elastane 0% (< 5%) → not 6004', 'Weft-knitted → 6006; predominant fiber group: cotton (100%)', 'Finish: dyed']);
+});

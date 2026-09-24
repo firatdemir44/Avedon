@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchUserProfile, type PublicUserProfile } from '../../api/client';
+import { tr } from '../../i18n';
 import { friendlyMessage } from '../../components/StateView';
 
 // Hem kendi profil sekmesi hem de başkasının profil ekranı aynı veriyi çekiyor;
@@ -21,7 +22,7 @@ export function useUserProfile(userId: string) {
         hasProfileRef.current = true;
         setProfile(user);
       })
-      .catch((err) => setError(friendlyMessage(err, 'Profil alınamadı')))
+      .catch((err) => setError(friendlyMessage(err, tr('Profil alınamadı'))))
       .finally(() => setLoading(false));
   }, [userId]);
 

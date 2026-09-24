@@ -3,6 +3,7 @@ import { View, Text, Pressable, type TextStyle, type ViewStyle } from 'react-nat
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../ui';
 import type { ResultRow } from '../features/assistant/toolResult';
+import { locale, tr } from '../i18n';
 
 interface Row {
   label: string;
@@ -143,7 +144,7 @@ export function AssistantResultCard({
           }}
         >
           <Text style={[t.type.caption12, { color: t.colors.ink3, flexShrink: 1 }]} accessibilityRole="header">
-            {title.toLocaleUpperCase('tr-TR')}
+            {title.toLocaleUpperCase(locale())}
           </Text>
           {unit ? <Text style={[t.type.mono14, { color: t.colors.ink3 }]}>{unit}</Text> : null}
         </View>
@@ -161,9 +162,9 @@ export function AssistantResultCard({
           const companyId = row.companyId;
           const link =
             productId && onProductPress
-              ? { onPress: () => onProductPress(productId), target: 'ürün sayfasını aç' }
+              ? { onPress: () => onProductPress(productId), target: tr('ürün sayfasını aç') }
               : companyId && onCompanyPress
-                ? { onPress: () => onCompanyPress(companyId), target: 'firma sayfasını aç' }
+                ? { onPress: () => onCompanyPress(companyId), target: tr('firma sayfasını aç') }
                 : null;
           if (link) {
             // Ürün / firma satırı dokunulabilir: en az 44px ve sonda ok.
@@ -201,7 +202,7 @@ export function AssistantResultCard({
           onPress={() => setOpenFormula((open) => !open)}
           accessibilityRole="button"
           accessibilityState={{ expanded: openFormula }}
-          accessibilityLabel={`Nasıl hesaplandı, ${openFormula ? 'kapat' : 'aç'}`}
+          accessibilityLabel={`${tr('Nasıl hesaplandı')}, ${openFormula ? tr('kapat') : tr('aç')}`}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -212,7 +213,7 @@ export function AssistantResultCard({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={[t.type.label14, { color: t.colors.brand }]}>Nasıl hesaplandı</Text>
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Nasıl hesaplandı')}</Text>
           <Icon name={openFormula ? 'chevron-up-outline' : 'chevron-down-outline'} size={t.size.iconSm} color="brand" />
         </Pressable>
       ) : null}

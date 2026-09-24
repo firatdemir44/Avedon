@@ -14,6 +14,7 @@ import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { useBottomPadding, Button, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Connections'>;
@@ -43,9 +44,9 @@ export function ConnectionsListScreen({ navigation }: Props) {
       <Screen scroll={false}>
         <EmptyState
           icon="warning"
-          title="Bağlantılar alınamadı"
-          description={friendlyMessage(error, 'Bağlantılar alınamadı')}
-          actionLabel="Tekrar dene"
+          title={tr('Bağlantılar alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantılar alınamadı'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </Screen>
@@ -75,7 +76,7 @@ export function ConnectionsListScreen({ navigation }: Props) {
               >
                 <Icon name="warning" size={t.size.iconSm} color="danger" />
                 <Text style={[t.type.body14, { color: t.colors.danger, flex: 1, minWidth: 0 }]}>
-                  {friendlyMessage(error, 'Bağlantılar alınamadı')}
+                  {friendlyMessage(error, tr('Bağlantılar alınamadı'))}
                 </Text>
               </View>
             ) : null}
@@ -84,7 +85,7 @@ export function ConnectionsListScreen({ navigation }: Props) {
             <Button
               kind="secondary"
               icon="person-add-outline"
-              label="Davet et"
+              label={tr('Davet et')}
               onPress={() => navigation.navigate('Invites')}
             />
           </View>
@@ -92,9 +93,9 @@ export function ConnectionsListScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="people-outline"
-            title="Henüz bağlantınız yok"
-            description="Akışta bir kişinin adına dokunup profilinden bağlantı kurabilirsiniz."
-            actionLabel="Akışa git"
+            title={tr('Henüz bağlantınız yok')}
+            description={tr('Akışta bir kişinin adına dokunup profilinden bağlantı kurabilirsiniz.')}
+            actionLabel={tr('Akışa git')}
             onAction={() => navigation.navigate('MainTabs', { screen: 'Feed' })}
           />
         }

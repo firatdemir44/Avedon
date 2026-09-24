@@ -18,6 +18,7 @@ import {
 import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
 import { fetchPreview, isPreviewError, parseHttpUrl } from '../linkPreview';
 import { COMMENT_NOT_ALLOWED_MESSAGE, NOT_TEXTILE_MESSAGE, REPORT_REASONS, checkTextileRelevance, feedFilters, publicPostRule, reportPost } from '../feedRules';
+import { t } from '../i18n';
 
 export const postsRouter = Router();
 postsRouter.use(requireAuth);
@@ -206,7 +207,7 @@ postsRouter.get(
   handle(async (req, res) => {
     const productId = typeof req.query.productId === 'string' ? req.query.productId : null;
     const excludePostId = typeof req.query.postId === 'string' ? req.query.postId : undefined;
-    res.json({ rule: await publicPostRule(req.user!, { productId, excludePostId }) });
+    res.json({ rule: await publicPostRule(req.user!, { productId, excludePostId, lang: req.lang }) });
   })
 );
 
@@ -267,14 +268,14 @@ async function checkPublicAllowed(
   res: Response,
   input: { body: string; imageUrl?: string | null; productId?: string | null; excludePostId?: string; link?: { title: string; description: string; siteName?: string } | null }
 ) {
-  const rule = await publicPostRule(req.user!, { productId: input.productId, excludePostId: input.excludePostId });
+  const rule = await publicPostRule(req.user!, { productId: input.productId, excludePostId: input.excludePostId, lang: req.lang });
   if (!rule.allowed) {
     res.status(403).json({ error: 'public_not_allowed', reason: rule.reason, message: rule.message, rule });
     return false;
   }
   const rel = await checkTextileRelevance({ body: input.body, imageDataUrl: input.imageUrl, productAttached: !!input.productId, link: input.link });
   if (!rel.textile) {
-    res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+    res.status(422).json({ error: 'not_textile', message: t(req.lang, NOT_TEXTILE_MESSAGE), detail: rel.reason });
     return false;
   }
   return true;
@@ -411,7 +412,7 @@ postsRouter.patch(
     } else if (nextBody !== existing.body || linkChanged) {
       // İçerik kuralı görünürlükten bağımsız: bağlantılara açık gönderiler de denetlenir.
       const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl, link: nextLink, productAttached: !!nextProductId });
-      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: t(req.lang, NOT_TEXTILE_MESSAGE), detail: rel.reason });
     }
 
     const changed =
@@ -487,7 +488,7 @@ postsRouter.post(
     } else {
       // Bağlantılara açık gönderide paylaşım hakkı sınırı yok ama içerik kuralı aynen geçerli.
       const rel = await checkTextileRelevance({ body: body?.trim() ?? '', imageDataUrl: imageUrl, productAttached: !!productId, link });
-      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: t(req.lang, NOT_TEXTILE_MESSAGE), detail: rel.reason });
     }
 
     let post;
@@ -597,7 +598,7 @@ postsRouter.post(
     // Yorumlarda da siyasi/dini/sektör dışı içerik kabul edilmez. Kısa nezaket yorumları ("teşekkürler",
     // "fiyat alabilir miyim?") gönderinin konusu bağlamında denetlendiği için geçer.
     const rel = await checkTextileRelevance({ body: `[Tekstil gönderisine yazılan yorum; gönderi: "${post.body.slice(0, 200)}"]\nYorum: ${parsed.data.body}` });
-    if (!rel.textile) return res.status(422).json({ error: 'comment_not_allowed', message: COMMENT_NOT_ALLOWED_MESSAGE, detail: rel.reason });
+    if (!rel.textile) return res.status(422).json({ error: 'comment_not_allowed', message: t(req.lang, COMMENT_NOT_ALLOWED_MESSAGE), detail: rel.reason });
 
     const comment = await prisma.postComment.create({
       data: { postId: post.id, authorId: req.user!.id, body: parsed.data.body },

@@ -5,6 +5,7 @@ import { calculateYarnUsageKg } from '../../domain/calc/formulas';
 import { effectiveWidthCm } from '../../domain/calc/wastage';
 import { metersPerKg, metersToKg } from '../../domain/glossary/units';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const inputSchema = z.object({
   fabricLengthMeters: z.number().positive().describe('Üretilecek kumaş uzunluğu (metre)'),
@@ -43,8 +44,14 @@ export const yarnUsage = defineSkill<typeof inputSchema, YarnUsageOutput>({
       metersPerKg: metersPerKg(input.weightGsm, width),
     };
   },
-  summarize: (input, out) =>
-    `${fmt(input.weightGsm, 0)} gr/m², ${fmt(out.effectiveWidthCm, 0)} cm açık ende 1 metre ${fmt(out.kgPerMeter, 3)} kg gelir ` +
-    `(1 kg ≈ ${fmt(out.metersPerKg)} m); ${fmt(input.fabricLengthMeters, 0)} metre için fire %${fmt(input.wastagePercent, 1)} dahil ` +
-    `${fmt(out.yarnKg)} kg iplik gerekir.`,
+  summarize: (input, out, lang) =>
+    t(lang, '{gsm} gr/m², {w} cm açık ende 1 metre {kpm} kg gelir (1 kg ≈ {mpk} m); {m} metre için fire %{loss} dahil {kg} kg iplik gerekir.', {
+      gsm: fmt(input.weightGsm, 0),
+      w: fmt(out.effectiveWidthCm, 0),
+      kpm: fmt(out.kgPerMeter, 3),
+      mpk: fmt(out.metersPerKg),
+      m: fmt(input.fabricLengthMeters, 0),
+      loss: fmt(input.wastagePercent, 1),
+      kg: fmt(out.yarnKg),
+    }),
 });

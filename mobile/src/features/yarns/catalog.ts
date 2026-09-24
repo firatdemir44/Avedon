@@ -7,8 +7,10 @@
 import { useEffect, useState } from 'react';
 import { fetchYarnOptions, type YarnOption, type YarnOptions } from '../../api/client';
 import { fromTex } from '../calculators/formulas';
+import { locale, tr } from '../../i18n';
+import { trLabels } from '../trLabels';
 
-export const YARN_FAMILIES: readonly YarnOption[] = [
+export const YARN_FAMILIES: readonly YarnOption[] = trLabels([
   { key: 'pamuk', label: 'Pamuk' },
   { key: 'viskon', label: 'Viskon / Rejenere (modal, liyosel)' },
   { key: 'polyester', label: 'Polyester' },
@@ -20,7 +22,7 @@ export const YARN_FAMILIES: readonly YarnOption[] = [
   { key: 'fantezi', label: 'Fantezi (şönil, buklet, lüreks...)' },
   { key: 'elastan_gipe', label: 'Elastan / Gipe' },
   { key: 'diger', label: 'Diğer' },
-];
+]);
 
 export const YARN_COUNT_UNITS: readonly YarnOption[] = [
   { key: 'ne', label: 'Ne' },
@@ -30,35 +32,35 @@ export const YARN_COUNT_UNITS: readonly YarnOption[] = [
   { key: 'tex', label: 'tex' },
 ];
 
-export const YARN_SPINNINGS: readonly YarnOption[] = [
+export const YARN_SPINNINGS: readonly YarnOption[] = trLabels([
   { key: 'ring', label: 'Ring' },
   { key: 'kompakt', label: 'Kompakt' },
   { key: 'open_end', label: 'Open End' },
   { key: 'vortex', label: 'Vortex' },
   { key: 'siro', label: 'Siro' },
-];
+]);
 
-export const YARN_COMBINGS: readonly YarnOption[] = [
+export const YARN_COMBINGS: readonly YarnOption[] = trLabels([
   { key: 'penye', label: 'Penye' },
   { key: 'karde', label: 'Karde' },
-];
+]);
 
-export const YARN_FILAMENT_TYPES: readonly YarnOption[] = [
+export const YARN_FILAMENT_TYPES: readonly YarnOption[] = trLabels([
   { key: 'dty', label: 'DTY (tekstüre)' },
   { key: 'fdy', label: 'FDY' },
   { key: 'poy', label: 'POY' },
   { key: 'aty', label: 'ATY (hava tekstüre)' },
   { key: 'bcf', label: 'BCF' },
   { key: 'mono', label: 'Monofilament' },
-];
+]);
 
-export const YARN_LUSTERS: readonly YarnOption[] = [
+export const YARN_LUSTERS: readonly YarnOption[] = trLabels([
   { key: 'parlak', label: 'Parlak' },
   { key: 'yari_mat', label: 'Yarı mat' },
   { key: 'mat', label: 'Mat' },
-];
+]);
 
-export const YARN_END_USES: readonly YarnOption[] = [
+export const YARN_END_USES: readonly YarnOption[] = trLabels([
   { key: 'yuvarlak_orme', label: 'Yuvarlak örme' },
   { key: 'triko', label: 'Triko (düz örme)' },
   { key: 'dokuma_cozgu', label: 'Dokuma - çözgü' },
@@ -68,20 +70,20 @@ export const YARN_END_USES: readonly YarnOption[] = [
   { key: 'dar_dokuma', label: 'Dar dokuma / etiket' },
   { key: 'dikis_nakis', label: 'Dikiş / nakış' },
   { key: 'hali', label: 'Halı' },
-];
+]);
 
-export const YARN_COLOR_STATES: readonly YarnOption[] = [
+export const YARN_COLOR_STATES: readonly YarnOption[] = trLabels([
   { key: 'ham', label: 'Ham' },
   { key: 'boyali', label: 'Boyalı (bobin boya)' },
   { key: 'melanj', label: 'Melanj' },
   { key: 'elyaf_boyali', label: 'Elyaf boyalı' },
   { key: 'dope_dyed', label: 'Dope dyed (çözelti boyalı)' },
-];
+]);
 
-export const YARN_SELLER_ROLES: readonly YarnOption[] = [
+export const YARN_SELLER_ROLES: readonly YarnOption[] = trLabels([
   { key: 'uretici', label: 'Üreticiyiz' },
   { key: 'tuccar', label: 'Tüccarız (stoktan satış)' },
-];
+]);
 
 export const FALLBACK_YARN_OPTIONS: YarnOptions = {
   families: YARN_FAMILIES,
@@ -163,9 +165,9 @@ export function yarnFields(family: string): YarnFieldVisibility {
 
 // Aileye göre "Çeşit / yapı" alanının yer tutucusu.
 export function varietyPlaceholder(family: string) {
-  if (family === 'fantezi') return 'Örn. Şönil';
-  if (family === 'elastan_gipe') return 'Örn. Tek kat gipe 20 den elastan + 70/24 PA';
-  return 'Örn. Supima, mikro';
+  if (family === 'fantezi') return tr('Örn. Şönil');
+  if (family === 'elastan_gipe') return tr('Örn. Tek kat gipe 20 den elastan + 70/24 PA');
+  return tr('Örn. Supima, mikro');
 }
 
 // Aileye göre karışım önerisi (kaydı zorunlu kılmaz, sadece hızlı doldurur).
@@ -187,7 +189,7 @@ export function suggestedFiber(family: string): string | null {
 // --- Numara gösterimi ---
 
 const trimNumber = (value: number, digits: number) =>
-  value.toLocaleString('tr-TR', { maximumFractionDigits: digits });
+  value.toLocaleString(locale(), { maximumFractionDigits: digits });
 
 // Kayıtlı dtex değerinden diğer sistemlerdeki karşılıkları: ürün sayfasındaki
 // küçük "diğer birimlerde" satırı. Hesap tek yerde (formulas.ts fromTex).
@@ -197,7 +199,7 @@ export function otherCountLabels(countDtex: number, countUnit: string): string {
   const all: { key: string; text: string }[] = [
     { key: 'ne', text: `${trimNumber(result.ne, 1)} Ne` },
     { key: 'nm', text: `${trimNumber(result.nm, 1)} Nm` },
-    { key: 'denye', text: `${trimNumber(result.denye, 0)} denye` },
+    { key: 'denye', text: `${trimNumber(result.denye, 0)} ${tr('denye')}` },
     { key: 'dtex', text: `${trimNumber(result.dtex, 0)} dtex` },
     { key: 'tex', text: `${trimNumber(result.tex, 1)} tex` },
   ];

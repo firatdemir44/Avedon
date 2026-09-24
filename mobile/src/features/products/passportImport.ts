@@ -21,6 +21,8 @@ import {
   type ProductType,
 } from './catalog';
 import { certificateLabel, formatComposition, widthTypeLabel } from './glossaryLabels';
+import { locale } from '../../i18n';
+import { trLabels } from '../trLabels';
 
 export const EXTRACTION_FIELDS: readonly ExtractionFieldName[] = [
   'type',
@@ -36,7 +38,7 @@ export const EXTRACTION_FIELDS: readonly ExtractionFieldName[] = [
   'usages',
 ];
 
-export const FIELD_LABELS: Record<ExtractionFieldName, string> = {
+export const FIELD_LABELS: Record<ExtractionFieldName, string> = trLabels({
   type: 'Çeşit',
   subtype: 'Alt çeşit',
   code: 'Ürün kodu',
@@ -48,9 +50,9 @@ export const FIELD_LABELS: Record<ExtractionFieldName, string> = {
   certificates: 'Sertifikalar',
   finishTags: 'Apre / boya',
   usages: 'Kullanım amaçları',
-};
+});
 
-export const REJECT_REASON_LABELS: Record<ExtractRejected['reason'], string> = {
+export const REJECT_REASON_LABELS: Record<ExtractRejected['reason'], string> = trLabels({
   unknown_fiber: 'Bilinmeyen lif',
   unknown_subtype: 'Bilinmeyen alt çeşit',
   subtype_not_in_type: 'Seçili çeşide ait değil',
@@ -58,7 +60,7 @@ export const REJECT_REASON_LABELS: Record<ExtractRejected['reason'], string> = {
   unknown_yarn_unit: 'Bilinmeyen iplik birimi',
   invalid_value: 'Geçersiz değer',
   low_confidence: 'Güven düşük',
-};
+});
 
 // Bu güvenin altındaki alan onay ekranında işaretsiz gelir (kullanıcı isterse
 // elle işaretler). Sunucudaki eşikle karıştırılmamalı: sunucu zaten daha
@@ -142,7 +144,7 @@ export function formatFieldValue(extraction: PassportExtraction, field: Extracti
 
 // Sayı: tam sayıysa olduğu gibi, değilse Türkçe ondalık.
 function formatNumber(value: number) {
-  return Number.isInteger(value) ? String(value) : value.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+  return Number.isInteger(value) ? String(value) : value.toLocaleString(locale(), { maximumFractionDigits: 2 });
 }
 
 // Alanda okunmuş bir değer var mı (onay ekranı yalnızca bunları listeler).

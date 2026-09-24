@@ -17,6 +17,7 @@ import { formatMeasure } from '../../features/calculators/parse';
 import { formatQuantity, formatQuoteDate, unitShort } from '../../features/quotes/format';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Screen } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'RfqCompare'>;
 
@@ -38,17 +39,17 @@ function priceText(value: number, currency: string, unit: string) {
 
 // "2,40 USD/m'den çevrildi" — Türkçe ek birime göre değişiyor.
 function convertedNote(price: { value: number; currency: string; unit: string }) {
-  const suffix = price.unit === 'kg' ? "'dan" : "'den";
-  return `${formatMeasure(price.value)} ${price.currency}/${unitShort(price.unit)}${suffix} çevrildi`;
+  const text = `${formatMeasure(price.value)} ${price.currency}/${unitShort(price.unit)}`;
+  return price.unit === 'kg' ? tr("{price}'dan çevrildi", { price: text }) : tr("{price}'den çevrildi", { price: text });
 }
 
 function statusText(row: RfqRow): string {
   // Teklif yoksa isteğin kendi durumu anlatır (bekleniyor / geri çekildi).
   if (!row.quote) return quoteStatusLabel(row.requestStatus);
-  if (row.quote.status === 'expired') return 'Süresi doldu';
-  if (row.quote.status === 'accepted') return 'Kabul edildi';
-  if (row.quote.status === 'declined') return 'Reddedildi';
-  return 'Teklif verildi';
+  if (row.quote.status === 'expired') return tr('Süresi doldu');
+  if (row.quote.status === 'accepted') return tr('Kabul edildi');
+  if (row.quote.status === 'declined') return tr('Reddedildi');
+  return tr('Teklif verildi');
 }
 
 // --- Hücre içi küçük bileşenler ------------------------------------------
@@ -105,7 +106,7 @@ function ExpandableCell({
     <Pressable
       onPress={() => onExpand({ label, text })}
       accessibilityRole="button"
-      accessibilityLabel={`${label}, tamamını gör`}
+      accessibilityLabel={tr('{label}, tamamını gör', { label })}
       // Hücrenin tamamını kaplar ki sabit yükseklikte de kolay dokunulsun.
       style={({ pressed }) => ({
         alignSelf: 'stretch',
@@ -128,10 +129,10 @@ interface RowSpec {
   render: (row: RfqRow, onExpand: (cell: { label: string; text: string }) => void) => React.ReactNode;
 }
 
-const ROW_SPECS: RowSpec[] = [
+const ROW_SPECS = (): RowSpec[] => [
   {
     key: 'price',
-    label: 'Birim fiyat',
+    label: tr('Birim fiyat'),
     height: ROW_DOUBLE,
     render: (row) => {
       const comparable = row.quote?.comparablePrice;
@@ -158,7 +159,7 @@ const ROW_SPECS: RowSpec[] = [
   },
   {
     key: 'total',
-    label: 'Tahmini toplam',
+    label: tr('Tahmini toplam'),
     height: ROW_SINGLE,
     render: (row) => {
       const total = row.quote?.estimatedTotal;
@@ -168,7 +169,7 @@ const ROW_SPECS: RowSpec[] = [
   },
   {
     key: 'moq',
-    label: 'En az sipariş',
+    label: tr('En az sipariş'),
     height: ROW_DOUBLE,
     render: (row) => {
       const quote = row.quote;
@@ -176,32 +177,32 @@ const ROW_SPECS: RowSpec[] = [
       return (
         <View>
           <CellValue text={`${formatMeasure(quote.moq)} ${unitShort(quote.moqUnit || '')}`} warn={quote.moqAboveQuantity} />
-          {quote.moqAboveQuantity ? <CellNote warn text="ihtiyacınızın üstünde" /> : null}
+          {quote.moqAboveQuantity ? <CellNote warn text={tr('ihtiyacınızın üstünde')} /> : null}
         </View>
       );
     },
   },
   {
     key: 'lead',
-    label: 'Termin',
+    label: tr('Termin'),
     height: ROW_SINGLE,
     render: (row) => {
       if (row.quote?.leadTimeDays == null) return <Empty />;
-      return <CellValue text={`${row.quote.leadTimeDays} gün`} />;
+      return <CellValue text={tr('{n} gün', { n: row.quote.leadTimeDays })} />;
     },
   },
   {
     key: 'payment',
-    label: 'Ödeme koşulu',
+    label: tr('Ödeme koşulu'),
     height: ROW_DOUBLE,
     render: (row, onExpand) => {
       if (!row.quote?.paymentTerms) return <Empty />;
-      return <ExpandableCell label="Ödeme koşulu" text={row.quote.paymentTerms} onExpand={onExpand} />;
+      return <ExpandableCell label={tr('Ödeme koşulu')} text={row.quote.paymentTerms} onExpand={onExpand} />;
     },
   },
   {
     key: 'valid',
-    label: 'Geçerlilik',
+    label: tr('Geçerlilik'),
     height: ROW_SINGLE,
     render: (row) => {
       if (!row.quote?.validUntil) return <Empty />;
@@ -210,16 +211,16 @@ const ROW_SPECS: RowSpec[] = [
   },
   {
     key: 'note',
-    label: 'Not',
+    label: tr('Not'),
     height: ROW_DOUBLE,
     render: (row, onExpand) => {
       if (!row.quote?.note) return <Empty />;
-      return <ExpandableCell label="Not" text={row.quote.note} onExpand={onExpand} />;
+      return <ExpandableCell label={tr('Not')} text={row.quote.note} onExpand={onExpand} />;
     },
   },
   {
     key: 'status',
-    label: 'Durum',
+    label: tr('Durum'),
     height: ROW_SINGLE,
     render: (row) => <CellText text={statusText(row)} />,
   },
@@ -267,7 +268,7 @@ export function RfqCompareScreen({ route, navigation }: Props) {
 
   const shell = (children: React.ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Teklif karşılaştırma" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Teklif karşılaştırma')} leading="back" onBack={() => navigation.goBack()} />
       {children}
     </View>
   );
@@ -282,16 +283,16 @@ export function RfqCompareScreen({ route, navigation }: Props) {
         {error && !isNotFound(error) ? (
           <EmptyState
             icon="warning"
-            title="Yüklenemedi"
-            description={friendlyMessage(error, 'Karşılaştırma alınamadı')}
-            actionLabel="Tekrar dene"
+            title={tr('Yüklenemedi')}
+            description={friendlyMessage(error, tr('Karşılaştırma alınamadı'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         ) : (
           <EmptyState
             icon="git-compare-outline"
-            title="Karşılaştırma bulunamadı"
-            description="İstek kaldırılmış ya da size ait olmayabilir."
+            title={tr('Karşılaştırma bulunamadı')}
+            description={tr('İstek kaldırılmış ya da size ait olmayabilir.')}
           />
         )}
       </Screen>
@@ -318,17 +319,17 @@ export function RfqCompareScreen({ route, navigation }: Props) {
           <View style={{ gap: t.space[2] }}>
             <Text style={[t.type.title18, { color: t.colors.ink }]}>{rfq.title}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[4] }}>
-              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>İstenen miktar</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('İstenen miktar')}</Text>
               <Text style={[t.type.mono14, { color: t.colors.ink }]}>{formatQuantity(rfq.quantity, rfq.unit)}</Text>
             </View>
             {rfq.targetDate ? (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[4] }}>
-                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>İstenen termin</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('İstenen termin')}</Text>
                 <Text style={[t.type.mono14, { color: t.colors.ink }]}>{formatQuoteDate(rfq.targetDate)}</Text>
               </View>
             ) : null}
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              {rfq.requestCount} firmaya soruldu · {rfq.quotedCount} teklif geldi
+              {tr('{a} firmaya soruldu · {b} teklif geldi', { a: rfq.requestCount, b: rfq.quotedCount })}
             </Text>
             {rfq.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>“{rfq.note}”</Text> : null}
           </View>
@@ -337,14 +338,14 @@ export function RfqCompareScreen({ route, navigation }: Props) {
         {rfq.currencies.length > 1 ? (
           <Notice
             tone="warning"
-            text="Teklifler farklı para birimlerinde; en düşük fiyat işareti yalnızca aynı para birimi içinde verilir."
+            text={tr('Teklifler farklı para birimlerinde; en düşük fiyat işareti yalnızca aynı para birimi içinde verilir.')}
           />
         ) : null}
 
         {error ? (
           <View style={{ gap: t.space[2] }}>
-            <Notice tone="danger" text={friendlyMessage(error, 'Karşılaştırma yenilenemedi')} />
-            <Button kind="secondary" label="Tekrar dene" onPress={reload} />
+            <Notice tone="danger" text={friendlyMessage(error, tr('Karşılaştırma yenilenemedi'))} />
+            <Button kind="secondary" label={tr('Tekrar dene')} onPress={reload} />
           </View>
         ) : null}
 
@@ -354,7 +355,7 @@ export function RfqCompareScreen({ route, navigation }: Props) {
         {rfq.rows.length ? (
           <PriceIndexCard
             productId={rfq.rows[0].product.id}
-            subtitle="İlk üründeki kaliteye göre"
+            subtitle={tr('İlk üründeki kaliteye göre')}
             hideWhenUnavailable
           />
         ) : null}
@@ -371,10 +372,10 @@ export function RfqCompareScreen({ route, navigation }: Props) {
               }}
             >
               <View style={cell(HEADER_HEIGHT)}>
-                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Firma</Text>
+                <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Firma')}</Text>
               </View>
               <View style={cell(FLAG_HEIGHT)} />
-              {ROW_SPECS.map((spec) => (
+              {ROW_SPECS().map((spec) => (
                 <View key={spec.key} style={cell(spec.height)}>
                   <Text style={[t.type.body14, { color: t.colors.ink2 }]} numberOfLines={2}>
                     {spec.label}
@@ -401,15 +402,15 @@ export function RfqCompareScreen({ route, navigation }: Props) {
                         {row.company.name}
                       </Text>
                       {row.company.verification === 'dogrulanmis' ? (
-                        <View accessibilityLabel="Doğrulanmış firma" accessibilityRole="image">
+                        <View accessibilityLabel={tr('Doğrulanmış firma')} accessibilityRole="image">
                           <Icon name="shield-checkmark-outline" size={t.size.iconSm} color="success" />
                         </View>
                       ) : null}
                     </View>
                     <Text style={[t.type.caption12, { color: t.colors.ink3 }]} numberOfLines={1}>
                       {row.company.confirmedReferenceCount > 0
-                        ? `${row.company.confirmedReferenceCount} referans`
-                        : 'Referans yok'}
+                        ? tr('{n} referans', { n: row.company.confirmedReferenceCount })
+                        : tr('Referans yok')}
                     </Text>
                     <Text style={[t.type.mono14, { color: t.colors.ink2 }]} numberOfLines={1}>
                       {row.product.code}
@@ -419,12 +420,12 @@ export function RfqCompareScreen({ route, navigation }: Props) {
                   <View style={cell(FLAG_HEIGHT)}>
                     {/* İki rozet yan yana sütuna sığmaz; alt alta. */}
                     <View style={{ gap: t.space[1] }}>
-                      {row.flags.includes('lowest_price') ? <Badge kind="delivered" label="En düşük fiyat" /> : null}
-                      {row.flags.includes('fastest') ? <Badge kind="new" label="En kısa termin" /> : null}
+                      {row.flags.includes('lowest_price') ? <Badge kind="delivered" label={tr('En düşük fiyat')} /> : null}
+                      {row.flags.includes('fastest') ? <Badge kind="new" label={tr('En kısa termin')} /> : null}
                     </View>
                   </View>
 
-                  {ROW_SPECS.map((spec) => (
+                  {ROW_SPECS().map((spec) => (
                     <View key={spec.key} style={cell(spec.height)}>
                       {spec.render(row, setExpanded)}
                     </View>
@@ -434,8 +435,8 @@ export function RfqCompareScreen({ route, navigation }: Props) {
                     <Button
                       kind="secondary"
                       fullWidth
-                      label="Teklifi aç"
-                      accessibilityLabel={`${row.company.name} teklifini aç`}
+                      label={tr('Teklifi aç')}
+                      accessibilityLabel={tr('{name} teklifini aç', { name: row.company.name })}
                       onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: row.requestId })}
                     />
                   </View>
@@ -446,14 +447,13 @@ export function RfqCompareScreen({ route, navigation }: Props) {
         </Card>
 
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Kabul ve ret işlemi teklifin kendi sayfasında yapılır. Fiyatlar istenen birime çevrilir; para birimi
-          çevrilmez.
+          {tr('Kabul ve ret işlemi teklifin kendi sayfasında yapılır. Fiyatlar istenen birime çevrilir; para birimi çevrilmez.')}
         </Text>
       </ScrollView>
 
       <BottomSheet visible={expanded !== null} onClose={() => setExpanded(null)} title={expanded?.label}>
         <Text style={[t.type.body16, { color: t.colors.ink }]}>{expanded?.text}</Text>
-        <Button kind="secondary" label="Kapat" onPress={() => setExpanded(null)} />
+        <Button kind="secondary" label={tr('Kapat')} onPress={() => setExpanded(null)} />
       </BottomSheet>
     </Screen>
   );

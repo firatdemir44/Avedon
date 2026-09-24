@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { tr } from '../i18n';
 import { Animated, Easing, Platform, type StyleProp, type ViewStyle } from 'react-native';
 import { useReduceMotion } from '../features/useReduceMotion';
 import { useTheme } from '../theme/ThemeContext';
@@ -63,7 +64,7 @@ export function AssistantAvatar({
     <Animated.View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={accessibilityLabel ?? ASSISTANT_DISPLAY_NAME}
+      accessibilityLabel={accessibilityLabel ?? tr(ASSISTANT_DISPLAY_NAME)}
       style={[
         {
           width: size,

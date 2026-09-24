@@ -8,6 +8,7 @@ import {
   type StockUnit,
 } from './catalog';
 import { certificateLabel, fiberLabel, widthTypeLabel, type WidthType } from './glossaryLabels';
+import { tr } from '../../i18n';
 
 // Ürün filtreleri (tasarımdaki "Filtreleme Seçenekleri"). Sunucuda
 // GET /api/products sorgu parametrelerine birebir karşılık gelir
@@ -146,16 +147,16 @@ export function watchQueryFromFilters(search: string, filters: ProductFilters): 
 // İzlemeye çevrilirken düşen süzgeçler (kullanıcıya söylenir, sessizce yutulmaz).
 export function unsupportedWatchFilterLabels(filters: ProductFilters): string[] {
   const dropped: string[] = [];
-  if (filters.stockMin !== undefined || filters.stockUnit) dropped.push('stok');
-  if (filters.content?.trim()) dropped.push('içerik metni');
-  if (filters.widthType) dropped.push('en tipi');
+  if (filters.stockMin !== undefined || filters.stockUnit) dropped.push(tr('stok'));
+  if (filters.content?.trim()) dropped.push(tr('içerik metni'));
+  if (filters.widthType) dropped.push(tr('en tipi'));
   return dropped;
 }
 
 function rangeLabel(min: number | undefined, max: number | undefined, unit: string) {
   if (min !== undefined && max !== undefined) return `${formatMeasure(min)}-${formatMeasure(max)} ${unit}`;
-  if (min !== undefined) return `en az ${formatMeasure(min)} ${unit}`;
-  return `en çok ${formatMeasure(max!)} ${unit}`;
+  if (min !== undefined) return tr('en az {v} {unit}', { v: formatMeasure(min), unit });
+  return tr('en çok {v} {unit}', { v: formatMeasure(max!), unit });
 }
 
 export interface FilterChip {
@@ -196,29 +197,29 @@ export function activeFilterChips(filters: ProductFilters): FilterChip[] {
       key: 'stock',
       label:
         filters.stockMin !== undefined
-          ? `Stok en az ${formatMeasure(filters.stockMin)} ${unit}`
-          : `Stok birimi: ${unit}`,
+          ? tr('Stok en az {v} {unit}', { v: formatMeasure(filters.stockMin), unit })
+          : tr('Stok birimi: {unit}', { unit }),
       remove: (f) => ({ ...f, stockMin: undefined, stockUnit: undefined }),
     });
   }
   if (filters.gsmMin !== undefined || filters.gsmMax !== undefined) {
     chips.push({
       key: 'gsm',
-      label: `Gramaj ${rangeLabel(filters.gsmMin, filters.gsmMax, 'gr/m²')}`,
+      label: tr('Gramaj {range}', { range: rangeLabel(filters.gsmMin, filters.gsmMax, 'gr/m²') }),
       remove: (f) => ({ ...f, gsmMin: undefined, gsmMax: undefined }),
     });
   }
   if (filters.widthMin !== undefined || filters.widthMax !== undefined) {
     chips.push({
       key: 'width',
-      label: `En ${rangeLabel(filters.widthMin, filters.widthMax, 'cm')}`,
+      label: tr('En {range}', { range: rangeLabel(filters.widthMin, filters.widthMax, 'cm') }),
       remove: (f) => ({ ...f, widthMin: undefined, widthMax: undefined }),
     });
   }
   if (filters.content?.trim()) {
     chips.push({
       key: 'content',
-      label: `İçerik: ${filters.content.trim()}`,
+      label: tr('İçerik: {text}', { text: filters.content.trim() }),
       remove: (f) => ({ ...f, content: undefined }),
     });
   }
@@ -227,7 +228,7 @@ export function activeFilterChips(filters: ProductFilters): FilterChip[] {
     const min = filters.fiberMinPercent;
     chips.push({
       key: `fiber:${fiber}`,
-      label: min !== undefined ? `${fiberLabel(fiber)} en az %${formatMeasure(min)}` : fiberLabel(fiber),
+      label: min !== undefined ? tr('{fiber} en az %{v}', { fiber: fiberLabel(fiber), v: formatMeasure(min) }) : fiberLabel(fiber),
       remove: (f) => {
         const rest = f.fibers.filter((v) => v !== fiber);
         return { ...f, fibers: rest, fiberMinPercent: rest.length ? f.fiberMinPercent : undefined };
@@ -244,14 +245,14 @@ export function activeFilterChips(filters: ProductFilters): FilterChip[] {
   if (filters.moqMax !== undefined) {
     chips.push({
       key: 'moqMax',
-      label: `MOQ en çok ${formatMeasure(filters.moqMax)}`,
+      label: tr('MOQ en çok {v}', { v: formatMeasure(filters.moqMax) }),
       remove: (f) => ({ ...f, moqMax: undefined }),
     });
   }
   if (filters.leadTimeMax !== undefined) {
     chips.push({
       key: 'leadTimeMax',
-      label: `Termin en çok ${formatMeasure(filters.leadTimeMax)} gün`,
+      label: tr('Termin en çok {v} gün', { v: formatMeasure(filters.leadTimeMax) }),
       remove: (f) => ({ ...f, leadTimeMax: undefined }),
     });
   }

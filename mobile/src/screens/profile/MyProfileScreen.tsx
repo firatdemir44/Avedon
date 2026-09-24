@@ -26,6 +26,7 @@ import { useSession } from '../../context/SessionContext';
 import { useUserProfile } from './useUserProfile';
 import { ProfileIdentity } from './ProfileIdentity';
 import { ExperienceSection } from './ExperienceSection';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { BottomSheet, Button, Icon, ListRow, Screen, SectionTitle, Skeleton, SkeletonRow, type AnyIconName } from '../../ui';
 
@@ -51,12 +52,12 @@ export function MyProfileScreen({ navigation }: Props) {
   const photoErrorText = (err: unknown) => {
     const code = err instanceof Error ? err.message : '';
     return code === 'permission_denied'
-      ? 'Galeriye erişim izni verilmedi.'
+      ? tr('Galeriye erişim izni verilmedi.')
       : code === 'camera_permission_denied'
-        ? 'Kameraya erişim izni verilmedi.'
+        ? tr('Kameraya erişim izni verilmedi.')
         : code === 'image_too_large'
-          ? 'Fotoğraf çok büyük, daha küçük bir fotoğraf deneyin.'
-          : 'Fotoğraf yüklenemedi, tekrar deneyin.';
+          ? tr('Fotoğraf çok büyük, daha küçük bir fotoğraf deneyin.')
+          : tr('Fotoğraf yüklenemedi, tekrar deneyin.');
   };
 
   // Kapak fotoğrafı: avatarla aynı akış (1200 px'e küçült, JPEG, data URL).
@@ -80,9 +81,9 @@ export function MyProfileScreen({ navigation }: Props) {
 
   const removeCover = async () => {
     const ok = await confirmAction({
-      title: 'Kapak fotoğrafını kaldır',
-      message: 'Kapak fotoğrafınız kaldırılacak. Yerine düz zemin görünecek.',
-      confirmLabel: 'Kaldır',
+      title: tr('Kapak fotoğrafını kaldır'),
+      message: tr('Kapak fotoğrafınız kaldırılacak. Yerine düz zemin görünecek.'),
+      confirmLabel: tr('Kaldır'),
       destructive: true,
     });
     if (!ok) return;
@@ -93,7 +94,7 @@ export function MyProfileScreen({ navigation }: Props) {
       setCoverOverride(null);
       reload();
     } catch {
-      setPhotoError('Kapak fotoğrafı kaldırılamadı, tekrar deneyin.');
+      setPhotoError(tr('Kapak fotoğrafı kaldırılamadı, tekrar deneyin.'));
     } finally {
       setPhotoBusy(false);
     }
@@ -122,9 +123,9 @@ export function MyProfileScreen({ navigation }: Props) {
   const removePhoto = async () => {
     if (!user) return;
     const ok = await confirmAction({
-      title: 'Fotoğrafı kaldır',
-      message: 'Profil fotoğrafınız kaldırılacak. Yerine baş harfleriniz görünecek.',
-      confirmLabel: 'Kaldır',
+      title: tr('Fotoğrafı kaldır'),
+      message: tr('Profil fotoğrafınız kaldırılacak. Yerine baş harfleriniz görünecek.'),
+      confirmLabel: tr('Kaldır'),
       destructive: true,
     });
     if (!ok) return;
@@ -134,7 +135,7 @@ export function MyProfileScreen({ navigation }: Props) {
       await uploadMyAvatar(null);
       updateUser({ avatarUpdatedAt: null });
     } catch {
-      setPhotoError('Fotoğraf kaldırılamadı, tekrar deneyin.');
+      setPhotoError(tr('Fotoğraf kaldırılamadı, tekrar deneyin.'));
     } finally {
       setPhotoBusy(false);
     }
@@ -150,7 +151,7 @@ export function MyProfileScreen({ navigation }: Props) {
   const photoActions = !photoBusy && !photoError ? null : (
     <View style={{ gap: t.space[2] }}>
       {photoBusy ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Fotoğraf yükleniyor…</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Fotoğraf yükleniyor…')}</Text>
       ) : null}
       {photoError ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
@@ -181,56 +182,56 @@ export function MyProfileScreen({ navigation }: Props) {
 
   const menu = [
     user?.companyId
-      ? { key: 'company', title: 'Firmam', icon: 'business-outline' as AnyIconName, onPress: () => navigation.navigate('CompanyProfile') }
+      ? { key: 'company', title: tr('Firmam'), icon: 'business-outline' as AnyIconName, onPress: () => navigation.navigate('CompanyProfile') }
       : null,
     user?.companyId
-      ? { key: 'assistantReport', title: 'Asistan raporu', icon: 'stats-chart-outline' as AnyIconName, onPress: () => navigation.navigate('AssistantReport') }
+      ? { key: 'assistantReport', title: tr('Asistan raporu'), icon: 'stats-chart-outline' as AnyIconName, onPress: () => navigation.navigate('AssistantReport') }
       : null,
-    { key: 'sampleRequests', title: 'Taleplerim', icon: 'sample' as AnyIconName, onPress: () => navigation.navigate('MySampleRequests') },
+    { key: 'sampleRequests', title: tr('Taleplerim'), icon: 'sample' as AnyIconName, onPress: () => navigation.navigate('MySampleRequests') },
     // Faz 2, Adım 2: teklif istekleri (verdiğim + firmama gelen).
-    { key: 'quoteRequests', title: 'Tekliflerim', icon: 'quote' as AnyIconName, onPress: () => navigation.navigate('QuoteRequests') },
+    { key: 'quoteRequests', title: tr('Tekliflerim'), icon: 'quote' as AnyIconName, onPress: () => navigation.navigate('QuoteRequests') },
     // Faz 3, Adım 4: kabul edilen tekliften doğan sipariş kayıtları.
-    { key: 'deals', title: 'Siparişlerim', icon: 'cart-outline' as AnyIconName, onPress: () => navigation.navigate('Deals') },
-    { key: 'favorites', title: 'Takip Ettiklerim', icon: 'heart' as AnyIconName, onPress: () => navigation.navigate('FavoriteProducts') },
+    { key: 'deals', title: tr('Siparişlerim'), icon: 'cart-outline' as AnyIconName, onPress: () => navigation.navigate('Deals') },
+    { key: 'favorites', title: tr('Takip Ettiklerim'), icon: 'heart' as AnyIconName, onPress: () => navigation.navigate('FavoriteProducts') },
     // 2026-09-22 menü temizliği: İplik Dizini (Ürünler sekmesindeki "İplik"),
     // Fotoğrafla Kumaş Ara ve Fason Kapasite Ara (Ürünler sekmesindeki araç
     // düğmeleri) ile Makine Parkım (firma sayfasındaki "Makine parkı") buradan
     // kaldırıldı — hepsine kendi bağlamlarından erişiliyor.
     // Faz 2, Adım 1: izleme kuralları ("bu kalitede ürün çıkınca haber ver").
-    { key: 'watchRules', title: 'İzlediklerim', icon: 'eye-outline' as AnyIconName, onPress: () => navigation.navigate('WatchRules') },
-    { key: 'recentlyViewed', title: 'Son Baktıklarım', icon: 'clock' as AnyIconName, onPress: () => navigation.navigate('RecentlyViewedProducts') },
-    { key: 'feedMutes', title: 'Gizlediğim Firmalar', icon: 'eye-off-outline' as AnyIconName, onPress: () => navigation.navigate('FeedMutes') },
-    { key: 'connections', title: 'Bağlantılarım', icon: 'people-outline' as AnyIconName, onPress: () => navigation.navigate('Connections') },
+    { key: 'watchRules', title: tr('İzlediklerim'), icon: 'eye-outline' as AnyIconName, onPress: () => navigation.navigate('WatchRules') },
+    { key: 'recentlyViewed', title: tr('Son Baktıklarım'), icon: 'clock' as AnyIconName, onPress: () => navigation.navigate('RecentlyViewedProducts') },
+    { key: 'feedMutes', title: tr('Gizlediğim Firmalar'), icon: 'eye-off-outline' as AnyIconName, onPress: () => navigation.navigate('FeedMutes') },
+    { key: 'connections', title: tr('Bağlantılarım'), icon: 'people-outline' as AnyIconName, onPress: () => navigation.navigate('Connections') },
     // Faz 2, Adım 4: tedarikçi/müşteri daveti (hazır metin, WhatsApp'tan paylaşılır).
-    { key: 'invites', title: 'Davet Et', icon: 'share' as AnyIconName, onPress: () => navigation.navigate('Invites') },
+    { key: 'invites', title: tr('Davet Et'), icon: 'share' as AnyIconName, onPress: () => navigation.navigate('Invites') },
     {
       key: 'connectionRequests',
-      title: 'Bağlantı İstekleri',
+      title: tr('Bağlantı İstekleri'),
       icon: 'person-add-outline' as AnyIconName,
       onPress: () => navigation.navigate('ConnectionRequests'),
       badge: pendingRequests,
     },
     user?.isAdmin
-      ? { key: 'admin', title: 'Yönetim (doğrulama, şikâyetler)', icon: 'shield-checkmark-outline' as AnyIconName, onPress: () => navigation.navigate('Admin') }
+      ? { key: 'admin', title: tr('Yönetim (doğrulama, şikâyetler)'), icon: 'shield-checkmark-outline' as AnyIconName, onPress: () => navigation.navigate('Admin') }
       : null,
   ].filter((item): item is MenuItem => item !== null);
 
   return (
     <Screen>
-      <BottomSheet visible={sheet === 'avatar'} onClose={() => setSheet(null)} title="Profil fotoğrafı">
-        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasPhoto ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'} onPress={closeThen(() => changePhoto('gallery'))} />
+      <BottomSheet visible={sheet === 'avatar'} onClose={() => setSheet(null)} title={tr('Profil fotoğrafı')}>
+        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasPhoto ? tr('Fotoğrafı değiştir') : tr('Fotoğraf ekle')} onPress={closeThen(() => changePhoto('gallery'))} />
         {/* Web'de tarayıcı kamerası yok (bkz. features/imagePicker). */}
         {Platform.OS !== 'web' ? (
-          <ListRow left={<Icon name="camera" color="brand" />} title="Fotoğraf çek" onPress={closeThen(() => changePhoto('camera'))} />
+          <ListRow left={<Icon name="camera" color="brand" />} title={tr('Fotoğraf çek')} onPress={closeThen(() => changePhoto('camera'))} />
         ) : null}
         {hasPhoto ? (
-          <ListRow left={<Icon name="trash-outline" color="danger" />} title="Fotoğrafı kaldır" divider={false} onPress={closeThen(removePhoto)} />
+          <ListRow left={<Icon name="trash-outline" color="danger" />} title={tr('Fotoğrafı kaldır')} divider={false} onPress={closeThen(removePhoto)} />
         ) : null}
       </BottomSheet>
-      <BottomSheet visible={sheet === 'cover'} onClose={() => setSheet(null)} title="Kapak fotoğrafı">
-        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasCover ? 'Kapağı değiştir' : 'Kapak ekle'} divider={hasCover} onPress={closeThen(changeCover)} />
+      <BottomSheet visible={sheet === 'cover'} onClose={() => setSheet(null)} title={tr('Kapak fotoğrafı')}>
+        <ListRow left={<Icon name="image-outline" color="brand" />} title={hasCover ? tr('Kapağı değiştir') : tr('Kapak ekle')} divider={hasCover} onPress={closeThen(changeCover)} />
         {hasCover ? (
-          <ListRow left={<Icon name="trash-outline" color="danger" />} title="Kapağı kaldır" divider={false} onPress={closeThen(removeCover)} />
+          <ListRow left={<Icon name="trash-outline" color="danger" />} title={tr('Kapağı kaldır')} divider={false} onPress={closeThen(removeCover)} />
         ) : null}
       </BottomSheet>
       {/* Menü, profil yüklenirken ya da yüklenemese de hep erişilebilir
@@ -269,11 +270,11 @@ export function MyProfileScreen({ navigation }: Props) {
           />
         </>
       ) : (
-        <InlineError message={error ?? 'Profil alınamadı'} onRetry={reload} />
+        <InlineError message={error ?? tr('Profil alınamadı')} onRetry={reload} />
       )}
 
       <View style={{ gap: t.space[3], minWidth: 0 }}>
-        <SectionTitle title="Kısayollar" />
+        <SectionTitle title={tr('Kısayollar')} />
         <View
           style={{
             backgroundColor: t.colors.surface1,
@@ -301,7 +302,7 @@ export function MyProfileScreen({ navigation }: Props) {
 
       {/* Çıkışta gezinme çağrısı yok: user null olunca RootNavigator zaten
           giriş ekranlarına geçiyor. */}
-      <Button kind="danger" fullWidth icon="log-out-outline" label="Çıkış yap" onPress={logout} />
+      <Button kind="danger" fullWidth icon="log-out-outline" label={tr('Çıkış yap')} onPress={logout} />
     </Screen>
   );
 }

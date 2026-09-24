@@ -1,4 +1,5 @@
 import React from 'react';
+import { tr } from '../i18n';
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon, type AnyIconName } from '../ui';
@@ -30,7 +31,7 @@ export function HeaderButton({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={count > 0 ? `${label}, ${count} okunmamış` : label}
+      accessibilityLabel={count > 0 ? tr('{label}, {count} okunmamış', { label, count }) : label}
       style={({ pressed }) => ({
         minWidth: t.size.touchMin,
         height: t.size.touchMin,

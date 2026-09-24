@@ -5,6 +5,7 @@ import * as z from 'zod/v4';
 import { effectiveWidthCm } from '../../domain/calc/wastage';
 import { kgToMeters, metersPerKg, metersToKg } from '../../domain/glossary/units';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const inputSchema = z.object({
   weightGsm: z.number().positive().describe('Kumaşın gramajı (gr/m²)'),
@@ -43,12 +44,15 @@ export const fabricLengthWeight = defineSkill<typeof inputSchema, LengthWeightOu
     const meters = input.meters == null && input.kg != null ? kgToMeters(input.kg, input.weightGsm, width) : null;
     return { effectiveWidthCm: width, metersPerKg: perKg, kgPerMeter, meters, kg };
   },
-  summarize: (input, out) => {
+  summarize: (input, out, lang) => {
     const widthText =
       input.widthMeaning === 'tup_tek_yuz'
-        ? `${fmt(input.widthCm, 0)} cm tek yüz tüp eni (hesapta ${fmt(out.effectiveWidthCm, 0)} cm açık en)`
-        : `${fmt(input.widthCm, 0)} cm açık en`;
-    const parts = [`${fmt(input.weightGsm, 0)} gr/m², ${widthText} ile 1 kg ≈ ${fmt(out.metersPerKg)} m`, `1 m ≈ ${fmt(out.kgPerMeter, 3)} kg`];
+        ? t(lang, '{w} cm tek yüz tüp eni (hesapta {eff} cm açık en)', { w: fmt(input.widthCm, 0), eff: fmt(out.effectiveWidthCm, 0) })
+        : t(lang, '{w} cm açık en', { w: fmt(input.widthCm, 0) });
+    const parts = [
+      t(lang, '{gsm} gr/m², {width} ile 1 kg ≈ {mpk} m', { gsm: fmt(input.weightGsm, 0), width: widthText, mpk: fmt(out.metersPerKg) }),
+      `1 m ≈ ${fmt(out.kgPerMeter, 3)} kg`,
+    ];
     if (out.kg != null) parts.push(`${fmt(input.meters, 1)} m ≈ ${fmt(out.kg, 1)} kg`);
     if (out.meters != null) parts.push(`${fmt(input.kg, 1)} kg ≈ ${fmt(out.meters, 1)} m`);
     return parts.join('; ') + '.';

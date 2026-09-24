@@ -13,6 +13,7 @@ import { getCachedProductImage, loadProductImage } from '../../features/products
 import { categoryLabel } from '../../features/products/catalog';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   AppBar,
@@ -112,12 +113,12 @@ export function SelectProductScreen({ navigation, route }: Props) {
       <SearchBox
         value={query}
         onChangeText={setQuery}
-        placeholder="Ürün kodu, içerik, çeşit ara"
-        accessibilityLabel="Kendi ürünlerimde ara"
+        placeholder={tr('Ürün kodu, içerik, çeşit ara')}
+        accessibilityLabel={tr('Kendi ürünlerimde ara')}
       />
       {products.length > 0 ? (
         <SectionTitle
-          title={`${searching ? 'Arama sonuçları' : 'Ürünlerim'} · ${searching ? products.length : total}`}
+          title={`${searching ? tr('Arama sonuçları') : tr('Ürünlerim')} · ${searching ? products.length : total}`}
         />
       ) : null}
     </View>
@@ -126,30 +127,30 @@ export function SelectProductScreen({ navigation, route }: Props) {
   const empty = failed ? (
     <EmptyState
       icon="warning"
-      title="Ürünler alınamadı"
-      description="Bağlantınızı kontrol edip tekrar deneyin."
+      title={tr('Ürünler alınamadı')}
+      description={tr('Bağlantınızı kontrol edip tekrar deneyin.')}
     />
   ) : searching ? (
     <EmptyState
       icon="search"
-      title="Sonuç bulunamadı"
-      description={`"${query.trim()}" ile eşleşen ürününüz yok.`}
-      actionLabel="Aramayı temizle"
+      title={tr('Sonuç bulunamadı')}
+      description={tr('"{query}" ile eşleşen ürününüz yok.', { query: query.trim() })}
+      actionLabel={tr('Aramayı temizle')}
       onAction={() => setQuery('')}
     />
   ) : (
     <EmptyState
       icon="fabric"
-      title="Firmanızın ürünü yok"
-      description="Önce bir ürün kartı ekleyin, sonra gönderilerinizde paylaşabilirsiniz."
-      actionLabel="Ürün ekle"
+      title={tr('Firmanızın ürünü yok')}
+      description={tr('Önce bir ürün kartı ekleyin, sonra gönderilerinizde paylaşabilirsiniz.')}
+      actionLabel={tr('Ürün ekle')}
       onAction={() => navigation.navigate('AddProduct')}
     />
   );
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Ürün seç" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Ürün seç')} leading="back" onBack={() => navigation.goBack()} />
       <Screen
         scroll={false}
         noPadding
@@ -158,7 +159,7 @@ export function SelectProductScreen({ navigation, route }: Props) {
             <Button
               kind="secondary"
               size="lg"
-              label="Yeni ürün ekle"
+              label={tr('Yeni ürün ekle')}
               icon="plus"
               onPress={() => navigation.navigate('AddProduct')}
             />
@@ -188,8 +189,7 @@ export function SelectProductScreen({ navigation, route }: Props) {
             ListFooterComponent={
               !searching && total > products.length ? (
                 <Text style={[t.type.body14, { color: t.colors.ink2, paddingTop: t.space[3] }]}>
-                  {total} üründen ilk {products.length} tanesi gösteriliyor. Aradığınızı bulmak için yukarıdan
-                  arayın.
+                  {tr('{total} üründen ilk {n} tanesi gösteriliyor. Aradığınızı bulmak için yukarıdan arayın.', { total, n: products.length })}
                 </Text>
               ) : null
             }
@@ -224,7 +224,7 @@ function SelectableProductCard({
     <ProductCard
       name={name}
       code={product.code}
-      specs={selected ? 'Gönderiye eklenmiş ürün' : undefined}
+      specs={selected ? tr('Gönderiye eklenmiş ürün') : undefined}
       imageUri={imageUri}
       onPress={onSelect}
       style={selected ? { borderColor: t.colors.brand, backgroundColor: t.colors.brandSoft } : undefined}

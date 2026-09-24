@@ -1,6 +1,7 @@
 // Rozet (DESIGN.md §3): 22px, BÜYÜK HARF caption-12, her zaman ikon + metin
 // (durum yalnız renkle verilmez, §6).
 import React from 'react';
+import { tr, locale } from '../i18n';
 import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon, type AnyIconName } from './Icon';
@@ -33,7 +34,7 @@ export interface BadgeProps {
 export function Badge({ kind, label, style }: BadgeProps) {
   const t = useTheme();
   const k = KINDS[kind];
-  const text = (label ?? k.label).toLocaleUpperCase('tr-TR');
+  const text = (label ?? tr(k.label)).toLocaleUpperCase(locale());
   return (
     <View
       accessibilityRole="text"

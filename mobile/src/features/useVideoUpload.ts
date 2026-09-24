@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, deleteVideo, type VideoRef } from '../api/client';
 import { MAX_VIDEO_SECONDS, VideoPickError, pickVideo, uploadVideo } from './videoUpload';
+import { tr } from '../i18n';
 
 export type VideoUploadState =
   | { phase: 'uploading'; progress: number; durationSeconds: number | null }
@@ -8,23 +9,23 @@ export type VideoUploadState =
 
 export function videoErrorMessage(err: unknown) {
   if (err instanceof VideoPickError) {
-    if (err.code === 'permission_denied') return 'Galeriye erişim izni verilmedi.';
-    if (err.code === 'too_long') return `Video en fazla ${MAX_VIDEO_SECONDS} saniye olabilir.`;
-    return 'Video dosyası çok büyük (en fazla 190 MB). Telefonun kamera ayarlarından video çözünürlüğünü 1080p\'ye düşürüp yeniden çekin.';
+    if (err.code === 'permission_denied') return tr('Galeriye erişim izni verilmedi.');
+    if (err.code === 'too_long') return tr('Video en fazla {n} saniye olabilir.', { n: MAX_VIDEO_SECONDS });
+    return tr('Video dosyası çok büyük (en fazla 190 MB). Telefonun kamera ayarlarından video çözünürlüğünü 1080p\'ye düşürüp yeniden çekin.');
   }
   if (err instanceof ApiError) {
-    if (err.code === 'video_not_configured') return 'Video paylaşımı henüz etkinleştirilmedi.';
-    if (err.code === 'too_many_pending_uploads') return 'Yarım kalan çok fazla yükleme var, biraz sonra tekrar deneyin.';
-    if (err.code === 'too_many_videos') return 'Bu ürüne en fazla 3 video eklenebilir.';
-    if (err.code === 'video_in_use') return 'Bu video başka bir yerde kullanılıyor.';
-    if (err.code === 'video_failed') return 'Video işlenemediği için eklenemedi.';
-    if (err.code === 'not_your_company') return 'Yalnızca kendi firmanızın ürününe video ekleyebilirsiniz.';
+    if (err.code === 'video_not_configured') return tr('Video paylaşımı henüz etkinleştirilmedi.');
+    if (err.code === 'too_many_pending_uploads') return tr('Yarım kalan çok fazla yükleme var, biraz sonra tekrar deneyin.');
+    if (err.code === 'too_many_videos') return tr('Bu ürüne en fazla 3 video eklenebilir.');
+    if (err.code === 'video_in_use') return tr('Bu video başka bir yerde kullanılıyor.');
+    if (err.code === 'video_failed') return tr('Video işlenemediği için eklenemedi.');
+    if (err.code === 'not_your_company') return tr('Yalnızca kendi firmanızın ürününe video ekleyebilirsiniz.');
   }
-  return 'Video yüklenemedi, bağlantınızı kontrol edip tekrar deneyin.';
+  return tr('Video yüklenemedi, bağlantınızı kontrol edip tekrar deneyin.');
 }
 
 export function formatVideoDuration(seconds: number | null) {
-  if (seconds == null) return '';
+  if (seconds == null) return tr('');
   const total = Math.round(seconds);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
 }

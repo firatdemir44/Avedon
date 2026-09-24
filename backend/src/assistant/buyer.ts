@@ -32,7 +32,7 @@ export interface SellerProfile {
 
 export function buyerSystemPrompt(company: SellerProfile, askerName: string | null) {
   const type = COMPANY_TYPES.find((t) => t.key === company.companyType)?.label ?? '';
-  return `Sen Takyon platformunda "${company.name}" firmasının asistanısın ve şu an BAŞKA bir firmadan gelen bir alıcıyla konuşuyorsun${askerName ? ` (adı ${askerName})` : ''}. Görevin, alıcının bu firmanın kumaşları hakkındaki sorularını firmanın yayınlanmış kataloğuna dayanarak cevaplamak. Samimi ama düzgün Türkçe, kısa cevaplar; düz metin, markdown yok.
+  return `Sen Takyon platformunda "${company.name}" firmasının asistanısın ve şu an BAŞKA bir firmadan gelen bir alıcıyla konuşuyorsun${askerName ? ` (adı ${askerName})` : ''}. Görevin, alıcının bu firmanın kumaşları hakkındaki sorularını firmanın yayınlanmış kataloğuna dayanarak cevaplamak. Samimi ama düzgün, kısa cevaplar; düz metin, markdown yok. Alıcı hangi dilde yazıyorsa o dilde cevap ver (varsayılan Türkçe; İngilizce yazan alıcıya İngilizce).
 
 Kesin kurallar:
 - FİYAT VERMEZSİN. Fiyat, iskonto, ödeme koşulu sorulursa: "Fiyat bilgisi yalnızca teklifle paylaşılıyor; ürün sayfasındaki Teklif iste düğmesiyle miktarınızı yazarsanız firma size teklif gönderir" de. Tahmini, aralık ya da "yaklaşık" fiyat da söyleme.
@@ -49,7 +49,7 @@ ${company.about ? `Tanıtım: ${company.about.slice(0, 600)}` : ''}`;
 
 const fiberKeys = FIBERS.map((f) => f.key) as [string, ...string[]];
 
-export function buildBuyerTools(ctx: { askerId: string; threadId: string; sellerCompanyId: string; sellerName: string }): ToolSet {
+export function buildBuyerTools(ctx: { askerId: string; threadId: string; sellerCompanyId: string; sellerName: string; lang?: 'tr' | 'en' }): ToolSet {
   const calls: ToolCallRecord[] = [];
 
   const katalogAra = betaZodTool({
@@ -153,7 +153,7 @@ export function buildBuyerTools(ctx: { askerId: string; threadId: string; seller
       const staff = await prisma.user.findMany({ where: { companyId: ctx.sellerCompanyId }, select: { id: true } });
       await notifyMany(
         staff.map((u) => u.id),
-        { kind: 'company_question_new', title: 'Asistanınıza bir soru geldi', body: args.question.slice(0, 140), data: { questionId: created.id, productId: product?.id } }
+        { kind: 'company_question_new', title: 'Asistanınıza bir soru geldi', body: args.question.slice(0, 140), rawBody: true, data: { questionId: created.id, productId: product?.id } }
       );
       calls.push({ name: 'soruyu_ilet', title: 'Soru firmaya iletildi', input: args, output: { questionId: created.id }, summary: args.question });
       return 'Soru firmaya iletildi; cevap gelince alıcı bildirim alacak.';
@@ -168,7 +168,7 @@ export function buildBuyerTools(ctx: { askerId: string; threadId: string; seller
         description: `${skill.title}. ${skill.description}`,
         inputSchema: skill.inputSchema,
         run: (args) => {
-          const result = runSkill(skill, args);
+          const result = runSkill(skill, args, ctx.lang);
           if (!result.ok) return `Girdi hatası: ${JSON.stringify(result.details)}`;
           calls.push({ name: skill.name, title: skill.title, input: args, output: result.output, summary: result.summary, formula: skill.formula });
           return JSON.stringify({ summary: result.summary, output: result.output });

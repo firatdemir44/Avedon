@@ -4,6 +4,7 @@ import type { CompanyPhotoInput, CompanyPhotoKind } from '../../api/client';
 import { pickCompressedImage } from '../imagePicker';
 import { getCachedCompanyPhoto, loadCompanyPhoto, replaceCachedCompanyPhotos } from './companyPhotoCache';
 import { MAX_COMPANY_PHOTOS } from './limits';
+import { tr } from '../../i18n';
 
 type Galleries = Record<CompanyPhotoKind, EditablePhoto[]>;
 type Dirty = Record<CompanyPhotoKind, boolean>;
@@ -67,8 +68,8 @@ export function useCompanyGalleries(companyId: string) {
     } catch (err) {
       message =
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.';
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.');
     } finally {
       setPicking(null);
     }

@@ -3,6 +3,7 @@
 import type { Quote, QuoteRequestRow } from '../../api/client';
 import { STOCK_UNIT_LABELS, type StockUnit } from '../products/catalog';
 import { formatMeasure } from '../calculators/parse';
+import { locale } from '../../i18n';
 
 export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -10,7 +11,7 @@ export const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export function formatQuoteDate(iso: string | null): string {
   if (!iso) return '';
   const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('tr-TR');
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(locale());
 }
 
 // Sunucudan gelen tarihi forma yazmak için: "2027-03-01".

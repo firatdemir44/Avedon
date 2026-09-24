@@ -58,6 +58,7 @@ import { parseNumber, toInputNumber } from '../../features/calculators/parse';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
+import { locale, tr } from '../../i18n';
 import {
   AppBar,
   Badge,
@@ -153,8 +154,9 @@ interface PhotoItem {
 const PHOTO_SIZE = 96;
 
 const CURRENCY_OPTIONS = PRICE_CURRENCIES.map((value) => ({ value: value as string, label: value }));
-const TWIST_OPTIONS = [
-  { value: '', label: 'Belirtilmemiş' },
+// Etiket çizim anında çevrilir (modül düzeyinde tr() çağrılmaz).
+const twistOptions = () => [
+  { value: '', label: tr('Belirtilmemiş') },
   { value: 'S', label: 'S' },
   { value: 'Z', label: 'Z' },
 ];
@@ -171,12 +173,12 @@ const LABEL_WARNINGS: Record<string, string> = {
 
 function labelErrorMessage(err: unknown) {
   const code = err instanceof ApiError ? err.code : undefined;
-  if (code === 'extract_not_configured') return 'Etiketten doldurma bu sunucuda etkin değil.';
-  if (code === 'extract_input_required') return 'Okunacak bir fotoğraf ya da metin seçin.';
-  if (code === 'unsupported_image') return 'Bu fotoğraf biçimi okunamıyor, başka bir fotoğraf deneyin.';
-  if (code === 'invalid_body') return 'Gönderilen bilgi okunamadı; fotoğrafı küçültüp tekrar deneyin.';
-  if (err instanceof ApiError && err.status === 0) return 'Etiket okuma zaman aşımına uğradı, tekrar deneyin.';
-  return 'Etiket okunamadı, tekrar deneyin ya da elle girin.';
+  if (code === 'extract_not_configured') return tr('Etiketten doldurma bu sunucuda etkin değil.');
+  if (code === 'extract_input_required') return tr('Okunacak bir fotoğraf ya da metin seçin.');
+  if (code === 'unsupported_image') return tr('Bu fotoğraf biçimi okunamıyor, başka bir fotoğraf deneyin.');
+  if (code === 'invalid_body') return tr('Gönderilen bilgi okunamadı; fotoğrafı küçültüp tekrar deneyin.');
+  if (err instanceof ApiError && err.status === 0) return tr('Etiket okuma zaman aşımına uğradı, tekrar deneyin.');
+  return tr('Etiket okunamadı, tekrar deneyin ya da elle girin.');
 }
 
 // Özet satırındaki alan adları (dolan alanlar bu adlarla sayılır).
@@ -191,22 +193,22 @@ interface LabelSummary {
 // Sunucu hata kodları → ekranda görünen Türkçe metin.
 function saveErrorMessage(err: unknown) {
   if (err instanceof ApiError) {
-    if (err.code === 'no_company') return 'İplik eklemek için önce firma bilgilerinizi tamamlayın.';
-    if (err.code === 'not_your_company') return 'Bu iplik başka bir firmaya ait, düzenleyemezsiniz.';
-    if (err.code === 'yarn_not_found') return 'İplik bulunamadı, kaldırılmış olabilir.';
+    if (err.code === 'no_company') return tr('İplik eklemek için önce firma bilgilerinizi tamamlayın.');
+    if (err.code === 'not_your_company') return tr('Bu iplik başka bir firmaya ait, düzenleyemezsiniz.');
+    if (err.code === 'yarn_not_found') return tr('İplik bulunamadı, kaldırılmış olabilir.');
     const fieldErrors = (err.details as { fieldErrors?: Record<string, string[]> } | undefined)?.fieldErrors;
     if (fieldErrors?.composition?.includes('composition_total_not_100')) {
-      return 'Karışım oranlarının toplamı 100 olmalı.';
+      return tr('Karışım oranlarının toplamı 100 olmalı.');
     }
     if (err.code === 'invalid_body') {
       const first = fieldErrors ? Object.keys(fieldErrors)[0] : undefined;
       return first
-        ? `Bilgilerde eksik ya da hatalı alan var (${first}). Kontrol edip tekrar deneyin.`
-        : 'Bilgilerde eksik ya da hatalı alan var. Kontrol edip tekrar deneyin.';
+        ? tr('Bilgilerde eksik ya da hatalı alan var ({field}). Kontrol edip tekrar deneyin.', { field: first })
+        : tr('Bilgilerde eksik ya da hatalı alan var. Kontrol edip tekrar deneyin.');
     }
-    if (err.status === 0) return 'Sunucuya ulaşılamadı, tekrar deneyin.';
+    if (err.status === 0) return tr('Sunucuya ulaşılamadı, tekrar deneyin.');
   }
-  return 'İplik kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.';
+  return tr('İplik kaydedilemedi. Bilgileri kontrol edip tekrar deneyin.');
 }
 
 export function YarnFormScreen({ navigation, route }: Props) {
@@ -350,7 +352,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
         }
       })
       .catch(() => {
-        if (!cancelled) setError('İplik yüklenemedi, lütfen tekrar deneyin.');
+        if (!cancelled) setError(tr('İplik yüklenemedi, lütfen tekrar deneyin.'));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -395,8 +397,8 @@ export function YarnFormScreen({ navigation, route }: Props) {
     } catch (err) {
       setError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     } finally {
       setPickingImage(false);
@@ -465,53 +467,53 @@ export function YarnFormScreen({ navigation, route }: Props) {
       nextFamily = s.family;
       setFamily(s.family);
       setFamilyTouched(true);
-      filled.push('iplik çeşidi');
+      filled.push(tr('iplik çeşidi'));
     }
     const nextFields = yarnFields(nextFamily);
 
-    fillText('kod', s.code, code, setCode);
-    fillNumber('numara', s.count, count, setCount);
+    fillText(tr('kod'), s.code, code, setCode);
+    fillNumber(tr('numara'), s.count, count, setCount);
     if (s.countUnit && !countUnitTouched && options.countUnits.some((o) => o.key === s.countUnit)) {
       setCountUnit(s.countUnit);
       setCountUnitTouched(true);
-      filled.push('numara birimi');
+      filled.push(tr('numara birimi'));
     }
     if (s.ply != null && !plyTouched) {
       setPly(String(s.ply));
       setPlyTouched(true);
-      filled.push('kat');
+      filled.push(tr('kat'));
     }
 
     if (nextFields.staple) {
-      fillOption('eğirme sistemi', s.spinning, spinning, options.spinnings, setSpinning);
-      fillOption('penye / karde', s.combing, combing, options.combings, setCombing);
+      fillOption(tr('eğirme sistemi'), s.spinning, spinning, options.spinnings, setSpinning);
+      fillOption(tr('penye / karde'), s.combing, combing, options.combings, setCombing);
       if (s.twistDirection && !twistDirection) {
         setTwistDirection(s.twistDirection);
-        filled.push('büküm yönü');
+        filled.push(tr('büküm yönü'));
       }
-      fillNumber('büküm (T/m)', s.twistTpm, twistTpm, setTwistTpm);
+      fillNumber(tr('büküm (T/m)'), s.twistTpm, twistTpm, setTwistTpm);
     }
     if (nextFields.filament) {
-      fillNumber('filament sayısı', s.filaments, filaments, setFilaments);
-      fillOption('filament tipi', s.filamentType, filamentType, options.filamentTypes, setFilamentType);
-      fillOption('parlaklık', s.luster, luster, options.lusters, setLuster);
+      fillNumber(tr('filament sayısı'), s.filaments, filaments, setFilaments);
+      fillOption(tr('filament tipi'), s.filamentType, filamentType, options.filamentTypes, setFilamentType);
+      fillOption(tr('parlaklık'), s.luster, luster, options.lusters, setLuster);
     }
 
-    fillOption('renk durumu', s.colorState, colorState, options.colorStates, setColorState);
-    fillText('renk', s.color, color, setColor);
-    fillText('çeşit / yapı', s.variety, variety, setVariety);
-    fillText('marka', s.brand, brand, setBrand);
-    fillText('menşe', s.origin, origin, setOrigin);
-    fillNumber('bobin ağırlığı', s.coneWeightKg, coneWeightKg, setConeWeightKg);
+    fillOption(tr('renk durumu'), s.colorState, colorState, options.colorStates, setColorState);
+    fillText(tr('renk'), s.color, color, setColor);
+    fillText(tr('çeşit / yapı'), s.variety, variety, setVariety);
+    fillText(tr('marka'), s.brand, brand, setBrand);
+    fillText(tr('menşe'), s.origin, origin, setOrigin);
+    fillNumber(tr('bobin ağırlığı'), s.coneWeightKg, coneWeightKg, setConeWeightKg);
 
     // Karışım: formda dolu satır varsa hiç dokunulmaz.
     const hasComposition = compositionRows.some((row) => row.fiber || row.percent.trim());
     const newComposition = s.composition.filter((item) => FIBERS.some((f) => f.key === item.fiber));
     if (!hasComposition && newComposition.length) {
       setCompositionRows(compositionRowsFrom(newComposition));
-      filled.push('karışım');
+      filled.push(tr('karışım'));
     } else if (s.compositionText && (hasComposition || !newComposition.length)) {
-      leftovers.push(`Karışım metni forma aktarılmadı: ${s.compositionText}`);
+      leftovers.push(tr('Karışım metni forma aktarılmadı: {text}', { text: s.compositionText }));
     }
 
     // Sertifikalar: formda satır varsa dokunulmaz.
@@ -519,15 +521,15 @@ export function YarnFormScreen({ navigation, route }: Props) {
     if (!certificateRows.length && knownCertificates.length) {
       setCertificateRows(knownCertificates.slice(0, MAX_CERTIFICATES).map((name) => ({ ...emptyCertificateRow(), name })));
       setCertificateOpen(true);
-      filled.push('sertifikalar');
+      filled.push(tr('sertifikalar'));
     } else if (s.certificatesText && (certificateRows.length || !knownCertificates.length)) {
-      leftovers.push(`Sertifika metni forma aktarılmadı: ${s.certificatesText}`);
+      leftovers.push(tr('Sertifika metni forma aktarılmadı: {text}', { text: s.certificatesText }));
     }
 
     setLabelSummary({
       recognized: true,
       filled,
-      warnings: outcome.warnings.map((w) => LABEL_WARNINGS[w] ?? w),
+      warnings: outcome.warnings.map((w) => (LABEL_WARNINGS[w] ? tr(LABEL_WARNINGS[w]) : w)),
       notes: outcome.notes,
       leftovers,
     });
@@ -561,8 +563,8 @@ export function YarnFormScreen({ navigation, route }: Props) {
     } catch (err) {
       setLabelError(
         err instanceof Error && err.message === 'camera_permission_denied'
-          ? 'Kameraya erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen tekrar deneyin.'
+          ? tr('Kameraya erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen tekrar deneyin.')
       );
     }
   };
@@ -576,8 +578,8 @@ export function YarnFormScreen({ navigation, route }: Props) {
     } catch (err) {
       setLabelError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     }
   };
@@ -600,10 +602,10 @@ export function YarnFormScreen({ navigation, route }: Props) {
   const compositionTotalWrong = validCompositionRows.length > 0 && Math.abs(compositionTotal - 100) > 0.5;
 
   const formErrors: string[] = [];
-  if (compositionIncomplete) formErrors.push('Karışım satırlarında lif ve oranı birlikte doldurun (oran 0 ile 100 arası).');
-  if (compositionTotalWrong) formErrors.push(`Karışım toplamı %${compositionTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}; 100 olmalı.`);
-  if (certificateIncomplete(certificateRows)) formErrors.push('Her sertifika satırında bir sertifika adı seçin.');
-  if (certificateDateInvalid(certificateRows)) formErrors.push('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).');
+  if (compositionIncomplete) formErrors.push(tr('Karışım satırlarında lif ve oranı birlikte doldurun (oran 0 ile 100 arası).'));
+  if (compositionTotalWrong) formErrors.push(tr('Karışım toplamı %{total}; 100 olmalı.', { total: compositionTotal.toLocaleString(locale(), { maximumFractionDigits: 2 }) }));
+  if (certificateIncomplete(certificateRows)) formErrors.push(tr('Her sertifika satırında bir sertifika adı seçin.'));
+  if (certificateDateInvalid(certificateRows)) formErrors.push(tr('Sertifika geçerlilik tarihini YYYY-AA-GG biçiminde yazın (örn. 2027-03-01).'));
 
   const canSubmit =
     !!user?.companyId &&
@@ -685,9 +687,9 @@ export function YarnFormScreen({ navigation, route }: Props) {
   const handleDelete = async () => {
     if (!yarnId) return;
     const confirmed = await confirmAction({
-      title: 'İpliği sil',
-      message: `${code || 'Bu iplik'} silinsin mi? İpliğe gelen numune talepleri de silinir.`,
-      confirmLabel: 'Sil',
+      title: tr('İpliği sil'),
+      message: tr('{name} silinsin mi? İpliğe gelen numune talepleri de silinir.', { name: code || tr('Bu iplik') }),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!confirmed) return;
@@ -701,14 +703,14 @@ export function YarnFormScreen({ navigation, route }: Props) {
       else navigation.goBack();
     } catch {
       haptics.error();
-      setError('İplik silinemedi, lütfen tekrar deneyin.');
+      setError(tr('İplik silinemedi, lütfen tekrar deneyin.'));
       setDeleting(false);
     }
   };
-  const title = isEditing ? 'İpliği düzenle' : 'İplik ekle';
+  const title = isEditing ? tr('İpliği düzenle') : tr('İplik ekle');
   const subLabel = (text: string) => <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{text}</Text>;
   const hint = (text: string) => <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{text}</Text>;
-  const none = { value: '', label: 'Belirtilmemiş' };
+  const none = { value: '', label: tr('Belirtilmemiş') };
   const half = { flex: 1, minWidth: 0 } as const;
 
   if (loading) {
@@ -734,7 +736,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
         disabled={index === 0}
         // Kaldır düğmesiyle kardeş: web'de iç içe <button> olmasın.
         accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-        accessibilityLabel={index === 0 ? `Fotoğraf ${index + 1}, kapak` : `Fotoğraf ${index + 1}, kapak yap`}
+        accessibilityLabel={index === 0 ? tr('Fotoğraf {n}, kapak', { n: index + 1 }) : tr('Fotoğraf {n}, kapak yap', { n: index + 1 })}
         style={({ pressed }) => [
           {
             width: PHOTO_SIZE,
@@ -758,14 +760,14 @@ export function YarnFormScreen({ navigation, route }: Props) {
       </Pressable>
       {index === 0 ? (
         <View style={{ position: 'absolute', left: t.space[1], bottom: t.space[1] }} pointerEvents="none">
-          <Badge kind="info" label="Kapak" />
+          <Badge kind="info" label={tr('Kapak')} />
         </View>
       ) : null}
       <Pressable
         onPress={() => removePhoto(photo.key)}
         hitSlop={t.space[2]}
         accessibilityRole="button"
-        accessibilityLabel={`Fotoğraf ${index + 1}, kaldır`}
+        accessibilityLabel={tr('Fotoğraf {n}, kaldır', { n: index + 1 })}
         style={({ pressed }) => ({
           position: 'absolute',
           top: t.space[1],
@@ -790,7 +792,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
         sticky={
           <Button
             size="lg"
-            label={isEditing ? 'Değişiklikleri kaydet' : 'İpliği kaydet'}
+            label={isEditing ? tr('Değişiklikleri kaydet') : tr('İpliği kaydet')}
             loading={submitting}
             disabled={!canSubmit || deleting}
             onPress={() => void handleSubmit()}
@@ -799,7 +801,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
       >
         {/* Fotoğraflar */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title={`Fotoğraflar (${photos.length}/${MAX_PRODUCT_IMAGES})`} />
+          <SectionTitle title={tr('Fotoğraflar ({n}/{max})', { n: photos.length, max: MAX_PRODUCT_IMAGES })} />
           <Card style={{ gap: t.space[3] }}>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
               {photos.map(photoTile)}
@@ -808,7 +810,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
                   onPress={() => void addPhoto()}
                   disabled={pickingImage}
                   accessibilityRole="button"
-                  accessibilityLabel="Fotoğraf ekle"
+                  accessibilityLabel={tr('Fotoğraf ekle')}
                   accessibilityState={{ disabled: pickingImage, busy: pickingImage }}
                   style={({ pressed }) => ({
                     width: PHOTO_SIZE,
@@ -828,26 +830,26 @@ export function YarnFormScreen({ navigation, route }: Props) {
                   ) : (
                     <>
                       <Icon name="plus" color="brand" />
-                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Fotoğraf</Text>
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Fotoğraf')}</Text>
                     </>
                   )}
                 </Pressable>
               ) : null}
             </View>
-            {hint('İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokun.')}
+            {hint(tr('İlk fotoğraf kapak olur. Başka bir fotoğrafı kapak yapmak için üstüne dokun.'))}
           </Card>
         </View>
 
         {/* Etiketten doldur */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Etiketten doldur" />
+          <SectionTitle title={tr('Etiketten doldur')} />
           <Card style={{ gap: t.space[3] }}>
-            {hint('Bobin etiketini okutup formu dolduralım. Yalnızca boş alanlar doldurulur; yazdıkların değişmez.')}
+            {hint(tr('Bobin etiketini okutup formu dolduralım. Yalnızca boş alanlar doldurulur; yazdıkların değişmez.'))}
             <Button
               kind="secondary"
               fullWidth
               icon="scan-outline"
-              label="Etiketten doldur"
+              label={tr('Etiketten doldur')}
               loading={extracting}
               onPress={() => {
                 haptics.selection();
@@ -869,20 +871,20 @@ export function YarnFormScreen({ navigation, route }: Props) {
                 {/* Kamera yalnızca telefonda; web'de tarayıcı kamerası yok. */}
                 {Platform.OS !== 'web' ? (
                   <ListRow
-                    title="Fotoğraf çek"
+                    title={tr('Fotoğraf çek')}
                     left={<Icon name="camera" color="brand" />}
                     onPress={() => void labelFromCamera()}
                   />
                 ) : null}
                 <ListRow
-                  title="Galeriden seç"
-                  subtitle={`En fazla ${MAX_LABEL_IMAGES} fotoğraf`}
+                  title={tr('Galeriden seç')}
+                  subtitle={tr('En fazla {n} fotoğraf', { n: MAX_LABEL_IMAGES })}
                   left={<Icon name="images-outline" color="brand" />}
                   onPress={() => void labelFromGallery()}
                 />
                 <ListRow
-                  title="Metin yapıştır"
-                  subtitle="WhatsApp'tan gelen iplik bilgisi"
+                  title={tr('Metin yapıştır')}
+                  subtitle={tr('WhatsApp\'tan gelen iplik bilgisi')}
                   left={<Icon name="clipboard-outline" color="brand" />}
                   divider={false}
                   onPress={() => {
@@ -897,24 +899,24 @@ export function YarnFormScreen({ navigation, route }: Props) {
             {pasteOpen ? (
               <View style={{ gap: t.space[3] }}>
                 <Input
-                  label="İplik bilgisi"
+                  label={tr('İplik bilgisi')}
                   value={pasteText}
                   onChangeText={setPasteText}
-                  placeholder="Bobin etiketindeki ya da WhatsApp'tan gelen iplik bilgisini yapıştır"
+                  placeholder={tr('Bobin etiketindeki ya da WhatsApp\'tan gelen iplik bilgisini yapıştır')}
                   multiline
                   maxLength={MAX_LABEL_TEXT}
                 />
                 <View style={{ flexDirection: 'row', gap: t.space[2] }}>
                   <Button
                     kind="secondary"
-                    label="Oku"
+                    label={tr('Oku')}
                     disabled={!pasteText.trim() || extracting}
                     onPress={() => void labelFromText()}
                     style={{ flex: 1 }}
                   />
                   <Button
                     kind="quiet"
-                    label="Kapat"
+                    label={tr('Kapat')}
                     onPress={() => {
                       haptics.selection();
                       setPasteOpen(false);
@@ -929,7 +931,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2] }}>
                 <Icon name="warning" size={t.size.iconSm} color="warning" />
                 <Text style={[t.type.body14, { color: t.colors.warning, flex: 1, minWidth: 0 }]}>
-                  Bu görselde iplik etiketi okunamadı. Etiketi yakından ve net çekip yeniden dene.
+                  {tr('Bu görselde iplik etiketi okunamadı. Etiketi yakından ve net çekip yeniden dene.')}
                 </Text>
               </View>
             ) : null}
@@ -944,10 +946,10 @@ export function YarnFormScreen({ navigation, route }: Props) {
               >
                 <Text style={[t.type.body14, { color: t.colors.ink }]}>
                   {labelSummary.filled.length
-                    ? `${labelSummary.filled.length} alan dolduruldu: ${labelSummary.filled.join(', ')}.`
-                    : 'Etiket okundu ama formdaki boş alanlara yazılacak yeni bilgi çıkmadı.'}
+                    ? tr('{n} alan dolduruldu: {list}.', { n: labelSummary.filled.length, list: labelSummary.filled.join(', ') })
+                    : tr('Etiket okundu ama formdaki boş alanlara yazılacak yeni bilgi çıkmadı.')}
                 </Text>
-                {labelSummary.notes ? hint(`Etiketten notlar: ${labelSummary.notes}`) : null}
+                {labelSummary.notes ? hint(tr('Etiketten notlar: {notes}', { notes: labelSummary.notes })) : null}
                 {labelSummary.leftovers.map((line) => (
                   <Text key={line} style={[t.type.body14, { color: t.colors.ink2 }]}>
                     {line}
@@ -961,42 +963,42 @@ export function YarnFormScreen({ navigation, route }: Props) {
                 ))}
               </View>
             ) : null}
-            {hint('Fiyat ve stok etiketten alınmaz. Kaydetmeden önce alanları kontrol et.')}
+            {hint(tr('Fiyat ve stok etiketten alınmaz. Kaydetmeden önce alanları kontrol et.'))}
             {labelError ? <ErrorBanner message={labelError} /> : null}
           </Card>
         </View>
 
         {/* İplik */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="İplik" />
-          <Input label="Ürün kodu" value={code} onChangeText={setCode} placeholder="Örn. IPL-3010" />
-          {subLabel('İplik çeşidi')}
+          <SectionTitle title={tr('İplik')} />
+          <Input label={tr('Ürün kodu')} value={code} onChangeText={setCode} placeholder={tr('Örn. IPL-3010')} />
+          {subLabel(tr('İplik çeşidi'))}
           <SingleChips options={optionValues(options.families)} value={family} onChange={changeFamily} />
 
           {fields.freeform ? (
             <Input
-              label="Çeşit / yapı"
+              label={tr('Çeşit / yapı')}
               value={variety}
               onChangeText={setVariety}
               placeholder={varietyPlaceholder(family)}
               maxLength={120}
-              helper="Fantezi ve gipe ipliklerde yapıyı buraya yaz; alıcılar bu metinle arıyor."
+              helper={tr('Fantezi ve gipe ipliklerde yapıyı buraya yaz; alıcılar bu metinle arıyor.')}
             />
           ) : null}
 
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
             <Input
               containerStyle={half}
-              label="Numara"
+              label={tr('Numara')}
               unit={options.countUnits.find((o) => o.key === countUnit)?.label ?? countUnit}
               value={count}
               onChangeText={setCount}
-              placeholder="Örn. 30"
+              placeholder={tr('Örn. 30')}
               {...numericProps}
             />
             <Input
               containerStyle={half}
-              label="Kat"
+              label={tr('Kat')}
               value={ply}
               onChangeText={(value) => {
                 setPlyTouched(true);
@@ -1007,7 +1009,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
               keyboardType="number-pad"
             />
           </View>
-          {subLabel('Numara birimi')}
+          {subLabel(tr('Numara birimi'))}
           <SingleChips
             options={optionValues(options.countUnits)}
             value={countUnit}
@@ -1019,18 +1021,18 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
           {fields.staple ? (
             <>
-              {subLabel('Eğirme sistemi')}
+              {subLabel(tr('Eğirme sistemi'))}
               <SingleChips options={[none, ...optionValues(options.spinnings)]} value={spinning} onChange={setSpinning} />
-              {subLabel('Penye / karde')}
+              {subLabel(tr('Penye / karde'))}
               <SingleChips options={[none, ...optionValues(options.combings)]} value={combing} onChange={setCombing} />
-              {subLabel('Büküm yönü')}
-              <SingleChips options={TWIST_OPTIONS} value={twistDirection} onChange={setTwistDirection} />
+              {subLabel(tr('Büküm yönü'))}
+              <SingleChips options={twistOptions()} value={twistDirection} onChange={setTwistDirection} />
               <Input
-                label="Büküm (isteğe bağlı)"
+                label={tr('Büküm (isteğe bağlı)')}
                 unit="T/m"
                 value={twistTpm}
                 onChangeText={setTwistTpm}
-                placeholder="Örn. 780"
+                placeholder={tr('Örn. 780')}
                 {...numericProps}
               />
             </>
@@ -1039,26 +1041,26 @@ export function YarnFormScreen({ navigation, route }: Props) {
           {fields.filament ? (
             <>
               <Input
-                label="Filament sayısı (isteğe bağlı)"
+                label={tr('Filament sayısı (isteğe bağlı)')}
                 value={filaments}
                 onChangeText={setFilaments}
-                placeholder="Örn. 48"
+                placeholder={tr('Örn. 48')}
                 {...numericProps}
               />
-              {subLabel('Filament tipi')}
+              {subLabel(tr('Filament tipi'))}
               <SingleChips
                 options={[none, ...optionValues(options.filamentTypes)]}
                 value={filamentType}
                 onChange={setFilamentType}
               />
-              {subLabel('Parlaklık')}
+              {subLabel(tr('Parlaklık'))}
               <SingleChips options={[none, ...optionValues(options.lusters)]} value={luster} onChange={setLuster} />
             </>
           ) : null}
 
           {!fields.freeform ? (
             <Input
-              label="Çeşit / yapı (isteğe bağlı)"
+              label={tr('Çeşit / yapı (isteğe bağlı)')}
               value={variety}
               onChangeText={setVariety}
               placeholder={varietyPlaceholder(family)}
@@ -1069,14 +1071,14 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
         {/* Karışım */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Karışım" />
+          <SectionTitle title={tr('Karışım')} />
           <Card>
             <CompositionEditor
               rows={compositionRows}
               onChange={setCompositionRows}
               hint={
                 compositionRows.length === 0
-                  ? 'Karışım girersen alıcılar life göre arayabilir. Girersen toplam 100 olmalı.'
+                  ? tr('Karışım girersen alıcılar life göre arayabilir. Girersen toplam 100 olmalı.')
                   : undefined
               }
               totalWarning={compositionTotalWrong}
@@ -1086,61 +1088,61 @@ export function YarnFormScreen({ navigation, route }: Props) {
 
         {/* Kullanım ve görünüm */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Kullanım ve görünüm" />
-          {subLabel('Kullanım yeri')}
-          {hint('Birden fazla seçebilirsin; alıcılar bu başlıklarla arıyor.')}
+          <SectionTitle title={tr('Kullanım ve görünüm')} />
+          {subLabel(tr('Kullanım yeri'))}
+          {hint(tr('Birden fazla seçebilirsin; alıcılar bu başlıklarla arıyor.'))}
           <MultiChips options={options.endUses} values={endUses} onChange={setEndUses} />
-          {subLabel('Renk durumu')}
+          {subLabel(tr('Renk durumu'))}
           <SingleChips options={[none, ...optionValues(options.colorStates)]} value={colorState} onChange={setColorState} />
-          <Input label="Renk (isteğe bağlı)" value={color} onChangeText={setColor} placeholder="Örn. Siyah" maxLength={60} />
+          <Input label={tr('Renk (isteğe bağlı)')} value={color} onChangeText={setColor} placeholder={tr('Örn. Siyah')} maxLength={60} />
           <View style={{ flexDirection: 'row', gap: t.space[3] }}>
-            <Input containerStyle={half} label="Menşe" value={origin} onChangeText={setOrigin} placeholder="Örn. Türkiye" maxLength={60} />
-            <Input containerStyle={half} label="Marka" value={brand} onChangeText={setBrand} placeholder="Üretici markası" maxLength={60} />
+            <Input containerStyle={half} label={tr('Menşe')} value={origin} onChangeText={setOrigin} placeholder={tr('Örn. Türkiye')} maxLength={60} />
+            <Input containerStyle={half} label={tr('Marka')} value={brand} onChangeText={setBrand} placeholder={tr('Üretici markası')} maxLength={60} />
           </View>
           <Input
-            label="Bobin ağırlığı (isteğe bağlı)"
+            label={tr('Bobin ağırlığı (isteğe bağlı)')}
             unit="kg"
             value={coneWeightKg}
             onChangeText={setConeWeightKg}
-            placeholder="Örn. 1,8"
+            placeholder={tr('Örn. 1,8')}
             {...numericProps}
           />
         </View>
 
         {/* Ticari */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Ticari" />
-          {subLabel('Satıcı')}
+          <SectionTitle title={tr('Ticari')} />
+          {subLabel(tr('Satıcı'))}
           <SingleChips options={[none, ...optionValues(options.sellerRoles)]} value={sellerRole} onChange={setSellerRole} />
-          <Input label="Stok" unit="kg" value={stock} onChangeText={setStock} placeholder="Örn. 4500" {...numericProps} />
-          <Input label="En az sipariş" unit="kg" value={moq} onChangeText={setMoq} placeholder="Örn. 500" {...numericProps} />
+          <Input label={tr('Stok')} unit="kg" value={stock} onChangeText={setStock} placeholder={tr('Örn. 4500')} {...numericProps} />
+          <Input label={tr('En az sipariş')} unit="kg" value={moq} onChangeText={setMoq} placeholder={tr('Örn. 500')} {...numericProps} />
           <Input
-            label="Termin"
-            unit="gün"
+            label={tr('Termin')}
+            unit={tr('gün')}
             value={leadTimeDays}
             onChangeText={setLeadTimeDays}
-            placeholder="Örn. 15"
+            placeholder={tr('Örn. 15')}
             {...numericProps}
           />
           <Input
-            label="Fiyat (kg başına)"
+            label={tr('Fiyat (kg başına)')}
             unit={`${priceCurrency}/kg`}
             value={priceValue}
             onChangeText={setPriceValue}
-            placeholder="Örn. 3,20"
-            helper="Fiyat yalnızca sana görünür. Diğer firmalar iplik sayfasında fiyatı görmez."
+            placeholder={tr('Örn. 3,20')}
+            helper={tr('Fiyat yalnızca sana görünür. Diğer firmalar iplik sayfasında fiyatı görmez.')}
             {...numericProps}
           />
-          {subLabel('Para birimi')}
+          {subLabel(tr('Para birimi'))}
           <SingleChips options={CURRENCY_OPTIONS} value={priceCurrency} onChange={setPriceCurrency} />
-          <Input label="Not (isteğe bağlı)" value={note} onChangeText={setNote} placeholder="Örn. Stoktan hemen teslim" maxLength={500} />
+          <Input label={tr('Not (isteğe bağlı)')} value={note} onChangeText={setNote} placeholder={tr('Örn. Stoktan hemen teslim')} maxLength={500} />
         </View>
 
         {/* Sertifikalar (açılır bölüm) */}
         <View style={{ gap: t.space[3] }}>
           <SectionTitle
-            title={certificateRows.length ? `Sertifikalar · ${certificateRows.length}` : 'Sertifikalar'}
-            linkLabel={certificateOpen ? 'Gizle' : 'Göster'}
+            title={certificateRows.length ? tr('Sertifikalar · {n}', { n: certificateRows.length }) : tr('Sertifikalar')}
+            linkLabel={certificateOpen ? tr('Gizle') : tr('Göster')}
             onLinkPress={() => {
               haptics.selection();
               setCertificateOpen((v) => !v);
@@ -1151,7 +1153,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
               <CertificatesEditor
                 rows={certificateRows}
                 onChange={setCertificateRows}
-                hint="Sertifika eklenen iplikler aramalarda öne çıkar."
+                hint={tr('Sertifika eklenen iplikler aramalarda öne çıkar.')}
                 onError={setError}
               />
             </Card>
@@ -1161,7 +1163,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
         {!user?.companyId || formErrors.length || error ? (
           <View style={{ gap: t.space[2] }}>
             {!user?.companyId ? (
-              <ErrorBanner message="İplik eklemek için önce firma bilgilerini tamamlaman gerekir." />
+              <ErrorBanner message={tr('İplik eklemek için önce firma bilgilerini tamamlaman gerekir.')} />
             ) : null}
             {formErrors.map((message) => (
               <ErrorBanner key={message} message={message} />
@@ -1171,7 +1173,7 @@ export function YarnFormScreen({ navigation, route }: Props) {
         ) : null}
 
         {isEditing ? (
-          <Button kind="danger" fullWidth label="İpliği sil" loading={deleting} onPress={() => void handleDelete()} />
+          <Button kind="danger" fullWidth label={tr('İpliği sil')} loading={deleting} onPress={() => void handleDelete()} />
         ) : null}
       </Screen>
     </View>

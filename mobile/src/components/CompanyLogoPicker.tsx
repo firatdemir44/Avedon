@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { tr } from '../i18n';
 import { View, Text, Image } from 'react-native';
 import { pickCompressedImage } from '../features/imagePicker';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,7 +28,7 @@ interface Props {
 // kurulumun logo adımında aynı görünüm ve aynı sıkıştırma ayarları kullanılsın
 // diye ortak bileşen. Logo karesi firma avatarı dilinde (brand-soft / brand,
 // radius-sm); görsel varsa 1px line çerçeve.
-export function CompanyLogoPicker({ companyName, preview, onChange, onError, hint = DEFAULT_HINT }: Props) {
+export function CompanyLogoPicker({ companyName, preview, onChange, onError, hint = tr(DEFAULT_HINT) }: Props) {
   const t = useTheme();
   const [picking, setPicking] = useState(false);
 
@@ -43,8 +44,8 @@ export function CompanyLogoPicker({ companyName, preview, onChange, onError, hin
     } catch (err) {
       onError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     } finally {
       setPicking(false);
@@ -87,11 +88,11 @@ export function CompanyLogoPicker({ companyName, preview, onChange, onError, hin
         <View style={{ flex: 1, gap: t.space[2] }}>
           <Button
             kind="secondary"
-            label={picking ? 'İşleniyor...' : preview ? 'Logoyu değiştir' : 'Logo seç'}
+            label={picking ? tr('İşleniyor...') : preview ? tr('Logoyu değiştir') : tr('Logo seç')}
             loading={picking}
             onPress={pick}
           />
-          {preview ? <Button kind="quiet" label="Logoyu kaldır" onPress={() => onChange(null)} /> : null}
+          {preview ? <Button kind="quiet" label={tr('Logoyu kaldır')} onPress={() => onChange(null)} /> : null}
         </View>
       </View>
       {hint ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{hint}</Text> : null}

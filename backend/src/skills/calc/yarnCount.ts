@@ -2,6 +2,7 @@
 import * as z from 'zod/v4';
 import { convertYarnCount, type YarnCountResult, type YarnCountSystem } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const system = z.enum(['ne', 'nm', 'tex', 'dtex', 'denye']);
 
@@ -33,11 +34,12 @@ export const yarnCount = defineSkill<typeof inputSchema, YarnCountResult>({
     'tex = 1.000 metrenin gram ağırlığı. Ne → tex: 1000 / (Ne × 1,693). Nm → tex: 1000 / Nm. denye = tex × 9, dtex = tex × 10. Katlı iplikte tex × kat sayısı.',
   inputSchema,
   run: (input) => convertYarnCount(input.value, input.system, input.ply),
-  summarize: (input, out) => {
-    const head = input.ply > 1 ? `${fmt(input.value)}/${input.ply} ${LABELS[input.system]}` : `${fmt(input.value)} ${LABELS[input.system]}`;
-    const others = ORDER.filter((s) => s !== input.system).map((s) => `${fmt(out[s], s === 'denye' ? 0 : 1)} ${LABELS[s]}`);
+  summarize: (input, out, lang) => {
+    const label = (s: YarnCountSystem) => t(lang, LABELS[s]);
+    const head = input.ply > 1 ? `${fmt(input.value)}/${input.ply} ${label(input.system)}` : `${fmt(input.value)} ${label(input.system)}`;
+    const others = ORDER.filter((s) => s !== input.system).map((s) => `${fmt(out[s], s === 'denye' ? 0 : 1)} ${label(s)}`);
     let text = `${head} ≈ ${others.join(', ')}.`;
-    if (input.ply > 1) text += ` Katlı iplik: bu değerler bütün ipliğin kalınlığıdır, ${fmt(out.ne, 1)} Ne kalınlığa denk gelir.`;
+    if (input.ply > 1) text += t(lang, ' Katlı iplik: bu değerler bütün ipliğin kalınlığıdır, {ne} Ne kalınlığa denk gelir.', { ne: fmt(out.ne, 1) });
     return text;
   },
 });

@@ -5,6 +5,7 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { View, Text, Image, Pressable, ActivityIndicator } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import { detectGarmentComponents, type DetectedComponent, type GarmentImageInput } from '../../api/client';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { parseNumber, formatNumber } from '../../features/calculators/parse';
@@ -53,8 +54,8 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
     } catch (err) {
       setError(
         err instanceof Error && err.message === 'permission_denied'
-          ? 'Galeriye erişim izni verilmedi.'
-          : 'Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.'
+          ? tr('Galeriye erişim izni verilmedi.')
+          : tr('Fotoğraf işlenemedi, lütfen başka bir fotoğraf deneyin.')
       );
     } finally {
       setAddingImage(false);
@@ -80,7 +81,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
       if (message === 'analysis_not_configured') {
         setNotConfigured(true);
       } else {
-        setError('Analiz başarısız oldu, lütfen tekrar deneyin.');
+        setError(tr('Analiz başarısız oldu, lütfen tekrar deneyin.'));
       }
     } finally {
       setAnalyzing(false);
@@ -92,17 +93,15 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
   };
 
   const notice = notConfigured
-    ? "Görsel analiz henüz etkinleştirilmedi. Backend'de ANTHROPIC_API_KEY tanımlanmalı."
+    ? tr("Görsel analiz henüz etkinleştirilmedi. Backend'de ANTHROPIC_API_KEY tanımlanmalı.")
     : error;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Görselden maliyet" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Görselden maliyet')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-          Bir kıyafetin ön, arka gibi farklı açılardan fotoğraflarını ekleyin — AI hepsini birlikte değerlendirip
-          görünen bileşenleri (yaka, kol, fermuar, cep, ön/arka baskı vb.) tek listede tespit eder, tekrar etmez.
-          Miktar ve birim fiyatı siz girersiniz, sistem tahmin üretmez.
+          {tr('Bir kıyafetin ön, arka gibi farklı açılardan fotoğraflarını ekleyin — AI hepsini birlikte değerlendirip görünen bileşenleri (yaka, kol, fermuar, cep, ön/arka baskı vb.) tek listede tespit eder, tekrar etmez. Miktar ve birim fiyatı siz girersiniz, sistem tahmin üretmez.')}
         </Text>
 
         {images.length > 0 ? (
@@ -111,7 +110,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
               <View key={img.uri} style={{ width: t.size.thumb, height: t.size.thumb }}>
                 <Image
                   source={{ uri: img.uri }}
-                  accessibilityLabel={`${index + 1}. fotoğraf`}
+                  accessibilityLabel={tr('{n}. fotoğraf', { n: index + 1 })}
                   style={{
                     width: t.size.thumb,
                     height: t.size.thumb,
@@ -124,7 +123,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
                 <Pressable
                   onPress={() => removeImage(index)}
                   accessibilityRole="button"
-                  accessibilityLabel={`${index + 1}. fotoğrafı kaldır`}
+                  accessibilityLabel={tr('{n}. fotoğrafı kaldır', { n: index + 1 })}
                   hitSlop={8}
                   style={{
                     position: 'absolute',
@@ -152,10 +151,10 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
               icon="camera"
               label={
                 addingImage
-                  ? 'İşleniyor…'
+                  ? tr('İşleniyor…')
                   : images.length === 0
-                    ? 'Fotoğraf seç'
-                    : `Fotoğraf ekle (${images.length}/${MAX_IMAGES})`
+                    ? tr('Fotoğraf seç')
+                    : tr('Fotoğraf ekle ({n}/{max})', { n: images.length, max: MAX_IMAGES })
               }
               onPress={addImage}
               loading={addingImage}
@@ -165,7 +164,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
 
           {images.length > 0 ? (
             <Button
-              label={analyzing ? 'Analiz ediliyor…' : 'Bileşenleri tespit et'}
+              label={analyzing ? tr('Analiz ediliyor…') : tr('Bileşenleri tespit et')}
               onPress={analyze}
               loading={analyzing}
               fullWidth
@@ -183,7 +182,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
 
         {rows.length > 0 ? (
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title="Maliyet kalemleri" />
+            <SectionTitle title={tr('Maliyet kalemleri')} />
             {rows.map((row, index) => (
               <Card key={`${row.component}-${index}`}>
                 <View style={{ gap: t.space[3] }}>
@@ -194,7 +193,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
                   <View style={{ flexDirection: 'row', gap: t.space[3] }}>
                     <Input
                       containerStyle={{ flex: 1, minWidth: 0 }}
-                      label="Miktar"
+                      label={tr('Miktar')}
                       inputMode="decimal"
                       keyboardType="decimal-pad"
                       value={row.quantity}
@@ -202,7 +201,7 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
                     />
                     <Input
                       containerStyle={{ flex: 1, minWidth: 0 }}
-                      label="Birim fiyat"
+                      label={tr('Birim fiyat')}
                       unit="₺"
                       inputMode="decimal"
                       keyboardType="decimal-pad"
@@ -227,9 +226,9 @@ export function GarmentVisualCostScreen({ navigation }: RootStackScreenProps<'Ga
                 borderRadius: t.radius.lg,
                 backgroundColor: t.colors.surfaceBrand,
               }}
-              accessibilityLabel={`Toplam maliyet: ${formatNumber(total)} lira`}
+              accessibilityLabel={tr('Toplam maliyet: {n} lira', { n: formatNumber(total) })}
             >
-              <Text style={[t.type.label14, { color: t.colors.onBrand, flex: 1, minWidth: 0 }]}>Toplam maliyet</Text>
+              <Text style={[t.type.label14, { color: t.colors.onBrand, flex: 1, minWidth: 0 }]}>{tr('Toplam maliyet')}</Text>
               <Text
                 numberOfLines={1}
                 style={[t.type.display28, { color: t.colors.onBrand, textAlign: 'right', flexShrink: 1 }]}

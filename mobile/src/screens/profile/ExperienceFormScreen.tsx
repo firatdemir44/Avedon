@@ -16,6 +16,7 @@ import {
 import { InlineError } from '../../components/StateView';
 import { confirmAction } from '../../features/confirm';
 import { MONTH_NAMES_SHORT } from '../../features/users/experienceDates';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Chip, ChipRow, Input, Screen, SectionTitle } from '../../ui';
 
@@ -39,27 +40,27 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
-    navigation.setOptions({ title: existing ? 'Deneyimi Düzenle' : 'Deneyim Ekle' });
+    navigation.setOptions({ title: existing ? tr('Deneyimi Düzenle') : tr('Deneyim Ekle') });
   }, [navigation, existing]);
 
   const save = async () => {
     const start = { month: Number(startMonth), year: Number(startYear) };
     if (!title.trim() || !company.trim()) {
-      setError('Görev ve firma alanları zorunlu.');
+      setError(tr('Görev ve firma alanları zorunlu.'));
       return;
     }
     if (!Number.isInteger(start.year) || start.year < 1950 || start.year > 2100) {
-      setError('Başlangıç yılı 1950 ile 2100 arasında olmalı.');
+      setError(tr('Başlangıç yılı 1950 ile 2100 arasında olmalı.'));
       return;
     }
     const end = { month: Number(endMonth), year: Number(endYear) };
     if (!ongoing) {
       if (!Number.isInteger(end.year) || end.year < 1950 || end.year > 2100) {
-        setError('Bitiş yılı 1950 ile 2100 arasında olmalı.');
+        setError(tr('Bitiş yılı 1950 ile 2100 arasında olmalı.'));
         return;
       }
       if (end.year * 12 + end.month < start.year * 12 + start.month) {
-        setError('Bitiş tarihi başlangıçtan önce olamaz.');
+        setError(tr('Bitiş tarihi başlangıçtan önce olamaz.'));
         return;
       }
     }
@@ -84,10 +85,10 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
       const code = err instanceof ApiError ? err.code : undefined;
       setError(
         code === 'too_many_experiences'
-          ? 'En fazla 20 deneyim eklenebilir.'
+          ? tr('En fazla 20 deneyim eklenebilir.')
           : code === 'invalid_body'
-            ? 'Girilen bilgiler geçersiz, tarihleri kontrol edin.'
-            : 'Kaydedilemedi, tekrar deneyin.'
+            ? tr('Girilen bilgiler geçersiz, tarihleri kontrol edin.')
+            : tr('Kaydedilemedi, tekrar deneyin.')
       );
     } finally {
       setSaving(false);
@@ -98,9 +99,9 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
     if (!existing) return;
     // Web'de Alert.alert çalışmıyor; ortak onay yardımcısı kullanılıyor.
     const ok = await confirmAction({
-      title: 'Deneyimi sil',
-      message: `"${existing.title}" kaydı profilinizden kaldırılacak.`,
-      confirmLabel: 'Sil',
+      title: tr('Deneyimi sil'),
+      message: tr('"{title}" kaydı profilinizden kaldırılacak.', { title: existing.title }),
+      confirmLabel: tr('Sil'),
       destructive: true,
     });
     if (!ok) return;
@@ -110,7 +111,7 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
       await deleteMyExperience(existing.id);
       navigation.goBack();
     } catch {
-      setError('Silinemedi, tekrar deneyin.');
+      setError(tr('Silinemedi, tekrar deneyin.'));
     } finally {
       setSaving(false);
     }
@@ -119,13 +120,13 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
   return (
     <Screen
       contentStyle={{ gap: t.space[4] }}
-      sticky={<Button size="lg" label="Kaydet" loading={saving} onPress={save} />}
+      sticky={<Button size="lg" label={tr('Kaydet')} loading={saving} onPress={save} />}
     >
-      <Input label="Görev" value={title} onChangeText={setTitle} placeholder="Genel Müdür" maxLength={80} />
-      <Input label="Firma" value={company} onChangeText={setCompany} placeholder="Melide Tekstil" maxLength={120} />
+      <Input label={tr('Görev')} value={title} onChangeText={setTitle} placeholder="Genel Müdür" maxLength={80} />
+      <Input label={tr('Firma')} value={company} onChangeText={setCompany} placeholder="Melide Tekstil" maxLength={120} />
 
       <View style={{ gap: t.space[2], minWidth: 0 }}>
-        <SectionTitle title="Başlangıç" />
+        <SectionTitle title={tr('Başlangıç')} />
         {/* Ay seçimi: çip satırı (yatay kaydırılır, satır kırmaz). */}
         <ChipRow>
           {MONTH_OPTIONS.map((option) => (
@@ -138,7 +139,7 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
           ))}
         </ChipRow>
         <Input
-          label="Başlangıç yılı"
+          label={tr('Başlangıç yılı')}
           value={startYear}
           onChangeText={(text) => setStartYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
           keyboardType="number-pad"
@@ -157,11 +158,11 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
           minWidth: 0,
         }}
       >
-        <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>Devam ediyor</Text>
+        <Text style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>{tr('Devam ediyor')}</Text>
         <Switch
           value={ongoing}
           onValueChange={setOngoing}
-          accessibilityLabel="Görev devam ediyor"
+          accessibilityLabel={tr('Görev devam ediyor')}
           trackColor={{ false: t.colors.lineStrong, true: t.colors.brand }}
           thumbColor={t.colors.surface1}
         />
@@ -169,7 +170,7 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
 
       {!ongoing ? (
         <View style={{ gap: t.space[2], minWidth: 0 }}>
-          <SectionTitle title="Bitiş" />
+          <SectionTitle title={tr('Bitiş')} />
           <ChipRow>
             {MONTH_OPTIONS.map((option) => (
               <Chip
@@ -181,7 +182,7 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
             ))}
           </ChipRow>
           <Input
-            label="Bitiş yılı"
+            label={tr('Bitiş yılı')}
             value={endYear}
             onChangeText={(text) => setEndYear(text.replace(/[^0-9]/g, '').slice(0, 4))}
             keyboardType="number-pad"
@@ -191,12 +192,12 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
         </View>
       ) : null}
 
-      <Input label="Konum" value={location} onChangeText={setLocation} placeholder="Bursa" maxLength={80} />
+      <Input label={tr('Konum')} value={location} onChangeText={setLocation} placeholder="Bursa" maxLength={80} />
       <Input
-        label="Açıklama"
+        label={tr('Açıklama')}
         value={description}
         onChangeText={setDescription}
-        placeholder="Bu görevde neler yaptınız?"
+        placeholder={tr('Bu görevde neler yaptınız?')}
         multiline
         numberOfLines={4}
         maxLength={600}
@@ -205,7 +206,7 @@ export function ExperienceFormScreen({ navigation, route }: Props) {
       {error ? <InlineError message={error} /> : null}
 
       {existing ? (
-        <Button kind="danger" fullWidth label="Deneyimi sil" disabled={saving} onPress={remove} />
+        <Button kind="danger" fullWidth label={tr('Deneyimi sil')} disabled={saving} onPress={remove} />
       ) : null}
     </Screen>
   );

@@ -5,6 +5,7 @@ import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { passportStyles } from './styles';
 import { isPdfDoc, pickDocImage, pickDocPdf, type DocImage } from './rows';
+import { tr } from '../../i18n';
 
 interface Props {
   // Satırın belgesi (yok · sunucudaki · yeni seçilen).
@@ -46,7 +47,7 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
 
   return (
     <>
-      <Text style={styles.label}>Belge (fotoğraf ya da PDF)</Text>
+      <Text style={styles.label}>{tr('Belge (fotoğraf ya da PDF)')}</Text>
       <View style={styles.docRow}>
         {image.kind !== 'none' ? (
           pdf ? (
@@ -71,26 +72,26 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
         <View style={styles.docActions}>
           <Button
             kind="secondary"
-            label={busy ? 'Seçiliyor...' : image.kind === 'none' ? 'Belge ekle' : 'Değiştir'}
+            label={busy ? tr('Seçiliyor...') : image.kind === 'none' ? tr('Belge ekle') : tr('Değiştir')}
             onPress={() => {
               haptics.selection();
               onError?.(null);
               setSourceOpen((v) => !v);
             }}
             disabled={disabled || busy}
-            accessibilityLabel={`${labelPrefix} belgesi seç`}
+            accessibilityLabel={tr('{p} belgesi seç', { p: labelPrefix })}
           />
           {image.kind !== 'none' ? (
             <Button
               kind="quiet"
-              label="Kaldır"
+              label={tr('Kaldır')}
               onPress={() => {
                 haptics.selection();
                 setSourceOpen(false);
                 onChange({ kind: 'none' });
               }}
               disabled={disabled || busy}
-              accessibilityLabel={`${labelPrefix} belgesini kaldır`}
+              accessibilityLabel={tr('{p} belgesini kaldır', { p: labelPrefix })}
             />
           ) : null}
         </View>
@@ -98,14 +99,14 @@ export function DocField({ image, onChange, busy, onBusyChange, onError, disable
       {sourceOpen && !busy ? (
         <View style={styles.docSourceBox}>
           <ListRow
-            title="Fotoğraf"
-            subtitle="Galeriden belge fotoğrafı"
+            title={tr('Fotoğraf')}
+            subtitle={tr('Galeriden belge fotoğrafı')}
             left={<Icon name="image-outline" color="brand" />}
             onPress={() => pick('photo')}
           />
           <ListRow
-            title="PDF dosyası"
-            subtitle="En fazla 1,5 MB"
+            title={tr('PDF dosyası')}
+            subtitle={tr('En fazla 1,5 MB')}
             left={<Icon name="document-text-outline" color="danger" />}
             divider={false}
             onPress={() => pick('pdf')}

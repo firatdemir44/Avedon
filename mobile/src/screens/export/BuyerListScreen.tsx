@@ -4,6 +4,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Linking, RefreshControl, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { locale, tr } from '../../i18n';
 import { fetchExportBuyers, type BuyerLeadStatus, type BuyerSegment, type ExportBuyer, type ExportBuyersResult } from '../../api/client';
 import { friendlyMessage } from '../../components/StateView';
 import { haptics } from '../../features/haptics';
@@ -63,7 +64,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
           if (id !== seq.current) return;
           setLoading(false);
           setRefreshing(false);
-          setError(friendlyMessage(err, 'Aday alıcılar alınamadı'));
+          setError(friendlyMessage(err, tr('Aday alıcılar alınamadı')));
         }
       };
       await run();
@@ -93,7 +94,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
       });
       setData((d) => (d ? { ...d, total: res.total } : res));
     } catch (err) {
-      setError(friendlyMessage(err, 'Devamı alınamadı'));
+      setError(friendlyMessage(err, tr('Devamı alınamadı')));
     } finally {
       setLoadingMore(false);
     }
@@ -106,8 +107,8 @@ export function BuyerListScreen({ navigation, route }: Props) {
     <View style={{ gap: t.space[4], paddingTop: t.space[4], paddingBottom: t.space[4] }}>
       <View style={{ gap: t.space[2] }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], flexWrap: 'wrap' }}>
-          <Text style={[t.type.mono14, { color: t.colors.ink }]}>GTİP {hsDisplay(hs6)}</Text>
-          <Badge kind="info" label="Pilot erişim" />
+          <Text style={[t.type.mono14, { color: t.colors.ink }]}>{tr('GTİP {code}', { code: hsDisplay(hs6) })}</Text>
+          <Badge kind="info" label={tr('Pilot erişim')} />
         </View>
         {hsLabel ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{hsLabel}</Text> : null}
         {data ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{data.note}</Text> : null}
@@ -115,7 +116,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
       {data && data.segments.length > 1 ? (
         <ChipRow>
           <Chip
-            label="Tümü"
+            label={tr('Tümü')}
             selected={segment === null}
             onPress={() => {
               haptics.selection();
@@ -140,21 +141,21 @@ export function BuyerListScreen({ navigation, route }: Props) {
           <View style={{ gap: t.space[3] }}>
             <View style={{ flexDirection: 'row', gap: t.space[2], alignItems: 'center' }}>
               <Icon name="time-outline" color="ink2" size={t.size.iconSm} />
-              <Text style={[t.type.label14, { color: t.colors.ink, flex: 1 }]}>Kayıtlar getiriliyor…</Text>
+              <Text style={[t.type.label14, { color: t.colors.ink, flex: 1 }]}>{tr('Kayıtlar getiriliyor…')}</Text>
             </View>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              İlk açılışta açık sicillerden firma listesi çekiliyor (1-2 dakika). Liste kendiliğinden güncellenecek.
+              {tr('İlk açılışta açık sicillerden firma listesi çekiliyor (1-2 dakika). Liste kendiliğinden güncellenecek.')}
             </Text>
             {buyers.length === 0 ? <SkeletonRow /> : null}
           </View>
         </Card>
       ) : null}
       {pollGaveUp ? (
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Kayıtların bir kısmı hâlâ geliyor; birkaç dakika sonra aşağı çekerek yenileyin.</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Kayıtların bir kısmı hâlâ geliyor; birkaç dakika sonra aşağı çekerek yenileyin.')}</Text>
       ) : null}
       {data && data.total > 0 ? (
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          {data.total.toLocaleString('tr-TR')} aday · puana göre sıralı
+          {tr('{n} aday · puana göre sıralı', { n: data.total.toLocaleString(locale()) })}
         </Text>
       ) : null}
     </View>
@@ -167,17 +168,17 @@ export function BuyerListScreen({ navigation, route }: Props) {
       <SkeletonRow />
     </View>
   ) : error ? (
-    <EmptyState icon="warning" title="Liste alınamadı" description={error} actionLabel="Tekrar dene" onAction={() => load('initial')} />
+    <EmptyState icon="warning" title={tr('Liste alınamadı')} description={error} actionLabel={tr('Tekrar dene')} onAction={() => load('initial')} />
   ) : data?.pending && !pollGaveUp ? null : (
     <EmptyState
       icon="people-outline"
-      title="Bu ülke için aday bulunamadı"
+      title={tr('Bu ülke için aday bulunamadı')}
       description={
         data?.coverage.registry
-          ? 'Seçili ürün türüne uyan kayıtlı firma çıkmadı. Başka bir ürün kodu ya da ülke deneyin.'
-          : `${countryName} için ücretsiz açık firma sicili yok; yalnızca Wikidata'daki bilinen markalar gösterilebiliyor ve bu ürüne uyan kayıt çıkmadı.`
+          ? tr('Seçili ürün türüne uyan kayıtlı firma çıkmadı. Başka bir ürün kodu ya da ülke deneyin.')
+          : tr("{country} için ücretsiz açık firma sicili yok; yalnızca Wikidata'daki bilinen markalar gösterilebiliyor ve bu ürüne uyan kayıt çıkmadı.", { country: countryName })
       }
-      actionLabel="Başka ülke seç"
+      actionLabel={tr('Başka ülke seç')}
       onAction={() => navigation.goBack()}
     />
   );
@@ -185,10 +186,10 @@ export function BuyerListScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
-        title={`Aday alıcılar · ${countryName}`}
+        title={tr('Aday alıcılar · {country}', { country: countryName })}
         leading="back"
         onBack={() => navigation.goBack()}
-        actions={[{ icon: 'bookmark-outline', label: 'Takip listem', onPress: () => navigation.navigate('ExportLeads') }]}
+        actions={[{ icon: 'bookmark-outline', label: tr('Takip listem'), onPress: () => navigation.navigate('ExportLeads') }]}
       />
       <FlatList
         data={buyers}
@@ -200,7 +201,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
         ListFooterComponent={
           data && buyers.length > 0 && buyers.length < data.total ? (
             <View style={{ paddingTop: t.space[4] }}>
-              <Button kind="secondary" label="Daha fazla göster" onPress={loadMore} loading={loadingMore} fullWidth />
+              <Button kind="secondary" label={tr('Daha fazla göster')} onPress={loadMore} loading={loadingMore} fullWidth />
             </View>
           ) : null
         }
@@ -215,7 +216,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
 function BuyerCard({ buyer, onStatus }: { buyer: ExportBuyer; onStatus: () => void }) {
   const t = useTheme();
   const status = buyer.lead ? leadStatusOf(buyer.lead.status) : null;
-  const subtitle = [buyer.city, buyer.sizeLabel, buyer.foundedYear ? `${buyer.foundedYear}'den beri` : null].filter(Boolean).join(' · ');
+  const subtitle = [buyer.city, buyer.sizeLabel, buyer.foundedYear ? tr("{year}'den beri", { year: buyer.foundedYear }) : null].filter(Boolean).join(' · ');
   // İlk gerekçe sicil/faaliyet satırı; büyüklük alt satırda zaten görünüyor.
   const reasons = buyer.reasons.filter((r) => r !== buyer.sizeLabel).slice(0, 3);
   return (
@@ -227,14 +228,14 @@ function BuyerCard({ buyer, onStatus }: { buyer: ExportBuyer; onStatus: () => vo
             {subtitle ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{subtitle}</Text> : null}
             <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap', paddingTop: t.space[1] }}>
               <Badge kind="info" label={buyer.segmentLabel} />
-              {status ? <Badge kind={status.badge} label={status.label} /> : null}
+              {status ? <Badge kind={status.badge} label={tr(status.label)} /> : null}
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
-            <Text accessibilityLabel={`Puan ${buyer.score}`} style={[t.type.title22, { color: t.colors[scoreColor(buyer.score)] }]}>
+            <Text accessibilityLabel={tr('Puan {n}', { n: buyer.score })} style={[t.type.title22, { color: t.colors[scoreColor(buyer.score)] }]}>
               {buyer.score}
             </Text>
-            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>puan</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink3 }]}>{tr('puan')}</Text>
           </View>
         </View>
         <View style={{ gap: t.space[1] }}>
@@ -245,13 +246,13 @@ function BuyerCard({ buyer, onStatus }: { buyer: ExportBuyer; onStatus: () => vo
             </View>
           ))}
         </View>
-        {buyer.lead?.note ? <Text style={[t.type.body14, { color: t.colors.ink }]}>Not: {buyer.lead.note}</Text> : null}
+        {buyer.lead?.note ? <Text style={[t.type.body14, { color: t.colors.ink }]}>{tr('Not: {note}', { note: buyer.lead.note })}</Text> : null}
         <ButtonRow>
-          <Button kind="secondary" icon="bookmark-outline" label={status ? 'Durumu değiştir' : 'Takibe al'} onPress={onStatus} />
+          <Button kind="secondary" icon="bookmark-outline" label={status ? tr('Durumu değiştir') : tr('Takibe al')} onPress={onStatus} />
           {buyer.website ? (
-            <Button kind="quiet" icon="open-outline" label="Web sitesi" onPress={() => Linking.openURL(buyer.website!).catch(() => {})} />
+            <Button kind="quiet" icon="open-outline" label={tr('Web sitesi')} onPress={() => Linking.openURL(buyer.website!).catch(() => {})} />
           ) : (
-            <Button kind="quiet" icon="open-outline" label="Sicil kaydı" onPress={() => Linking.openURL(buyer.sourceUrl).catch(() => {})} />
+            <Button kind="quiet" icon="open-outline" label={tr('Sicil kaydı')} onPress={() => Linking.openURL(buyer.sourceUrl).catch(() => {})} />
           )}
         </ButtonRow>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]} onPress={() => Linking.openURL(buyer.sourceUrl).catch(() => {})} accessibilityRole="link">

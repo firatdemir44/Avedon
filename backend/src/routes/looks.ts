@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { tx } from '../i18n';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { LlmNotConfiguredError, LlmOutputError, isLlmConfigured, isLlmMock } from '../llm';
@@ -79,7 +80,7 @@ looksRouter.post(
 
       // Etiket yok ya da okunamadı: eski davranış (yalnızca görünüm).
       if (!labelOut || !labelOut.label.read) {
-        const label = labelOut?.label ?? null;
+        const label = labelOut ? { ...labelOut.label, warnings: labelOut.label.warnings.map((w) => tx(req.lang, w)) } : null;
         if (!look) return res.json({ look: null, recognized: false, results: [], remaining, label });
         if (!lookOk) return res.json({ look: lookView(look), recognized: false, results: [], remaining, label });
         const results = await findSimilarProducts(look, { viewerCompanyId: req.user!.companyId, limit: parsed.data.limit });
@@ -94,7 +95,7 @@ looksRouter.post(
         recognized: true,
         results,
         remaining,
-        label: { ...labelOut.label, warnings: labelWarnings },
+        label: { ...labelOut.label, warnings: labelWarnings.map((w) => tx(req.lang, w)) },
       });
     } catch (err) {
       if (err instanceof LlmNotConfiguredError) return res.status(503).json({ error: 'llm_not_configured' });

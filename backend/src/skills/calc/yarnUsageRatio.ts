@@ -2,6 +2,7 @@
 import * as z from 'zod/v4';
 import { yarnUsageRatios, type YarnCountSystem } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const system = z.enum(['ne', 'nm', 'tex', 'dtex', 'denye']);
 
@@ -33,8 +34,10 @@ export const yarnUsageRatio = defineSkill<typeof inputSchema, { percents: number
     'Satır ağırlığı ∝ besleyici × ilmek boyu(mm) × tex. Pay (%) = satır ağırlığı / toplam × 100. İğne sayısı bütün satırlarda aynı olduğu için orana etki etmez.',
   inputSchema,
   run: (input) => ({ percents: yarnUsageRatios(input.rows) }),
-  summarize: (input, out) =>
+  summarize: (input, out, lang) =>
     out.percents
-      .map((p, i) => `${fmt(input.rows[i].count)} ${LABELS[input.rows[i].system]} iplik %${fmt(p, 1)}`)
+      .map((p, i) =>
+        t(lang, '{count} {sys} iplik %{pct}', { count: fmt(input.rows[i].count), sys: t(lang, LABELS[input.rows[i].system]), pct: fmt(p, 1) })
+      )
       .join(', ') + '.',
 });

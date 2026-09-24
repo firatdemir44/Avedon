@@ -18,6 +18,7 @@ import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   Badge,
@@ -47,14 +48,14 @@ const LEVEL_OPTIONS: { value: VerificationLevel; label: string }[] = [
 ];
 
 function levelLabel(level?: string): string {
-  return LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? 'Düzey belirtilmemiş';
+  return tr(LEVEL_OPTIONS.find((o) => o.value === level)?.label ?? 'Düzey belirtilmemiş');
 }
 
 // Firma durumu → rozet (ikon + metin; yalnız renk değil).
 function statusBadge(status: VerificationStatus) {
-  if (status === 'dogrulanmis') return { kind: 'verified' as const, label: 'Doğrulandı' };
-  if (status === 'inceleniyor') return { kind: 'pending' as const, label: 'İnceleniyor' };
-  return { kind: 'cancelled' as const, label: 'Doğrulanmamış' };
+  if (status === 'dogrulanmis') return { kind: 'verified' as const, label: tr('Doğrulandı') };
+  if (status === 'inceleniyor') return { kind: 'pending' as const, label: tr('İnceleniyor') };
+  return { kind: 'cancelled' as const, label: tr('Doğrulanmamış') };
 }
 
 type Tab = 'requests' | 'companies' | 'reports';
@@ -81,8 +82,8 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
       <SafeAreaView style={{ flex: 1, backgroundColor: t.colors.surface0 }} edges={['bottom']}>
         <EmptyState
           icon="lock-closed-outline"
-          title="Erişim yetkiniz yok"
-          description="Bu ekran yalnızca Takyon ekibine açık."
+          title={tr('Erişim yetkiniz yok')}
+          description={tr('Bu ekran yalnızca Takyon ekibine açık.')}
         />
       </SafeAreaView>
     );
@@ -93,16 +94,16 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
       <View style={{ paddingHorizontal: t.space[4], paddingTop: t.space[4], paddingBottom: t.space[3] }}>
         <SegmentControl<Tab>
           stretch
-          accessibilityLabel="Yönetici bölümü"
+          accessibilityLabel={tr('Yönetici bölümü')}
           value={tab}
           onChange={setTab}
           options={[
             {
               value: 'requests',
-              label: pendingCount === null ? 'Başvurular' : `Başvurular (${pendingCount})`,
+              label: pendingCount === null ? tr('Başvurular') : tr('Başvurular ({n})', { n: pendingCount }),
             },
-            { value: 'companies', label: 'Firmalar' },
-            { value: 'reports', label: 'Şikâyetler' },
+            { value: 'companies', label: tr('Firmalar') },
+            { value: 'reports', label: tr('Şikâyetler') },
           ]}
         />
       </View>
@@ -147,7 +148,7 @@ function AdminCompanies() {
       );
       await reload();
     } catch (err) {
-      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
+      setActionError(friendlyMessage(err, tr('Durum güncellenemedi')));
     } finally {
       setUpdatingId(null);
     }
@@ -168,16 +169,16 @@ function AdminCompanies() {
       <View style={{ flex: 1 }}>
         <EmptyState
           icon="warning"
-          title="Firmalar alınamadı"
-          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Firmalar alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </View>
     );
   }
 
-  const bannerMessage = actionError ?? (error ? friendlyMessage(error, 'Firmalar alınamadı') : null);
+  const bannerMessage = actionError ?? (error ? friendlyMessage(error, tr('Firmalar alınamadı')) : null);
 
   return (
     <View style={{ flex: 1 }}>
@@ -207,7 +208,7 @@ function AdminCompanies() {
             </View>
           ) : null
         }
-        ListEmptyComponent={<EmptyState icon="business-outline" title="Henüz firma yok" />}
+        ListEmptyComponent={<EmptyState icon="business-outline" title={tr('Henüz firma yok')} />}
         renderItem={({ item }) => {
           const badge = statusBadge(item.verification);
           const busy = updatingId === item.id;
@@ -226,26 +227,26 @@ function AdminCompanies() {
 
                 <View style={{ gap: t.space[1] / 2, minWidth: 0 }}>
                   <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    Vergi No: {item.taxId}
+                    {tr('Vergi No:')} {item.taxId}
                   </Text>
                   <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    Şirket Kodu: {item.companyCode}
+                    {tr('Şirket Kodu:')} {item.companyCode}
                   </Text>
                   <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
-                    {item._count.users} çalışan · {item._count.products} ürün
+                    {tr('{users} çalışan · {products} ürün', { users: item._count.users, products: item._count.products })}
                   </Text>
                 </View>
 
                 {/* Durum seçimi: çip satırı (seçili çip zaten "şu anki durum"). */}
                 <View style={{ gap: t.space[2], minWidth: 0 }}>
-                  <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Durum</Text>
+                  <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Durum')}</Text>
                   <ChipRow>
                     {STATUS_OPTIONS.map((option) => {
                       const isCurrent = item.verification === option.value;
                       return (
                         <Chip
                           key={option.value}
-                          label={option.label}
+                          label={tr(option.label)}
                           selected={isCurrent}
                           disabled={isCurrent || busy}
                           onPress={() => handleSetStatus(item.id, option.value)}
@@ -258,7 +259,7 @@ function AdminCompanies() {
                 {item.verification === 'dogrulanmis' ? (
                   <View style={{ gap: t.space[2], minWidth: 0 }}>
                     <Text style={[t.type.label14, { color: t.colors.ink2 }]}>
-                      Doğrulama düzeyi: {levelLabel(item.verificationLevel)}
+                      {tr('Doğrulama düzeyi:')} {levelLabel(item.verificationLevel)}
                     </Text>
                     <ChipRow>
                       {LEVEL_OPTIONS.map((option) => {
@@ -266,7 +267,7 @@ function AdminCompanies() {
                         return (
                           <Chip
                             key={option.value}
-                            label={option.label}
+                            label={tr(option.label)}
                             selected={isCurrent}
                             disabled={isCurrent || busy}
                             onPress={() => handleSetStatus(item.id, 'dogrulanmis', option.value)}

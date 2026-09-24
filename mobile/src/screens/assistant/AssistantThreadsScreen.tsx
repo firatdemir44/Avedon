@@ -10,6 +10,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, EmptyState, Icon, ListRow, Screen, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'AssistantThreads'>;
 
@@ -39,9 +40,9 @@ export function AssistantThreadsScreen({ navigation }: Props) {
   const removeThread = useCallback(
     async (thread: AssistantThread) => {
       const ok = await confirmAction({
-        title: 'Sohbet silinsin mi?',
-        message: `${thread.title || 'Yeni sohbet'} kalıcı olarak silinecek.`,
-        confirmLabel: 'Sil',
+        title: tr('Sohbet silinsin mi?'),
+        message: tr('{title} kalıcı olarak silinecek.', { title: thread.title || tr('Yeni sohbet') }),
+        confirmLabel: tr('Sil'),
         destructive: true,
       });
       if (!ok) return;
@@ -52,7 +53,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
         await reload();
       } catch {
         haptics.error();
-        setRemoveError('Sohbet silinemedi, tekrar deneyin.');
+        setRemoveError(tr('Sohbet silinemedi, tekrar deneyin.'));
       }
     },
     [reload]
@@ -60,10 +61,10 @@ export function AssistantThreadsScreen({ navigation }: Props) {
 
   const bar = (
     <AppBar
-      title="Sohbetler"
+      title={tr('Sohbetler')}
       leading="back"
       onBack={() => navigation.goBack()}
-      actions={[{ icon: 'stats-chart-outline', label: 'Asistan raporu', onPress: () => navigation.navigate('AssistantReport') }, { icon: 'plus', label: 'Yeni sohbet', onPress: () => void openThread(null) }]}
+      actions={[{ icon: 'stats-chart-outline', label: tr('Asistan raporu'), onPress: () => navigation.navigate('AssistantReport') }, { icon: 'plus', label: tr('Yeni sohbet'), onPress: () => void openThread(null) }]}
     />
   );
 
@@ -87,9 +88,9 @@ export function AssistantThreadsScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Sohbetler alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Sohbetler alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </Screen>
@@ -127,8 +128,8 @@ export function AssistantThreadsScreen({ navigation }: Props) {
                 </View>
               ) : null}
               <ListRow
-                title="Yeni sohbet"
-                subtitle="Boş bir sohbetle başla"
+                title={tr('Yeni sohbet')}
+                subtitle={tr('Boş bir sohbetle başla')}
                 left={<Icon name="plus" color="brand" />}
                 onPress={() => void openThread(null)}
               />
@@ -137,8 +138,8 @@ export function AssistantThreadsScreen({ navigation }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="clock"
-              title="Henüz sohbet yok"
-              description="Asistana ilk sorunuzu sorduğunuzda sohbet burada listelenir."
+              title={tr('Henüz sohbet yok')}
+              description={tr('Asistana ilk sorunuzu sorduğunuzda sohbet burada listelenir.')}
             />
           }
           renderItem={({ item, index }) => (
@@ -147,7 +148,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', minWidth: 0 }}>
               <ListRow
                 style={{ flex: 1, minWidth: 0 }}
-                title={item.title || 'Yeni sohbet'}
+                title={item.title || tr('Yeni sohbet')}
                 subtitle={formatListTime(item.updatedAt)}
                 divider={index < threads.length - 1}
                 onPress={() => void openThread(item.id)}
@@ -155,7 +156,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => void removeThread(item)}
                 accessibilityRole="button"
-                accessibilityLabel={`${item.title || 'Yeni sohbet'} sohbetini sil`}
+                accessibilityLabel={tr('{title} sohbetini sil', { title: item.title || tr('Yeni sohbet') })}
                 style={({ pressed }) => ({
                   width: t.size.touchMin,
                   height: t.size.touchMin,
@@ -171,7 +172,7 @@ export function AssistantThreadsScreen({ navigation }: Props) {
           ListFooterComponent={
             threads.length ? (
               <Text style={[t.type.body14, { color: t.colors.ink3, paddingTop: t.space[4] }]}>
-                Sohbetler sunucuda saklanır, cihaz değişince de gelir.
+                {tr('Sohbetler sunucuda saklanır, cihaz değişince de gelir.')}
               </Text>
             ) : null
           }

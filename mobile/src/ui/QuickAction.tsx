@@ -1,6 +1,7 @@
 // Kısayol kutusu (DESIGN.md §3, Ana sayfa): 80px kart, sol 40px ikon karesi
 // brand-soft / brand, radius-md; metin 16px 600, iki satıra kırılabilir.
 import React from 'react';
+import { tr } from '../i18n';
 import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon, type AnyIconName } from './Icon';
@@ -54,7 +55,7 @@ export function QuickAction({ label, icon, iconNode, onPress, dot, style, testID
         {iconNode ?? (icon ? <Icon name={icon} color="brand" /> : null)}
         {dot ? (
           <View
-            accessibilityLabel="Yeni"
+            accessibilityLabel={tr('Yeni')}
             style={{
               position: 'absolute',
               top: -t.space[1] / 2,

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcSectionRow,
@@ -39,28 +40,27 @@ export function YarnRatioCalculator({ navigation }: RootStackScreenProps<'YarnRa
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="İplik kullanım oranı" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('İplik kullanım oranı')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-          Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin.
-          Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.
+          {tr('Kumaşa giren her iplik için 50 iğnedeki iplik uzunluğunu, numarasını ve kaç sistemden beslendiğini girin. Örneğin pamuk ve likralı bir kumaşta iki iplik doldurun.')}
         </Text>
 
-        <CalcTable title="İplik oranı">
-          <CalcSectionRow label="İplikler" />
+        <CalcTable title={tr('İplik oranı')}>
+          <CalcSectionRow label={tr('İplikler')} />
           <YarnFeedRowsEditor rows={f.rows} onChange={(rows) => update({ rows })} />
-          <CalcSectionRow label="Kumaştaki pay" />
+          <CalcSectionRow label={tr('Kumaştaki pay')} />
           {f.rows.map((_, index) => (
             <CalcResultRow
               key={index}
-              label={`${index + 1}. iplik payı`}
+              label={tr('{n}. iplik payı', { n: index + 1 })}
               value={percents[index] > 0 ? `%${formatNumber(percents[index], 1)}` : '—'}
             />
           ))}
           {usable === 0 ? (
-            <CalcNoteRow text="Hesap için her iplikte uzunluk, numara ve sistem sayısı dolu olmalı." />
+            <CalcNoteRow text={tr('Hesap için her iplikte uzunluk, numara ve sistem sayısı dolu olmalı.')} />
           ) : null}
-          <CalcFormulaRow text="Her iplik için bir devirde örülen gram = sistem sayısı × ilmek boyu (50 iğne cm ÷ 5) × Tex. Paylar bu gramların toplamına bölünür." />
+          <CalcFormulaRow text={tr('Her iplik için bir devirde örülen gram = sistem sayısı × ilmek boyu (50 iğne cm ÷ 5) × Tex. Paylar bu gramların toplamına bölünür.')} />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />
       </Screen>

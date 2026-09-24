@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { checkClaimable, messageVideos } from '../videoLinks';
 import { sendPush } from '../push';
+import { t } from '../i18n';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
@@ -233,9 +234,10 @@ conversationsRouter.post(
     ]);
 
     // Karşı tarafa anlık bildirim (uygulama içi bildirim satırı yazılmaz; sohbet sayacı zaten var).
+    const otherLang = (await prisma.user.findUnique({ where: { id: otherId }, select: { language: true } }).catch(() => null))?.language;
     void sendPush([otherId], {
       title: `${req.user!.firstName} ${req.user!.lastName}`,
-      body: parsed.data.body ? parsed.data.body.slice(0, 140) : 'Video gönderdi',
+      body: parsed.data.body ? parsed.data.body.slice(0, 140) : t(otherLang, 'Video gönderdi'),
       kind: 'message',
       data: { conversationId: conversation.id, userId: req.user!.id, title: `${req.user!.firstName} ${req.user!.lastName}` },
       tag: `conv-${conversation.id}`,

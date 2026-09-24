@@ -363,3 +363,17 @@ test('quoteDraft: kg fiyatı metreye çevrilir, MOQ altı işaretlenir, fiyat yo
   assert.ok(o2.missing.includes('fiyat') && o2.missing.includes('termin'));
   assert.ok(noPrice.summary.includes('fiyat hesaplanamadı'));
 });
+
+test('İngilizce özet: lang=en doğal İngilizce, varsayılan Türkçe aynen kalır', () => {
+  const input = { finishedKg: 1000, dyeingLossPercent: 5, knittingLossPercent: 3 };
+  const tr = runSkill(getSkill('yarnRequirement')!, input);
+  const en = runSkill(getSkill('yarnRequirement')!, input, 'en');
+  assert.ok(tr.ok && en.ok);
+  assert.match(tr.summary, /kg mamul kumaş; boya\/apre firesi %5 ile/);
+  assert.match(en.summary, /kg finished fabric; with 5% dyeing\/finishing loss, .* kg greige fabric must be knitted/);
+  const yc = runSkill(getSkill('yarnCount')!, { value: 30, system: 'ne' }, 'en');
+  assert.ok(yc.ok && /denier/.test(yc.summary) && !/denye/.test(yc.summary));
+  const bad = runSkill(getSkill('yarnRequirement')!, { dyeingLossPercent: 5, knittingLossPercent: 3 }, 'en');
+  assert.ok(!bad.ok && bad.details.some((d) => d.message.startsWith('Provide finishedKg')));
+  assert.equal(listSkills('en').find((s) => s.name === 'fabricLengthWeight')!.title, 'Metres ↔ kg conversion');
+});

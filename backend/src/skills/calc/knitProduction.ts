@@ -4,6 +4,7 @@
 import * as z from 'zod/v4';
 import { calculateKnitProduction, type KnitProductionResult } from '../../domain/calc/formulas';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const system = z.enum(['ne', 'nm', 'tex', 'dtex', 'denye']);
 
@@ -57,15 +58,23 @@ export const knitProduction = defineSkill<typeof inputSchema, KnitProductionOutp
       perMachineKgPerDay: one.kgPerDay,
     };
   },
-  summarize: (input, out) => {
-    const shares = out.percents.map((p, i) => `${input.rows[i]?.label ?? `${i + 1}. iplik`} %${fmt(p, 1)}`).join(', ');
+  summarize: (input, out, lang) => {
+    const shares = out.percents
+      .map((p, i) => `${input.rows[i]?.label ?? t(lang, '{n}. iplik', { n: i + 1 })} %${fmt(p, 1)}`)
+      .join(', ');
     const parts = [
-      `Saatte ${fmt(out.kgPerHour)} kg`,
-      `${fmt(input.hoursPerDay)} saatlik günde, randıman %${fmt(input.efficiencyPercent, 0)} ile ${fmt(out.kgPerDay)} kg`,
+      t(lang, 'Saatte {v} kg', { v: fmt(out.kgPerHour) }),
+      t(lang, '{h} saatlik günde, randıman %{eff} ile {v} kg', {
+        h: fmt(input.hoursPerDay),
+        eff: fmt(input.efficiencyPercent, 0),
+        v: fmt(out.kgPerDay),
+      }),
     ];
-    if (out.machineCount > 1) parts.push(`(${out.machineCount} makine, makine başına ${fmt(out.perMachineKgPerDay)} kg/gün)`);
-    parts.push(`iplik payları: ${shares}`);
-    if (out.dailyFeeIncome != null) parts.push(`günlük fason geliri ${fmt(out.dailyFeeIncome)} TRY`);
+    if (out.machineCount > 1) {
+      parts.push(t(lang, '({n} makine, makine başına {v} kg/gün)', { n: out.machineCount, v: fmt(out.perMachineKgPerDay) }));
+    }
+    parts.push(t(lang, 'iplik payları: {list}', { list: shares }));
+    if (out.dailyFeeIncome != null) parts.push(t(lang, 'günlük fason geliri {v} TRY', { v: fmt(out.dailyFeeIncome) }));
     return parts.join('; ') + '.';
   },
 });

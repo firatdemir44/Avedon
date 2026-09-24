@@ -94,7 +94,8 @@ referencesRouter.post(
       {
         kind: 'reference_request',
         title: 'Referans onayı bekleniyor',
-        body: `${created.fromCompany.name} sizi ${relation === 'musteri' ? 'müşterisi' : 'tedarikçisi'} olarak gösterdi.`,
+        body: relation === 'musteri' ? '{company} sizi müşterisi olarak gösterdi.' : '{company} sizi tedarikçisi olarak gösterdi.',
+        vars: { company: created.fromCompany.name },
         data: { referenceId: created.id, companyId: me.companyId },
       }
     );
@@ -125,7 +126,8 @@ referencesRouter.post(
       staff.map((u) => u.id),
       {
         kind: confirmed ? 'reference_confirmed' : 'reference_rejected',
-        title: `${row.toCompany.name} referansı ${confirmed ? 'onayladı' : 'reddetti'}`,
+        title: confirmed ? '{company} referansı onayladı' : '{company} referansı reddetti',
+        vars: { company: row.toCompany.name },
         data: { referenceId: row.id, companyId: row.toCompanyId },
       }
     );

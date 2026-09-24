@@ -11,6 +11,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { RootStackParamList, RootStackScreenProps } from '../../navigation/types';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import { AppBar, Card, Icon, Screen, SectionTitle, type AnyIconName } from '../../ui';
 
 type Props = RootStackScreenProps<'Calculators'>;
@@ -44,14 +45,14 @@ export function CalculatorsListScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Hesap araçları" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Hesap araçları')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         {/* Asistan kartı: artboard 6'da lacivert dolu kart. Kart olduğu için
             "ekranda en fazla 1 dolu düğme" kuralını bozmuyor. */}
         <Pressable
           onPress={() => navigation.navigate('MainTabs', { screen: 'AssistantTab' })}
           accessibilityRole="button"
-          accessibilityLabel="Tekstil asistanına sor"
+          accessibilityLabel={tr('Tekstil asistanına sor')}
           style={({ pressed }) => ({
             flexDirection: 'row',
             alignItems: 'center',
@@ -75,9 +76,9 @@ export function CalculatorsListScreen({ navigation }: Props) {
             <Icon name="sparkles-outline" size={t.size.iconSm} colorValue={t.colors.onBrand} />
           </View>
           <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-            <Text style={[t.type.body16Strong, { color: t.colors.onBrand }]}>Tekstil asistanına sor</Text>
+            <Text style={[t.type.body16Strong, { color: t.colors.onBrand }]}>{tr('Tekstil asistanına sor')}</Text>
             <Text numberOfLines={2} style={[t.type.body14, { color: t.colors.onBrand }]}>
-              Örme, boyama, iplik… ne takıldıysa yazın.
+              {tr('Örme, boyama, iplik… ne takıldıysa yazın.')}
             </Text>
           </View>
           <Icon name="chevron" colorValue={t.colors.onBrand} />
@@ -85,7 +86,7 @@ export function CalculatorsListScreen({ navigation }: Props) {
 
         {SECTIONS.map((section) => (
           <View key={section.title} style={{ gap: t.space[3] }}>
-            <SectionTitle title={section.title} />
+            <SectionTitle title={tr(section.title)} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[3] }}>
               {section.tools.map((tool) => (
                 <ToolBox
@@ -99,8 +100,8 @@ export function CalculatorsListScreen({ navigation }: Props) {
         ))}
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Dış pazar" />
-          <Card onPress={() => navigation.navigate('ExportRadar')} accessibilityLabel="Dünyayı Keşfet" testID="tools-export-radar">
+          <SectionTitle title={tr('Dış pazar')} />
+          <Card onPress={() => navigation.navigate('ExportRadar')} accessibilityLabel={tr('Dünyayı Keşfet')} testID="tools-export-radar">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
               <View
                 style={{
@@ -115,16 +116,15 @@ export function CalculatorsListScreen({ navigation }: Props) {
                 <Icon name="globe-outline" color="brand" />
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Dünyayı Keşfet</Text>
-                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Ürününüzü hangi ülkelere satabilirsiniz?</Text>
+                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Dünyayı Keşfet')}</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Ürününüzü hangi ülkelere satabilirsiniz?')}</Text>
               </View>
             </View>
           </Card>
         </View>
 
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-          Hesaplar sabit formüllerle yapılır. Fiyat, fire ve verimlilik gibi değerleri siz girersiniz;
-          girdiğiniz değerler bu cihazda hatırlanır.
+          {tr('Hesaplar sabit formüllerle yapılır. Fiyat, fire ve verimlilik gibi değerleri siz girersiniz; girdiğiniz değerler bu cihazda hatırlanır.')}
         </Text>
       </Screen>
     </View>
@@ -138,7 +138,7 @@ function ToolBox({ tool, onPress }: { tool: Tool; onPress: () => void }) {
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={tool.title}
+      accessibilityLabel={tr(tool.title)}
       style={({ pressed }) => ({
         // İki sütun: satırın yarısı eksi aradaki boşluğun yarısı.
         flexBasis: '47%',
@@ -166,7 +166,7 @@ function ToolBox({ tool, onPress }: { tool: Tool; onPress: () => void }) {
         <Icon name={tool.icon} size={t.size.iconSm} color="brand" />
       </View>
       <Text numberOfLines={2} style={[t.type.label14, { color: t.colors.ink }]}>
-        {tool.title}
+        {tr(tool.title)}
       </Text>
     </Pressable>
   );

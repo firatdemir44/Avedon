@@ -27,6 +27,7 @@ import { haptics } from '../../features/haptics';
 import { formatDateTime } from '../../features/time';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
+import { tr } from '../../i18n';
 import {
   useBottomPadding,
   Badge,
@@ -107,27 +108,27 @@ export function AdminVerificationRequests({
     try {
       const { documentUrl } = await fetchAdminVerificationDocument(id);
       if (!documentUrl) {
-        setActionError('Belge artık saklanmıyor (karar verilmiş başvuru).');
+        setActionError(tr('Belge artık saklanmıyor (karar verilmiş başvuru).'));
         return;
       }
       if (isPdfDataUrl(documentUrl)) await openPdfDataUrl(documentUrl, 'dogrulama-belgesi.pdf');
       else setPhotoUrl(documentUrl);
     } catch (err) {
-      setActionError(friendlyMessage(err, 'Belge açılamadı'));
+      setActionError(friendlyMessage(err, tr('Belge açılamadı')));
     } finally {
       setBusyId(null);
     }
   };
 
   const decide = async (item: AdminVerificationRequest, decision: 'approve' | 'reject') => {
-    const name = item.company?.name ?? 'Firma';
+    const name = item.company?.name ?? tr('Firma');
     const ok = await confirmAction({
-      title: decision === 'approve' ? 'Doğrulamayı onayla' : 'Başvuruyu reddet',
+      title: decision === 'approve' ? tr('Doğrulamayı onayla') : tr('Başvuruyu reddet'),
       message:
         decision === 'approve'
-          ? `${name} doğrulanmış olarak işaretlenecek (${level === 'belge' ? 'Belge ile' : 'Yerinde ziyaret'}).`
-          : `${name} başvurusu reddedilecek. Notunuz firmaya gösterilir.`,
-      confirmLabel: decision === 'approve' ? 'Onayla' : 'Reddet',
+          ? tr('{name} doğrulanmış olarak işaretlenecek ({level}).', { name, level: level === 'belge' ? tr('Belge ile') : tr('Yerinde ziyaret') })
+          : tr('{name} başvurusu reddedilecek. Notunuz firmaya gösterilir.', { name }),
+      confirmLabel: decision === 'approve' ? tr('Onayla') : tr('Reddet'),
       destructive: decision === 'reject',
     });
     if (!ok) return;
@@ -147,8 +148,8 @@ export function AdminVerificationRequests({
       haptics.error();
       setActionError(
         err instanceof ApiError && err.code === 'already_decided'
-          ? 'Bu başvuruya zaten karar verilmiş.'
-          : friendlyMessage(err, 'Karar kaydedilemedi')
+          ? tr('Bu başvuruya zaten karar verilmiş.')
+          : friendlyMessage(err, tr('Karar kaydedilemedi'))
       );
     } finally {
       setBusyId(null);
@@ -159,10 +160,10 @@ export function AdminVerificationRequests({
     <View style={{ paddingHorizontal: t.space[4], paddingBottom: t.space[3] }}>
       <SegmentControl<VerificationRequestStatus>
         stretch
-        accessibilityLabel="Başvuru süzgeci"
+        accessibilityLabel={tr('Başvuru süzgeci')}
         value={filter}
         onChange={setFilter}
-        options={FILTERS}
+        options={FILTERS.map((f) => ({ ...f, label: tr(f.label) }))}
       />
     </View>
   );
@@ -186,9 +187,9 @@ export function AdminVerificationRequests({
         {filterStrip}
         <EmptyState
           icon="warning"
-          title="Başvurular alınamadı"
-          description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Başvurular alınamadı')}
+          description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={reload}
         />
       </View>
@@ -234,11 +235,11 @@ export function AdminVerificationRequests({
         ListEmptyComponent={
           <EmptyState
             icon="shield-checkmark-outline"
-            title={filter === 'pending' ? 'Bekleyen başvuru yok' : 'Kayıt yok'}
+            title={filter === 'pending' ? tr('Bekleyen başvuru yok') : tr('Kayıt yok')}
             description={
               filter === 'pending'
-                ? 'Firmalar doğrulama isteyince başvuruları burada görürsünüz.'
-                : 'Bu süzgeçte kayıt yok.'
+                ? tr('Firmalar doğrulama isteyince başvuruları burada görürsünüz.')
+                : tr('Bu süzgeçte kayıt yok.')
             }
           />
         }
@@ -247,7 +248,7 @@ export function AdminVerificationRequests({
           const busy = busyId === item.id;
           const applicant = item.user
             ? `${item.user.firstName} ${item.user.lastName}${item.user.position ? ` · ${item.user.position}` : ''}`
-            : 'Başvuran bilinmiyor';
+            : tr('Başvuran bilinmiyor');
           return (
             <View style={{ paddingHorizontal: t.space[4], minWidth: 0 }}>
               <Card noPadding>
@@ -257,7 +258,7 @@ export function AdminVerificationRequests({
                   onPress={() => openRow(item)}
                   accessibilityRole="button"
                   accessibilityState={{ expanded }}
-                  accessibilityLabel={`${item.company?.name ?? 'Firma'} doğrulama başvurusu`}
+                  accessibilityLabel={tr('{name} doğrulama başvurusu', { name: item.company?.name ?? tr('Firma') })}
                   style={({ pressed }) => ({
                     flexDirection: 'row',
                     alignItems: 'center',
@@ -275,19 +276,19 @@ export function AdminVerificationRequests({
                         numberOfLines={2}
                         style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}
                       >
-                        {item.company?.name ?? 'Firma bulunamadı'}
+                        {item.company?.name ?? tr('Firma bulunamadı')}
                       </Text>
                       {item.status !== 'pending' ? (
                         <Badge
                           kind={item.status === 'approved' ? 'verified' : 'cancelled'}
-                          label={item.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                          label={item.status === 'approved' ? tr('Onaylandı') : tr('Reddedildi')}
                         />
                       ) : (
-                        <Badge kind="pending" label="Bekliyor" />
+                        <Badge kind="pending" label={tr('Bekliyor')} />
                       )}
                     </View>
                     <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
-                      Vergi No: {item.company?.taxId ?? '—'}
+                      {tr('Vergi No:')} {item.company?.taxId ?? '—'}
                     </Text>
                     <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2 }]}>
                       {applicant}
@@ -322,7 +323,7 @@ export function AdminVerificationRequests({
                       kind="secondary"
                       fullWidth
                       icon="document-text-outline"
-                      label="Belgeyi aç"
+                      label={tr('Belgeyi aç')}
                       loading={busy}
                       disabled={busy}
                       onPress={() => openDocument(item.id)}
@@ -330,12 +331,12 @@ export function AdminVerificationRequests({
                     {item.status === 'pending' ? (
                       <>
                         <View style={{ gap: t.space[2], minWidth: 0 }}>
-                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Doğrulama düzeyi</Text>
+                          <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Doğrulama düzeyi')}</Text>
                           <ChipRow>
                             {LEVELS.map((option) => (
                               <Chip
                                 key={option.value}
-                                label={option.label}
+                                label={tr(option.label)}
                                 selected={level === option.value}
                                 disabled={busy}
                                 onPress={() => setLevel(option.value)}
@@ -345,14 +346,14 @@ export function AdminVerificationRequests({
                         </View>
 
                         <Input
-                          label="Not (firmaya gösterilir)"
+                          label={tr('Not (firmaya gösterilir)')}
                           value={note}
                           onChangeText={(value) => setNote(value.slice(0, NOTE_LIMIT))}
-                          placeholder="Redde gerekçe ya da kısa açıklama"
+                          placeholder={tr('Redde gerekçe ya da kısa açıklama')}
                           multiline
                           maxLength={NOTE_LIMIT}
                           editable={!busy}
-                          accessibilityLabel="Karar notu"
+                          accessibilityLabel={tr('Karar notu')}
                         />
 
                         {/* Onay/ret çifti: onay dolu, ret kenarlıklı tehlikeli. */}
@@ -360,7 +361,7 @@ export function AdminVerificationRequests({
                           <Button
                             fullWidth
                             icon="check"
-                            label="Onayla"
+                            label={tr('Onayla')}
                             disabled={busy}
                             onPress={() => decide(item, 'approve')}
                           />
@@ -368,7 +369,7 @@ export function AdminVerificationRequests({
                             kind="danger"
                             fullWidth
                             icon="x"
-                            label="Reddet"
+                            label={tr('Reddet')}
                             disabled={busy}
                             onPress={() => decide(item, 'reject')}
                           />
@@ -376,7 +377,7 @@ export function AdminVerificationRequests({
                       </>
                     ) : (
                       <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                        Karar verildiği için belge silinmiştir; yeniden başvuru gerekir.
+                        {tr('Karar verildiği için belge silinmiştir; yeniden başvuru gerekir.')}
                       </Text>
                     )}
                   </View>

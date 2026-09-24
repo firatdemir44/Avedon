@@ -1,10 +1,10 @@
-// "Fotoğrafla kumaş ara" (DESIGN.md §2/§3). İki fotoğraf yuvası: kumaşın
+// {tr('Fotoğrafla kumaş ara')} (DESIGN.md §2/§3). İki fotoğraf yuvası: kumaşın
 // fotoğrafı + etiket fotoğrafı (isteğe bağlı). En az biri gerekir. Etiket
 // verilirse sunucu içerik etiketini okur (%92 PES %8 EA) ve katalogdaki
 // ürünlerin içeriğiyle karşılaştırır; kumaş fotoğrafı görünümü eşler.
-// Görünüm: AppBar · giriş kartı (iki yuva + "Benzerlerini ara") · sonuçta
+// Görünüm: AppBar · giriş kartı (iki yuva + {tr('Benzerlerini ara')}) · sonuçta
 // önizleme kartı · "Etiketten okunan" kartı · ProductCard listesi (altında
-// rozet + nedenler) · kenarlıklı "Yeni arama".
+// rozet + nedenler) · kenarlıklı {tr('Yeni arama')}.
 // Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
 import React, { useLayoutEffect, useState } from 'react';
 import { Image, Platform, Text, View } from 'react-native';
@@ -22,17 +22,18 @@ import { categoryLabel } from '../../features/products/catalog';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Badge, Button, Card, EmptyState, Icon, ProductCard, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 import { ErrorBanner, productSpecs, useProductImage } from './FavoriteProductsScreen';
 
 type Props = RootStackScreenProps<'SimilarSearch'>;
 
 // Yalnız kumaş fotoğrafıyla: sunucu yalnızca GÖRÜNÜMÜ karşılaştırır; gramaj ve
 // içerik fotoğraftan okunmaz — bu sınır ekranda açıkça yazılı.
-const HONESTY_NOTE =
-  'Yalnızca görünüm karşılaştırılır. Gramaj ve içerik fotoğraftan okunamaz; ürün sayfasından kontrol edin.';
-const LABEL_NOTE = 'Etiketteki içerik (lif oranları) platformdaki ürünlerin içeriğiyle karşılaştırılır.';
-const HINT =
-  'Mağazada beğendiğiniz kıyafetin kumaşını yakından, etiketini de okunur şekilde çekin; ikisi birlikte daha doğru sonuç verir.';
+const HONESTY_NOTE = () =>
+  tr('Yalnızca görünüm karşılaştırılır. Gramaj ve içerik fotoğraftan okunamaz; ürün sayfasından kontrol edin.');
+const LABEL_NOTE = () => tr('Etiketteki içerik (lif oranları) platformdaki ürünlerin içeriğiyle karşılaştırılır.');
+const HINT = () =>
+  tr('Mağazada beğendiğiniz kıyafetin kumaşını yakından, etiketini de okunur şekilde çekin; ikisi birlikte daha doğru sonuç verir.');
 
 // Önizleme karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
 const PREVIEW_SIZE = 72;
@@ -44,21 +45,21 @@ interface PickedPhoto {
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
-    if (err.code === 'daily_limit') return 'Günlük 20 arama sınırına ulaştınız, yarın tekrar deneyin.';
-    if (err.code === 'llm_not_configured') return 'Görsel arama şu anda kapalı. Daha sonra tekrar deneyin.';
-    if (err.code === 'look_failed') return 'Fotoğraf incelenemedi. Lütfen tekrar deneyin.';
+    if (err.code === 'daily_limit') return tr('Günlük 20 arama sınırına ulaştınız, yarın tekrar deneyin.');
+    if (err.code === 'llm_not_configured') return tr('Görsel arama şu anda kapalı. Daha sonra tekrar deneyin.');
+    if (err.code === 'look_failed') return tr('Fotoğraf incelenemedi. Lütfen tekrar deneyin.');
     if (err.code === 'unsupported_image' || err.code === 'invalid_body')
-      return 'Bu fotoğraf kullanılamadı. Başka bir fotoğrafla deneyin.';
-    if (err.status === 401) return 'Bu arama için giriş yapmanız gerekiyor.';
+      return tr('Bu fotoğraf kullanılamadı. Başka bir fotoğrafla deneyin.');
+    if (err.status === 401) return tr('Bu arama için giriş yapmanız gerekiyor.');
     return err.message;
   }
   if (err instanceof Error) {
-    if (err.message === 'camera_permission_denied') return 'Kameraya erişim izni verilmedi.';
-    if (err.message === 'permission_denied') return 'Galeriye erişim izni verilmedi.';
+    if (err.message === 'camera_permission_denied') return tr('Kameraya erişim izni verilmedi.');
+    if (err.message === 'permission_denied') return tr('Galeriye erişim izni verilmedi.');
     if (err.message === 'image_too_large')
-      return 'Fotoğraf çok büyük. Daha küçük çözünürlükte bir fotoğrafla deneyin.';
+      return tr('Fotoğraf çok büyük. Daha küçük çözünürlükte bir fotoğrafla deneyin.');
   }
-  return 'Arama yapılamadı, lütfen tekrar deneyin.';
+  return tr('Arama yapılamadı, lütfen tekrar deneyin.');
 }
 
 export function SimilarSearchScreen({ navigation }: Props) {
@@ -124,21 +125,21 @@ export function SimilarSearchScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Fotoğrafla kumaş ara" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Fotoğrafla kumaş ara')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         {!result ? (
           <Card style={{ gap: t.space[3] }}>
-            <Text style={[t.type.title18, { color: t.colors.ink }]}>Beğendiğin kumaşın benzerini bul</Text>
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{HINT}</Text>
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Beğendiğin kumaşın benzerini bul')}</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{HINT()}</Text>
             <PhotoSlot
-              title="Kumaşın fotoğrafı"
+              title={tr('Kumaşın fotoğrafı')}
               photo={fabric}
               disabled={searching}
               onPick={(src) => pick('fabric', src)}
               onRemove={() => setFabric(null)}
             />
             <PhotoSlot
-              title="Etiket fotoğrafı (isteğe bağlı)"
+              title={tr('Etiket fotoğrafı (isteğe bağlı)')}
               photo={label}
               disabled={searching}
               onPick={(src) => pick('label', src)}
@@ -147,12 +148,12 @@ export function SimilarSearchScreen({ navigation }: Props) {
             <Button
               size="lg"
               icon="search"
-              label="Benzerlerini ara"
+              label={tr('Benzerlerini ara')}
               loading={searching}
               disabled={!fabric && !label}
               onPress={search}
             />
-            {note(label ? LABEL_NOTE : HONESTY_NOTE)}
+            {note(label ? LABEL_NOTE() : HONESTY_NOTE())}
           </Card>
         ) : null}
 
@@ -160,7 +161,7 @@ export function SimilarSearchScreen({ navigation }: Props) {
         {searching ? (
           <View style={{ gap: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              {label ? 'Kumaş ve etiket inceleniyor, birkaç saniye sürebilir.' : 'Kumaşın görünümü inceleniyor, birkaç saniye sürebilir.'}
+              {label ? tr('Kumaş ve etiket inceleniyor, birkaç saniye sürebilir.') : tr('Kumaşın görünümü inceleniyor, birkaç saniye sürebilir.')}
             </Text>
             <SkeletonRow />
             <SkeletonRow />
@@ -174,19 +175,19 @@ export function SimilarSearchScreen({ navigation }: Props) {
           <>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-                {fabric ? <Preview uri={fabric.uri} label="Kumaş fotoğrafı" /> : null}
-                {label ? <Preview uri={label.uri} label="Etiket fotoğrafı" /> : null}
+                {fabric ? <Preview uri={fabric.uri} label={tr('Kumaş fotoğrafı')} /> : null}
+                {label ? <Preview uri={label.uri} label={tr('Etiket fotoğrafı')} /> : null}
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
                 {result.look ? (
                   <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={3}>
-                    Gördüğümüz: {result.look.summary}
+                    {tr('Gördüğümüz: {s}', { s: result.look.summary })}
                   </Text>
                 ) : (
-                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Etikete göre arandı</Text>
+                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Etikete göre arandı')}</Text>
                 )}
                 {result.remaining <= 5 ? (
-                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bugün {result.remaining} arama hakkınız kaldı</Text>
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Bugün {n} arama hakkınız kaldı', { n: result.remaining })}</Text>
                 ) : null}
               </View>
             </Card>
@@ -196,19 +197,19 @@ export function SimilarSearchScreen({ navigation }: Props) {
             {!result.recognized && !usedLabel ? (
               <EmptyState
                 icon="camera"
-                title="Fotoğrafta kumaşı seçemedik"
-                description="Kumaşı düz bir zeminde, yakından ve iyi ışıkta çekip yeniden dene."
+                title={tr('Fotoğrafta kumaşı seçemedik')}
+                description={tr('Kumaşı düz bir zeminde, yakından ve iyi ışıkta çekip yeniden dene.')}
               />
             ) : result.results.length === 0 ? (
               <EmptyState
                 icon="search"
-                title={usedLabel ? 'Benzeyen ürün bulunamadı' : 'Görünüşçe benzeyen ürün bulunamadı'}
-                description="Katalog büyüdükçe sonuçlar artar."
+                title={usedLabel ? tr('Benzeyen ürün bulunamadı') : tr('Görünüşçe benzeyen ürün bulunamadı')}
+                description={tr('Katalog büyüdükçe sonuçlar artar.')}
               />
             ) : (
               <View style={{ gap: t.space[3] }}>
-                <SectionTitle title={`Benzer kumaşlar · ${result.results.length}`} />
-                {note(usedLabel ? LABEL_NOTE : HONESTY_NOTE)}
+                <SectionTitle title={tr('Benzer kumaşlar · {n}', { n: result.results.length })} />
+                {note(usedLabel ? LABEL_NOTE() : HONESTY_NOTE())}
                 {result.results.map((item) => (
                   <SimilarResultCard
                     key={item.product.id}
@@ -219,7 +220,7 @@ export function SimilarSearchScreen({ navigation }: Props) {
               </View>
             )}
 
-            <Button size="lg" kind="secondary" label="Yeni arama" onPress={reset} />
+            <Button size="lg" kind="secondary" label={tr('Yeni arama')} onPress={reset} />
           </>
         ) : null}
       </Screen>
@@ -245,7 +246,7 @@ function Preview({ uri, label }: { uri: string; label: string }) {
   );
 }
 
-// Tek fotoğraf yuvası: boşken kamera + galeri, doluyken önizleme + "Kaldır".
+// Tek fotoğraf yuvası: boşken kamera + galeri, doluyken önizleme + {tr('Kaldır')}.
 function PhotoSlot({
   title,
   photo,
@@ -277,17 +278,17 @@ function PhotoSlot({
       {photo ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3], minWidth: 0 }}>
           <Preview uri={photo.uri} label={title} />
-          <Button kind="quiet" icon="close-outline" label="Kaldır" disabled={disabled} onPress={onRemove} />
+          <Button kind="quiet" icon="close-outline" label={tr('Kaldır')} disabled={disabled} onPress={onRemove} />
         </View>
       ) : (
         <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap' }}>
           {hasCamera ? (
-            <Button kind="secondary" icon="camera" label="Fotoğraf çek" disabled={disabled} onPress={() => onPick('camera')} />
+            <Button kind="secondary" icon="camera" label={tr('Fotoğraf çek')} disabled={disabled} onPress={() => onPick('camera')} />
           ) : null}
           <Button
             kind="secondary"
             icon="images-outline"
-            label="Galeriden seç"
+            label={tr('Galeriden seç')}
             disabled={disabled}
             onPress={() => onPick('gallery')}
           />
@@ -309,7 +310,7 @@ function LabelCard({ info }: { info: LabelReadResult }) {
           color={info.read ? 'ink2' : 'warning'}
         />
         <Text style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-          {info.read ? `Etiketten okunan: ${info.compositionText}` : 'Etiket okunamadı'}
+          {info.read ? tr('Etiketten okunan: {c}', { c: info.compositionText }) : tr('Etiket okunamadı')}
         </Text>
       </View>
       {info.warnings.map((w) => (
@@ -339,7 +340,7 @@ function SimilarResultCard({ item, onPress }: { item: SimilarProductResult; onPr
         onPress={onPress}
       />
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2], minWidth: 0 }}>
-        <Badge kind="info" label={item.look ? `%${item.similarity} benzer` : `%${item.similarity} içerik`} />
+        <Badge kind="info" label={item.look ? tr('%{n} benzer', { n: item.similarity }) : tr('%{n} içerik', { n: item.similarity })} />
         {item.reasons.length ? (
           <Text numberOfLines={3} style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
             {item.reasons.slice(0, 4).join(' · ')}

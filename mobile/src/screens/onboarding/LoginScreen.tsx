@@ -14,6 +14,7 @@ import { InviteBanner } from '../../components/InviteBanner';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, requestOtp, verifyOtp } from '../../api/client';
 import { haptics } from '../../features/haptics';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Icon, Input } from '../../ui';
 
@@ -47,7 +48,7 @@ export function LoginScreen({ navigation }: Props) {
         setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
       } else {
         haptics.error();
-        setError('Kod gönderilemedi, lütfen tekrar deneyin.');
+        setError(tr('Kod gönderilemedi, lütfen tekrar deneyin.'));
       }
     } finally {
       setSubmitting(false);
@@ -66,7 +67,7 @@ export function LoginScreen({ navigation }: Props) {
         setCooldown((err.details as { retryAfterSeconds?: number })?.retryAfterSeconds ?? 60);
       } else {
         haptics.error();
-        setError('Kod gönderilemedi, lütfen tekrar deneyin.');
+        setError(tr('Kod gönderilemedi, lütfen tekrar deneyin.'));
       }
     } finally {
       setResending(false);
@@ -84,19 +85,19 @@ export function LoginScreen({ navigation }: Props) {
         login(result.token, result.user);
       } else {
         haptics.error();
-        setError('Bu telefon numarasıyla kayıtlı hesap bulunamadı. Önce kayıt olmanız gerekiyor.');
+        setError(tr('Bu telefon numarasıyla kayıtlı hesap bulunamadı. Önce kayıt olmanız gerekiyor.'));
       }
     } catch (err) {
       haptics.error();
       const errorCode = err instanceof ApiError ? err.code : undefined;
       setError(
         errorCode === 'mismatch'
-          ? 'Kod hatalı, tekrar deneyin.'
+          ? tr('Kod hatalı, tekrar deneyin.')
           : errorCode === 'expired'
-            ? 'Kodun süresi doldu, yeni kod isteyin.'
+            ? tr('Kodun süresi doldu, yeni kod isteyin.')
             : errorCode === 'max_attempts'
-              ? 'Çok fazla yanlış deneme yapıldı, yeni kod isteyin.'
-              : 'Doğrulama başarısız, lütfen tekrar deneyin.'
+              ? tr('Çok fazla yanlış deneme yapıldı, yeni kod isteyin.')
+              : tr('Doğrulama başarısız, lütfen tekrar deneyin.')
       );
     } finally {
       setSubmitting(false);
@@ -134,7 +135,7 @@ export function LoginScreen({ navigation }: Props) {
                 <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON</Text>
               </View>
               <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>
-                Kaliteli kumaş aramanın yenilikçi yolu
+                {tr('Kaliteli kumaş aramanın yenilikçi yolu')}
               </Text>
             </View>
           </View>
@@ -154,17 +155,17 @@ export function LoginScreen({ navigation }: Props) {
             }}
           >
             <View style={{ gap: t.space[2], minWidth: 0 }}>
-              <Text style={[t.type.title22, { color: t.colors.ink }]}>Giriş yap</Text>
+              <Text style={[t.type.title22, { color: t.colors.ink }]}>{tr('Giriş yap')}</Text>
               <Text style={[t.type.body16, { color: t.colors.ink2 }]}>
                 {step === 'phone'
-                  ? 'Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.'
-                  : `${phone} numarasına gönderilen 6 haneli kodu girin.`}
+                  ? tr('Kayıtlı telefon numaranızı girin, size bir doğrulama kodu gönderelim.')
+                  : tr('{phone} numarasına gönderilen 6 haneli kodu girin.', { phone })}
               </Text>
             </View>
 
             {step === 'phone' ? (
               <Input
-                label="Telefon"
+                label={tr('Telefon')}
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="05XX XXX XX XX"
@@ -206,7 +207,7 @@ export function LoginScreen({ navigation }: Props) {
             {step === 'phone' ? (
               <Button
                 size="lg"
-                label="Kod gönder"
+                label={tr('Kod gönder')}
                 loading={submitting}
                 disabled={phone.trim().length < 10}
                 onPress={sendCode}
@@ -214,7 +215,7 @@ export function LoginScreen({ navigation }: Props) {
             ) : (
               <Button
                 size="lg"
-                label="Giriş yap"
+                label={tr('Giriş yap')}
                 loading={submitting}
                 disabled={code.trim().length !== 6}
                 onPress={handleVerify}
@@ -224,7 +225,7 @@ export function LoginScreen({ navigation }: Props) {
             <Button
               kind="secondary"
               size="lg"
-              label="Hesabım yok, kayıt ol"
+              label={tr('Hesabım yok, kayıt ol')}
               onPress={() => navigation.replace('RoleSelection')}
             />
           </View>

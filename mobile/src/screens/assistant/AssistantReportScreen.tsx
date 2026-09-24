@@ -21,6 +21,7 @@ import {
   SkeletonRow,
   StatBox,
 } from '../../ui';
+import { tp, tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'AssistantReport'>;
 type Range = '7' | '30';
@@ -30,9 +31,15 @@ type Range = '7' | '30';
 // sorulduğu (GET /api/assistant/report). Haftalık bildirim buraya açılır.
 
 function headline(r: AssistantReport): string {
-  const when = r.days === 7 ? 'bu hafta' : 'son 30 günde';
-  const from = r.askerCompanies > 0 ? `${r.askerCompanies} firmadan gelen ` : '';
-  return `Asistanınız ${when} ${from}${r.questions} soruyu karşıladı.`;
+  const vars = { companies: r.askerCompanies, n: r.questions };
+  if (r.days === 7) {
+    return r.askerCompanies > 0
+      ? tr('Asistanınız bu hafta {companies} firmadan gelen {n} soruyu karşıladı.', vars)
+      : tr('Asistanınız bu hafta {n} soruyu karşıladı.', vars);
+  }
+  return r.askerCompanies > 0
+    ? tr('Asistanınız son 30 günde {companies} firmadan gelen {n} soruyu karşıladı.', vars)
+    : tr('Asistanınız son 30 günde {n} soruyu karşıladı.', vars);
 }
 
 export function AssistantReportScreen({ navigation }: Props) {
@@ -58,18 +65,18 @@ export function AssistantReportScreen({ navigation }: Props) {
     void reload();
   }, [days, reload]);
 
-  const bar = <AppBar title="Asistan raporu" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Asistan raporu')} leading="back" onBack={() => navigation.goBack()} />;
 
   const segment = (
     <SegmentControl<Range>
       options={[
-        { value: '7', label: 'Bu hafta' },
-        { value: '30', label: 'Son 30 gün' },
+        { value: '7', label: tr('Bu hafta') },
+        { value: '30', label: tr('Son 30 gün') },
       ]}
       value={range}
       onChange={setRange}
       stretch
-      accessibilityLabel="Rapor aralığı"
+      accessibilityLabel={tr('Rapor aralığı')}
     />
   );
 
@@ -101,8 +108,8 @@ export function AssistantReportScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Bu sayfa firmaya bağlı"
-            description="Asistan raporu firmanıza gelen soruları gösterir. Bir firmaya bağlandığınızda burada görünür."
+            title={tr('Bu sayfa firmaya bağlı')}
+            description={tr('Asistan raporu firmanıza gelen soruları gösterir. Bir firmaya bağlandığınızda burada görünür.')}
           />
         </Screen>
       </View>
@@ -113,9 +120,9 @@ export function AssistantReportScreen({ navigation }: Props) {
     return wrap(
       <EmptyState
         icon="warning"
-        title="Rapor alınamadı"
-        description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-        actionLabel="Tekrar dene"
+        title={tr('Rapor alınamadı')}
+        description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+        actionLabel={tr('Tekrar dene')}
         onAction={reload}
       />
     );
@@ -138,9 +145,9 @@ export function AssistantReportScreen({ navigation }: Props) {
     return wrap(
       <EmptyState
         icon="stats-chart-outline"
-        title={report.days === 7 ? 'Bu hafta soru gelmedi' : 'Son 30 günde soru gelmedi'}
-        description="Başka firmalar ürünlerinizi sorduğunda asistanınız cevaplar ve bu rapor dolar. Kataloğunuzu ve sık sorulanları doldurmak asistanınızın daha çok soruyu kendisi cevaplamasını sağlar."
-        actionLabel="Sık sorulanları düzenle"
+        title={report.days === 7 ? tr('Bu hafta soru gelmedi') : tr('Son 30 günde soru gelmedi')}
+        description={tr('Başka firmalar ürünlerinizi sorduğunda asistanınız cevaplar ve bu rapor dolar. Kataloğunuzu ve sık sorulanları doldurmak asistanınızın daha çok soruyu kendisi cevaplamasını sağlar.')}
+        actionLabel={tr('Sık sorulanları düzenle')}
         onAction={() => navigation.navigate('CompanyFaq')}
       />
     );
@@ -152,32 +159,32 @@ export function AssistantReportScreen({ navigation }: Props) {
 
       <Card style={{ gap: t.space[4] }}>
         <View style={{ flexDirection: 'row', gap: t.space[4] }}>
-          <StatBox value={report.questions} label="Gelen soru" />
-          <StatBox value={report.askerCompanies} label="Soran firma" />
+          <StatBox value={report.questions} label={tr('Gelen soru')} />
+          <StatBox value={report.askerCompanies} label={tr('Soran firma')} />
         </View>
         <View style={{ flexDirection: 'row', gap: t.space[4] }}>
-          <StatBox value={report.answeredByAssistant} label="Asistan cevapladı" accent />
-          <StatBox value={report.forwarded} label="Size iletilen" />
+          <StatBox value={report.answeredByAssistant} label={tr('Asistan cevapladı')} accent />
+          <StatBox value={report.forwarded} label={tr('Size iletilen')} />
         </View>
         {report.forwardedOpen > 0 ? (
           <View style={{ gap: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              {report.forwardedOpen} soru cevabınızı bekliyor.
+              {tr('{n} soru cevabınızı bekliyor.', { n: report.forwardedOpen })}
             </Text>
-            <Button label="Soruları cevapla" onPress={() => navigation.navigate('CompanyQuestions')} />
+            <Button label={tr('Soruları cevapla')} onPress={() => navigation.navigate('CompanyQuestions')} />
           </View>
         ) : null}
       </Card>
 
       {report.askers.length > 0 ? (
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="Kimler sordu" />
+          <SectionTitle title={tr('Kimler sordu')} />
           <Card style={{ paddingVertical: 0 }}>
             {report.askers.map((a, i) => (
               <ListRow
                 key={`${a.companyName}-${i}`}
                 title={a.companyName}
-                subtitle={`${a.questions} soru`}
+                subtitle={tp('1 soru', '{n} soru', a.questions)}
                 avatarName={a.companyName}
                 avatarKind="company"
                 time={formatRelativeTime(a.lastAt)}
@@ -190,7 +197,7 @@ export function AssistantReportScreen({ navigation }: Props) {
 
       {report.topProducts.length > 0 ? (
         <View style={{ gap: t.space[2] }}>
-          <SectionTitle title="En çok sorulan ürünler" />
+          <SectionTitle title={tr('En çok sorulan ürünler')} />
           <Card style={{ gap: t.space[3] }}>
             {report.topProducts.map((p) => (
               <View
@@ -200,7 +207,7 @@ export function AssistantReportScreen({ navigation }: Props) {
                 <Text numberOfLines={1} style={[t.type.mono14, { color: t.colors.brand, flexShrink: 1 }]}>
                   {p.code}
                 </Text>
-                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{p.mentions} kez</Text>
+                <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('{n} kez', { n: p.mentions })}</Text>
               </View>
             ))}
           </Card>

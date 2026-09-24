@@ -16,6 +16,7 @@ import { haptics } from '../../features/haptics';
 import { useFocusLoad } from '../../features/useFocusLoad';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, AppBar, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'CompanyFaq'>;
 
@@ -67,11 +68,11 @@ export function CompanyFaqScreen({ navigation }: Props) {
     const q = question.trim();
     const a = answer.trim();
     if (q.length < 3) {
-      setFormError('Soruyu en az 3 karakter yazın.');
+      setFormError(tr('Soruyu en az 3 karakter yazın.'));
       return;
     }
     if (!a) {
-      setFormError('Cevap boş olamaz.');
+      setFormError(tr('Cevap boş olamaz.'));
       return;
     }
     setSaving(true);
@@ -85,9 +86,9 @@ export function CompanyFaqScreen({ navigation }: Props) {
     } catch (err) {
       haptics.error();
       if (err instanceof ApiError && err.code === 'too_many_faqs') {
-        setFormError('Sık sorulanlar sınırına ulaştınız. Yenisini eklemek için birini silin.');
+        setFormError(tr('Sık sorulanlar sınırına ulaştınız. Yenisini eklemek için birini silin.'));
       } else {
-        setFormError(friendlyMessage(err, 'Kaydedilemedi, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Kaydedilemedi, tekrar deneyin.')));
       }
     } finally {
       setSaving(false);
@@ -97,9 +98,9 @@ export function CompanyFaqScreen({ navigation }: Props) {
   const remove = useCallback(
     async (faq: CompanyFaq) => {
       const ok = await confirmAction({
-        title: 'Silinsin mi?',
-        message: `"${faq.question}" sık sorulanlardan silinecek. Asistanınız bu cevabı artık kullanmayacak.`,
-        confirmLabel: 'Sil',
+        title: tr('Silinsin mi?'),
+        message: tr('"{question}" sık sorulanlardan silinecek. Asistanınız bu cevabı artık kullanmayacak.', { question: faq.question }),
+        confirmLabel: tr('Sil'),
         destructive: true,
       });
       if (!ok) return;
@@ -110,13 +111,13 @@ export function CompanyFaqScreen({ navigation }: Props) {
         await reload();
       } catch (err) {
         haptics.error();
-        setFormError(friendlyMessage(err, 'Silinemedi, tekrar deneyin.'));
+        setFormError(friendlyMessage(err, tr('Silinemedi, tekrar deneyin.')));
       }
     },
     [reload]
   );
 
-  const bar = <AppBar title="Sık sorulanlar" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Sık sorulanlar')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -138,8 +139,8 @@ export function CompanyFaqScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Sık sorulanlar firmaya bağlı"
-            description="Bu cevapları asistanınız alıcılara verir. Bir firmaya bağlandığınızda burada düzenlersiniz."
+            title={tr('Sık sorulanlar firmaya bağlı')}
+            description={tr('Bu cevapları asistanınız alıcılara verir. Bir firmaya bağlandığınızda burada düzenlersiniz.')}
           />
         </Screen>
       </View>
@@ -153,9 +154,9 @@ export function CompanyFaqScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Sık sorulanlar alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Sık sorulanlar alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </Screen>
@@ -168,27 +169,27 @@ export function CompanyFaqScreen({ navigation }: Props) {
   const form = (
     <Card style={{ gap: t.space[3] }}>
       <Input
-        label="Soru"
+        label={tr('Soru')}
         value={question}
         onChangeText={setQuestion}
         multiline
         maxLength={300}
-        placeholder="Örn: En küçük sipariş miktarınız nedir?"
-        accessibilityLabel="Soru"
+        placeholder={tr('Örn: En küçük sipariş miktarınız nedir?')}
+        accessibilityLabel={tr('Soru')}
       />
       <Input
-        label="Cevap"
+        label={tr('Cevap')}
         value={answer}
         onChangeText={setAnswer}
         multiline
         maxLength={1000}
         error={formError}
-        placeholder="Örn: Örme kumaşlarda 300 kg, dokumada 1.000 metre."
-        accessibilityLabel="Cevap"
+        placeholder={tr('Örn: Örme kumaşlarda 300 kg, dokumada 1.000 metre.')}
+        accessibilityLabel={tr('Cevap')}
       />
       <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
-        <Button label="Kaydet" loading={saving} onPress={() => void save()} style={{ flex: 1 }} />
-        <Button kind="secondary" label="Vazgeç" disabled={saving} onPress={cancel} style={{ flex: 1 }} />
+        <Button label={tr('Kaydet')} loading={saving} onPress={() => void save()} style={{ flex: 1 }} />
+        <Button kind="secondary" label={tr('Vazgeç')} disabled={saving} onPress={cancel} style={{ flex: 1 }} />
       </View>
     </Card>
   );
@@ -210,27 +211,27 @@ export function CompanyFaqScreen({ navigation }: Props) {
       >
         <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, gap: t.space[6], minWidth: 0 }}>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Asistanınız alıcı sorularını bu cevaplara göre yanıtlar. Fiyat yazmayın; fiyat yalnızca teklifle gider.
+            {tr('Asistanınız alıcı sorularını bu cevaplara göre yanıtlar. Fiyat yazmayın; fiyat yalnızca teklifle gider.')}
           </Text>
 
           {editing === 'new' ? (
             <View style={{ gap: t.space[3] }}>
-              <SectionTitle title="Yeni soru" />
+              <SectionTitle title={tr('Yeni soru')} />
               {form}
             </View>
           ) : (
             <Button
               kind="secondary"
               icon="plus"
-              label="Yeni soru ekle"
+              label={tr('Yeni soru ekle')}
               fullWidth
               onPress={startNew}
-              accessibilityLabel="Yeni sık sorulan ekle"
+              accessibilityLabel={tr('Yeni sık sorulan ekle')}
             />
           )}
 
           <View style={{ gap: t.space[3] }}>
-            <SectionTitle title={`Sık sorulanlar (${faqs.length})`} />
+            <SectionTitle title={tr('Sık sorulanlar ({n})', { n: faqs.length })} />
             {faqs.length ? (
               faqs.map((faq) => {
                 if (editing === faq.id) {
@@ -239,7 +240,7 @@ export function CompanyFaqScreen({ navigation }: Props) {
                       {form}
                       <Button
                         kind="danger"
-                        label="Sil"
+                        label={tr('Sil')}
                         icon="trash-outline"
                         onPress={() => void remove(faq)}
                       />
@@ -255,7 +256,7 @@ export function CompanyFaqScreen({ navigation }: Props) {
                     <Pressable
                       onPress={() => startEdit(faq)}
                       accessibilityRole="button"
-                      accessibilityLabel={`${faq.question}. Düzenle`}
+                      accessibilityLabel={tr('{question}. Düzenle', { question: faq.question })}
                       style={({ pressed }) => ({
                         flex: 1,
                         minWidth: 0,
@@ -272,7 +273,7 @@ export function CompanyFaqScreen({ navigation }: Props) {
                     <Pressable
                       onPress={() => void remove(faq)}
                       accessibilityRole="button"
-                      accessibilityLabel={`Sil: ${faq.question}`}
+                      accessibilityLabel={tr('Sil: {question}', { question: faq.question })}
                       hitSlop={t.space[2]}
                       style={({ pressed }) => ({
                         width: t.size.touchMin,
@@ -290,9 +291,9 @@ export function CompanyFaqScreen({ navigation }: Props) {
             ) : (
               <EmptyState
                 icon="help-circle-outline"
-                title="Henüz sık sorulan yok"
-                description="MOQ, termin, sertifika ve numune koşullarınızı yazarsanız asistanınız bunları kendisi cevaplar."
-                actionLabel="Yeni soru ekle"
+                title={tr('Henüz sık sorulan yok')}
+                description={tr('MOQ, termin, sertifika ve numune koşullarınızı yazarsanız asistanınız bunları kendisi cevaplar.')}
+                actionLabel={tr('Yeni soru ekle')}
                 onAction={startNew}
               />
             )}

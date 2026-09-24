@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcInputRow,
@@ -81,14 +82,14 @@ export function FabricWeightCalculator({ navigation }: RootStackScreenProps<'Fab
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Kumaş gramajı" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Kumaş gramajı')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
         <SegmentControl
           stretch
-          accessibilityLabel="Hesap yöntemi"
+          accessibilityLabel={tr('Hesap yöntemi')}
           options={[
-            { value: 'sample', label: 'Numuneden' },
-            { value: 'structure', label: 'Örgüden tahmin' },
+            { value: 'sample', label: tr('Numuneden') },
+            { value: 'structure', label: tr('Örgüden tahmin') },
           ]}
           value={f.mode}
           onChange={(mode) => update({ mode })}
@@ -97,83 +98,82 @@ export function FabricWeightCalculator({ navigation }: RootStackScreenProps<'Fab
         {f.mode === 'sample' ? (
           <>
             <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-              Kumaştan bir parça kesin; enini, boyunu milimetre olarak ölçüp tartın. Kesin sonuç bu yöntemle alınır.
+              {tr('Kumaştan bir parça kesin; enini, boyunu milimetre olarak ölçüp tartın. Kesin sonuç bu yöntemle alınır.')}
             </Text>
-            <CalcTable title="Numuneden gramaj">
+            <CalcTable title={tr('Numuneden gramaj')}>
               <CalcInputRow
-                label="Kumaş eni"
+                label={tr('Kumaş eni')}
                 value={f.widthMm}
                 onChangeText={(v) => update({ widthMm: v })}
                 placeholder="40"
                 unit="mm"
               />
               <CalcInputRow
-                label="Kumaş boyu"
+                label={tr('Kumaş boyu')}
                 value={f.lengthMm}
                 onChangeText={(v) => update({ lengthMm: v })}
                 placeholder="50"
                 unit="mm"
               />
               <CalcInputRow
-                label="Kumaş ağırlığı"
+                label={tr('Kumaş ağırlığı')}
                 value={f.weightGrams}
                 onChangeText={(v) => update({ weightGrams: v })}
                 placeholder="0,55"
                 unit="gr"
               />
               <CalcResultRow
-                label="Kumaş gramajı"
+                label={tr('Kumaş gramajı')}
                 value={sampleGsm !== null ? formatNumber(sampleGsm, 1) : '—'}
                 unit="gr/m²"
                 emphasis="primary"
               />
-              {sampleGsm === null ? <CalcNoteRow text="Hesap için en, boy ve ağırlığı girin." /> : null}
-              <CalcFormulaRow text="Gramaj = ağırlık (gr) ÷ (en × boy ÷ 1.000.000) (m²)" />
+              {sampleGsm === null ? <CalcNoteRow text={tr('Hesap için en, boy ve ağırlığı girin.')} /> : null}
+              <CalcFormulaRow text={tr('Gramaj = ağırlık (gr) ÷ (en × boy ÷ 1.000.000) (m²)')} />
             </CalcTable>
           </>
         ) : (
           <>
             <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
-              Kumaşta 1 cm'deki sıra ve çubuk sayısını sayın, 50 iğnedeki iplik uzunluğunu makineden alın. Sonuç
-              tahminidir; kesin değer için numuneden ölçün.
+              {tr("Kumaşta 1 cm'deki sıra ve çubuk sayısını sayın, 50 iğnedeki iplik uzunluğunu makineden alın. Sonuç tahminidir; kesin değer için numuneden ölçün.")}
             </Text>
             <View style={{ gap: t.space[2] }}>
-              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Örgü</Text>
+              <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Örgü')}</Text>
               <SegmentControl
                 stretch
-                accessibilityLabel="Örgü"
+                accessibilityLabel={tr('Örgü')}
                 options={[
-                  { value: 'single', label: 'Tek plaka' },
-                  { value: 'double', label: 'Çift plaka' },
+                  { value: 'single', label: tr('Tek plaka') },
+                  { value: 'double', label: tr('Çift plaka') },
                 ]}
                 value={f.plate}
                 onChange={(plate) => update({ plate })}
               />
             </View>
-            <CalcTable title="Örgüden tahmini gramaj">
+            <CalcTable title={tr('Örgüden tahmini gramaj')}>
               <CalcInputRow
-                label="Sıra sayısı"
+                label={tr('Sıra sayısı')}
                 value={f.coursesPerCm}
                 onChangeText={(v) => update({ coursesPerCm: v })}
                 placeholder="20"
-                unit="sıra/cm"
+                unit={tr('sıra/cm')}
               />
               <CalcInputRow
-                label="Çubuk sayısı"
+                label={tr('Çubuk sayısı')}
                 value={f.walesPerCm}
                 onChangeText={(v) => update({ walesPerCm: v })}
                 placeholder="15"
-                unit="çubuk/cm"
+                unit={tr('çubuk/cm')}
               />
               <CalcInputRow
-                label="50 iğne iplik uzunluğu"
+                label={tr('50 iğne iplik uzunluğu')}
                 value={f.length50}
                 onChangeText={(v) => update({ length50: v })}
                 placeholder="14"
                 unit="cm"
               />
               <CalcInputRow
-                label="İplik numarası"
+                label={tr('İplik numarası')}
                 value={f.count}
                 onChangeText={(v) => update({ count: v })}
                 placeholder="30"
@@ -184,17 +184,17 @@ export function FabricWeightCalculator({ navigation }: RootStackScreenProps<'Fab
                 }}
               />
               <CalcResultRow
-                label="Tahmini gramaj"
+                label={tr('Tahmini gramaj')}
                 value={structure ? formatNumber(structure.gsm, 1) : '—'}
                 unit="gr/m²"
                 emphasis="primary"
               />
-              <CalcResultRow label="İlmek boyu" value={structure ? formatNumber(structure.loopLengthMm, 2) : '—'} unit="mm" />
-              <CalcResultRow label="İplik" value={structure ? formatNumber(structure.yarnTex, 1) : '—'} unit="Tex" />
+              <CalcResultRow label={tr('İlmek boyu')} value={structure ? formatNumber(structure.loopLengthMm, 2) : '—'} unit="mm" />
+              <CalcResultRow label={tr('İplik')} value={structure ? formatNumber(structure.yarnTex, 1) : '—'} unit="Tex" />
               {structure === null ? (
-                <CalcNoteRow text="Hesap için sıra, çubuk, 50 iğne uzunluğu ve iplik numarasını girin." />
+                <CalcNoteRow text={tr('Hesap için sıra, çubuk, 50 iğne uzunluğu ve iplik numarasını girin.')} />
               ) : null}
-              <CalcFormulaRow text="İlmek boyu = 50 iğne uzunluğu (cm) ÷ 5. Gramaj = sıra × çubuk × (çift plakada ×2) × ilmek boyu (mm) × Tex ÷ 100." />
+              <CalcFormulaRow text={tr('İlmek boyu = 50 iğne uzunluğu (cm) ÷ 5. Gramaj = sıra × çubuk × (çift plakada ×2) × ilmek boyu (mm) × Tex ÷ 100.')} />
             </CalcTable>
           </>
         )}

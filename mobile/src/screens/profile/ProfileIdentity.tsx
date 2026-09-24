@@ -10,6 +10,7 @@ import { View, Text, Pressable, Image } from 'react-native';
 import type { PublicUserProfile } from '../../api/client';
 import { UserAvatar } from '../../components/UserAvatar';
 import { getCachedUserCover, loadUserCover, userCoverKey } from '../../features/users/userCoverCache';
+import { tr, tp } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Badge, Icon } from '../../ui';
 
@@ -79,7 +80,7 @@ export function ProfileIdentity({
           <Pressable
             onPress={onEditCover}
             accessibilityRole="button"
-            accessibilityLabel="Kapak fotoğrafını değiştir"
+            accessibilityLabel={tr('Kapak fotoğrafını değiştir')}
             style={({ pressed }) => ({
               position: 'absolute',
               top: t.space[2],
@@ -123,7 +124,7 @@ export function ProfileIdentity({
           <Pressable
             onPress={onEditAvatar}
             accessibilityRole="button"
-            accessibilityLabel="Profil fotoğrafını düzenle"
+            accessibilityLabel={tr('Profil fotoğrafını düzenle')}
             style={({ pressed }) => ({
               position: 'absolute',
               right: -t.space[3],
@@ -155,7 +156,7 @@ export function ProfileIdentity({
             <Pressable
               onPress={onEditProfile}
               accessibilityRole="button"
-              accessibilityLabel="Profil bilgilerini düzenle"
+              accessibilityLabel={tr('Profil bilgilerini düzenle')}
               style={({ pressed }) => ({
                 width: t.size.touchMin,
                 height: t.size.touchMin,
@@ -179,7 +180,7 @@ export function ProfileIdentity({
             onPress={() => onOpenCompany?.(company.id)}
             disabled={!onOpenCompany}
             accessibilityRole={onOpenCompany ? 'button' : undefined}
-            accessibilityLabel={onOpenCompany ? `${company.name}, firma sayfasını aç` : company.name}
+            accessibilityLabel={onOpenCompany ? tr('{name}, firma sayfasını aç', { name: company.name }) : company.name}
             style={({ pressed }) => ({
               flexDirection: 'row',
               alignItems: 'center',
@@ -206,7 +207,7 @@ export function ProfileIdentity({
           onPress={onOpenConnections}
           disabled={!onOpenConnections}
           accessibilityRole={onOpenConnections ? 'button' : undefined}
-          accessibilityLabel={`${profile.connectionCount ?? 0} bağlantı`}
+          accessibilityLabel={tp('1 bağlantı', '{n} bağlantı', profile.connectionCount ?? 0, { n: profile.connectionCount ?? 0 })}
           style={({ pressed }) => ({
             alignSelf: 'flex-start',
             minHeight: t.size.touchMin,
@@ -215,7 +216,7 @@ export function ProfileIdentity({
           })}
         >
           <Text style={[t.type.label14, { color: t.colors.brand }]}>
-            {profile.connectionCount ?? 0} bağlantı
+            {tp('1 bağlantı', '{n} bağlantı', profile.connectionCount ?? 0, { n: profile.connectionCount ?? 0 })}
           </Text>
         </Pressable>
       </View>
@@ -227,7 +228,7 @@ export function ProfileIdentity({
       {about ? (
         <View style={[divider, { padding: t.space[4], gap: t.space[2] }]}>
           <Text accessibilityRole="header" style={[t.type.title18, { color: t.colors.ink }]}>
-            Hakkında
+            {tr('Hakkında')}
           </Text>
           <Text style={[t.type.body16, { color: t.colors.ink }]}>{about}</Text>
         </View>
@@ -235,7 +236,7 @@ export function ProfileIdentity({
         <Pressable
           onPress={onEditProfile}
           accessibilityRole="button"
-          accessibilityLabel="Hakkında ekle"
+          accessibilityLabel={tr('Hakkında ekle')}
           style={({ pressed }) => [
             divider,
             {
@@ -249,7 +250,7 @@ export function ProfileIdentity({
           ]}
         >
           <Icon name="plus" size={t.size.iconSm} color="brand" />
-          <Text style={[t.type.label14, { color: t.colors.brand }]}>Hakkında ekle</Text>
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Hakkında ekle')}</Text>
         </Pressable>
       ) : null}
 
@@ -267,7 +268,7 @@ export function ProfileIdentity({
           },
         ]}
       >
-        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Telefon</Text>
+        <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Telefon')}</Text>
         {/* Sunucu, bağlantı yoksa telefon alanını hiç göndermiyor. */}
         {profile.phone ? (
           <Text selectable numberOfLines={1} style={[t.type.mono14, { color: t.colors.ink, flexShrink: 1 }]}>
@@ -275,7 +276,7 @@ export function ProfileIdentity({
           </Text>
         ) : (
           <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink3, flexShrink: 1 }]}>
-            Bağlantı kurunca görünür
+            {tr('Bağlantı kurunca görünür')}
           </Text>
         )}
       </View>
@@ -322,7 +323,7 @@ function ProfileCover({ userId, coverUpdatedAt }: { userId: string; coverUpdated
         source={{ uri: photo }}
         style={[box, { backgroundColor: t.colors.surface2 }]}
         resizeMode="cover"
-        accessibilityLabel="Kapak fotoğrafı"
+        accessibilityLabel={tr('Kapak fotoğrafı')}
       />
     );
   }

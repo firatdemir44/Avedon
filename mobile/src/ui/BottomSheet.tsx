@@ -2,6 +2,7 @@
 // arka overlay, shadow-raised, üstte 36×4 tutamaç line-strong. Web'de de çalışır
 // (RN Modal web'de mutlak konumlu bir katman çizer).
 import React from 'react';
+import { tr } from '../i18n';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
@@ -24,7 +25,7 @@ export function BottomSheet({ visible, onClose, title, children }: BottomSheetPr
         {/* Arka plana dokununca kapanır; ekran okuyucuda "Kapat". */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Kapat"
+          accessibilityLabel={tr('Kapat')}
           onPress={onClose}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.colors.overlay }}
         />

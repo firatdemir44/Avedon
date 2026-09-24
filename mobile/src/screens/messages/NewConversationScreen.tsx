@@ -15,6 +15,7 @@ import { useFocusLoad } from '../../features/useFocusLoad';
 import { haptics } from '../../features/haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { useBottomPadding, EmptyState, Icon, ListRow, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'NewConversation'>;
 
@@ -43,7 +44,7 @@ export function NewConversationScreen({ navigation }: Props) {
       });
     } catch (err) {
       haptics.error();
-      setStartError(friendlyMessage(err, 'Sohbet başlatılamadı'));
+      setStartError(friendlyMessage(err, tr('Sohbet başlatılamadı')));
       setStartingId(null);
     }
   };
@@ -68,9 +69,9 @@ export function NewConversationScreen({ navigation }: Props) {
         <View style={{ paddingHorizontal: t.space[4] }}>
           <EmptyState
             icon="warning"
-            title="Bağlantılar alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Bağlantılar alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </View>
@@ -78,7 +79,7 @@ export function NewConversationScreen({ navigation }: Props) {
     );
   }
 
-  const bannerMessage = startError ?? (error ? friendlyMessage(error, 'Bağlantılar alınamadı') : null);
+  const bannerMessage = startError ?? (error ? friendlyMessage(error, tr('Bağlantılar alınamadı')) : null);
 
   return (
     <SafeAreaView style={safeArea} edges={['bottom']}>
@@ -114,14 +115,14 @@ export function NewConversationScreen({ navigation }: Props) {
         ListEmptyComponent={
           <EmptyState
             icon="user"
-            title="Önce bağlantı kurun"
-            description="Mesaj göndermek için kişiyle bağlantıda olmanız gerekir."
+            title={tr('Önce bağlantı kurun')}
+            description={tr('Mesaj göndermek için kişiyle bağlantıda olmanız gerekir.')}
           />
         }
         renderItem={({ item, index }) => (
           <ListRow
             title={`${item.user.firstName} ${item.user.lastName}`}
-            subtitle={startingId === item.user.id ? 'Sohbet açılıyor' : item.user.position}
+            subtitle={startingId === item.user.id ? tr(tr('Sohbet açılıyor')) : item.user.position}
             avatarName={`${item.user.firstName} ${item.user.lastName}`}
             avatarKind="person"
             divider={index < connections.length - 1}

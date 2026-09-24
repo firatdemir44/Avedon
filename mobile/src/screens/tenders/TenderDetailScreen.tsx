@@ -48,6 +48,7 @@ import {
   tenderUnitShort,
 } from '../../features/tenders/format';
 import { useTheme } from '../../theme/ThemeContext';
+import { tp, tr } from '../../i18n';
 import { useBottomPadding, AppBar, Badge, BottomSheet, Button, Card, EmptyState, Icon, Input, Screen, SectionTitle, SegmentControl } from '../../ui';
 
 type Props = RootStackScreenProps<'TenderDetail'>;
@@ -115,22 +116,22 @@ function SpecCard({ tender }: { tender: Tender }) {
   if (!spec) return null;
   if (tender.category === 'konfeksiyon') {
     const rows: [string, string | undefined][] = [
-      ['Ürün', garmentTypeLabel(spec.garmentType) || undefined],
-      ['Kumaş', spec.fabric],
-      ['Kumaşı sağlayan', spec.fabricSupplied === 'alici' ? 'Alıcı' : spec.fabricSupplied === 'uretici' ? 'Üretici' : undefined],
-      ['Bedenler', spec.sizes],
-      ['Renkler', spec.colors],
+      [tr('Ürün'), garmentTypeLabel(spec.garmentType) || undefined],
+      [tr('Kumaş'), spec.fabric],
+      [tr('Kumaşı sağlayan'), spec.fabricSupplied === 'alici' ? tr('Alıcı') : spec.fabricSupplied === 'uretici' ? tr('Üretici') : undefined],
+      [tr('Bedenler'), spec.sizes],
+      [tr('Renkler'), spec.colors],
     ];
     const delivery = spec.delivery ?? [];
     if (!rows.some(([, v]) => v) && !delivery.length) return null;
     return (
       <Card>
         <View style={{ gap: t.space[2] }}>
-          <Text style={[t.type.title18, { color: t.colors.ink }]}>Ürün bilgileri</Text>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Ürün bilgileri')}</Text>
           {rows.map(([label, value]) => (value ? <InfoRow key={label} label={label} value={value} /> : null))}
           {delivery.length ? (
             <View style={{ gap: t.space[2], paddingTop: t.space[1] }}>
-              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Teslim kapsamı</Text>
+              <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Teslim kapsamı')}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
                 {delivery.map((d) => (
                   <Badge key={d} kind="info" label={garmentDeliveryLabel(d)} />
@@ -144,16 +145,16 @@ function SpecCard({ tender }: { tender: Tender }) {
   }
   if (tender.category === 'aksesuar') {
     const rows: [string, string | undefined][] = [
-      ['Tür', accessoryTypeLabel(spec.accessoryType) || undefined],
-      ['Malzeme', spec.material],
-      ['Ölçü', spec.size],
-      ['Renk', spec.color],
+      [tr('Tür'), accessoryTypeLabel(spec.accessoryType) || undefined],
+      [tr('Malzeme'), spec.material],
+      [tr('Ölçü'), spec.size],
+      [tr('Renk'), spec.color],
     ];
     if (!rows.some(([, v]) => v)) return null;
     return (
       <Card>
         <View style={{ gap: t.space[2] }}>
-          <Text style={[t.type.title18, { color: t.colors.ink }]}>Aksesuar bilgileri</Text>
+          <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Aksesuar bilgileri')}</Text>
           {rows.map(([label, value]) => (value ? <InfoRow key={label} label={label} value={value} /> : null))}
         </View>
       </Card>
@@ -180,7 +181,7 @@ function GalleryThumb({
       onPress={() => url && onOpen(url, media.caption)}
       disabled={!url}
       accessibilityRole="button"
-      accessibilityLabel={media.caption ? `Fotoğraf: ${media.caption}, büyüt` : 'Fotoğrafı büyüt'}
+      accessibilityLabel={media.caption ? tr('Fotoğraf: {caption}, büyüt', { caption: media.caption }) : tr('Fotoğrafı büyüt')}
       style={({ pressed }) => ({ width: t.size.thumb, gap: t.space[1], opacity: pressed ? 0.7 : 1 })}
     >
       <View
@@ -228,7 +229,7 @@ function TenderGallery({ tender }: { tender: Tender }) {
       if (!dataUrl) throw new Error('pdf');
       await openPdfDataUrl(dataUrl, 'teknik-foy.pdf');
     } catch {
-      setPdfError('PDF açılamadı, tekrar deneyin.');
+      setPdfError(tr('PDF açılamadı, tekrar deneyin.'));
     } finally {
       setPdfBusy(null);
     }
@@ -236,7 +237,7 @@ function TenderGallery({ tender }: { tender: Tender }) {
 
   return (
     <View style={{ gap: t.space[4] }}>
-      <SectionTitle title="Fotoğraf ve ekler" />
+      <SectionTitle title={tr('Fotoğraf ve ekler')} />
       <Card>
         <View style={{ gap: t.space[4] }}>
           {images.length ? (
@@ -250,12 +251,12 @@ function TenderGallery({ tender }: { tender: Tender }) {
             <View key={m.id} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
               <Icon name="document-text-outline" size={t.size.icon} color="ink2" />
               <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
-                {m.caption || 'Belge'}
+                {m.caption || tr('Belge')}
               </Text>
               <Button
                 kind="secondary"
-                label="PDF'i aç"
-                accessibilityLabel={`${m.caption || 'Belge'}, PDF'i aç`}
+                label={tr('PDF\'i aç')}
+                accessibilityLabel={tr("{name}, PDF'i aç", { name: m.caption || tr('Belge') })}
                 loading={pdfBusy === m.id}
                 onPress={() => openPdf(m)}
               />
@@ -287,26 +288,26 @@ function TenderSummaryCard({ tender, onOpenBuyer }: { tender: Tender; onOpenBuye
     <Card>
       <View style={{ gap: t.space[3] }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
-          <Badge kind="info" label={tender.categoryLabel || 'Açık talep'} />
+          <Badge kind="info" label={tender.categoryLabel || tr('Açık talep')} />
           <Badge kind={badge.kind} label={badge.label} />
         </View>
         <Text style={[t.type.title22, { color: t.colors.ink }]}>{tender.title}</Text>
         {tender.summary ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tender.summary}</Text> : null}
         <Text style={[t.type.mono20, { color: t.colors.ink }]}>{formatTenderQuantity(tender.quantity, tender.unit)}</Text>
         <View style={{ gap: t.space[1] }}>
-          {tender.targetDate ? <InfoRow label="İstenen termin" value={formatTenderDate(tender.targetDate)} mono /> : null}
+          {tender.targetDate ? <InfoRow label={tr('İstenen termin')} value={formatTenderDate(tender.targetDate)} mono /> : null}
           <InfoRow
-            label="Son teklif"
-            value={tender.deadline ? formatTenderDate(tender.deadline) : 'Talep kapanana kadar'}
+            label={tr('Son teklif')}
+            value={tender.deadline ? formatTenderDate(tender.deadline) : tr('Talep kapanana kadar')}
             mono={!!tender.deadline}
           />
-          <InfoRow label="Yayın" value={formatTenderDate(tender.createdAt)} mono />
+          <InfoRow label={tr('Yayın')} value={formatTenderDate(tender.createdAt)} mono />
         </View>
         {tender.note ? <Text style={[t.type.body16, { color: t.colors.ink }]}>“{tender.note}”</Text> : null}
         <Pressable
           onPress={onOpenBuyer}
           accessibilityRole="button"
-          accessibilityLabel={`${company?.name ?? tender.buyer.name}, sayfayı aç`}
+          accessibilityLabel={tr('{name}, sayfayı aç', { name: company?.name ?? tender.buyer.name })}
           style={({ pressed }) => ({
             minHeight: t.size.touchMin,
             flexDirection: 'row',
@@ -401,7 +402,7 @@ function OffersTable({
       <Pressable
         onPress={() => onExpand({ label, text })}
         accessibilityRole="button"
-        accessibilityLabel={`${label}, tamamını gör`}
+        accessibilityLabel={tr('{label}, tamamını gör', { label })}
         style={{ flex: 1, justifyContent: 'center' }}
       >
         <Text style={[t.type.body14, { color: t.colors.brand }]} numberOfLines={2}>
@@ -421,12 +422,12 @@ function OffersTable({
     );
 
   const rows: { key: string; label: string; height: number; render: (o: TenderOffer) => React.ReactNode }[] = [
-    { key: 'price', label: 'Fiyat', height: ROW_SINGLE, render: (o) => mono(priceText(o)) },
+    { key: 'price', label: tr('Fiyat'), height: ROW_SINGLE, render: (o) => mono(priceText(o)) },
     ...(tender.category === 'konfeksiyon'
       ? [
           {
             key: 'total',
-            label: 'Toplam',
+            label: tr('Toplam'),
             height: ROW_SINGLE,
             render: (o: TenderOffer) =>
               mono(
@@ -439,14 +440,14 @@ function OffersTable({
       : []),
     {
       key: 'moq',
-      label: 'En az sipariş',
+      label: tr('En az sipariş'),
       height: ROW_SINGLE,
       render: (o) => mono(o.moq != null ? `${formatMeasure(o.moq)} ${tenderUnitShort(o.moqUnit || tender.unit)}` : null),
     },
-    { key: 'lead', label: 'Termin', height: ROW_SINGLE, render: (o) => mono(o.leadTimeDays != null ? `${o.leadTimeDays} gün` : null) },
-    { key: 'valid', label: 'Geçerlilik', height: ROW_SINGLE, render: (o) => mono(o.validUntil ? formatTenderDate(o.validUntil) : null) },
-    { key: 'pay', label: 'Ödeme', height: ROW_DOUBLE, render: (o) => textCell('Ödeme', o.paymentTerms) },
-    { key: 'note', label: 'Not', height: ROW_DOUBLE, render: (o) => textCell('Not', o.note) },
+    { key: 'lead', label: tr('Termin'), height: ROW_SINGLE, render: (o) => mono(o.leadTimeDays != null ? tr('{n} gün', { n: o.leadTimeDays }) : null) },
+    { key: 'valid', label: tr('Geçerlilik'), height: ROW_SINGLE, render: (o) => mono(o.validUntil ? formatTenderDate(o.validUntil) : null) },
+    { key: 'pay', label: tr('Ödeme'), height: ROW_DOUBLE, render: (o) => textCell(tr('Ödeme'), o.paymentTerms) },
+    { key: 'note', label: tr('Not'), height: ROW_DOUBLE, render: (o) => textCell(tr('Not'), o.note) },
   ];
 
   const awarded = tender.status === 'awarded';
@@ -457,7 +458,7 @@ function OffersTable({
       <View style={{ flexDirection: 'row', minWidth: 0 }}>
         <View style={{ width: LABEL_WIDTH, borderRightWidth: 1, borderRightColor: t.colors.line }}>
           <View style={cell(HEADER_HEIGHT)}>
-            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>Firma</Text>
+            <Text style={[t.type.label14, { color: t.colors.ink2 }]}>{tr('Firma')}</Text>
           </View>
           <View style={cell(FLAG_HEIGHT)} />
           {rows.map((r) => (
@@ -474,7 +475,7 @@ function OffersTable({
           {offers.map((o) => {
             const chosen = tender.awardedOfferId === o.id || o.status === 'accepted';
             const f = flags.get(o.id) ?? [];
-            const companyName = o.seller?.company?.name ?? o.seller?.name ?? 'Firma';
+            const companyName = o.seller?.company?.name ?? o.seller?.name ?? tr('Firma');
             return (
               <View
                 key={o.id}
@@ -492,7 +493,7 @@ function OffersTable({
                       {companyName}
                     </Text>
                     {o.seller?.company?.verification === 'dogrulanmis' ? (
-                      <View accessibilityLabel="Doğrulanmış firma" accessibilityRole="image">
+                      <View accessibilityLabel={tr('Doğrulanmış firma')} accessibilityRole="image">
                         <Icon name="shield-checkmark-outline" size={t.size.iconSm} color="success" />
                       </View>
                     ) : null}
@@ -505,9 +506,9 @@ function OffersTable({
                 </View>
                 <View style={cell(FLAG_HEIGHT)}>
                   <View style={{ gap: t.space[1] }}>
-                    {chosen ? <Badge kind="delivered" label="Seçildi" /> : null}
-                    {!chosen && f.includes('price') ? <Badge kind="delivered" label="En düşük fiyat" /> : null}
-                    {!chosen && f.includes('lead') ? <Badge kind="new" label="En kısa termin" /> : null}
+                    {chosen ? <Badge kind="delivered" label={tr('Seçildi')} /> : null}
+                    {!chosen && f.includes('price') ? <Badge kind="delivered" label={tr('En düşük fiyat')} /> : null}
+                    {!chosen && f.includes('lead') ? <Badge kind="new" label={tr('En kısa termin')} /> : null}
                   </View>
                 </View>
                 {rows.map((r) => (
@@ -520,9 +521,9 @@ function OffersTable({
                     <Button
                       kind="secondary"
                       fullWidth
-                      label="Bu teklifi seç"
+                      label={tr('Bu teklifi seç')}
                       loading={busyId === o.id}
-                      accessibilityLabel={`${companyName} teklifini seç`}
+                      accessibilityLabel={tr('{name} teklifini seç', { name: companyName })}
                       onPress={() => onAccept(o)}
                     />
                   ) : null}
@@ -530,9 +531,9 @@ function OffersTable({
                     kind="quiet"
                     fullWidth
                     icon="message"
-                    label="Mesaj"
+                    label={tr('Mesaj')}
                     disabled={!o.seller?.id}
-                    accessibilityLabel={`${companyName} ile mesajlaş`}
+                    accessibilityLabel={tr('{name} ile mesajlaş', { name: companyName })}
                     onPress={() => onMessage(o)}
                   />
                 </View>
@@ -578,9 +579,9 @@ function OfferForm({
   const handleError = (err: unknown, fallback: string) => {
     haptics.error();
     const code = err instanceof ApiError ? err.code : null;
-    if (code === 'no_company') setError('Teklif vermek için önce firma sayfanızı oluşturun.');
-    else if (code === 'own_tender') setError('Kendi talebinize teklif veremezsiniz.');
-    else if (code === 'tender_closed') setError('Bu talep artık teklif kabul etmiyor.');
+    if (code === 'no_company') setError(tr('Teklif vermek için önce firma sayfanızı oluşturun.'));
+    else if (code === 'own_tender') setError(tr('Kendi talebinize teklif veremezsiniz.'));
+    else if (code === 'tender_closed') setError(tr('Bu talep artık teklif kabul etmiyor.'));
     else setError(friendlyMessage(err, fallback));
   };
 
@@ -604,7 +605,7 @@ function OfferForm({
       setEditing(false);
       await onSaved();
     } catch (err) {
-      handleError(err, 'Teklif gönderilemedi');
+      handleError(err, tr('Teklif gönderilemedi'));
     } finally {
       setBusy(null);
     }
@@ -612,9 +613,9 @@ function OfferForm({
 
   const withdraw = async () => {
     const ok = await confirmAction({
-      title: 'Teklif geri çekilsin mi?',
-      message: 'Alıcı teklifinizi artık görmez. İsterseniz talep açıkken yeniden teklif verebilirsiniz.',
-      confirmLabel: 'Geri çek',
+      title: tr('Teklif geri çekilsin mi?'),
+      message: tr('Alıcı teklifinizi artık görmez. İsterseniz talep açıkken yeniden teklif verebilirsiniz.'),
+      confirmLabel: tr('Geri çek'),
       destructive: true,
     });
     if (!ok) return;
@@ -626,7 +627,7 @@ function OfferForm({
       setEditing(true);
       await onSaved();
     } catch (err) {
-      handleError(err, 'Teklif geri çekilemedi');
+      handleError(err, tr('Teklif geri çekilemedi'));
     } finally {
       setBusy(null);
     }
@@ -641,28 +642,28 @@ function OfferForm({
       <Card>
         <View style={{ gap: t.space[3] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: t.space[2] }}>
-            <Text style={[t.type.title18, { color: t.colors.ink }]}>Teklifiniz</Text>
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Teklifiniz')}</Text>
             <Badge
               kind={chosen ? 'delivered' : active.status === 'declined' ? 'cancelled' : 'pending'}
-              label={chosen ? 'Seçildi' : active.status === 'declined' ? 'Seçilmedi' : 'Gönderildi'}
+              label={chosen ? tr('Seçildi') : active.status === 'declined' ? tr('Seçilmedi') : tr('Gönderildi')}
             />
           </View>
           <Text style={[t.type.mono20, { color: t.colors.ink }]}>{priceText(active)}</Text>
           <View style={{ gap: t.space[1] }}>
             {active.moq != null ? (
-              <InfoRow label="En az sipariş" value={`${formatMeasure(active.moq)} ${tenderUnitShort(active.moqUnit || tender.unit)}`} mono />
+              <InfoRow label={tr('En az sipariş')} value={`${formatMeasure(active.moq)} ${tenderUnitShort(active.moqUnit || tender.unit)}`} mono />
             ) : null}
-            {active.leadTimeDays != null ? <InfoRow label="Termin" value={`${active.leadTimeDays} gün`} mono /> : null}
-            {active.validUntil ? <InfoRow label="Geçerlilik" value={formatTenderDate(active.validUntil)} mono /> : null}
-            {active.paymentTerms ? <InfoRow label="Ödeme" value={active.paymentTerms} /> : null}
+            {active.leadTimeDays != null ? <InfoRow label={tr('Termin')} value={tr('{n} gün', { n: active.leadTimeDays })} mono /> : null}
+            {active.validUntil ? <InfoRow label={tr('Geçerlilik')} value={formatTenderDate(active.validUntil)} mono /> : null}
+            {active.paymentTerms ? <InfoRow label={tr('Ödeme')} value={active.paymentTerms} /> : null}
           </View>
           {active.note ? <Text style={[t.type.body14, { color: t.colors.ink2 }]}>“{active.note}”</Text> : null}
-          {chosen ? <Notice tone="success" text="Alıcı teklifinizi seçti. Ayrıntılar için alıcıyla mesajlaşın." /> : null}
+          {chosen ? <Notice tone="success" text={tr('Alıcı teklifinizi seçti. Ayrıntılar için alıcıyla mesajlaşın.')} /> : null}
           {errorBox}
           {tender.acceptingOffers && active.status === 'sent' ? (
             <View style={{ gap: t.space[2] }}>
-              <Button kind="secondary" label="Teklifi güncelle" onPress={() => setEditing(true)} />
-              <Button kind="danger" label="Geri çek" loading={busy === 'withdraw'} onPress={withdraw} />
+              <Button kind="secondary" label={tr('Teklifi güncelle')} onPress={() => setEditing(true)} />
+              <Button kind="danger" label={tr('Geri çek')} loading={busy === 'withdraw'} onPress={withdraw} />
             </View>
           ) : null}
         </View>
@@ -673,23 +674,23 @@ function OfferForm({
   return (
     <Card>
       <View style={{ gap: t.space[4] }}>
-        <Text style={[t.type.title18, { color: t.colors.ink }]}>{active ? 'Teklifi güncelle' : 'Teklif ver'}</Text>
+        <Text style={[t.type.title18, { color: t.colors.ink }]}>{active ? tr('Teklifi güncelle') : tr('Teklif ver')}</Text>
         <Input
-          label={garment && priceUnit === 'adet' ? 'Adet başı paket fiyat' : 'Birim fiyat'}
-          helper={garment ? 'Alıcının istediği teslim kapsamı (ütü, paket, poşet...) dahil adet fiyatı.' : undefined}
+          label={garment && priceUnit === 'adet' ? tr('Adet başı paket fiyat') : tr('Birim fiyat')}
+          helper={garment ? tr('Alıcının istediği teslim kapsamı (ütü, paket, poşet...) dahil adet fiyatı.') : undefined}
           value={price}
           onChangeText={setPrice}
           inputMode="decimal"
           keyboardType="decimal-pad"
-          placeholder="Örn. 2,35"
+          placeholder={tr('Örn. 2,35')}
           unit={`${currency} / ${tenderUnitShort(priceUnit)}`}
         />
-        <SegmentControl<TenderCurrency> stretch accessibilityLabel="Para birimi" value={currency} onChange={setCurrency} options={CURRENCIES} />
-        <SegmentControl<TenderUnit> stretch accessibilityLabel="Fiyat birimi" value={priceUnit} onChange={setPriceUnit} options={TENDER_UNITS} />
+        <SegmentControl<TenderCurrency> stretch accessibilityLabel={tr('Para birimi')} value={currency} onChange={setCurrency} options={CURRENCIES} />
+        <SegmentControl<TenderUnit> stretch accessibilityLabel={tr('Fiyat birimi')} value={priceUnit} onChange={setPriceUnit} options={TENDER_UNITS} />
         {priceValue > 0 && priceUnit === tender.unit ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space[3] }}>
             <Text style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
-              {`Toplam: ${formatTenderQuantity(tender.quantity, tender.unit)} × ${formatMeasure(priceValue)} ${currency}`}
+              {tr('Toplam: {qty} × {price} {currency}', { qty: formatTenderQuantity(tender.quantity, tender.unit), price: formatMeasure(priceValue), currency })}
             </Text>
             <Text style={[t.type.mono14, { color: t.colors.ink }]}>
               {`${formatMeasure(priceValue * tender.quantity)} ${currency}`}
@@ -699,44 +700,44 @@ function OfferForm({
         <View style={{ flexDirection: 'row', gap: t.space[3] }}>
           <Input
             containerStyle={{ flex: 1, minWidth: 0 }}
-            label="En az sipariş"
+            label={tr('En az sipariş')}
             value={moq}
             onChangeText={setMoq}
             inputMode="decimal"
             keyboardType="decimal-pad"
-            placeholder="İsteğe bağlı"
+            placeholder={tr('İsteğe bağlı')}
             unit={tenderUnitShort(priceUnit)}
           />
           <Input
             containerStyle={{ flex: 1, minWidth: 0 }}
-            label="Termin"
+            label={tr('Termin')}
             value={lead}
             onChangeText={setLead}
             inputMode="numeric"
             keyboardType="number-pad"
-            placeholder="İsteğe bağlı"
-            unit="gün"
+            placeholder={tr('İsteğe bağlı')}
+            unit={tr('gün')}
           />
         </View>
         <Input
-          label="Teklif geçerlilik tarihi (isteğe bağlı)"
+          label={tr('Teklif geçerlilik tarihi (isteğe bağlı)')}
           value={validUntil}
           onChangeText={setValidUntil}
           placeholder="2026-10-31"
           autoCapitalize="none"
-          error={validInvalid ? 'Tarihi YYYY-AA-GG biçiminde yazın.' : null}
+          error={validInvalid ? tr('Tarihi YYYY-AA-GG biçiminde yazın.') : null}
         />
-        <Input label="Ödeme koşulu (isteğe bağlı)" value={payment} onChangeText={setPayment} placeholder="Örn. 60 gün vadeli" />
-        <Input label="Not (isteğe bağlı)" value={note} onChangeText={setNote} placeholder="Örn. Stoktan 3 ton hemen" multiline />
+        <Input label={tr('Ödeme koşulu (isteğe bağlı)')} value={payment} onChangeText={setPayment} placeholder={tr('Örn. 60 gün vadeli')} />
+        <Input label={tr('Not (isteğe bağlı)')} value={note} onChangeText={setNote} placeholder={tr('Örn. Stoktan 3 ton hemen')} multiline />
         {errorBox}
         <Button
           size="lg"
-          label={active ? 'Teklifi güncelle' : 'Teklif gönder'}
+          label={active ? tr('Teklifi güncelle') : tr('Teklif gönder')}
           loading={busy === 'save'}
           disabled={!canSubmit}
           onPress={submit}
         />
-        {active ? <Button kind="quiet" label="Vazgeç" onPress={() => setEditing(false)} /> : null}
+        {active ? <Button kind="quiet" label={tr('Vazgeç')} onPress={() => setEditing(false)} /> : null}
       </View>
     </Card>
   );
@@ -761,7 +762,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
 
   const shell = (children: React.ReactNode) => (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="Açık talep" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('Açık talep')} leading="back" onBack={() => navigation.goBack()} />
       {children}
     </View>
   );
@@ -774,13 +775,13 @@ export function TenderDetailScreen({ route, navigation }: Props) {
         {error && !isNotFound(error) ? (
           <EmptyState
             icon="warning"
-            title="Yüklenemedi"
-            description={friendlyMessage(error, 'Talep alınamadı')}
-            actionLabel="Tekrar dene"
+            title={tr('Yüklenemedi')}
+            description={friendlyMessage(error, tr('Talep alınamadı'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         ) : (
-          <EmptyState icon="megaphone-outline" title="Talep bulunamadı" description="Talep kaldırılmış olabilir." />
+          <EmptyState icon="megaphone-outline" title={tr('Talep bulunamadı')} description={tr('Talep kaldırılmış olabilir.')} />
         )}
       </Screen>
     );
@@ -797,11 +798,11 @@ export function TenderDetailScreen({ route, navigation }: Props) {
   };
 
   const accept = async (o: TenderOffer) => {
-    const name = o.seller?.company?.name ?? 'Bu firma';
+    const name = o.seller?.company?.name ?? tr('Bu firma');
     const ok = await confirmAction({
-      title: 'Bu teklif seçilsin mi?',
-      message: `${name} teklifi (${priceText(o)}) seçilir, talep kapanır ve diğer firmalara seçilmedikleri bildirilir.`,
-      confirmLabel: 'Teklifi seç',
+      title: tr('Bu teklif seçilsin mi?'),
+      message: tr('{name} teklifi ({price}) seçilir, talep kapanır ve diğer firmalara seçilmedikleri bildirilir.', { name, price: priceText(o) }),
+      confirmLabel: tr('Teklifi seç'),
     });
     if (!ok) return;
     setBusyId(o.id);
@@ -812,7 +813,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Teklif seçilemedi'));
+      setActionError(friendlyMessage(err, tr('Teklif seçilemedi')));
     } finally {
       setBusyId(null);
     }
@@ -820,9 +821,9 @@ export function TenderDetailScreen({ route, navigation }: Props) {
 
   const close = async () => {
     const ok = await confirmAction({
-      title: 'Talep kapatılsın mı?',
-      message: 'Yeni teklif gelmez. Gelen teklifler burada görünmeye devam eder.',
-      confirmLabel: 'Talebi kapat',
+      title: tr('Talep kapatılsın mı?'),
+      message: tr('Yeni teklif gelmez. Gelen teklifler burada görünmeye devam eder.'),
+      confirmLabel: tr('Talebi kapat'),
       destructive: true,
     });
     if (!ok) return;
@@ -834,7 +835,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Talep kapatılamadı'));
+      setActionError(friendlyMessage(err, tr('Talep kapatılamadı')));
     } finally {
       setClosing(false);
     }
@@ -846,11 +847,11 @@ export function TenderDetailScreen({ route, navigation }: Props) {
 
   const stateText =
     tender.status === 'awarded'
-      ? 'Alıcı bir teklif seçti; bu talep kapandı.'
+      ? tr('Alıcı bir teklif seçti; bu talep kapandı.')
       : tender.status === 'closed'
-        ? 'Bu talep kapatıldı, yeni teklif alınmıyor.'
+        ? tr('Bu talep kapatıldı, yeni teklif alınmıyor.')
         : tender.expired
-          ? 'Son teklif tarihi geçti, yeni teklif alınmıyor.'
+          ? tr('Son teklif tarihi geçti, yeni teklif alınmıyor.')
           : null;
 
   return shell(
@@ -864,7 +865,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
         {isBuyer && notified !== undefined ? (
           <Notice
             tone="success"
-            text={notified > 0 ? `Talebiniz yayınlandı. ${notified} firmaya haber verildi.` : 'Talebiniz yayınlandı. Uygun firmalar gördükçe teklif verecek.'}
+            text={notified > 0 ? tr('Talebiniz yayınlandı. {n} firmaya haber verildi.', { n: notified }) : tr('Talebiniz yayınlandı. Uygun firmalar gördükçe teklif verecek.')}
           />
         ) : null}
 
@@ -873,11 +874,11 @@ export function TenderDetailScreen({ route, navigation }: Props) {
         <TenderGallery tender={tender} />
 
         {actionError ? <Notice tone="danger" text={actionError} /> : null}
-        {error ? <Notice tone="danger" text={friendlyMessage(error, 'Talep yenilenemedi')} /> : null}
+        {error ? <Notice tone="danger" text={friendlyMessage(error, tr('Talep yenilenemedi'))} /> : null}
 
         {isBuyer ? (
           <View style={{ gap: t.space[4] }}>
-            <SectionTitle title={`Gelen teklifler (${visibleOffers.length})`} />
+            <SectionTitle title={tr('Gelen teklifler ({n})', { n: visibleOffers.length })} />
             {stateText ? <Notice tone="info" text={stateText} /> : null}
             {visibleOffers.length ? (
               <>
@@ -890,18 +891,18 @@ export function TenderDetailScreen({ route, navigation }: Props) {
                   onExpand={setExpanded}
                 />
                 <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                  Para birimi çevrilmez; en düşük fiyat işareti aynı para birimi ve birim içinde verilir.
+                  {tr('Para birimi çevrilmez; en düşük fiyat işareti aynı para birimi ve birim içinde verilir.')}
                 </Text>
               </>
             ) : (
               <EmptyState
                 icon="time-outline"
-                title="Henüz teklif gelmedi"
-                description="Firmalar teklif verdikçe burada yan yana görünür; size bildirim de gelir."
+                title={tr('Henüz teklif gelmedi')}
+                description={tr('Firmalar teklif verdikçe burada yan yana görünür; size bildirim de gelir.')}
               />
             )}
             {tender.status === 'open' ? (
-              <Button kind="danger" label="Talebi kapat" loading={closing} onPress={close} />
+              <Button kind="danger" label={tr('Talebi kapat')} loading={closing} onPress={close} />
             ) : null}
           </View>
         ) : hasCompany && (tender.acceptingOffers || (myOffer && myOffer.status !== 'withdrawn')) ? (
@@ -914,11 +915,11 @@ export function TenderDetailScreen({ route, navigation }: Props) {
             {stateText ? <Notice tone="info" text={stateText} /> : null}
             <Card>
               <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>
-                {tender.offerCount > 0 ? `${tender.offerCount} teklif verildi` : 'Henüz teklif verilmedi'}
+                {tender.offerCount > 0 ? tp('1 teklif verildi', '{n} teklif verildi', tender.offerCount) : tr('Henüz teklif verilmedi')}
               </Text>
               {!hasCompany && tender.acceptingOffers ? (
                 <Text style={[t.type.body14, { color: t.colors.ink2, paddingTop: t.space[1] }]}>
-                  Teklif vermek için bir firmaya bağlı olmalısınız.
+                  {tr('Teklif vermek için bir firmaya bağlı olmalısınız.')}
                 </Text>
               ) : null}
             </Card>
@@ -928,7 +929,7 @@ export function TenderDetailScreen({ route, navigation }: Props) {
 
       <BottomSheet visible={expanded !== null} onClose={() => setExpanded(null)} title={expanded?.label}>
         <Text style={[t.type.body16, { color: t.colors.ink }]}>{expanded?.text}</Text>
-        <Button kind="secondary" label="Kapat" onPress={() => setExpanded(null)} />
+        <Button kind="secondary" label={tr('Kapat')} onPress={() => setExpanded(null)} />
       </BottomSheet>
     </Screen>
   );

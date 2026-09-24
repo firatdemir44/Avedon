@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { getLang, locale } from '../i18n';
 
 // Asistanla sesli konuşma (Fırat 2026-09-23): tarayıcının kendi Türkçe konuşma tanıması
 // (Web Speech API) ile ses → yazı, speechSynthesis ile yazı → ses. Ek ücret ve sunucu yok.
@@ -64,7 +65,7 @@ export function startListening(opts: { onText: (text: string, final: boolean) =>
   const begin = () => {
     const r = new Ctor();
     rec = r;
-    r.lang = 'tr-TR';
+    r.lang = locale();
     r.interimResults = true;
     r.continuous = false; // Android Chrome sürekli kipte sonuçları çiftliyor; yeniden başlatma yeterli
     let sessionFinal = '';
@@ -139,12 +140,23 @@ function voiceScore(v: SpeechSynthesisVoice) {
   return 1;
 }
 function pickVoice(): SpeechSynthesisVoice | null {
-  const tr = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().replace('_', '-').startsWith('tr'));
+  const tr = window.speechSynthesis.getVoices().filter((v) => v.lang?.toLowerCase().replace('_', '-').startsWith(getLang()));
   return tr.sort((x, y) => voiceScore(y) - voiceScore(x))[0] ?? null;
 }
 
 // Yazıyı konuşma diline çevirir: kısaltmalar, birimler, simgeler okunur hale gelir.
 function spoken(text: string) {
+  // İngilizce seslerde Türkçe okunuş kuralları uygulanmaz; yalnızca simgeler temizlenir.
+  if (getLang() === 'en') {
+    return plain(text)
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
+      .replace(/%\s?(\d[\d.,]*)/g, '$1 percent')
+      .replace(/(\d)\s?(gr\/m²|g\/m2|gr\/m2)/g, '$1 grams per square metre')
+      .replace(/\s[·•|]\s/g, ', ')
+      .replace(/\s-\s/g, ', ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
   return plain(text)
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, ' ')
     .replace(/%\s?(\d)/g, 'yüzde $1')
@@ -234,7 +246,7 @@ export function toggleSpeak(id: string, text: string) {
   emit();
   chunks.forEach((chunk, i) => {
     const u = new SpeechSynthesisUtterance(chunk);
-    u.lang = 'tr-TR';
+    u.lang = locale();
     if (voice) u.voice = voice;
     u.pitch = 1;
     // Doğal sesler normal hızda akıcı; basit seslerde hafif hızlandırma tekdüzeliği azaltır.

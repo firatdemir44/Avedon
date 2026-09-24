@@ -4,6 +4,7 @@ import * as z from 'zod/v4';
 import { requirementChain, type RequirementChain } from '../../domain/calc/wastage';
 import { metersToKg } from '../../domain/glossary/units';
 import { defineSkill, fmt } from '../types';
+import { t } from '../../i18n';
 
 const inputSchema = z
   .object({
@@ -47,15 +48,21 @@ export const yarnRequirement = defineSkill<typeof inputSchema, RequirementChain>
       knittingLossPercent: input.knittingLossPercent,
     });
   },
-  summarize: (input, out) => {
+  summarize: (input, out, lang) => {
     const parts: string[] = [];
     if (out.garmentFabricKg != null) {
-      parts.push(`${fmt(out.garmentFabricKg)} kg dikilmiş ürün kumaşı için kesim firesi %${fmt(input.cuttingLossPercent, 1)} ile ${fmt(out.finishedKg)} kg mamul kumaş`);
+      parts.push(
+        t(lang, '{g} kg dikilmiş ürün kumaşı için kesim firesi %{c} ile {f} kg mamul kumaş', {
+          g: fmt(out.garmentFabricKg),
+          c: fmt(input.cuttingLossPercent, 1),
+          f: fmt(out.finishedKg),
+        })
+      );
     } else {
-      parts.push(`${fmt(out.finishedKg)} kg mamul kumaş`);
+      parts.push(t(lang, '{f} kg mamul kumaş', { f: fmt(out.finishedKg) }));
     }
-    parts.push(`boya/apre firesi %${fmt(input.dyeingLossPercent, 1)} ile ${fmt(out.greigeKg)} kg ham kumaş örülmeli`);
-    parts.push(`örme firesi %${fmt(input.knittingLossPercent, 1)} ile ${fmt(out.yarnKg)} kg iplik alınmalı`);
+    parts.push(t(lang, 'boya/apre firesi %{p} ile {v} kg ham kumaş örülmeli', { p: fmt(input.dyeingLossPercent, 1), v: fmt(out.greigeKg) }));
+    parts.push(t(lang, 'örme firesi %{p} ile {v} kg iplik alınmalı', { p: fmt(input.knittingLossPercent, 1), v: fmt(out.yarnKg) }));
     return parts.join('; ') + '.';
   },
 });

@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
+import { tr } from '../../i18n';
 import {
   CalcTable,
   CalcInputRow,
@@ -57,18 +58,18 @@ export function YarnUsageCalculator({ navigation }: RootStackScreenProps<'YarnUs
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
-      <AppBar title="İplik ihtiyacı" leading="back" onBack={() => navigation.goBack()} />
+      <AppBar title={tr('İplik ihtiyacı')} leading="back" onBack={() => navigation.goBack()} />
       <Screen>
-        <CalcTable title="İplik ihtiyacı">
+        <CalcTable title={tr('İplik ihtiyacı')}>
           <CalcInputRow
-            label="Üretilecek kumaş miktarı"
-            hint={byKg ? 'Kg ile hesaplarken gramaj ve en zorunlu değil' : undefined}
+            label={tr('Üretilecek kumaş miktarı')}
+            hint={byKg ? tr('Kg ile hesaplarken gramaj ve en zorunlu değil') : undefined}
             value={length}
             onChangeText={(v) => update({ length: v })}
             placeholder="500"
             unitToggle={{
               options: [
-                { value: 'metre', label: 'metre' },
+                { value: 'metre', label: tr('metre') },
                 { value: 'kg', label: 'kg' },
               ],
               value: unit,
@@ -76,40 +77,40 @@ export function YarnUsageCalculator({ navigation }: RootStackScreenProps<'YarnUs
             }}
           />
           <CalcInputRow
-            label="Kumaş gramajı"
+            label={tr('Kumaş gramajı')}
             value={weightGsm}
             onChangeText={(v) => update({ weightGsm: v })}
             placeholder="200"
             unit="gr/m²"
           />
           <CalcInputRow
-            label="En"
+            label={tr('En')}
             value={widthCm}
             onChangeText={(v) => update({ widthCm: v })}
             placeholder="160"
             unit="cm"
           />
           <CalcInputRow
-            label="Fire oranı"
+            label={tr('Fire oranı')}
             value={wastage}
             onChangeText={(v) => update({ wastage: v })}
             placeholder="5"
             unit="%"
           />
           <CalcResultRow
-            label="Gerekli iplik miktarı"
+            label={tr('Gerekli iplik miktarı')}
             value={result !== null ? formatNumber(result) : '—'}
             unit="kg"
             emphasis="primary"
           />
           {fabricMeters !== null ? (
-            <CalcResultRow label="Bu kadar kumaş yaklaşık" value={formatNumber(fabricMeters)} unit="metre" note="Gramaj ve ene göre" />
+            <CalcResultRow label={tr('Bu kadar kumaş yaklaşık')} value={formatNumber(fabricMeters)} unit={tr('metre')} note={tr('Gramaj ve ene göre')} />
           ) : null}
           {result === null ? (
-            <CalcNoteRow text={byKg ? 'Hesap için kumaş miktarını (kg) girin.' : 'Hesap için uzunluk, gramaj ve en girin.'} />
+            <CalcNoteRow text={byKg ? tr('Hesap için kumaş miktarını (kg) girin.') : tr('Hesap için uzunluk, gramaj ve en girin.')} />
           ) : null}
           <CalcFormulaRow
-            text={byKg ? 'İplik (kg) = kumaş (kg) × (1 + fire ÷ 100)' : 'İplik (kg) = uzunluk × en (m) × gramaj ÷ 1000 × (1 + fire ÷ 100)'}
+            text={byKg ? tr('İplik (kg) = kumaş (kg) × (1 + fire ÷ 100)') : tr('İplik (kg) = uzunluk × en (m) × gramaj ÷ 1000 × (1 + fire ÷ 100)')}
           />
         </CalcTable>
         <CalcClearButton onClear={() => update(INITIAL)} />

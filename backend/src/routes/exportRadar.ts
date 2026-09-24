@@ -7,7 +7,8 @@ import { COMMON_HS, suggestHs } from '../export/hs';
 import { TARGET_COUNTRIES } from '../export/countries';
 import { rankMarkets, rankMarketsProgressive } from '../export/trade';
 import { insightFor, overview, referenceShare } from '../export/insight';
-import { countryByIso2 } from '../export/countries';
+import { countryByIso2, localizeCountry } from '../export/countries';
+import { t } from '../i18n';
 import { LEAD_STATUSES, listBuyers, listLeads } from '../export/buyers/list';
 
 // Dünyayı Keşfet / İhracat Radarı — A aşaması (docs/kesfet-ihracat-plani.md §7):
@@ -19,8 +20,12 @@ const handle = makeHandle('exportRadar');
 
 exportRadarRouter.get(
   '/countries',
-  handle(async (_req, res) => {
-    res.json({ countries: TARGET_COUNTRIES, commonHs: COMMON_HS });
+  handle(async (req, res) => {
+    const lang = req.lang;
+    res.json({
+      countries: TARGET_COUNTRIES.map((c) => localizeCountry(c, lang)),
+      commonHs: COMMON_HS.map((h) => ({ ...h, label: t(lang, h.label), group: t(lang, h.group) })),
+    });
   })
 );
 
@@ -54,7 +59,7 @@ exportRadarRouter.get(
           type: p.type,
           subtype: p.subtype,
           content: p.content,
-          hs: suggestHs({ type: p.type, subtype: p.subtype, weightGsm: p.weightGsm, composition: p.compositions, finishTags, yarn: p.yarnSpec }),
+          hs: suggestHs({ type: p.type, subtype: p.subtype, weightGsm: p.weightGsm, composition: p.compositions, finishTags, yarn: p.yarnSpec }, req.lang),
         };
       }),
     });
@@ -85,15 +90,16 @@ exportRadarRouter.get(
     const { markets: raw, pending } = req.query.wait === '1' ? { markets: await rankMarkets(hs6, m49s), pending: [] as number[] } : await rankMarketsProgressive(hs6, m49s);
     // Yorum: sayılar karara çevrilir (pazar tipi, kazanılabilir pazar, fiyat konumu, hamle).
     const ref = referenceShare(raw);
-    const markets = raw.map((m) => ({ ...m, insight: insightFor(m, ref) }));
+    const lang = req.lang;
+    const markets = raw.map((m) => ({ ...m, country: localizeCountry(m.country, lang), insight: insightFor(m, ref, lang) }));
     res.json({
       hs6,
       markets,
       pending,
-      overview: overview(markets),
+      overview: overview(markets, lang),
       referenceSharePct: ref,
-      source: 'UN Comtrade (ithalat, USD, CIF)',
-      note: 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir. Yorumlar veriden kurallarla üretilir; yatırım tavsiyesi değildir.',
+      source: t(lang, 'UN Comtrade (ithalat, USD, CIF)'),
+      note: t(lang, 'Son yayımlanmış yıl; ülkeler veriyi 6-18 ay gecikmeyle bildirir. Yorumlar veriden kurallarla üretilir; yatırım tavsiyesi değildir.'),
     });
   })
 );
@@ -117,7 +123,7 @@ exportRadarRouter.get(
     const c = countryByIso2(parsed.data.country);
     if (!c) return res.status(400).json({ error: 'unknown_country' });
     if (c.access === 'engelli') return res.status(400).json({ error: 'blocked_country' });
-    res.json(await listBuyers({ ...parsed.data, page: parsed.data.page ?? 1, companyId: req.user!.companyId ?? null }));
+    res.json(await listBuyers({ ...parsed.data, page: parsed.data.page ?? 1, companyId: req.user!.companyId ?? null, lang: req.lang }));
   })
 );
 
@@ -147,6 +153,6 @@ exportRadarRouter.get(
   handle(async (req, res) => {
     const companyId = req.user!.companyId;
     if (!companyId) return res.status(400).json({ error: 'no_company' });
-    res.json({ leads: await listLeads(companyId) });
+    res.json({ leads: await listLeads(companyId, req.lang) });
   })
 );

@@ -30,6 +30,7 @@ import {
   SkeletonText,
   type BadgeKind,
 } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'SampleRequestTracking'>;
 
@@ -68,13 +69,13 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
       await reload();
     } catch (err) {
       haptics.error();
-      setActionError(friendlyMessage(err, 'Durum güncellenemedi'));
+      setActionError(friendlyMessage(err, tr('Durum güncellenemedi')));
     } finally {
       setAdvancing(false);
     }
   };
 
-  const bar = <AppBar title="Numune takibi" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Numune takibi')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -100,16 +101,16 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
           {error && !isNotFound(error) ? (
             <EmptyState
               icon="warning"
-              title="Takip bilgisi alınamadı"
-              description={friendlyMessage(error, 'Bağlantıyı kontrol edip yeniden dene.')}
-              actionLabel="Yeniden dene"
+              title={tr('Takip bilgisi alınamadı')}
+              description={friendlyMessage(error, tr('Bağlantıyı kontrol edip yeniden dene.'))}
+              actionLabel={tr('Yeniden dene')}
               onAction={reload}
             />
           ) : (
             <EmptyState
               icon="sample"
-              title="Talep bulunamadı"
-              description="Talep silinmiş ya da sana ait olmayabilir."
+              title={tr('Talep bulunamadı')}
+              description={tr('Talep silinmiş ya da sana ait olmayabilir.')}
             />
           )}
         </Screen>
@@ -136,16 +137,16 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
             <View style={{ gap: t.space[3] }}>
               {asksForNote ? (
                 <Input
-                  label="Teslim notu (isteğe bağlı)"
+                  label={tr('Teslim notu (isteğe bağlı)')}
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Örn. Giriş ofisinde teslim alındı"
+                  placeholder={tr('Örn. Giriş ofisinde teslim alındı')}
                 />
               ) : null}
               <Button
                 kind="secondary"
                 size="lg"
-                label={`${nextStep.label} olarak işaretle`}
+                label={tr('{step} olarak işaretle', { step: nextStep.label })}
                 loading={advancing}
                 onPress={handleAdvance}
               />
@@ -160,7 +161,7 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
         >
           {/* Özet: ürün kodu + güncel durum rozeti, firma, teslim şekli, not. */}
           <Card onPress={() => navigation.navigate('ProductDetail', { productId: product.id })}
-            accessibilityLabel={`${product.code}, ürün sayfasını aç`}>
+            accessibilityLabel={tr('{code}, ürün sayfasını aç', { code: product.code })}>
             <View style={{ gap: t.space[2] }}>
               <Text style={[t.type.mono20, { color: t.colors.ink }]}>{product.code}</Text>
               <Badge kind={SAMPLE_BADGE[sampleRequest.status]} label={sampleRequest.statusLabel} />
@@ -176,7 +177,7 @@ export function SampleRequestTrackingScreen({ route, navigation }: Props) {
 
           <Button
             kind="quiet"
-            label="Firma sayfasını aç"
+            label={tr('Firma sayfasını aç')}
             icon="chevron"
             onPress={() => navigation.navigate('CompanyProfile', { companyId: product.companyId })}
           />
@@ -218,7 +219,7 @@ function TimelineStep({ step }: { step: SampleTimelineStep }) {
   return (
     <View
       accessible
-      accessibilityLabel={`${step.label}, ${done ? 'tamamlandı' : 'bekleniyor'}`}
+      accessibilityLabel={`${step.label}, ${done ? tr('tamamlandı') : tr('bekleniyor')}`}
       style={{ flexDirection: 'row', gap: t.space[3], minWidth: 0 }}
     >
       {/* Tamamlanan adım onay ikonu, bekleyen adım saat ikonu: durum yalnız
@@ -229,7 +230,7 @@ function TimelineStep({ step }: { step: SampleTimelineStep }) {
         {step.occurredAt ? (
           <Text style={[t.type.mono14, { color: t.colors.ink2 }]}>{formatDateTime(step.occurredAt)}</Text>
         ) : !done ? (
-          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bekleniyor</Text>
+          <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{tr('Bekleniyor')}</Text>
         ) : null}
         {step.description ? (
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{step.description}</Text>

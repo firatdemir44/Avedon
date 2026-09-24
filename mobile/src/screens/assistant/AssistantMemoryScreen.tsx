@@ -28,6 +28,7 @@ import {
   SectionTitle,
   SkeletonRow,
 } from '../../ui';
+import { locale, tr } from '../../i18n';
 
 type Props = RootStackScreenProps<'AssistantMemory'>;
 
@@ -40,7 +41,7 @@ type Props = RootStackScreenProps<'AssistantMemory'>;
 
 function displayValue(value: number | string | undefined): string {
   if (value === undefined || value === null || value === '') return '';
-  return typeof value === 'number' ? value.toLocaleString('tr-TR') : String(value);
+  return typeof value === 'number' ? value.toLocaleString(locale()) : String(value);
 }
 
 // "12,5" ve "12.5" kabul edilir; binlik ayırıcı beklenmez.
@@ -86,14 +87,14 @@ export function AssistantMemoryScreen({ navigation }: Props) {
       if (def.kind === 'number') {
         const parsed = parseNumber(draft);
         if (parsed === null) {
-          setRowError('Bu alana sayı girilir.');
+          setRowError(tr('Bu alana sayı girilir.'));
           return;
         }
         value = parsed;
       } else {
         const text = draft.trim();
         if (!text) {
-          setRowError('Boş bırakılamaz; silmek için "Sil" düğmesini kullanın.');
+          setRowError(tr('Boş bırakılamaz; silmek için "Sil" düğmesini kullanın.'));
           return;
         }
         value = text;
@@ -107,7 +108,7 @@ export function AssistantMemoryScreen({ navigation }: Props) {
         await reload();
       } catch (err) {
         haptics.error();
-        setRowError(err instanceof ApiError ? err.message : 'Kaydedilemedi, tekrar deneyin.');
+        setRowError(err instanceof ApiError ? err.message : tr('Kaydedilemedi, tekrar deneyin.'));
       } finally {
         setSaving(false);
       }
@@ -118,9 +119,9 @@ export function AssistantMemoryScreen({ navigation }: Props) {
   const remove = useCallback(
     async (def: MemoryKeyDef) => {
       const ok = await confirmAction({
-        title: 'Değer silinsin mi?',
-        message: `${def.label} hafızadan kaldırılacak.`,
-        confirmLabel: 'Sil',
+        title: tr('Değer silinsin mi?'),
+        message: tr('{label} hafızadan kaldırılacak.', { label: def.label }),
+        confirmLabel: tr('Sil'),
         destructive: true,
       });
       if (!ok) return;
@@ -132,7 +133,7 @@ export function AssistantMemoryScreen({ navigation }: Props) {
         await reload();
       } catch {
         haptics.error();
-        setRowError('Silinemedi, tekrar deneyin.');
+        setRowError(tr('Silinemedi, tekrar deneyin.'));
       } finally {
         setSaving(false);
       }
@@ -140,7 +141,7 @@ export function AssistantMemoryScreen({ navigation }: Props) {
     [reload]
   );
 
-  const bar = <AppBar title="Firma hafızası" leading="back" onBack={() => navigation.goBack()} />;
+  const bar = <AppBar title={tr('Firma hafızası')} leading="back" onBack={() => navigation.goBack()} />;
 
   if (status === 'loading') {
     return (
@@ -163,8 +164,8 @@ export function AssistantMemoryScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="business-outline"
-            title="Firma hafızası firmaya bağlı"
-            description="Bir firmaya bağlandığınızda kur, fason ücreti, fire ve kâr oranı gibi varsayılanları burada düzenlersiniz."
+            title={tr('Firma hafızası firmaya bağlı')}
+            description={tr('Bir firmaya bağlandığınızda kur, fason ücreti, fire ve kâr oranı gibi varsayılanları burada düzenlersiniz.')}
           />
         </Screen>
       </View>
@@ -178,9 +179,9 @@ export function AssistantMemoryScreen({ navigation }: Props) {
         <Screen>
           <EmptyState
             icon="warning"
-            title="Firma hafızası alınamadı"
-            description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-            actionLabel="Tekrar dene"
+            title={tr('Firma hafızası alınamadı')}
+            description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+            actionLabel={tr('Tekrar dene')}
             onAction={reload}
           />
         </Screen>
@@ -196,10 +197,10 @@ export function AssistantMemoryScreen({ navigation }: Props) {
       <Screen>
         {/* Faz 2, Adım 3: satıcı asistanının alıcılara verdiği hazır cevaplar. */}
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Alıcı soruları" />
+          <SectionTitle title={tr('Alıcı soruları')} />
           <ListRow
-            title="Sık sorulanlar"
-            subtitle="Asistanınız alıcı sorularını bu cevaplara göre yanıtlar"
+            title={tr('Sık sorulanlar')}
+            subtitle={tr('Asistanınız alıcı sorularını bu cevaplara göre yanıtlar')}
             left={<Icon name="help-circle-outline" color="brand" />}
             divider={false}
             onPress={() => navigation.navigate('CompanyFaq')}
@@ -207,10 +208,9 @@ export function AssistantMemoryScreen({ navigation }: Props) {
         </View>
 
         <View style={{ gap: t.space[3] }}>
-          <SectionTitle title="Kayıtlı değerler" />
+          <SectionTitle title={tr('Kayıtlı değerler')} />
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Asistan hesap yaparken bu değerleri varsayılan olarak önerir ve hangisini kullandığını söyler. Boş
-            bırakılan değerleri her seferinde size sorar.
+            {tr('Asistan hesap yaparken bu değerleri varsayılan olarak önerir ve hangisini kullandığını söyler. Boş bırakılan değerleri her seferinde size sorar.')}
           </Text>
           {keys.map((def, index) => {
             if (def.auto === 'fx') {
@@ -220,11 +220,11 @@ export function AssistantMemoryScreen({ navigation }: Props) {
                 <ListRow
                   key={def.key}
                   title={def.label}
-                  subtitle={fx ? `TCMB döviz satış · ${fxDateLabel(fx.date)}` : def.hint}
+                  subtitle={fx ? tr('TCMB döviz satış · {date}', { date: fxDateLabel(fx.date) }) : def.hint}
                   divider={index < keys.length - 1}
                   right={
                     <Text numberOfLines={1} style={[rate ? t.type.mono14 : t.type.body14, { color: t.colors.ink3, textAlign: 'right' }]}>
-                      {rate ? `${formatNumber(rate, 4)} ₺` : 'Otomatik'}
+                      {rate ? `${formatNumber(rate, 4)} ₺` : tr('Otomatik')}
                     </Text>
                   }
                 />
@@ -251,14 +251,14 @@ export function AssistantMemoryScreen({ navigation }: Props) {
                   />
                   <View style={{ flexDirection: 'row', gap: t.space[2], minWidth: 0 }}>
                     <Button
-                      label="Kaydet"
+                      label={tr('Kaydet')}
                       loading={saving}
                       onPress={() => void save(def)}
                       style={{ flex: 1 }}
                     />
                     <Button
                       kind="secondary"
-                      label="Vazgeç"
+                      label={tr('Vazgeç')}
                       disabled={saving}
                       onPress={() => {
                         setEditingKey(null);
@@ -270,7 +270,7 @@ export function AssistantMemoryScreen({ navigation }: Props) {
                   {entry ? (
                     <Button
                       kind="danger"
-                      label="Sil"
+                      label={tr('Sil')}
                       icon="trash-outline"
                       disabled={saving}
                       onPress={() => void remove(def)}
@@ -294,7 +294,7 @@ export function AssistantMemoryScreen({ navigation }: Props) {
                       { color: entry ? t.colors.brand : t.colors.ink3, textAlign: 'right' },
                     ]}
                   >
-                    {entry ? displayValue(entry.value) : 'Kayıtlı değil'}
+                    {entry ? displayValue(entry.value) : tr('Kayıtlı değil')}
                   </Text>
                 }
                 onPress={() => startEdit(def)}

@@ -13,6 +13,7 @@ import {
   normalizeInviteCode,
   readStoredInviteCode,
 } from '../../features/invites/storedCode';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Icon, Input } from '../../ui';
 
@@ -53,7 +54,7 @@ export function CompanyCodeScreen({ navigation }: Props) {
       // Gezinme çağrısı yok: user dolunca RootNavigator ana sekmelere geçiyor.
       login(token, user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Kayıt tamamlanamadı');
+      setError(err instanceof Error ? err.message : tr('Kayıt tamamlanamadı'));
     } finally {
       setSubmitting(false);
     }
@@ -63,30 +64,30 @@ export function CompanyCodeScreen({ navigation }: Props) {
     <OnboardingLayout
       step={6}
       totalSteps={6}
-      title="Şirket kodu"
-      subtitle="Firmanız zaten platformdaysa, mevcut çalışanlardan aldığınız kodu girin. Yeni firma kaydı yapıyorsanız boş bırakabilirsiniz."
-      footer={<Button size="lg" label="Kaydı Tamamla" loading={submitting} onPress={handleSubmit} />}
+      title={tr('Şirket kodu')}
+      subtitle={tr('Firmanız zaten platformdaysa, mevcut çalışanlardan aldığınız kodu girin. Yeni firma kaydı yapıyorsanız boş bırakabilirsiniz.')}
+      footer={<Button size="lg" label={tr('Kaydı Tamamla')} loading={submitting} onPress={handleSubmit} />}
     >
       <View style={{ gap: t.space[4], minWidth: 0 }}>
         <Input
-          label="Şirket kodu (opsiyonel)"
+          label={tr('Şirket kodu (opsiyonel)')}
           value={draft.companyCode}
           onChangeText={(companyCode) => updateDraft({ companyCode })}
-          placeholder="Örn. AVD-4F82"
+          placeholder={tr('Örn. {code}', { code: 'AVD-4F82' })}
           autoCapitalize="characters"
         />
         {/* Davet kodu (Faz 2, Adım 4): isteğe bağlı. Davet bağlantısıyla
             gelindiyse dolu gelir; yanlış yazılsa da kayıt engellenmez. */}
         <Input
-          label="Davet kodu (opsiyonel)"
+          label={tr('Davet kodu (opsiyonel)')}
           value={draft.inviteCode}
           onChangeText={(inviteCode) => updateDraft({ inviteCode: normalizeInviteCode(inviteCode) })}
-          placeholder="Örn. K7M2QP4R"
+          placeholder={tr('Örn. {code}', { code: 'K7M2QP4R' })}
           autoCapitalize="characters"
-          helper="Sizi davet eden kişinin kodu. Yazarsanız kayıt tamamlanınca o kişiyle bağlantınız kurulur."
+          helper={tr('Sizi davet eden kişinin kodu. Yazarsanız kayıt tamamlanınca o kişiyle bağlantınız kurulur.')}
         />
         <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-          Kayıt tamamlandığında firmanız "{draft.companyName || '—'}" temel doğrulama incelemesine alınacak.
+          {tr('Kayıt tamamlandığında firmanız "{name}" temel doğrulama incelemesine alınacak.', { name: draft.companyName || '—' })}
         </Text>
         {/* Hata: ikon + metin (DESIGN.md §6). */}
         {error ? (

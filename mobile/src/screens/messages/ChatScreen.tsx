@@ -39,6 +39,7 @@ import { UserAvatar } from '../../components/UserAvatar';
 import { friendlyMessage } from '../../components/StateView';
 import { useTheme } from '../../theme/ThemeContext';
 import { EmptyState, Icon, SkeletonRow } from '../../ui';
+import { tr } from '../../i18n';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Chat'>;
 
@@ -193,7 +194,7 @@ export function ChatScreen({ navigation, route }: Props) {
       // Mesaj sık yapılan bir işlem: başarıda titreşim yok, yalnızca hatada.
       haptics.error();
       setMessages((prev) => prev.map((m) => (m.id === tempId ? { ...m, pending: false, failed: true } : m)));
-      setError(err instanceof Error ? err.message : 'Mesaj gönderilemedi');
+      setError(err instanceof Error ? err.message : tr('Mesaj gönderilemedi'));
     } finally {
       setSending(false);
     }
@@ -303,9 +304,9 @@ export function ChatScreen({ navigation, route }: Props) {
       <View style={[screenStyle, { paddingHorizontal: t.space[4], paddingBottom: insets.bottom }]}>
         <EmptyState
           icon="warning"
-          title="Mesajlar alınamadı"
-          description={friendlyMessage(loadError, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-          actionLabel="Tekrar dene"
+          title={tr('Mesajlar alınamadı')}
+          description={friendlyMessage(loadError, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+          actionLabel={tr('Tekrar dene')}
           onAction={loadInitial}
         />
       </View>
@@ -334,8 +335,8 @@ export function ChatScreen({ navigation, route }: Props) {
           ListEmptyComponent={
             <EmptyState
               icon="messages"
-              title="İlk mesajı siz yazın"
-              description="Aşağıdaki alana yazıp gönderin."
+              title={tr('İlk mesajı siz yazın')}
+              description={tr('Aşağıdaki alana yazıp gönderin.')}
             />
           }
           renderItem={({ item, index }) => {
@@ -370,13 +371,13 @@ export function ChatScreen({ navigation, route }: Props) {
                   <View style={[otherBubble, isMine && { alignSelf: 'flex-end' }]}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
                       <Icon name="quote" size={t.size.iconSm} color="brand" />
-                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Teklif</Text>
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Teklif')}</Text>
                     </View>
                     <Text style={otherText}>{item.body}</Text>
                     <Pressable
                       onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: quoteRequestId })}
                       accessibilityRole="button"
-                      accessibilityLabel="Teklifi aç"
+                      accessibilityLabel={tr('Teklifi aç')}
                       style={({ pressed }) => ({
                         flexDirection: 'row',
                         alignItems: 'center',
@@ -385,7 +386,7 @@ export function ChatScreen({ navigation, route }: Props) {
                         opacity: pressed ? 0.6 : 1,
                       })}
                     >
-                      <Text style={[t.type.label14, { color: t.colors.brand }]}>Teklifi aç</Text>
+                      <Text style={[t.type.label14, { color: t.colors.brand }]}>{tr('Teklifi aç')}</Text>
                       <Icon name="chevron" size={t.size.iconSm} color="brand" />
                     </Pressable>
                     <Text style={metaStyle(false)}>{formatClockTime(item.createdAt)}</Text>
@@ -416,7 +417,7 @@ export function ChatScreen({ navigation, route }: Props) {
                       <Pressable
                         onPress={() => handleRetry(item)}
                         accessibilityRole="button"
-                        accessibilityLabel="Gönderilemedi. Tekrar denemek için dokunun."
+                        accessibilityLabel={tr('Gönderilemedi. Tekrar denemek için dokunun.')}
                         style={({ pressed }) => [failedRow, pressed ? { opacity: 0.6 } : null]}
                       >
                         <Icon
@@ -427,12 +428,12 @@ export function ChatScreen({ navigation, route }: Props) {
                         <Text
                           style={[t.type.caption12, { color: isMine ? t.colors.onBrand : t.colors.danger }]}
                         >
-                          Gönderilemedi. Tekrar denemek için dokunun.
+                          {tr('Gönderilemedi. Tekrar denemek için dokunun.')}
                         </Text>
                       </Pressable>
                     ) : (
                       <Text style={metaStyle(isMine)}>
-                        {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
+                        {item.pending ? tr('Gönderiliyor') : formatClockTime(item.createdAt)}
                       </Text>
                     )}
                   </View>
@@ -448,7 +449,7 @@ export function ChatScreen({ navigation, route }: Props) {
                   onPress={() => handleRetry(item)}
                   accessibilityRole={item.failed ? 'button' : undefined}
                   accessibilityLabel={
-                    item.failed ? `Gönderilemedi: ${item.body}. Tekrar denemek için dokunun.` : undefined
+                    item.failed ? tr('Gönderilemedi: {body}. Tekrar denemek için dokunun.', { body: item.body }) : undefined
                   }
                   style={({ pressed }) => [
                     isMine ? myBubble : otherBubble,
@@ -465,12 +466,12 @@ export function ChatScreen({ navigation, route }: Props) {
                         colorValue={isMine ? t.colors.onBrand : t.colors.danger}
                       />
                       <Text style={[t.type.caption12, { color: isMine ? t.colors.onBrand : t.colors.danger }]}>
-                        Gönderilemedi. Tekrar denemek için dokunun.
+                        {tr('Gönderilemedi. Tekrar denemek için dokunun.')}
                       </Text>
                     </View>
                   ) : (
                     <Text style={metaStyle(isMine)}>
-                      {item.pending ? 'Gönderiliyor' : formatClockTime(item.createdAt)}
+                      {item.pending ? tr('Gönderiliyor') : formatClockTime(item.createdAt)}
                     </Text>
                   )}
                 </Pressable>
@@ -519,15 +520,15 @@ export function ChatScreen({ navigation, route }: Props) {
             <Text style={[t.type.body14, { color: t.colors.ink, flex: 1, minWidth: 0 }]} numberOfLines={1}>
               {uploadingVideo
                 ? uploadProgress >= 0.999
-                  ? 'Yükleme tamamlanıyor...'
-                  : `Video yükleniyor %${Math.round(uploadProgress * 100)}`
-                : 'Video hazır. Göndere basın.'}
+                  ? tr(tr('Yükleme tamamlanıyor...'))
+                  : tr('Video yükleniyor %{n}', { n: Math.round(uploadProgress * 100) })
+                : tr(tr('Video hazır. Göndere basın.'))}
             </Text>
             {!uploadingVideo ? (
               <Pressable
                 onPress={videoUpload.remove}
                 accessibilityRole="button"
-                accessibilityLabel="Videoyu kaldır"
+                accessibilityLabel={tr('Videoyu kaldır')}
                 hitSlop={10}
                 style={({ pressed }) => ({
                   width: t.size.touchMin,
@@ -564,7 +565,7 @@ export function ChatScreen({ navigation, route }: Props) {
             onPress={pickAndUploadVideo}
             disabled={uploadingVideo || !!pendingVideo || sending}
             accessibilityRole="button"
-            accessibilityLabel="Video ekle"
+            accessibilityLabel={tr('Video ekle')}
             accessibilityState={{ disabled: uploadingVideo || !!pendingVideo || sending }}
             style={({ pressed }) => [
               squareButton,
@@ -596,18 +597,18 @@ export function ChatScreen({ navigation, route }: Props) {
                 color: t.colors.ink,
               },
             ]}
-            placeholder="Mesaj yazın"
+            placeholder={tr('Mesaj yazın')}
             placeholderTextColor={t.colors.ink3}
             value={input}
             onChangeText={setInput}
             multiline
-            accessibilityLabel="Mesaj"
+            accessibilityLabel={tr('Mesaj')}
           />
           <Pressable
             onPress={handleSend}
             disabled={!canSend}
             accessibilityRole="button"
-            accessibilityLabel="Mesajı gönder"
+            accessibilityLabel={tr('Mesajı gönder')}
             accessibilityState={{ disabled: !canSend }}
             style={({ pressed }) => [
               squareButton,

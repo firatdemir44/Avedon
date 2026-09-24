@@ -26,6 +26,7 @@ import {
   SearchBox,
   SkeletonRow,
 } from '../../ui';
+import { tr, locale } from '../../i18n';
 
 type Props = MainTabScreenProps<'Conversations'>;
 
@@ -51,17 +52,17 @@ export function ConversationsListScreen({ navigation }: Props) {
   // liste üzerinde filtreleniyor.
   const filtered = useMemo(() => {
     const conversations = data ?? [];
-    const q = query.trim().toLocaleLowerCase('tr-TR');
+    const q = query.trim().toLocaleLowerCase(locale());
     if (!q) return conversations;
     return conversations.filter((c) =>
       [c.user.firstName, c.user.lastName, c.user.company?.name ?? '', c.lastMessage?.body ?? '']
         .join(' ')
-        .toLocaleLowerCase('tr-TR')
+        .toLocaleLowerCase(locale())
         .includes(q)
     );
   }, [data, query]);
 
-  const banner = status === 'ready' && error ? friendlyMessage(error, 'Mesajlar alınamadı') : null;
+  const banner = status === 'ready' && error ? friendlyMessage(error, tr('Mesajlar alınamadı')) : null;
 
   // Liste boşken arama kutusu gösterilmez (tasarım incelemesi 2026-09-23).
   const hasConversations = (data?.length ?? 0) > 0;
@@ -69,8 +70,8 @@ export function ConversationsListScreen({ navigation }: Props) {
     <View style={{ gap: t.space[3], paddingBottom: t.space[3] }}>
       {hasConversations ? (
         <SearchBox
-          placeholder="Mesajlarda ara"
-          accessibilityLabel="Mesajlarda ara"
+          placeholder={tr('Mesajlarda ara')}
+          accessibilityLabel={tr('Mesajlarda ara')}
           value={query}
           onChangeText={setQuery}
         />
@@ -96,11 +97,11 @@ export function ConversationsListScreen({ navigation }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
-        title="Mesajlar"
+        title={tr('Mesajlar')}
         actions={[
           {
             icon: 'plus',
-            label: 'Yeni sohbet',
+            label: tr('Yeni sohbet'),
             onPress: () => navigation.navigate('NewConversation'),
           },
         ]}
@@ -118,9 +119,9 @@ export function ConversationsListScreen({ navigation }: Props) {
             {header}
             <EmptyState
               icon="warning"
-              title="Mesajlar alınamadı"
-              description={friendlyMessage(error, 'Bağlantıyı kontrol edip tekrar deneyin.')}
-              actionLabel="Tekrar dene"
+              title={tr('Mesajlar alınamadı')}
+              description={friendlyMessage(error, tr('Bağlantıyı kontrol edip tekrar deneyin.'))}
+              actionLabel={tr('Tekrar dene')}
               onAction={reload}
             />
           </View>
@@ -137,17 +138,17 @@ export function ConversationsListScreen({ navigation }: Props) {
               query ? (
                 <EmptyState
                   icon="search"
-                  title="Sonuç bulunamadı"
-                  description={`"${query.trim()}" ile eşleşen sohbet yok.`}
-                  actionLabel="Aramayı temizle"
+                  title={tr('Sonuç bulunamadı')}
+                  description={tr('"{q}" ile eşleşen sohbet yok.', { q: query.trim() })}
+                  actionLabel={tr('Aramayı temizle')}
                   onAction={() => setQuery('')}
                 />
               ) : (
                 <EmptyState
                   icon="messages"
-                  title="İlk sohbetini başlat"
-                  description="Bağlantıda olduğun kişilerle buradan yazışabilirsin."
-                  actionLabel="Yeni sohbet"
+                  title={tr('İlk sohbetini başlat')}
+                  description={tr('Bağlantıda olduğun kişilerle buradan yazışabilirsin.')}
+                  actionLabel={tr('Yeni sohbet')}
                   onAction={() => navigation.navigate('NewConversation')}
                 />
               )
@@ -158,8 +159,8 @@ export function ConversationsListScreen({ navigation }: Props) {
               const unread = item.unreadCount > 0;
               const isMine = item.lastMessage?.senderId === user?.id;
               const preview = item.lastMessage
-                ? `${isMine ? 'Siz: ' : ''}${item.lastMessage.body}`
-                : 'Henüz mesaj yok';
+                ? `${isMine ? tr('Siz: ') : ''}${item.lastMessage.body}`
+                : tr(tr('Henüz mesaj yok'));
               return (
                 <ListRow
                   title={company ? `${company} · ${name}` : name}

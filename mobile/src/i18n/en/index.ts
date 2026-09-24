@@ -8,10 +8,11 @@ import { social } from './social';
 import { catalog } from './catalog';
 
 export const EN: Record<string, string> = {
-  ...common,
   ...components,
   ...features,
   ...account,
   ...social,
   ...catalog,
+  // Ortak terimler en sonda: tek ve tutarlı karşılık.
+  ...common,
 };

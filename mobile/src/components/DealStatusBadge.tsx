@@ -1,4 +1,5 @@
 import React from 'react';
+import { tr } from '../i18n';
 import type { DealStatus } from '../api/client';
 import { Badge, type BadgeKind } from '../ui';
 
@@ -13,10 +14,10 @@ const TONES: Record<DealStatus, { label: string; kind: BadgeKind }> = {
 };
 
 export function dealStatusLabel(status: DealStatus): string {
-  return (TONES[status] ?? TONES.acik).label;
+  return tr((TONES[status] ?? TONES.acik).label);
 }
 
 export function DealStatusBadge({ status }: { status: DealStatus }) {
   const tone = TONES[status] ?? TONES.acik;
-  return <Badge kind={tone.kind} label={tone.label} />;
+  return <Badge kind={tone.kind} label={tr(tone.label)} />;
 }

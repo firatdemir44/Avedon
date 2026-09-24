@@ -7,6 +7,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
+import { tr } from '../../i18n';
 import { useTheme } from '../../theme/ThemeContext';
 import { Button, Input } from '../../ui';
 
@@ -30,29 +31,29 @@ export function PersonalInfoScreen({ navigation }: Props) {
     <OnboardingLayout
       step={3}
       totalSteps={6}
-      title="Kişisel bilgileriniz"
-      subtitle="Doğrulama kodunu bu numaraya göndereceğiz."
-      footer={<Button size="lg" label="Devam Et" disabled={!canContinue} onPress={handleContinue} />}
+      title={tr('Kişisel bilgileriniz')}
+      subtitle={tr('Doğrulama kodunu bu numaraya göndereceğiz.')}
+      footer={<Button size="lg" label={tr('Devam Et')} disabled={!canContinue} onPress={handleContinue} />}
     >
       <View style={{ gap: t.space[4], minWidth: 0 }}>
         <Input
-          label="Ad"
+          label={tr('Ad')}
           value={draft.firstName}
           onChangeText={(firstName) => updateDraft({ firstName })}
-          placeholder="Adınız"
+          placeholder={tr('Adınız')}
           autoComplete="given-name"
           textContentType="givenName"
         />
         <Input
-          label="Soyad"
+          label={tr('Soyad')}
           value={draft.lastName}
           onChangeText={(lastName) => updateDraft({ lastName })}
-          placeholder="Soyadınız"
+          placeholder={tr('Soyadınız')}
           autoComplete="family-name"
           textContentType="familyName"
         />
         <Input
-          label="Telefon"
+          label={tr('Telefon')}
           value={draft.phone}
           onChangeText={(phone) => updateDraft({ phone })}
           placeholder="05XX XXX XX XX"
