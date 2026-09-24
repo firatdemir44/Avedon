@@ -19,7 +19,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 ## ASİSTANIN SIRADAKİ İŞLERİ (Fırat onayladı)
 
-- **Sektör gündemi (2026-09-24 onay):** Türkiye ve dünya tekstil haber sitelerinin açık RSS/haber akışlarından günlük başlıklar; akışta günde bir "Sektör gündemi" kartı; firma türüne göre süzme (iplikçi: pamuk/polyester fiyatları; konfeksiyon: fuar/moda). Yalnızca başlık + kısa tanıtım + bağlantı (tam metin kopyalanmaz, telif). Kaynak listesi ve RSS kullanım koşulları uygulamadan önce doğrulanacak. Bağlantı paylaşma özelliğinin (önizleme kartı) üzerine kurulur.
+- **Sektör gündemi: YAPILDI, sonra akıştan KALDIRILDI (2026-09-24, Fırat: gereksiz yoğunluk).** Haber altyapısı (backend/src/news, 2 saatte bir çekim), SectorNews ekranı ve asistan aracı duruyor; akış kartı kapalı. Yeniden açmak için FeedScreen içine SectorNewsCard geri eklenir. Eski plan: Türkiye ve dünya tekstil haber sitelerinin açık RSS/haber akışlarından günlük başlıklar; akışta günde bir "Sektör gündemi" kartı; firma türüne göre süzme (iplikçi: pamuk/polyester fiyatları; konfeksiyon: fuar/moda). Yalnızca başlık + kısa tanıtım + bağlantı (tam metin kopyalanmaz, telif). Kaynak listesi ve RSS kullanım koşulları uygulamadan önce doğrulanacak. Bağlantı paylaşma özelliğinin (önizleme kartı) üzerine kurulur.
 
 ## GÜNCEL AÇIK LİSTE (2026-09-18 toparlaması; oturuma başlarken ÖNCE burası)
 
