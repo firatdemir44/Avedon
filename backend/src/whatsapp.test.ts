@@ -9,9 +9,9 @@ test('telefon: kayıt biçimi ↔ WhatsApp biçimi', () => {
   assert.equal(toWhatsAppNumber('+90 532 123 45 67'), '905321234567');
   assert.equal(toWhatsAppNumber('905321234567'), '905321234567');
   assert.equal(toWhatsAppNumber('00491701234567'), '491701234567');
-  assert.deepEqual(phoneCandidatesFromWhatsApp('905321234567'), ['905321234567', '+905321234567', '05321234567']);
+  assert.deepEqual(phoneCandidatesFromWhatsApp('905321234567'), ['05321234567', '905321234567', '+905321234567']);
   // Yabancı numara: Türkiye yazımı türetilmez
-  assert.deepEqual(phoneCandidatesFromWhatsApp('491701234567'), ['491701234567', '+491701234567']);
+  assert.deepEqual(phoneCandidatesFromWhatsApp('491701234567'), ['+491701234567', '491701234567']);
 });
 
 test('imza: doğru imza geçer, yanlış imza ve eksik başlık geçmez, anahtar yoksa null', () => {

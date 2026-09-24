@@ -36,7 +36,8 @@ export type MainTabParamList = {
 export type RootStackParamList = {
   // Giriş yapılmamış akış
   RoleSelection: undefined;
-  Login: undefined;
+  // phone: kayıtta "zaten üyesiniz" çıkınca numara giriş ekranına dolu gelir.
+  Login: { phone?: string } | undefined;
   Position: undefined;
   PersonalInfo: undefined;
   CompanyInfo: undefined;
@@ -56,7 +57,7 @@ export type RootStackParamList = {
   // (GET /api/search). Oturumsuz da çalışır.
   GlobalSearch: undefined;
   // tab: 'reports' — akış şikâyeti bildiriminden gelindiğinde "Şikâyetler" sekmesi açık gelir.
-  Admin: { tab?: 'requests' | 'companies' | 'reports' | 'whatsapp' } | undefined;
+  Admin: { tab?: 'requests' | 'companies' | 'reports' | 'whatsapp' | 'duplicates' } | undefined;
   // Kullanıcının akışında gizlediği firmalar (2026-09-23).
   FeedMutes: undefined;
   // Firma doğrulama başvurusu (firma tarafı, 2026-09-22): durum + belge yükleme.

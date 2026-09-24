@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { toWhatsAppNumber } from './phone';
 
 // SMS ile doğrulama kodu (Faz 1, Adım 8). Sağlayıcı: İleti Merkezi (docs/sms-saglayici.md).
 // Uçlar ve gövde 2026-09-18'de resmi dokümandan doğrulandı (toplusmsapi.com):
@@ -65,12 +66,9 @@ async function post(path: string, body: unknown): Promise<{ code: string; messag
   return { code: String(status?.code ?? res.status), message: String(status?.message ?? ''), json };
 }
 
-// "0532..." → "90532..." (normalizePhone çıktısı 0 ile başlar).
+// Sağlayıcı ülke kodlu rakam ister: "0532..." → "90532...", "+49..." → "49...".
 function toProviderNumber(phone: string) {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.startsWith('90')) return digits;
-  if (digits.startsWith('0')) return `9${digits}`;
-  return `90${digits}`;
+  return toWhatsAppNumber(phone);
 }
 
 export type SendSmsResult = { ok: true } | { ok: false; code: string; reason: string };

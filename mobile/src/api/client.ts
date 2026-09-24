@@ -3532,3 +3532,34 @@ export interface InviteKindPreview {
 export function fetchInvitePreview(code: string) {
   return request<{ preview: InviteKindPreview }>(`/invites/${encodeURIComponent(code)}/preview`);
 }
+
+// Çift hesaplar (yönetici, 2026-09-24): aynı telefonun farklı yazımıyla açılmış hesaplar.
+export interface DuplicateAccount {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  isAdmin: boolean;
+  /** Son 4 hane dışında gizli. */
+  phone: string;
+  company: { id: string; name: string } | null;
+  createdAt: string;
+  lastActive: string | null;
+  counts: Record<'posts' | 'comments' | 'likes' | 'messages' | 'conversations' | 'connections' | 'assistantThreads' | 'sampleRequests' | 'quoteRequests' | 'quotes' | 'productDrafts' | 'notifications', number>;
+}
+export interface DuplicateGroup {
+  phone: string;
+  /** Eskiden yeniye sıralı. */
+  accounts: DuplicateAccount[];
+}
+
+export function fetchDuplicateAccounts() {
+  return request<{ groups: DuplicateGroup[] }>('/admin/duplicate-accounts');
+}
+
+export function mergeDuplicateAccounts(keepUserId: string, removeUserId: string, force = false) {
+  return request<{ ok: true; groups: DuplicateGroup[] }>(`/admin/duplicate-accounts/merge${force ? '?force=1' : ''}`, {
+    method: 'POST',
+    body: JSON.stringify({ keepUserId, removeUserId }),
+  });
+}

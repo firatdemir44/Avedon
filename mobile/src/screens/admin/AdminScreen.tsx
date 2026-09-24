@@ -14,6 +14,7 @@ import { fetchAdminCompanies, updateCompanyVerification } from '../../api/client
 import { AdminVerificationRequests } from './AdminVerificationRequests';
 import { AdminFeedReports } from './AdminFeedReports';
 import { AdminWhatsAppNumbers } from './AdminWhatsAppNumbers';
+import { AdminDuplicateAccounts } from './AdminDuplicateAccounts';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
@@ -59,7 +60,7 @@ function statusBadge(status: VerificationStatus) {
   return { kind: 'cancelled' as const, label: tr('Doğrulanmamış') };
 }
 
-type Tab = 'requests' | 'companies' | 'reports' | 'whatsapp';
+type Tab = 'requests' | 'companies' | 'reports' | 'whatsapp' | 'duplicates';
 
 /**
  * Yönetici ekranı ("Firma Doğrulama"). İki sekme: gelen doğrulama başvuruları
@@ -106,11 +107,14 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
             { value: 'companies', label: tr('Firmalar') },
             { value: 'reports', label: tr('Şikâyetler') },
             { value: 'whatsapp', label: tr('WhatsApp') },
+            { value: 'duplicates', label: tr('Çift hesaplar') },
           ]}
         />
       </View>
       {tab === 'requests' ? (
         <AdminVerificationRequests onPendingCount={setPendingCount} />
+      ) : tab === 'duplicates' ? (
+        <AdminDuplicateAccounts />
       ) : tab === 'whatsapp' ? (
         <AdminWhatsAppNumbers />
       ) : tab === 'reports' ? (

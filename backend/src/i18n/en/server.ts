@@ -211,4 +211,9 @@ export const server: Record<string, string> = {
   'Bu numara WhatsApp işletme hesabında bulunamadı.': 'This number was not found in the WhatsApp Business account.',
   "Meta'ya ulaşılamadı, biraz sonra tekrar deneyin.": 'Could not reach Meta, please try again shortly.',
   'PIN 6 haneli bir sayı olmalı.': 'The PIN must be a 6-digit number.',
+  // --- Çift hesaplar (yönetim) ---
+  'Aynı hesap iki kez seçildi.': 'The same account was selected twice.',
+  'Hesaplardan biri bulunamadı (zaten birleştirilmiş olabilir).': 'One of the accounts was not found (it may already have been merged).',
+  'Bu iki hesabın telefon numarası aynı değil; birleştirilemez.': 'These two accounts do not share a phone number; they cannot be merged.',
+  'Hesaplar farklı firmalarda. Emin değilseniz önce kişiyle görüşün.': 'The accounts belong to different companies. If unsure, talk to the person first.',
 };

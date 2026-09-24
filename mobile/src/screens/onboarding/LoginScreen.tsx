@@ -23,11 +23,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 // Logo dosyası 900×145; yüksekliği token'dan alıp genişliği orandan
 // hesaplıyoruz (web'de aspectRatio uygulanmıyordu).
 
-export function LoginScreen({ navigation }: Props) {
+export function LoginScreen({ navigation, route }: Props) {
   const t = useTheme();
   const { login } = useSession();
   const insets = useSafeAreaInsets();
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(route.params?.phone ?? '');
   const [code, setCode] = useState('');
   const [step, setStep] = useState<'phone' | 'code'>('phone');
   const [submitting, setSubmitting] = useState(false);

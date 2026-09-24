@@ -54,6 +54,7 @@ import { newsHealth, startNewsScheduler } from './news/fetch';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { loadActivePhoneNumber } from './whatsappNumbers';
+import { countDuplicatePhoneGroups, normalizeStoredPhones } from './phoneNormalize';
 import { smsStatus } from './sms';
 import { pushStatus } from './push';
 import { pushRouter } from './routes/push';
@@ -107,6 +108,8 @@ app.get('/api/health', async (_req, res) => {
     // Sektör gündemi: kayıtlı haber sayısı, son çekim, kaynak başına durum.
     news: await newsHealth().catch(() => null),
     fx: await fxHealth().catch(() => null),
+    // Çift hesap: aynı telefonun farklı yazımıyla açılmış hesap grupları (Yönetim > Çift hesaplar).
+    users: { phoneDuplicateGroups: await countDuplicatePhoneGroups().catch(() => null) },
   });
 });
 app.use('/api/register', registerRouter);
@@ -160,6 +163,10 @@ const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
   console.log(`Takyon API listening on http://localhost:${port}`);
   // Aktif WhatsApp numarası (yönetici ayarı) önce yüklenir; teşhis doğru numarayı yoklasın.
+  // Telefon numaraları kanonik biçime (phone.ts); çakışanlara dokunulmaz, yönetici birleştirir.
+  void normalizeStoredPhones()
+    .then((r) => console.log('[phone] normalizasyon', r))
+    .catch((err) => console.error('[phone] normalizasyon hatası', err));
   void loadActivePhoneNumber().then(() => ensureWabaSubscription());
   // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();

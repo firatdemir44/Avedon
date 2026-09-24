@@ -10,6 +10,7 @@ import { OtpCodeField } from '../../components/OtpCodeField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
 import { ApiError, registerUser, requestOtp, verifyOtp } from '../../api/client';
+import type { User } from '../../types';
 import { tr } from '../../i18n';
 import { clearStoredInviteCode } from '../../features/invites/storedCode';
 import { setTeamLanding } from '../../features/invites/teamLanding';
@@ -45,6 +46,16 @@ export function PhoneVerificationScreen({ navigation }: Props) {
   const [cooldown, setCooldown] = useState(60);
   const [error, setError] = useState<string | null>(null);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  // Kod doğrulandı ve numara zaten üye: sunucu giriş anahtarını da döndü; tekrar SMS kodu istemeden girilir.
+  const [existingSession, setExistingSession] = useState<{ token: string; user: User } | null>(null);
+
+  const goToLogin = () => {
+    if (existingSession) {
+      login(existingSession.token, existingSession.user);
+      return;
+    }
+    navigation.replace('Login', { phone: draft.phone });
+  };
 
   useEffect(() => {
     requestOtp(draft.phone).catch(() => {
@@ -76,7 +87,12 @@ export function PhoneVerificationScreen({ navigation }: Props) {
     try {
       const result = await verifyOtp(draft.phone, code.trim());
       if (result.purpose === 'login') {
-        setError(tr('Bu telefon numarası zaten kayıtlı.'));
+        setExistingSession({ token: result.token, user: result.user });
+        setError(
+          draft.teamCompanyName
+            ? tr('Bu numarayla zaten bir hesap var; firmanız kendiliğinden değişmez. Giriş yapın ya da firmanızdan yardım isteyin.')
+            : tr('Bu numarayla zaten üyeliğiniz var.')
+        );
         setAlreadyRegistered(true);
         return;
       }
@@ -105,6 +121,11 @@ export function PhoneVerificationScreen({ navigation }: Props) {
         if (errCode === 'already_registered_team_invite') setAlreadyRegistered(true);
         return;
       }
+      if (errCode === 'phone_already_registered') {
+        setError(tr('Bu numarayla zaten üyeliğiniz var.'));
+        setAlreadyRegistered(true);
+        return;
+      }
       setError(
         errCode === 'mismatch'
           ? tr('Kod hatalı, tekrar deneyin.')
@@ -129,7 +150,7 @@ export function PhoneVerificationScreen({ navigation }: Props) {
       subtitle={draft.phone ? tr('{phone} numarasına gönderilen 6 haneli kodu girin.', { phone: draft.phone }) : tr('Telefon numaranıza gönderilen 6 haneli kodu girin')}
       footer={
         alreadyRegistered ? (
-          <Button size="lg" label={tr("Giriş Yap'a Git")} onPress={() => navigation.replace('Login')} />
+          <Button size="lg" label={tr('Giriş yap')} onPress={goToLogin} />
         ) : (
           <Button
             size="lg"

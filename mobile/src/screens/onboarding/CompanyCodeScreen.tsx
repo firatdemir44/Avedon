@@ -7,7 +7,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import { OnboardingLayout } from '../../components/OnboardingLayout';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useSession } from '../../context/SessionContext';
-import { registerUser } from '../../api/client';
+import { ApiError, registerUser } from '../../api/client';
 import {
   clearStoredInviteCode,
   normalizeInviteCode,
@@ -25,6 +25,7 @@ export function CompanyCodeScreen({ navigation }: Props) {
   const { login } = useSession();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
 
   // Davet bağlantısıyla gelindiyse kod cihazda duruyor (Faz 2, Adım 4); alan
   // dolu gelsin. Kullanıcı elle yazdıysa üzerine yazmayız.
@@ -54,6 +55,11 @@ export function CompanyCodeScreen({ navigation }: Props) {
       // Gezinme çağrısı yok: user dolunca RootNavigator ana sekmelere geçiyor.
       login(token, user);
     } catch (err) {
+      if (err instanceof ApiError && (err.code === 'phone_already_registered' || err.code === 'already_registered_team_invite')) {
+        setError(tr('Bu numarayla zaten üyeliğiniz var.'));
+        setAlreadyRegistered(true);
+        return;
+      }
       setError(err instanceof Error ? err.message : tr('Kayıt tamamlanamadı'));
     } finally {
       setSubmitting(false);
@@ -66,7 +72,13 @@ export function CompanyCodeScreen({ navigation }: Props) {
       totalSteps={6}
       title={tr('Şirket kodu')}
       subtitle={tr('Firmanız zaten platformdaysa, mevcut çalışanlardan aldığınız kodu girin. Yeni firma kaydı yapıyorsanız boş bırakabilirsiniz.')}
-      footer={<Button size="lg" label={tr('Kaydı Tamamla')} loading={submitting} onPress={handleSubmit} />}
+      footer={
+        alreadyRegistered ? (
+          <Button size="lg" label={tr('Giriş yap')} onPress={() => navigation.replace('Login', { phone: draft.phone })} />
+        ) : (
+          <Button size="lg" label={tr('Kaydı Tamamla')} loading={submitting} onPress={handleSubmit} />
+        )
+      }
     >
       <View style={{ gap: t.space[4], minWidth: 0 }}>
         <Input

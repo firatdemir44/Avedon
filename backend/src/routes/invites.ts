@@ -4,15 +4,13 @@ import { prisma } from '../db';
 import { MAX_INVITES_PER_DAY, MAX_JOINS_PER_OPEN_INVITE, TEAM_RELATION, inviteShareText, inviteUrl, newInviteCode } from '../invites';
 import { requireAuth } from '../middleware/auth';
 import { makeHandle } from './handle';
+import { normalizePhone } from '../phone';
 
-// Rehberden kopyalanan numaralar her biçimde gelir (+90 5xx…, 90 5xx…, 5xx…, 05xx…); kayıtlardaki
-// biçime (05XXXXXXXXX) çevrilir. Çevrilemeyen numara boş döner.
+// Rehberden kopyalanan numaralar her biçimde gelir (+90 5xx…, 90 5xx…, 5xx…, 05xx…); kanonik biçime
+// (phone.ts) çevrilir. Türkiye cep ya da "+" ile yabancı numara değilse boş döner.
 function toLocalPhone(raw: string): string {
-  let d = raw.replace(/\D/g, '');
-  if (d.startsWith('0090')) d = d.slice(4);
-  else if (d.startsWith('90') && d.length === 12) d = d.slice(2);
-  if (d.length === 10 && d.startsWith('5')) d = `0${d}`;
-  return /^05\d{9}$/.test(d) ? d : '';
+  const p = normalizePhone(raw);
+  return /^05\d{9}$/.test(p) || /^\+\d{8,15}$/.test(p) ? p : '';
 }
 
 // Faz 2, Adım 4: davetler. Platform davet SMS'i GÖNDERMEZ (istenmeyen ileti olmasın, kredi harcanmasın):
