@@ -1434,7 +1434,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         <View style={{ gap: t.space[3] }}>
           {isOwnCompany ? (
             <ButtonRow>
-              <Button kind="secondary" label="Web sitesinden aktar" icon="globe-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'web' })} />
+              <Button kind="secondary" label="Siteden aktar" icon="globe-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'web' })} />
               <Button kind="secondary" label="Dosyadan aktar" icon="document-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'file' })} />
             </ButtonRow>
           ) : null}
