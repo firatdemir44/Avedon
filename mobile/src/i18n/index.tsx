@@ -16,6 +16,22 @@ export type Lang = 'tr' | 'en';
 const STORAGE_KEY = 'takyon.lang';
 
 let current: Lang = 'tr';
+
+// Tarayıcı çevirisini kapat (Fırat 2026-09-24): sayfa dili 'en' görünürse Chrome/Samsung tarayıcısı Türkçe
+// metni "İngilizceden Türkçeye" çevirmeye kalkıp bozuyordu (Ad→Reklam, Soyad→Soya). Dil baştan doğru
+// yazılır ve otomatik çeviri engellenir; uygulamanın kendi dil seçimi var.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const html = document.documentElement;
+  html.lang = 'tr';
+  html.setAttribute('translate', 'no');
+  html.classList.add('notranslate');
+  if (!document.querySelector('meta[name="google"]')) {
+    const meta = document.createElement('meta');
+    meta.name = 'google';
+    meta.content = 'notranslate';
+    document.head.appendChild(meta);
+  }
+}
 const listeners = new Set<(l: Lang) => void>();
 const missing = new Set<string>();
 
