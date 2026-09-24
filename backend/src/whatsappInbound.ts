@@ -7,7 +7,7 @@ import { runAssistantTurn } from './assistant/run';
 import { LlmNotConfiguredError, isLlmConfigured } from './llm';
 import { phoneCandidatesFromWhatsApp } from './phone';
 import { normalizeLang, t, type Lang } from './i18n';
-import { downloadWhatsAppMedia, markInbound, sendWhatsAppText } from './whatsapp';
+import { downloadWhatsAppMedia, getActivePhoneNumber, markIgnoredOtherNumber, markInbound, sendWhatsAppText } from './whatsapp';
 import { notify } from './notifications';
 import { runPassportExtract, type ImageMediaType } from './skills/passportExtract';
 import { SUBTYPES, TYPE_LABELS, type ProductType } from './catalog';
@@ -22,6 +22,8 @@ export interface InboundText {
   // Fotoğraf mesajında: Meta medya kimliği ve (varsa) fotoğrafın altına yazılan not.
   mediaId?: string;
   caption?: string;
+  // Mesajın geldiği işletme numarası (value.metadata.phone_number_id); yoksa undefined.
+  toPhoneNumberId?: string;
 }
 
 // Meta yükü: entry[].changes[].value.messages[]; durum bildirimleri (statuses)
@@ -34,7 +36,8 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
     const changes = (entry as { changes?: unknown[] })?.changes;
     if (!Array.isArray(changes)) continue;
     for (const change of changes) {
-      const value = (change as { field?: string; value?: { messages?: unknown[] } })?.value;
+      const value = (change as { field?: string; value?: { messages?: unknown[]; metadata?: { phone_number_id?: string } } })?.value;
+      const toPhoneNumberId = value?.metadata?.phone_number_id ? String(value.metadata.phone_number_id) : undefined;
       const messages = value?.messages;
       if (!Array.isArray(messages)) continue;
       for (const m of messages) {
@@ -48,6 +51,7 @@ export function parseInboundMessages(payload: unknown): InboundText[] {
           type: msg.type ?? 'unknown',
           ...(msg.type === 'image' && msg.image?.id ? { mediaId: msg.image.id, caption: (msg.image.caption ?? '').trim() } : {}),
           timestamp: ts && !Number.isNaN(ts.getTime()) ? ts : null,
+          ...(toPhoneNumberId ? { toPhoneNumberId } : {}),
         });
       }
     }
@@ -168,8 +172,20 @@ export async function handleInbound(msg: InboundText): Promise<{ status: string;
   }
 }
 
+// Aynı WABA'daki başka bir numaraya (ör. eski test numarası) gelen mesajlar işlenmez, yalnızca
+// kayda geçer: cevap aktif numaradan gideceği için karışıklık olmasın. Numara bilgisi yoksa kabul.
+export function filterForActiveNumber(messages: InboundText[]): InboundText[] {
+  const active = getActivePhoneNumber().id;
+  return messages.filter((m) => {
+    if (!active || !m.toPhoneNumberId || m.toPhoneNumberId === active) return true;
+    markIgnoredOtherNumber();
+    console.log('[whatsapp] aktif olmayan numaraya gelen mesaj atlandı:', m.toPhoneNumberId, m.messageId);
+    return false;
+  });
+}
+
 export async function handleWebhookPayload(payload: unknown) {
-  const messages = parseInboundMessages(payload);
+  const messages = filterForActiveNumber(parseInboundMessages(payload));
   for (const msg of messages) {
     try {
       await handleInbound(msg);

@@ -1299,3 +1299,11 @@ model SampleSet {
 
   @@index([companyId, buyerId])
 }
+
+// Uygulama ayarları (2026-10-05): ortam değişkeni yerine yönetici ekranından değişen değerler.
+// Ör. 'whatsapp.phoneNumberId' — WhatsApp gönderiminde kullanılan aktif numara.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

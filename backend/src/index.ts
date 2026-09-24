@@ -53,6 +53,7 @@ import { fxHealth, startFxScheduler } from './fx';
 import { newsHealth, startNewsScheduler } from './news/fetch';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
+import { loadActivePhoneNumber } from './whatsappNumbers';
 import { smsStatus } from './sms';
 import { pushStatus } from './push';
 import { pushRouter } from './routes/push';
@@ -158,7 +159,8 @@ app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
   console.log(`Takyon API listening on http://localhost:${port}`);
-  void ensureWabaSubscription();
+  // Aktif WhatsApp numarası (yönetici ayarı) önce yüklenir; teşhis doğru numarayı yoklasın.
+  void loadActivePhoneNumber().then(() => ensureWabaSubscription());
   // Faz 3 Adım 3: fotoğrafı olup görünüm kartı olmayan ürünler (gerçek model varsa) doldurulur.
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
   // Haftalık asistan raporu bildirimi (pazartesi 09:00 sonrası, firma başına bir kez).

@@ -204,4 +204,9 @@ export const server: Record<string, string> = {
   '{buyer} için kartela': 'Swatch set for {buyer}',
   'Deneme kipi: ilk ürünler önerildi.': 'Test mode: the first products were suggested.',
   'Deneme kipi önerisi.': 'Test mode suggestion.',
+  'WHATSAPP_ACCESS_TOKEN tanımlı değil.': 'WHATSAPP_ACCESS_TOKEN is not set.',
+  'WHATSAPP_WABA_ID tanımlı değil.': 'WHATSAPP_WABA_ID is not set.',
+  'Bu numara WhatsApp işletme hesabında bulunamadı.': 'This number was not found in the WhatsApp Business account.',
+  "Meta'ya ulaşılamadı, biraz sonra tekrar deneyin.": 'Could not reach Meta, please try again shortly.',
+  'PIN 6 haneli bir sayı olmalı.': 'The PIN must be a 6-digit number.',
 };

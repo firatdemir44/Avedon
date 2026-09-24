@@ -3482,3 +3482,35 @@ export async function fetchFx(): Promise<FxRates> {
     });
   return fxInflight;
 }
+
+// WhatsApp numara yönetimi (yönetici, 2026-10-05): test numarasından gerçek numaraya geçiş.
+export interface AdminWhatsAppNumber {
+  id: string;
+  displayPhoneNumber: string;
+  verifiedName: string | null;
+  nameStatus: string | null;
+  status: string | null;
+  qualityRating: string | null;
+  codeVerificationStatus: string | null;
+  platformType: string | null;
+  throughput: string | null;
+  active: boolean;
+}
+
+export interface AdminWhatsAppActive {
+  id: string | null;
+  source: 'setting' | 'env' | 'none';
+  displayNumber: string | null;
+}
+
+export function fetchAdminWhatsAppNumbers() {
+  return request<{ numbers: AdminWhatsAppNumber[]; active: AdminWhatsAppActive; mock: boolean }>('/admin/whatsapp/numbers');
+}
+
+export function registerAdminWhatsAppNumber(id: string, pin: string) {
+  return request<{ ok: true }>(`/admin/whatsapp/numbers/${encodeURIComponent(id)}/register`, { method: 'POST', body: JSON.stringify({ pin }) });
+}
+
+export function activateAdminWhatsAppNumber(id: string) {
+  return request<{ ok: true; active: AdminWhatsAppActive; diagnostics: string[] }>(`/admin/whatsapp/numbers/${encodeURIComponent(id)}/activate`, { method: 'POST' });
+}

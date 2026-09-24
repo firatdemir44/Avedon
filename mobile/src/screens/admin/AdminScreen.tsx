@@ -13,6 +13,7 @@ import { useSession } from '../../context/SessionContext';
 import { fetchAdminCompanies, updateCompanyVerification } from '../../api/client';
 import { AdminVerificationRequests } from './AdminVerificationRequests';
 import { AdminFeedReports } from './AdminFeedReports';
+import { AdminWhatsAppNumbers } from './AdminWhatsAppNumbers';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
@@ -58,7 +59,7 @@ function statusBadge(status: VerificationStatus) {
   return { kind: 'cancelled' as const, label: tr('Doğrulanmamış') };
 }
 
-type Tab = 'requests' | 'companies' | 'reports';
+type Tab = 'requests' | 'companies' | 'reports' | 'whatsapp';
 
 /**
  * Yönetici ekranı ("Firma Doğrulama"). İki sekme: gelen doğrulama başvuruları
@@ -104,11 +105,14 @@ export function AdminScreen({ route }: RootStackScreenProps<'Admin'>) {
             },
             { value: 'companies', label: tr('Firmalar') },
             { value: 'reports', label: tr('Şikâyetler') },
+            { value: 'whatsapp', label: tr('WhatsApp') },
           ]}
         />
       </View>
       {tab === 'requests' ? (
         <AdminVerificationRequests onPendingCount={setPendingCount} />
+      ) : tab === 'whatsapp' ? (
+        <AdminWhatsAppNumbers />
       ) : tab === 'reports' ? (
         <AdminFeedReports />
       ) : (

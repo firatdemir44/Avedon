@@ -56,7 +56,7 @@ export type RootStackParamList = {
   // (GET /api/search). Oturumsuz da çalışır.
   GlobalSearch: undefined;
   // tab: 'reports' — akış şikâyeti bildiriminden gelindiğinde "Şikâyetler" sekmesi açık gelir.
-  Admin: { tab?: 'requests' | 'companies' | 'reports' } | undefined;
+  Admin: { tab?: 'requests' | 'companies' | 'reports' | 'whatsapp' } | undefined;
   // Kullanıcının akışında gizlediği firmalar (2026-09-23).
   FeedMutes: undefined;
   // Firma doğrulama başvurusu (firma tarafı, 2026-09-22): durum + belge yükleme.

@@ -17,8 +17,23 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { toWhatsAppNumber } from './phone';
 
+// Aktif numara (2026-10-05): yönetici ekranından seçilen numara (AppSetting 'whatsapp.phoneNumberId')
+// ortam değişkenini geçersiz kılar. Değer açılışta whatsappNumbers.ts tarafından belleğe yüklenir
+// ve değiştiğinde güncellenir; gönderim ve teşhis yolları hep buradan okur.
+let phoneNumberOverride: string | null = null;
+
+export function setPhoneNumberOverride(id: string | null) {
+  phoneNumberOverride = id && id.trim() ? id.trim() : null;
+}
+
+export function getActivePhoneNumber(): { id: string | undefined; source: 'setting' | 'env' | 'none' } {
+  if (phoneNumberOverride) return { id: phoneNumberOverride, source: 'setting' };
+  const fromEnv = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  return fromEnv ? { id: fromEnv, source: 'env' } : { id: undefined, source: 'none' };
+}
+
 const env = () => ({
-  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+  phoneNumberId: getActivePhoneNumber().id,
   accessToken: process.env.WHATSAPP_ACCESS_TOKEN,
   templateName: process.env.WHATSAPP_TEMPLATE_NAME,
   appSecret: process.env.WHATSAPP_APP_SECRET,
@@ -47,7 +62,18 @@ const status = {
   // WABA aboneliği (ensureWabaSubscription): uygulama hesaba abone değilse Meta gerçek mesajları webhook'a iletmez.
   wabaSubscription: 'not_checked' as string,
   accessDiagnostics: [] as string[],
+  activeDisplayNumber: null as string | null,
+  ignoredOtherNumberCount: 0,
 };
+
+export function setActiveDisplayNumber(display: string | null) {
+  status.activeDisplayNumber = display;
+}
+
+// Aktif olmayan bir numaraya gelen mesaj (webhook aynı WABA'daki tüm numaraları iletir).
+export function markIgnoredOtherNumber() {
+  status.ignoredOtherNumberCount++;
+}
 
 export function markWebhookVerified() {
   status.lastWebhookVerifiedAt = new Date();
@@ -84,6 +110,10 @@ export function getWhatsAppStatus() {
     lastSignatureFailureAt: status.lastSignatureFailureAt,
     signatureFailureCount: status.signatureFailureCount,
     wabaIdSet: !!process.env.WHATSAPP_WABA_ID,
+    activePhoneNumberId: getActivePhoneNumber().id ?? null,
+    activePhoneNumberSource: getActivePhoneNumber().source,
+    activeDisplayNumber: status.activeDisplayNumber,
+    ignoredOtherNumberCount: status.ignoredOtherNumberCount,
     wabaSubscription: status.wabaSubscription,
     accessDiagnostics: status.accessDiagnostics,
   };
@@ -226,6 +256,14 @@ export async function ensureWabaSubscription(): Promise<void> {
 
 // 'API access blocked' gibi hatalarda nedeni görmek için (2026-09-24): anahtarın kime ait olduğu,
 // numara ve işletme hesabının durumu. Anahtar değeri asla yazılmaz; yalnızca Meta'nın cevabı.
+export async function rerunAccessDiagnostics(): Promise<string[]> {
+  const wabaId = process.env.WHATSAPP_WABA_ID;
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  if (!wabaId || !token || env().mock) return status.accessDiagnostics;
+  await diagnoseAccess(token, wabaId);
+  return status.accessDiagnostics;
+}
+
 async function diagnoseAccess(token: string, wabaId: string) {
   const phoneId = env().phoneNumberId;
   const probe = async (label: string, path: string) => {
@@ -242,5 +280,7 @@ async function diagnoseAccess(token: string, wabaId: string) {
     await probe('waba', `${wabaId}?fields=name,account_review_status,business_verification_status`),
     ...(phoneId ? [await probe('numara', `${phoneId}?fields=display_phone_number,verified_name,quality_rating,status,code_verification_status`)] : []),
   ];
+  const shown = /"display_phone_number":"([^"]+)"/.exec(status.accessDiagnostics.join(' '));
+  if (shown) status.activeDisplayNumber = shown[1];
   console.log('[whatsapp] erişim teşhisi:', status.accessDiagnostics.join(' | '));
 }

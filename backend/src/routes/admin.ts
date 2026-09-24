@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { requireAdminAuth } from '../middleware/auth';
@@ -8,6 +8,9 @@ import { hsGroup, type HsGroup } from '../export/buyers/segments';
 import { companiesHouseKeySet } from '../export/buyers/sources/companiesHouse';
 import { parseComposition } from '../domain/glossary';
 import { COMPOSITION_AUTOPARSE_MIN_CONFIDENCE } from '../passport';
+import { t } from '../i18n';
+import { activateNumber, listNumbers, MetaError, registerNumber } from '../whatsappNumbers';
+import { getWhatsAppStatus } from '../whatsapp';
 
 export const adminRouter = Router();
 
@@ -164,5 +167,65 @@ adminRouter.post(
     if (!unique.length) return res.status(400).json({ error: 'no_source_for_country' });
     enqueue(unique);
     res.json({ queued: unique.map((j) => j.key) });
+  })
+);
+
+// WhatsApp numara yönetimi (2026-10-05): test numarasından gerçek numaraya geçiş (whatsappNumbers.ts).
+// Meta hataları kullanıcıya Meta'nın kendi mesajıyla döner; PIN ve anahtar hiçbir yerde yazılmaz.
+function metaFail(req: Request, res: Response, err: unknown) {
+  if (err instanceof MetaError) {
+    const code = err.httpStatus >= 400 && err.httpStatus < 600 ? err.httpStatus : 502;
+    return res.status(code === 401 || code === 403 ? 502 : code).json({ error: 'meta_error', message: t(req.lang, err.message) });
+  }
+  if (err instanceof Error && /timeout|fetch failed|aborted/i.test(err.message)) {
+    return res.status(502).json({ error: 'meta_unreachable', message: t(req.lang, "Meta'ya ulaşılamadı, biraz sonra tekrar deneyin.") });
+  }
+  throw err;
+}
+
+adminRouter.get(
+  '/whatsapp/numbers',
+  handle(async (req, res) => {
+    try {
+      const numbers = await listNumbers();
+      const s = getWhatsAppStatus();
+      res.json({ numbers, active: { id: s.activePhoneNumberId, source: s.activePhoneNumberSource, displayNumber: s.activeDisplayNumber }, mock: s.mock });
+    } catch (err) {
+      metaFail(req, res, err);
+    }
+  })
+);
+
+const registerSchema = z.object({ pin: z.string().regex(/^\d{6}$/) });
+const numberIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
+
+adminRouter.post(
+  '/whatsapp/numbers/:id/register',
+  handle(async (req, res) => {
+    const id = numberIdSchema.safeParse(req.params.id);
+    const body = registerSchema.safeParse(req.body);
+    if (!id.success) return res.status(400).json({ error: 'invalid_id' });
+    if (!body.success) return res.status(400).json({ error: 'invalid_pin', message: t(req.lang, 'PIN 6 haneli bir sayı olmalı.') });
+    try {
+      const result = await registerNumber(id.data, body.data.pin);
+      res.json({ ok: true, result });
+    } catch (err) {
+      metaFail(req, res, err);
+    }
+  })
+);
+
+adminRouter.post(
+  '/whatsapp/numbers/:id/activate',
+  handle(async (req, res) => {
+    const id = numberIdSchema.safeParse(req.params.id);
+    if (!id.success) return res.status(400).json({ error: 'invalid_id' });
+    try {
+      const { diagnostics } = await activateNumber(id.data);
+      const s = getWhatsAppStatus();
+      res.json({ ok: true, active: { id: s.activePhoneNumberId, source: s.activePhoneNumberSource, displayNumber: s.activeDisplayNumber }, diagnostics });
+    } catch (err) {
+      metaFail(req, res, err);
+    }
   })
 );
