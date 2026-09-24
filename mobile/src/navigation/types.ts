@@ -199,7 +199,9 @@ export type RootStackParamList = {
   // postId verilirse ekran düzenleme modunda açılır. productId: ürün sayfasındaki
   // "Gönderide Paylaş"tan gelindiğinde o ürün seçili açılır.
   // pickedAt: aynı ürün ikinci kez seçilince de ekranın haberi olsun diye.
-  CreatePost: { postId?: string; productId?: string; pickedAt?: number } | undefined;
+  // initialLink: "Akışta paylaş" (Sektör gündemi) — bağlantı önizlemesi hemen başlar.
+  CreatePost: { postId?: string; productId?: string; pickedAt?: number; initialLink?: string } | undefined;
+  SectorNews: undefined;
   SelectProduct: { selectedId?: string } | undefined;
   PostComments: { postId: string };
   // Yalnızca geliştirme: src/ui bileşen galerisi. Menüde yok, elle gezinilir

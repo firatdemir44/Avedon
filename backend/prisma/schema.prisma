@@ -1242,3 +1242,21 @@ model BuyerLead {
   @@unique([companyId, buyerId])
   @@index([companyId, status])
 }
+
+// Sektör gündemi (2026-10-01): herkese açık RSS kaynaklarından tekstil haber başlıkları.
+// Telif: yalnızca başlık, kısa özet (≤200), bağlantı, kaynak, tarih. Makale metni ve resim saklanmaz.
+model NewsItem {
+  id          String   @id @default(cuid())
+  source      String
+  guid        String
+  url         String
+  title       String
+  summary     String   @default("")
+  lang        String
+  topicsJson  String   @default("[]")
+  publishedAt DateTime
+  fetchedAt   DateTime @default(now())
+
+  @@unique([source, guid])
+  @@index([publishedAt])
+}

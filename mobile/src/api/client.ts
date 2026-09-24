@@ -3354,3 +3354,29 @@ export function fetchCatalogImportJob(jobId: string) {
 export function commitCatalogImport(jobId: string, keys: string[]) {
   return request<{ status: 'committing'; total: number }>('/products/import/commit', { method: 'POST', body: JSON.stringify({ jobId, keys }) });
 }
+
+// ---- Sektör gündemi (RSS başlıkları; yalnızca başlık, kısa özet, bağlantı) ----
+export type NewsTopicKey = 'hammadde' | 'fiyat' | 'ihracat' | 'fuar' | 'moda' | 'makine' | 'surdurulebilirlik' | 'is_dunyasi';
+export type NewsItem = {
+  id: string;
+  title: string;
+  summary: string;
+  url: string;
+  source: string;
+  sourceKey: string;
+  lang: 'tr' | 'en';
+  topics: { key: NewsTopicKey; label: string }[];
+  publishedAt: string;
+};
+
+export function fetchNewsDigest() {
+  return request<{ date: string; items: NewsItem[] }>('/news/digest');
+}
+
+export function fetchNews(params: { topic?: NewsTopicKey; lang?: 'tr' | 'en'; page?: number }) {
+  const q = new URLSearchParams();
+  if (params.topic) q.set('topic', params.topic);
+  if (params.lang) q.set('lang', params.lang);
+  q.set('page', String(params.page ?? 1));
+  return request<{ items: NewsItem[]; page: number; pageSize: number; total: number; hasMore: boolean }>(`/news?${q.toString()}`);
+}

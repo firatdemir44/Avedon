@@ -45,6 +45,8 @@ import { priceIndexRouter } from './routes/priceIndex';
 import { searchRouter } from './routes/search';
 import { productDraftsRouter } from './routes/productDrafts';
 import { invitesRouter } from './routes/invites';
+import { newsRouter } from './routes/news';
+import { newsHealth, startNewsScheduler } from './news/fetch';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
 import { smsStatus } from './sms';
@@ -95,6 +97,8 @@ app.get('/api/health', async (_req, res) => {
     feedModeration: await relevanceStatus(),
     // Dünyayı Keşfet B: aday alıcı kayıt sayıları, son eşitleme, BK anahtarı var mı (değeri dönmez).
     buyers: await buyersHealth().catch(() => null),
+    // Sektör gündemi: kayıtlı haber sayısı, son çekim, kaynak başına durum.
+    news: await newsHealth().catch(() => null),
   });
 });
 app.use('/api/register', registerRouter);
@@ -138,6 +142,7 @@ app.use('/api/price-index', priceIndexRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/product-drafts', productDraftsRouter);
 app.use('/api/invites', invitesRouter);
+app.use('/api/news', newsRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
@@ -148,6 +153,8 @@ app.listen(port, () => {
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
   // Haftalık asistan raporu bildirimi (pazartesi 09:00 sonrası, firma başına bir kez).
   startDigestScheduler();
+  // Sektör gündemi: RSS kaynakları 2 saatte bir (ilk çekim açılıştan 2 dk sonra).
+  startNewsScheduler();
   backfillNormalizedNames()
     .then(() => seedDirectoryFromFiles())
     .catch((err) => console.error('[directory] backfill/seed', err));

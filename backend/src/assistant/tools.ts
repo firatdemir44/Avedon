@@ -24,6 +24,8 @@ import { runPassportExtract } from '../skills/passportExtract';
 import { MEMORY_KEYS, MEMORY_KEY_SET, memoryKeyDef } from './memoryKeys';
 import { readMemory } from './memory';
 import { MACHINE_GROUPS, searchCapacity } from '../routes/machines';
+import { buildDigest, listNews } from '../news/query';
+import { TOPIC_KEYS } from '../news/topics';
 import { describeWatchQuery, parseRuleQuery, watchQuerySchema, type WatchQuery } from '../watch';
 
 export interface ToolCallRecord {
@@ -486,5 +488,29 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi, firmaBul, firmaAsistanlarinaSor], calls, suggestions, watchSuggestions };
+  const sektorHaberleri = betaZodTool({
+    name: 'sektor_haberleri',
+    description:
+      'Tekstil sektör gündemi: herkese açık haber kaynaklarından son başlıklar (başlık, kısa özet, kaynak, tarih, bağlantı). Konu verilmezse firma türüne göre kişisel seçim. ' +
+      'Kullan: "sektörde neler oluyor", "pamuk/iplik haberleri", "fuar haberleri". Yalnızca başlık ve özet var; makale metnini uydurma, ayrıntı için bağlantıyı ver.',
+    inputSchema: z.object({
+      topic: z.enum(TOPIC_KEYS).optional().describe('Konu: hammadde, fiyat, ihracat, fuar, moda, makine, surdurulebilirlik, is_dunyasi'),
+      limit: z.number().int().min(1).max(8).default(5),
+    }),
+    run: async (args) => {
+      let items;
+      if (args.topic) {
+        items = (await listNews({ topic: args.topic, pageSize: args.limit })).items;
+      } else {
+        const company = ctx.companyId ? await prisma.company.findUnique({ where: { id: ctx.companyId }, select: { companyType: true } }) : null;
+        items = await buildDigest(company?.companyType ?? '', new Date(), args.limit);
+      }
+      const headlines = items.map((i) => ({ title: i.title, summary: i.summary, source: i.source, date: i.publishedAt.slice(0, 10), url: i.url, topics: i.topics.map((t) => t.label) }));
+      const summary = headlines.length ? `${headlines.length} haber başlığı bulundu.` : 'Kayıtlı sektör haberi yok.';
+      calls.push({ name: 'sektor_haberleri', title: 'Sektör gündemi', input: args, output: { headlines }, summary });
+      return JSON.stringify({ summary, headlines });
+    },
+  });
+
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi, firmaBul, firmaAsistanlarinaSor, sektorHaberleri], calls, suggestions, watchSuggestions };
 }

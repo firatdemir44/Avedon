@@ -347,6 +347,18 @@ export function CreatePostScreen({ navigation, route }: Props) {
 
   const hasAnyMedia = !!imageDataUrl || !!videoUpload.video || !!existingMedia;
 
+  // Başka ekrandan hazır bağlantıyla açılış (ör. Sektör gündemi → "Akışta paylaş"): bir kez önizlenir.
+  const initialLink = route.params?.initialLink;
+  const appliedInitialLinkRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isEditing || !initialLink || appliedInitialLinkRef.current === initialLink) return;
+    const url = normalizeUrl(initialLink);
+    if (!url) return;
+    appliedInitialLinkRef.current = initialLink;
+    dismissedUrlRef.current = null;
+    loadLinkPreview(url);
+  }, [initialLink, isEditing, loadLinkPreview]);
+
   // Metne yapıştırılan bağlantı: yazma durunca önizlenir (fotoğraf/video yoksa).
   useEffect(() => {
     if (loadingPost || link || hasAnyMedia) return;

@@ -81,6 +81,7 @@ import { InvitesScreen } from '../screens/invites/InvitesScreen';
 import { ChatScreen, ChatHeaderTitle } from '../screens/messages/ChatScreen';
 import { NewConversationScreen } from '../screens/messages/NewConversationScreen';
 import { CreatePostScreen } from '../screens/feed/CreatePostScreen';
+import { SectorNewsScreen } from '../screens/news/SectorNewsScreen';
 import { SelectProductScreen } from '../screens/feed/SelectProductScreen';
 import { PostCommentsScreen } from '../screens/feed/PostCommentsScreen';
 import { readPushTargetFromUrl, subscribeToPushOpen, type PushTarget } from '../features/push/pushOpen';
@@ -500,6 +501,11 @@ export function RootNavigator() {
               name="NewConversation"
               component={NewConversationScreen}
               options={{ headerShown: true, title: 'Yeni Mesaj' }}
+            />
+            <Stack.Screen
+              name="SectorNews"
+              component={SectorNewsScreen}
+              options={{ headerShown: true, title: 'Sektör gündemi' }}
             />
             <Stack.Screen
               name="CreatePost"

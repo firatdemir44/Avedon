@@ -15,6 +15,9 @@ export const TableInput = React.forwardRef<TextInput, TextInputProps>(function T
     <TextInput
       ref={ref}
       keyboardType="decimal-pad"
+      // Hazır (örnek/varsayılan) rakam, alana dokununca seçilir; yazılan rakam onun yerine geçer,
+      // silmeye gerek kalmaz (Fırat 2026-09-24).
+      selectTextOnFocus
       placeholderTextColor={t.colors.ink3}
       {...props}
       style={[
