@@ -8,6 +8,8 @@ export const common: Record<string, string> = {
   'Türkçe': 'Türkçe',
   'English': 'English',
   'Rehberden seç': 'Pick from contacts',
+  'Firmam': 'My company',
+  'Firmam: {name}': 'My company: {name}',
   // Ortak terimlerde tek karşılık (alan sözlüklerindeki farklı yazımları ezer).
   'Bağlantılarım': 'Connections',
   'Dünyayı Keşfet': 'Explore Markets',

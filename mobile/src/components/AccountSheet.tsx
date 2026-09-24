@@ -14,9 +14,11 @@ export interface AccountSheetProps {
   visible: boolean;
   onClose: () => void;
   onOpenProfile: () => void;
+  /** Firmaya bağlı kullanıcıda "Firmam" satırı. */
+  onOpenCompany?: () => void;
 }
 
-export function AccountSheet({ visible, onClose, onOpenProfile }: AccountSheetProps) {
+export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany }: AccountSheetProps) {
   const t = useTheme();
   const { user, logout } = useSession();
   const name = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '';
@@ -44,6 +46,16 @@ export function AccountSheet({ visible, onClose, onOpenProfile }: AccountSheetPr
           onOpenProfile();
         }}
       />
+      {onOpenCompany ? (
+        <ListRow
+          title={tr('Firmam')}
+          left={<Icon name="business-outline" color="brand" />}
+          onPress={() => {
+            onClose();
+            onOpenCompany();
+          }}
+        />
+      ) : null}
       <ThemeSwitch />
       <LanguageSwitch />
       <Button

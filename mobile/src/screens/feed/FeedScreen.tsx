@@ -303,9 +303,19 @@ export function FeedScreen({ navigation }: Props) {
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: t.space[3] }}>
           <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Bugün')}</Text>
           {today?.companyName ? (
-            <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flexShrink: 1 }]}>
-              {today.companyName}
-            </Text>
+            // Kendi firmasına tek dokunuşla (Fırat 2026-09-24: "firmaya giriş kolay olsun").
+            <Pressable
+              onPress={() => navigation.navigate('CompanyProfile')}
+              accessibilityRole="button"
+              accessibilityLabel={tr('Firmam: {name}', { name: today.companyName })}
+              hitSlop={t.space[2]}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: t.space[1], flexShrink: 1, opacity: pressed ? 0.6 : 1 })}
+            >
+              <Text numberOfLines={1} style={[t.type.label14, { color: t.colors.brand, flexShrink: 1 }]}>
+                {today.companyName}
+              </Text>
+              <Icon name="chevron" size={t.size.iconSm} color="brand" />
+            </Pressable>
           ) : null}
         </View>
         <View style={{ flexDirection: 'row', gap: t.space[3] }}>
@@ -425,6 +435,7 @@ export function FeedScreen({ navigation }: Props) {
         visible={accountOpen}
         onClose={() => setAccountOpen(false)}
         onOpenProfile={() => navigation.navigate('MyProfile')}
+        onOpenCompany={user?.companyId ? () => navigation.navigate('CompanyProfile') : undefined}
       />
       <Screen scroll={false} noPadding>
         <FlatList
