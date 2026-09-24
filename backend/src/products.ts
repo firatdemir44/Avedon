@@ -182,9 +182,14 @@ export type ProductQuery = z.infer<typeof productQuerySchema>;
 // "astarlik" alt çeşidine değil yalnızca "astar" kullanım amacına uyar.
 const usageContains = (key: string): Prisma.ProductWhereInput => ({ usages: { contains: `"${key}"` } });
 
-export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput {
+// Stoğu bitmiş ürün yalnızca firmanın kendi ekibine görünür (Fırat 2026-09-24: gereksiz numune
+// talebini önlemek için); arama, asistan ve diğer kullanıcılar yalnızca stoklu ürünleri görür.
+export const IN_STOCK: Prisma.ProductWhereInput = { stock: { gt: 0 } };
+
+export function buildProductWhere(query: ProductQuery, opts: { includeOutOfStock?: boolean } = {}): Prisma.ProductWhereInput {
   // Kumaş kataloğu: iplikler ayrı dizinde (/api/yarns) listelenir.
   const and: Prisma.ProductWhereInput[] = [{ type: { not: YARN_PRODUCT_TYPE } }];
+  if (!opts.includeOutOfStock) and.push(IN_STOCK);
 
   if (query.search) {
     const search = query.search;

@@ -122,7 +122,7 @@ export async function findSimilarWithLabel(query: FabricLook | null, label: Comp
     };
   }
   const products = await prisma.product.findMany({
-    where: { type: { not: YARN_PRODUCT_TYPE }, compositions: { some: {} } },
+    where: { type: { not: YARN_PRODUCT_TYPE }, compositions: { some: {} }, stock: { gt: 0 } },
     select: PRODUCT_SELECT,
   });
   const candidates = products.map((p) => ({ id: p.id, composition: p.compositions, stock: p.stock, createdAt: p.createdAt, reasons: [] as string[], product: p }));

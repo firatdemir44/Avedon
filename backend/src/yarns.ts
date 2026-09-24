@@ -306,9 +306,11 @@ const list = (raw: string | undefined, valid: readonly Option[]) => {
   return (raw ?? '').split(',').filter((k) => keys.has(k));
 };
 
-export function buildYarnWhere(q: YarnQuery): Prisma.ProductWhereInput {
+export function buildYarnWhere(q: YarnQuery, opts: { includeOutOfStock?: boolean } = {}): Prisma.ProductWhereInput {
   const spec: Prisma.YarnSpecWhereInput[] = [];
   const and: Prisma.ProductWhereInput[] = [{ type: YARN_PRODUCT_TYPE }];
+  // Stoksuz iplik yalnızca kendi ekibine (bkz. products.ts IN_STOCK).
+  if (!opts.includeOutOfStock) and.push({ stock: { gt: 0 } });
 
   const families = list(q.family, YARN_FAMILIES);
   if (families.length) spec.push({ family: { in: families } });

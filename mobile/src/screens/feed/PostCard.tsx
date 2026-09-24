@@ -523,7 +523,7 @@ function PostCardComponent({
             brand
             onPress={openTender}
           />
-        ) : product ? (
+        ) : product && product.stock > 0 ? (
           <BarAction
           compact={feed}
             icon="sample"

@@ -69,6 +69,10 @@ sampleRequestsRouter.post(
     if (!product) {
       return res.status(404).json({ error: 'product_not_found' });
     }
+    // Stoğu bitmiş üründen numune istenmez.
+    if (!(product.stock > 0)) {
+      return res.status(409).json({ error: 'out_of_stock' });
+    }
 
     const created = await prisma.sampleRequest.create({
       data: {

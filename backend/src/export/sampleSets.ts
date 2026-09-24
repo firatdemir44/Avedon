@@ -121,7 +121,7 @@ export function toPublicItem(p: CatalogRow, lang: Lang) {
 
 export async function loadCatalog(companyId: string): Promise<CatalogRow[]> {
   const rows = await prisma.product.findMany({
-    where: { companyId },
+    where: { companyId, stock: { gt: 0 } }, // numune setine yalnız stoklu ürün
     select: CATALOG_SELECT,
     orderBy: [{ stock: 'desc' }, { createdAt: 'desc' }],
     take: CATALOG_LIMIT,

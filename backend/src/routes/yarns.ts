@@ -66,7 +66,7 @@ yarnsRouter.post(
 export async function searchYarns(query: YarnQuery, viewerCompanyId: string | null) {
   const limit = query.limit ?? 20;
   const rows = await prisma.product.findMany({
-    where: buildYarnWhere(query),
+    where: buildYarnWhere(query, { includeOutOfStock: !!viewerCompanyId && query.companyId === viewerCompanyId }),
     orderBy: { createdAt: 'desc' },
     take: limit + 1,
     skip: query.offset ?? 0,

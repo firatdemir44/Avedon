@@ -9,6 +9,7 @@ import { knitSearchKeys } from '../domain/glossary';
 import { matchWatchRulesInBackground } from '../watch';
 import { refreshProductLookInBackground } from '../looks';
 import {
+  IN_STOCK,
   MAX_RECENT_VIEWS,
   PRODUCT_SELECT,
   ProductImageError,
@@ -61,7 +62,7 @@ productsRouter.get(
 
     const products = stockFirst(
       await prisma.product.findMany({
-        where: buildProductWhere(parsed.data),
+        where: buildProductWhere(parsed.data, { includeOutOfStock: !!req.user?.companyId && parsed.data.companyId === req.user.companyId }),
         orderBy: { createdAt: 'desc' },
         select: PRODUCT_SELECT,
       })
@@ -373,7 +374,8 @@ productsRouter.get(
       where: { id: req.params.id },
       select: { ...PRODUCT_SELECT, ...PASSPORT_DETAIL_SELECT },
     });
-    if (!product) {
+    // Stoğu bitmiş ürün yalnızca firmanın kendi ekibine açılır.
+    if (!product || (!(product.stock > 0) && req.user?.companyId !== product.companyId && !req.user?.isAdmin)) {
       return res.status(404).json({ error: 'product_not_found' });
     }
     // Belge fotoğrafı olan sertifika/test raporu sıraları (fotoğrafın kendisi ayrı uçtan).
@@ -387,7 +389,7 @@ productsRouter.get(
     // Tasarımdaki "Toplam N Ürün" rozeti — firmanın kataloğunun büyüklüğü
     // üreticiye duyulan güvenin göstergesi olarak ürün sayfasında duruyor.
     const companyProductCount = await prisma.product.count({
-      where: { companyId: product.companyId },
+      where: { companyId: product.companyId, ...(req.user?.companyId === product.companyId ? {} : IN_STOCK) },
     });
 
     const user = req.user;
