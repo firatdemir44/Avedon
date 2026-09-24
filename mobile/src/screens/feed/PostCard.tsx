@@ -45,6 +45,8 @@ interface Props {
   onRequestQuote?: (post: FeedPost) => void;
   /** Başkasının gönderisinde "Bu firmayı akışımda gizle" (yalnızca ana akış verir). */
   onMuteCompany?: (post: FeedPost) => void;
+  /** "feed": ana akış (tam genişlik, köşesiz, medya kenardan kenara). "card": yuvarlak kenarlı kart (firma sayfası). */
+  variant?: 'feed' | 'card';
 }
 
 const BODY_LINES = 3;
@@ -63,8 +65,10 @@ function PostCardComponent({
   onDelete,
   onRequestQuote,
   onMuteCompany,
+  variant = 'feed',
 }: Props) {
   const t = useTheme();
+  const feed = variant === 'feed';
   // Açık talep gönderisi: kart iki çağıran ekranda da (akış, firma sayfası)
   // aynı yere gitsin diye gezinti burada.
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -211,9 +215,11 @@ function PostCardComponent({
     .join(' · ');
 
   const pad = { paddingHorizontal: t.space[4] } as const;
-
+  // Akış: medya kenardan kenara, iç boşluk yalnızca metin/başlıkta.
+  const mediaPad = feed ? null : pad;
+  const endsFlush = feed && !!(product || post.link || post.video || post.hasImage || productWithImage);
   return (
-    <Card noPadding>
+    <Frame feed={feed}>
       {/* Üst satır */}
       <View
         style={[
@@ -374,7 +380,7 @@ function PostCardComponent({
 
       {/* Metin */}
       {post.body && !tender ? (
-        <View style={[pad, { paddingTop: t.space[3] }]}>
+        <View style={[pad, { paddingTop: feed ? t.space[2] : t.space[3] }]}>
           <View>
             {/* Ölçüm kopyası: görünmez, tam metin, aynı genişlik. */}
             {!expanded ? (
@@ -412,8 +418,8 @@ function PostCardComponent({
 
       {/* Paylaşılan bağlantı */}
       {post.link ? (
-        <View style={[pad, { paddingTop: t.space[3] }]}>
-          <PostLinkCard postId={post.id} link={post.link} />
+        <View style={[mediaPad, { paddingTop: t.space[3] }]}>
+          <PostLinkCard postId={post.id} link={post.link} flush={feed} />
         </View>
       ) : null}
 
@@ -423,8 +429,9 @@ function PostCardComponent({
           <PostVideo key={post.video.id} video={post.video} />
         </View>
       ) : post.hasImage || productWithImage ? (
-        <View style={[pad, { paddingTop: t.space[3] }]}>
+        <View style={[mediaPad, { paddingTop: t.space[3] }]}>
           <PostImage
+            flush={feed}
             uri={post.hasImage ? imageUrl : productImageUrl}
             onPress={productWithImage ? () => onOpenProduct(post) : undefined}
           />
@@ -433,7 +440,7 @@ function PostCardComponent({
 
       {/* Ürün çipi */}
       {product ? (
-        <View style={[pad, { paddingTop: t.space[3] }]}>
+        <View style={feed ? { paddingTop: t.space[3] } : [pad, { paddingTop: t.space[3] }]}>
           <Pressable
             onPress={() => onOpenProduct(post)}
             accessibilityRole="button"
@@ -443,9 +450,12 @@ function PostCardComponent({
               flexDirection: 'row',
               alignItems: 'center',
               gap: t.space[3],
-              paddingHorizontal: t.space[2],
-              borderRadius: t.radius.md,
-              borderWidth: 1,
+              paddingHorizontal: feed ? t.space[4] : t.space[2],
+              borderRadius: feed ? 0 : t.radius.md,
+              borderTopWidth: 1,
+              borderBottomWidth: feed ? 0 : 1,
+              borderLeftWidth: feed ? 0 : 1,
+              borderRightWidth: feed ? 0 : 1,
               borderColor: t.colors.line,
               backgroundColor: pressed ? t.colors.surface2 : t.colors.surface0,
               minWidth: 0,
@@ -483,12 +493,13 @@ function PostCardComponent({
         style={{
           flexDirection: 'row',
           alignItems: 'center',
-          marginTop: t.space[3],
+          marginTop: endsFlush ? 0 : t.space[3],
           borderTopWidth: 1,
           borderTopColor: t.colors.line,
         }}
       >
         <BarAction
+          compact={feed}
           icon={post.likedByMe ? 'heart' : 'heart-outline'}
           label={post.likedByMe ? 'Beğeniyi geri al' : 'Beğen'}
           count={post.likeCount}
@@ -496,6 +507,7 @@ function PostCardComponent({
           onPress={() => onToggleLike(post)}
         />
         <BarAction
+          compact={feed}
           icon="message"
           label="Yorumlar"
           count={post.commentCount}
@@ -503,6 +515,7 @@ function PostCardComponent({
         />
         {tender ? (
           <BarAction
+          compact={feed}
             icon="quote"
             label={isMine ? 'Teklifleri gör' : 'Teklif ver'}
             text={isMine ? 'Teklifleri gör' : 'Teklif ver'}
@@ -511,34 +524,37 @@ function PostCardComponent({
           />
         ) : product ? (
           <BarAction
+          compact={feed}
             icon="sample"
             label={`${product.code} için numune talep et`}
-            text="Numune talep et"
+            text={feed ? "Numune" : "Numune talep et"}
             brand
             onPress={() => onRequestSample(post)}
           />
         ) : isMine ? (
-          <BarAction icon="share" label="Paylaş" text="Paylaş" brand onPress={() => onShare(post)} />
+          <BarAction
+          compact={feed} icon="share" label="Paylaş" text="Paylaş" brand onPress={() => onShare(post)} />
         ) : (
           <BarAction
+          compact={feed}
             icon="message"
             label={`${authorName} kişisine mesaj gönder`}
-            text="Mesaj gönder"
+            text={feed ? "Mesaj" : "Mesaj gönder"}
             brand
             onPress={openMessage}
           />
         )}
       </View>
-    </Card>
+    </Frame>
   );
 }
 
-function PostImage({ uri, onPress }: { uri: string | null; onPress?: () => void }) {
+function PostImage({ uri, onPress, flush }: { uri: string | null; onPress?: () => void; flush?: boolean }) {
   const t = useTheme();
   const box = {
     width: '100%',
     aspectRatio: 343 / 180,
-    borderRadius: t.radius.md,
+    borderRadius: flush ? 0 : t.radius.md,
     backgroundColor: t.colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -571,6 +587,7 @@ function BarAction({
   count,
   active,
   brand,
+  compact,
   onPress,
 }: {
   icon: AnyIconName;
@@ -579,6 +596,8 @@ function BarAction({
   count?: number;
   active?: boolean;
   brand?: boolean;
+  /** Akış: 3 eşit pay, 24px ikon. */
+  compact?: boolean;
   onPress: () => void;
 }) {
   const t = useTheme();
@@ -591,7 +610,7 @@ function BarAction({
       accessibilityLabel={showCount ? `${label}, ${count}` : label}
       accessibilityState={active !== undefined ? { selected: active } : undefined}
       style={({ pressed }) => ({
-        flex: text ? 2 : 1,
+        flex: text && !compact ? 2 : 1,
         minWidth: 0,
         minHeight: t.size.touchMin,
         flexDirection: 'row',
@@ -602,7 +621,7 @@ function BarAction({
         backgroundColor: pressed ? t.colors.surface2 : 'transparent',
       })}
     >
-      <Icon name={icon} size={t.size.iconSm} colorValue={color} />
+      <Icon name={icon} size={compact ? t.size.icon : t.size.iconSm} colorValue={color} />
       {showCount ? <Text style={[t.type.label14, { color }]}>{count}</Text> : null}
       {text ? (
         <Text numberOfLines={1} style={[t.type.label14, { color, flexShrink: 1 }]}>
@@ -649,10 +668,17 @@ function MenuAction({
   );
 }
 
+// Akış: surface-1 düz zemin (köşe/kenarlık yok, bant ayırır); diğer yerler: Card.
+function Frame({ feed, children }: { feed: boolean; children: React.ReactNode }) {
+  const t = useTheme();
+  if (!feed) return <Card noPadding>{children}</Card>;
+  return <View style={{ backgroundColor: t.colors.surface1 }}>{children}</View>;
+}
+
 export const PostCard = React.memo(PostCardComponent);
 
 // Bağlantı kartı: görsel akış yanıtında gelmez, kart çizilince tek tek çekilir.
-function PostLinkCard({ postId, link }: { postId: string; link: NonNullable<FeedPost['link']> }) {
+function PostLinkCard({ postId, link, flush }: { postId: string; link: NonNullable<FeedPost['link']>; flush?: boolean }) {
   const [imageUri, setImageUri] = useState<string | null>(() => getCachedLinkImage(postId) ?? null);
   useEffect(() => {
     if (!link.hasImage || imageUri) return;
@@ -676,6 +702,7 @@ function PostLinkCard({ postId, link }: { postId: string; link: NonNullable<Feed
       siteName={link.siteName}
       hasImage={link.hasImage}
       imageUri={imageUri}
+      flush={flush}
     />
   );
 }

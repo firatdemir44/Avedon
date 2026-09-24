@@ -19,6 +19,8 @@ export interface LinkPreviewCardProps {
   onRemove?: () => void;
   /** Verilmezse dokununca bağlantı açılır. */
   onPress?: () => void;
+  /** Akış gönderisi: kenarlık/köşe yok, görsel tam genişlik, metin bloğu surface-2 zeminde. */
+  flush?: boolean;
 }
 
 export function hostOf(url: string): string {
@@ -33,7 +35,7 @@ export function openExternalUrl(url: string) {
   });
 }
 
-export function LinkPreviewCard({ url, title, description, siteName, imageUri, hasImage, loading, onRemove, onPress }: LinkPreviewCardProps) {
+export function LinkPreviewCard({ url, title, description, siteName, imageUri, hasImage, loading, onRemove, onPress, flush }: LinkPreviewCardProps) {
   const t = useTheme();
   const site = siteName || hostOf(url);
   const heading = title || hostOf(url);
@@ -41,10 +43,10 @@ export function LinkPreviewCard({ url, title, description, siteName, imageUri, h
   return (
     <View
       style={{
-        borderRadius: t.radius.md,
-        borderWidth: 1,
+        borderRadius: flush ? 0 : t.radius.md,
+        borderWidth: flush ? 0 : 1,
         borderColor: t.colors.line,
-        backgroundColor: t.colors.surface1,
+        backgroundColor: flush ? t.colors.surface2 : t.colors.surface1,
         overflow: 'hidden',
       }}
     >
@@ -71,7 +73,7 @@ export function LinkPreviewCard({ url, title, description, siteName, imageUri, h
             )}
           </View>
         ) : null}
-        <View style={{ gap: t.space[1], padding: t.space[3], paddingRight: onRemove ? t.space[3] + t.size.touchMin : t.space[3] }}>
+        <View style={{ gap: t.space[1], paddingVertical: flush ? t.space[2] : t.space[3], paddingHorizontal: flush ? t.space[4] : t.space[3], paddingRight: onRemove ? t.space[3] + t.size.touchMin : flush ? t.space[4] : t.space[3] }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[1] }}>
             <Icon name="link-outline" size={t.size.iconSm} color="ink3" />
             <Text numberOfLines={1} style={[t.type.caption12, { color: t.colors.ink3, flex: 1, minWidth: 0 }]}>

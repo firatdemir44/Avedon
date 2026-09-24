@@ -1557,6 +1557,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
               const post = item as FeedPost;
               return (
                 <PostCard
+                  variant="card"
                   post={post}
                   isMine={post.author.id === user?.id}
                   myCompanyId={user?.companyId ?? null}

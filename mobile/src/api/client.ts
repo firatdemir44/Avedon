@@ -89,7 +89,8 @@ async function request<T>(path: string, options?: RequestInit, timeoutMs = REQUE
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(
-      body?.error ?? `İstek başarısız (${res.status})`,
+      // Sunucu okunur bir açıklama gönderdiyse (ör. içerik kuralı) o gösterilir.
+      (typeof body?.message === 'string' && body.message) || body?.error || `İstek başarısız (${res.status})`,
       res.status,
       body?.error,
       body?.details,

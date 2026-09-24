@@ -456,7 +456,17 @@ export function CreatePostScreen({ navigation, route }: Props) {
       // Herkese açık reddi: sunucunun açıklaması + "Bağlantılarımla paylaş".
       if (
         err instanceof ApiError &&
-        (err.code === 'public_not_allowed' || err.code === 'not_textile') &&
+        err.code === 'not_textile'
+      ) {
+        // İçerik kuralı (tekstil dışı, siyasi, dini): görünürlük değiştirmek çözüm değil, yalnızca açıklama.
+        setError(typeof err.body?.message === 'string' ? err.body.message : 'Bu paylaşım kabul edilmedi.');
+        setOfferConnections(false);
+        haptics.error();
+        return;
+      }
+      if (
+        err instanceof ApiError &&
+        err.code === 'public_not_allowed' &&
         visibility === 'public'
       ) {
         const message = typeof err.body?.message === 'string' ? err.body.message : 'Bu gönderi herkese açık paylaşılamıyor.';

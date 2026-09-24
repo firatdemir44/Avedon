@@ -179,10 +179,18 @@ const relevanceSchema = z.object({
   textile: z.boolean().describe('Paylaşım tekstil/hazır giyim sektörüyle ilgili mi'),
   reason: z.string().describe('Kısa Türkçe gerekçe (tek cümle)'),
 });
-const RELEVANCE_SYSTEM = `Bir B2B tekstil platformunun herkese açık akışı için içerik denetçisisin.
-İlgili sayılır: kumaş, iplik, elyaf, aksesuar (düğme, fermuar, çıtçıt, etiket), konfeksiyon/hazır giyim, ev tekstili, boya/terbiye, baskı/nakış, tekstil makineleri, numune, fuar, sertifika, fabrika/üretim, sektör haberi, ihracat, iş ilanı, firma duyurusu, bayram/kutlama mesajı veren firma paylaşımı.
-İlgisiz: evcil hayvan, yemek, manzara, siyaset, spor, kişisel fotoğraf, tekstille ilgisiz ürün satışı, şaka/mizah.
-Emin değilsen ilgili say (textile=true). Yalnızca açıkça ilgisizse false.`;
+// Akış kuralı (Fırat 2026-09-24, "çok önemli"): akış YALNIZCA tekstil içindir — ürün/kalite tanıtımı,
+// sektör haberi, eğitici içerik, fuar/etkinlik, firma duyurusu, iş ilanı. Siyasi ve dini propaganda,
+// konuşma, afiş, slogan KESİNLİKLE kabul edilmez; sosyal medya tarzı vakit öldürücü içerik de kabul edilmez.
+// Bu kural herkese açık VE bağlantılara açık tüm gönderilerde ve yorumlarda uygulanır.
+const RELEVANCE_SYSTEM = `Bir B2B tekstil platformunun akışı için katı bir içerik denetçisisin. Akış yalnızca tekstil sektörüne hizmet eder.
+KABUL (textile=true): kumaş, iplik, elyaf, aksesuar (düğme, fermuar, çıtçıt, etiket), konfeksiyon/hazır giyim, ev tekstili, boya/terbiye, baskı/nakış, tekstil makineleri ve teknolojisi; ürün/kalite tanıtımı ve reklamı; numune, stok, kapasite duyurusu; tekstil ve ihracat haberleri, pazar/fiyat bilgisi; eğitici/teknik içerik; fuar, seminer, etkinlik; sertifika, sürdürülebilirlik; fabrika/üretim görüntüsü; firma duyurusu (açılış, yeni makine, yıl dönümü), sektörel iş ilanı.
+RED (textile=false), içinde tekstil kelimesi geçse bile:
+- Siyasi içerik: parti, seçim, siyasetçi, hükümet/muhalefet övgüsü veya eleştirisi, siyasi slogan, afiş, konuşma, miting, siyasi gündem yorumu.
+- Dini içerik: dini propaganda, vaaz, dua metni, dini slogan veya afiş, dini gün/kandil mesajları.
+- Sosyal medya tarzı vakit öldürücü içerik: mizah/caps/şaka, motivasyon sözleri, günaydın/iyi geceler mesajları, kişisel/aile fotoğrafı, yemek, tatil, evcil hayvan, manzara, spor/futbol, magazin, zincir mesaj, çekiliş.
+- Tekstille ilgisiz ürün satışı veya hizmet reklamı; hakaret, kavga, polemik.
+Kararsız kalırsan: içerik açıkça bir tekstil ürününü, üretimini, haberini ya da eğitimini anlatıyorsa kabul et; aksi halde reddet.`;
 
 let lastRelevanceError: string | null = null;
 export type RelevanceResult = { textile: boolean; reason: string; checked: boolean };
@@ -194,7 +202,9 @@ export async function checkTextileRelevance(input: { body: string; imageDataUrl?
     input = { ...input, body: input.body ? `${input.body}
 ${extra}` : extra, link: null };
   }
-  if (input.productAttached) return { textile: true, reason: 'Ürün iliştirilmiş', checked: false };
+  // Ürün iliştirilmiş olsa da metin denetlenir (ürün kartına siyasi/dini metin yazılabilir); boş metinli ürün paylaşımı geçer.
+  if (input.productAttached && !input.body.trim() && !input.imageDataUrl) return { textile: true, reason: 'Ürün paylaşımı', checked: false };
+  if (input.productAttached) input = { ...input, body: `[Gönderiye bir tekstil ürünü iliştirilmiş]\n${input.body}` };
   if (isLlmMock()) return { textile: !/\b(kedi|köpek|kedim|köpeğim)\b/i.test(input.body), reason: 'mock', checked: true };
   const client = getAnthropic();
   if (!client) return { textile: true, reason: 'model yok', checked: false };
@@ -221,7 +231,9 @@ ${extra}` : extra, link: null };
 }
 
 export const NOT_TEXTILE_MESSAGE =
-  'Bu paylaşım tekstil sektörüyle ilgili görünmüyor. Herkese açık akış yalnızca sektörel paylaşımlara açık; bu gönderiyi bağlantılarınızla paylaşabilirsiniz.';
+  'Bu paylaşım kabul edilmedi. Takyon akışı yalnızca tekstille ilgili ürün, haber, eğitim, etkinlik ve firma duyurularına açıktır; siyasi, dini ya da sektör dışı paylaşımlar yayınlanmaz.';
+export const COMMENT_NOT_ALLOWED_MESSAGE =
+  'Bu yorum kabul edilmedi. Yorumlar tekstille ve paylaşımın konusuyla ilgili olmalı; siyasi, dini ya da kırıcı içerik yayınlanmaz.';
 
 // /api/health için: içerik denetimi gerçekten çalışıyor mu (6 saatte bir, sabit bir kedi cümlesiyle).
 let selfTest: { at: number; ok: boolean; detail: string } | null = null;

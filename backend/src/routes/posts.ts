@@ -17,7 +17,7 @@ import {
 } from '../posts';
 import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
 import { fetchPreview, isPreviewError, parseHttpUrl } from '../linkPreview';
-import { NOT_TEXTILE_MESSAGE, REPORT_REASONS, checkTextileRelevance, feedFilters, publicPostRule, reportPost } from '../feedRules';
+import { COMMENT_NOT_ALLOWED_MESSAGE, NOT_TEXTILE_MESSAGE, REPORT_REASONS, checkTextileRelevance, feedFilters, publicPostRule, reportPost } from '../feedRules';
 
 export const postsRouter = Router();
 postsRouter.use(requireAuth);
@@ -408,8 +408,9 @@ postsRouter.patch(
     const nextProductId = productId !== undefined ? productId : existing.productId;
     if (nextVisibility === 'public' && existing.visibility !== 'public') {
       if (!(await checkPublicAllowed(req, res, { body: nextBody, imageUrl: existing.imageUrl, productId: nextProductId, excludePostId: existing.id, link: nextLink }))) return;
-    } else if (nextVisibility === 'public' && (nextBody !== existing.body || linkChanged) && !nextProductId) {
-      const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl, link: nextLink });
+    } else if (nextBody !== existing.body || linkChanged) {
+      // İçerik kuralı görünürlükten bağımsız: bağlantılara açık gönderiler de denetlenir.
+      const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl, link: nextLink, productAttached: !!nextProductId });
       if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
     }
 
@@ -481,7 +482,13 @@ postsRouter.post(
     }
 
     if (productId && !(await checkOwnProduct(req, res, productId))) return;
-    if ((visibility ?? 'public') === 'public' && !(await checkPublicAllowed(req, res, { body: body?.trim() ?? '', imageUrl, productId, link }))) return;
+    if ((visibility ?? 'public') === 'public') {
+      if (!(await checkPublicAllowed(req, res, { body: body?.trim() ?? '', imageUrl, productId, link }))) return;
+    } else {
+      // Bağlantılara açık gönderide paylaşım hakkı sınırı yok ama içerik kuralı aynen geçerli.
+      const rel = await checkTextileRelevance({ body: body?.trim() ?? '', imageDataUrl: imageUrl, productAttached: !!productId, link });
+      if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
+    }
 
     let post;
     try {
@@ -587,6 +594,10 @@ postsRouter.post(
 
     const post = await loadViewablePost(req, res);
     if (!post) return;
+    // Yorumlarda da siyasi/dini/sektör dışı içerik kabul edilmez. Kısa nezaket yorumları ("teşekkürler",
+    // "fiyat alabilir miyim?") gönderinin konusu bağlamında denetlendiği için geçer.
+    const rel = await checkTextileRelevance({ body: `[Tekstil gönderisine yazılan yorum; gönderi: "${post.body.slice(0, 200)}"]\nYorum: ${parsed.data.body}` });
+    if (!rel.textile) return res.status(422).json({ error: 'comment_not_allowed', message: COMMENT_NOT_ALLOWED_MESSAGE, detail: rel.reason });
 
     const comment = await prisma.postComment.create({
       data: { postId: post.id, authorId: req.user!.id, body: parsed.data.body },

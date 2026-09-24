@@ -288,7 +288,7 @@ export function FeedScreen({ navigation }: Props) {
   const stat = (value: number | undefined) => (today ? String(value ?? 0) : '—');
 
   const header = (
-    <View style={{ gap: t.space[6], paddingBottom: t.space[6] }}>
+    <View style={{ gap: t.space[6], paddingBottom: t.space[4], paddingHorizontal: t.space[4] }}>
       <SearchBox
         placeholder="Kumaş, iplik veya firma ara"
         accessibilityLabel="Arama yap"
@@ -436,8 +436,10 @@ export function FeedScreen({ navigation }: Props) {
           data={loading ? [] : posts}
           keyExtractor={(item) => item.id}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingHorizontal: t.space[4], paddingBottom: bottomPad }}
-          ItemSeparatorComponent={() => <View style={{ height: t.space[4] }} />}
+          // Gönderiler tam genişlik (LinkedIn gibi); arada space-2 yüksekliğinde
+          // surface-2 bant. Üst bölüm ve boş durum kendi 16px boşluğunu taşır.
+          contentContainerStyle={{ paddingBottom: bottomPad }}
+          ItemSeparatorComponent={FeedGap}
           refreshControl={refreshControl(refreshing, () => {
             setRefreshing(true);
             loadToday();
@@ -447,7 +449,8 @@ export function FeedScreen({ navigation }: Props) {
           onEndReachedThreshold={0.4}
           ListHeaderComponent={header}
           ListEmptyComponent={
-            loading ? (
+            <View style={{ paddingHorizontal: t.space[4] }}>
+            {loading ? (
               <View style={{ gap: t.space[4] }}>
                 <Skeleton height={t.size.toolBox * 2} />
                 <Skeleton height={t.size.toolBox * 2} />
@@ -480,7 +483,8 @@ export function FeedScreen({ navigation }: Props) {
                 actionLabel={forMe ? 'Tümünü göster' : 'Firmaları keşfet'}
                 onAction={() => (forMe ? changeForMe(false) : navigation.navigate('CompaniesDirectory'))}
               />
-            )
+            )}
+            </View>
           }
           ListFooterComponent={
             cursor ? (
@@ -623,4 +627,10 @@ function StatCard({
       <StatBox value={value} label={label} accent={accent} />
     </Pressable>
   );
+}
+
+// Akış gönderileri arası bant (DESIGN.md §3 "Akış gönderisi"): space-2, surface-2.
+function FeedGap() {
+  const t = useTheme();
+  return <View style={{ height: t.space[2], backgroundColor: t.colors.surface2 }} />;
 }
