@@ -597,7 +597,7 @@ postsRouter.post(
     if (!post) return;
     // Yorumlarda da siyasi/dini/sektör dışı içerik kabul edilmez. Kısa nezaket yorumları ("teşekkürler",
     // "fiyat alabilir miyim?") gönderinin konusu bağlamında denetlendiği için geçer.
-    const rel = await checkTextileRelevance({ body: `[Tekstil gönderisine yazılan yorum; gönderi: "${post.body.slice(0, 200)}"]\nYorum: ${parsed.data.body}` });
+    const rel = await checkTextileRelevance({ mode: 'comment', body: `Gönderi: "${post.body.slice(0, 200)}"\nYorum: ${parsed.data.body}` });
     if (!rel.textile) return res.status(422).json({ error: 'comment_not_allowed', message: t(req.lang, COMMENT_NOT_ALLOWED_MESSAGE), detail: rel.reason });
 
     const comment = await prisma.postComment.create({

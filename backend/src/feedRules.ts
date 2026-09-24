@@ -194,10 +194,17 @@ RED (textile=false), içinde tekstil kelimesi geçse bile:
 - Tekstille ilgisiz ürün satışı veya hizmet reklamı; hakaret, kavga, polemik.
 Kararsız kalırsan: içerik açıkça bir tekstil ürününü, üretimini, haberini ya da eğitimini anlatıyorsa kabul et; aksi halde reddet.`;
 
+// Yorumlar için daha GEVŞEK kural (Fırat 2026-09-24: "enteresan", "ilginç" gibi yorumlar reddediliyordu).
+// Gönderiler katı kalır; yorumda yalnızca açıkça yasak olan reddedilir, kısa tepkiler ve sohbet serbest.
+const COMMENT_SYSTEM = `Bir B2B tekstil platformunda bir gönderinin altına yazılan YORUMU denetliyorsun. Varsayılan KABUL (textile=true).
+Kabul: kısa tepkiler ve beğeni (enteresan, ilginç, güzel, harika, tebrikler, başarılar, teşekkürler, emoji), soru (fiyat, stok, numune, renk, termin), bilgi paylaşımı, iş teklifi, kibar eleştiri.
+YALNIZCA şunlarda reddet (textile=false): siyasi içerik veya propaganda; dini içerik: dua, "Allah kabul etsin", "Hayırlı Cumalar", kandil mesajı, dini propaganda (kısa olsa bile reddet); hakaret, küfür, aşağılama, kavga/polemik; müstehcenlik; tekstille ilgisi olmayan reklam veya spam bağlantı.
+Emin değilsen kabul et.`;
+
 let lastRelevanceError: string | null = null;
 export type RelevanceResult = { textile: boolean; reason: string; checked: boolean };
 
-export async function checkTextileRelevance(input: { body: string; imageDataUrl?: string | null; productAttached?: boolean; link?: { title: string; description: string; siteName?: string } | null }): Promise<RelevanceResult> {
+export async function checkTextileRelevance(input: { body: string; imageDataUrl?: string | null; productAttached?: boolean; link?: { title: string; description: string; siteName?: string } | null; mode?: 'post' | 'comment' }): Promise<RelevanceResult> {
   // Paylaşılan bağlantının başlığı/açıklaması da denetlenen metne katılır.
   if (input.link && (input.link.title || input.link.description)) {
     const extra = `Paylaşılan bağlantı: ${input.link.siteName ? input.link.siteName + ' — ' : ''}${input.link.title}${input.link.description ? '. ' + input.link.description : ''}`;
@@ -218,7 +225,7 @@ ${extra}` : extra, link: null };
     const msg = await client.messages.parse({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 200,
-      system: RELEVANCE_SYSTEM,
+      system: input.mode === 'comment' ? COMMENT_SYSTEM : RELEVANCE_SYSTEM,
       output_config: { format: zodOutputFormat(relevanceSchema) },
       messages: [{ role: 'user', content }],
     });
