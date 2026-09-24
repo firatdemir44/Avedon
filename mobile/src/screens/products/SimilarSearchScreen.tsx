@@ -1,8 +1,10 @@
-// "Fotoğrafla kumaş ara" — yeni tasarım (DESIGN.md §2/§3). Veri katmanı aynı:
-// pickLookPhoto + searchSimilarByPhoto. Görünüm: AppBar · giriş kartı (Card)
-// · fotoğraf önizleme · ProductCard sonuç listesi (altında benzerlik rozeti +
-// nedenler) · kenarlıklı "Başka fotoğrafla ara".
-// Ekranda tek dolu düğme: "Fotoğraf çek" (web'de "Galeriden seç").
+// "Fotoğrafla kumaş ara" (DESIGN.md §2/§3). İki fotoğraf yuvası: kumaşın
+// fotoğrafı + etiket fotoğrafı (isteğe bağlı). En az biri gerekir. Etiket
+// verilirse sunucu içerik etiketini okur (%92 PES %8 EA) ve katalogdaki
+// ürünlerin içeriğiyle karşılaştırır; kumaş fotoğrafı görünümü eşler.
+// Görünüm: AppBar · giriş kartı (iki yuva + "Benzerlerini ara") · sonuçta
+// önizleme kartı · "Etiketten okunan" kartı · ProductCard listesi (altında
+// rozet + nedenler) · kenarlıklı "Yeni arama".
 // Ham hex / ham px yok: her değer useTheme() token'ı ya da src/ui bileşeni.
 import React, { useLayoutEffect, useState } from 'react';
 import { Image, Platform, Text, View } from 'react-native';
@@ -10,6 +12,7 @@ import {
   ApiError,
   MAX_LOOK_IMAGE_CHARS,
   searchSimilarByPhoto,
+  type LabelReadResult,
   type LookSearchResult,
   type SimilarProductResult,
 } from '../../api/client';
@@ -23,14 +26,21 @@ import { ErrorBanner, productSpecs, useProductImage } from './FavoriteProductsSc
 
 type Props = RootStackScreenProps<'SimilarSearch'>;
 
-// Faz 3, Adım 3: "Fotoğrafla benzerini bul". Sunucu yalnızca GÖRÜNÜMÜ
-// karşılaştırır (desen, renk, yüzey, doku); gramaj ve içerik fotoğraftan
-// okunmaz — bu sınır ekranda açıkça yazılı, sonuçların üstünde durur.
+// Yalnız kumaş fotoğrafıyla: sunucu yalnızca GÖRÜNÜMÜ karşılaştırır; gramaj ve
+// içerik fotoğraftan okunmaz — bu sınır ekranda açıkça yazılı.
 const HONESTY_NOTE =
   'Yalnızca görünüm karşılaştırılır. Gramaj ve içerik fotoğraftan okunamaz; ürün sayfasından kontrol edin.';
+const LABEL_NOTE = 'Etiketteki içerik (lif oranları) platformdaki ürünlerin içeriğiyle karşılaştırılır.';
+const HINT =
+  'Mağazada beğendiğiniz kıyafetin kumaşını yakından, etiketini de okunur şekilde çekin; ikisi birlikte daha doğru sonuç verir.';
 
 // Önizleme karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
 const PREVIEW_SIZE = 72;
+
+interface PickedPhoto {
+  uri: string;
+  dataUrl: string;
+}
 
 function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
@@ -53,7 +63,8 @@ function errorMessage(err: unknown): string {
 
 export function SimilarSearchScreen({ navigation }: Props) {
   const t = useTheme();
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [fabric, setFabric] = useState<PickedPhoto | null>(null);
+  const [label, setLabel] = useState<PickedPhoto | null>(null);
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<LookSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,22 +74,27 @@ export function SimilarSearchScreen({ navigation }: Props) {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const start = async (source: 'camera' | 'gallery') => {
+  const pick = async (slot: 'fabric' | 'label', source: 'camera' | 'gallery') => {
     setError(null);
-    let picked;
     try {
-      picked = await pickLookPhoto(source, MAX_LOOK_IMAGE_CHARS);
+      const picked = await pickLookPhoto(source, MAX_LOOK_IMAGE_CHARS);
+      if (!picked) return;
+      const photo = { uri: picked.uri, dataUrl: picked.dataUrl };
+      if (slot === 'fabric') setFabric(photo);
+      else setLabel(photo);
+      setResult(null);
     } catch (err) {
       setError(errorMessage(err));
-      return;
     }
-    if (!picked) return;
+  };
 
-    setPhotoUri(picked.uri);
+  const search = async () => {
+    if (!fabric && !label) return;
+    setError(null);
     setResult(null);
     setSearching(true);
     try {
-      const found = await searchSimilarByPhoto(picked.dataUrl);
+      const found = await searchSimilarByPhoto(fabric?.dataUrl ?? null, undefined, label?.dataUrl ?? null);
       setResult(found);
       haptics.success();
     } catch (err) {
@@ -90,31 +106,19 @@ export function SimilarSearchScreen({ navigation }: Props) {
   };
 
   const reset = () => {
-    setPhotoUri(null);
+    setFabric(null);
+    setLabel(null);
     setResult(null);
     setError(null);
   };
 
-  // Kamera yalnızca telefonda; web'de tarayıcı kamerası yok, dosya seçici tek
-  // (ve dolu) düğme olarak kalır.
-  const hasCamera = Platform.OS !== 'web';
-  const pickers = (
-    <View style={{ gap: t.space[2] }}>
-      {hasCamera ? <Button size="lg" icon="camera" label="Fotoğraf çek" onPress={() => start('camera')} /> : null}
-      <Button
-        size="lg"
-        kind={hasCamera ? 'secondary' : 'primary'}
-        icon="images-outline"
-        label="Galeriden seç"
-        onPress={() => start('gallery')}
-      />
-    </View>
-  );
+  const labelInfo = result?.label ?? null;
+  const usedLabel = Boolean(labelInfo?.read);
 
-  const note = (
+  const note = (text: string) => (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2], minWidth: 0 }}>
       <Icon name="info" size={t.size.iconSm} color="ink3" />
-      <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{HONESTY_NOTE}</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>{text}</Text>
     </View>
   );
 
@@ -122,59 +126,42 @@ export function SimilarSearchScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar title="Fotoğrafla kumaş ara" leading="back" onBack={() => navigation.goBack()} />
       <Screen>
-        {!photoUri && !searching ? (
+        {!result ? (
           <Card style={{ gap: t.space[3] }}>
-            <Text style={[t.type.title18, { color: t.colors.ink }]}>Elindeki kumaşın benzerini bul</Text>
-            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-              Kumaşı düz bir zeminde, yakından ve iyi ışıkta çek. Platformdaki ürünlerin fotoğraflarıyla
-              görünüm olarak karşılaştırılır.
-            </Text>
-            {pickers}
-            {note}
-          </Card>
-        ) : null}
-
-        {photoUri ? (
-          <Card style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
-            <Image
-              source={{ uri: photoUri }}
-              accessibilityLabel="Aranan fotoğraf"
-              style={{
-                width: PREVIEW_SIZE,
-                height: PREVIEW_SIZE,
-                borderRadius: t.radius.sm,
-                borderWidth: 1,
-                borderColor: t.colors.line,
-                backgroundColor: t.colors.surface2,
-              }}
+            <Text style={[t.type.title18, { color: t.colors.ink }]}>Beğendiğin kumaşın benzerini bul</Text>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{HINT}</Text>
+            <PhotoSlot
+              title="Kumaşın fotoğrafı"
+              photo={fabric}
+              disabled={searching}
+              onPick={(src) => pick('fabric', src)}
+              onRemove={() => setFabric(null)}
             />
-            <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
-              {searching ? (
-                <>
-                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Kumaşın görünümü inceleniyor</Text>
-                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Birkaç saniye sürebilir.</Text>
-                </>
-              ) : result ? (
-                <>
-                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={3}>
-                    Gördüğümüz: {result.look.summary}
-                  </Text>
-                  {result.remaining <= 5 ? (
-                    <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-                      Bugün {result.remaining} arama hakkınız kaldı
-                    </Text>
-                  ) : null}
-                </>
-              ) : (
-                <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Seçilen fotoğraf</Text>
-              )}
-            </View>
+            <PhotoSlot
+              title="Etiket fotoğrafı (isteğe bağlı)"
+              photo={label}
+              disabled={searching}
+              onPick={(src) => pick('label', src)}
+              onRemove={() => setLabel(null)}
+            />
+            <Button
+              size="lg"
+              icon="search"
+              label="Benzerlerini ara"
+              loading={searching}
+              disabled={!fabric && !label}
+              onPress={search}
+            />
+            {note(label ? LABEL_NOTE : HONESTY_NOTE)}
           </Card>
         ) : null}
 
         {/* Yükleme: iskelet satırlar (dönen simge yalnızca düğme içinde). */}
         {searching ? (
           <View style={{ gap: t.space[3] }}>
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              {label ? 'Kumaş ve etiket inceleniyor, birkaç saniye sürebilir.' : 'Kumaşın görünümü inceleniyor, birkaç saniye sürebilir.'}
+            </Text>
             <SkeletonRow />
             <SkeletonRow />
             <SkeletonRow />
@@ -185,7 +172,28 @@ export function SimilarSearchScreen({ navigation }: Props) {
 
         {result && !searching ? (
           <>
-            {!result.recognized ? (
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+              <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+                {fabric ? <Preview uri={fabric.uri} label="Kumaş fotoğrafı" /> : null}
+                {label ? <Preview uri={label.uri} label="Etiket fotoğrafı" /> : null}
+              </View>
+              <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
+                {result.look ? (
+                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]} numberOfLines={3}>
+                    Gördüğümüz: {result.look.summary}
+                  </Text>
+                ) : (
+                  <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>Etikete göre arandı</Text>
+                )}
+                {result.remaining <= 5 ? (
+                  <Text style={[t.type.body14, { color: t.colors.ink2 }]}>Bugün {result.remaining} arama hakkınız kaldı</Text>
+                ) : null}
+              </View>
+            </Card>
+
+            {labelInfo ? <LabelCard info={labelInfo} /> : null}
+
+            {!result.recognized && !usedLabel ? (
               <EmptyState
                 icon="camera"
                 title="Fotoğrafta kumaşı seçemedik"
@@ -194,13 +202,13 @@ export function SimilarSearchScreen({ navigation }: Props) {
             ) : result.results.length === 0 ? (
               <EmptyState
                 icon="search"
-                title="Görünüşçe benzeyen ürün bulunamadı"
+                title={usedLabel ? 'Benzeyen ürün bulunamadı' : 'Görünüşçe benzeyen ürün bulunamadı'}
                 description="Katalog büyüdükçe sonuçlar artar."
               />
             ) : (
               <View style={{ gap: t.space[3] }}>
                 <SectionTitle title={`Benzer kumaşlar · ${result.results.length}`} />
-                {note}
+                {note(usedLabel ? LABEL_NOTE : HONESTY_NOTE)}
                 {result.results.map((item) => (
                   <SimilarResultCard
                     key={item.product.id}
@@ -211,11 +219,105 @@ export function SimilarSearchScreen({ navigation }: Props) {
               </View>
             )}
 
-            <Button size="lg" kind="secondary" label="Başka fotoğrafla ara" onPress={reset} />
+            <Button size="lg" kind="secondary" label="Yeni arama" onPress={reset} />
           </>
         ) : null}
       </Screen>
     </View>
+  );
+}
+
+function Preview({ uri, label }: { uri: string; label: string }) {
+  const t = useTheme();
+  return (
+    <Image
+      source={{ uri }}
+      accessibilityLabel={label}
+      style={{
+        width: PREVIEW_SIZE,
+        height: PREVIEW_SIZE,
+        borderRadius: t.radius.sm,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        backgroundColor: t.colors.surface2,
+      }}
+    />
+  );
+}
+
+// Tek fotoğraf yuvası: boşken kamera + galeri, doluyken önizleme + "Kaldır".
+function PhotoSlot({
+  title,
+  photo,
+  disabled,
+  onPick,
+  onRemove,
+}: {
+  title: string;
+  photo: PickedPhoto | null;
+  disabled: boolean;
+  onPick: (source: 'camera' | 'gallery') => void;
+  onRemove: () => void;
+}) {
+  const t = useTheme();
+  // Kamera yalnızca telefonda; web'de tarayıcı kamerası yok.
+  const hasCamera = Platform.OS !== 'web';
+  return (
+    <View
+      style={{
+        gap: t.space[2],
+        padding: t.space[3],
+        borderRadius: t.radius.md,
+        borderWidth: 1,
+        borderColor: t.colors.line,
+        minWidth: 0,
+      }}
+    >
+      <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{title}</Text>
+      {photo ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3], minWidth: 0 }}>
+          <Preview uri={photo.uri} label={title} />
+          <Button kind="quiet" icon="close-outline" label="Kaldır" disabled={disabled} onPress={onRemove} />
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap' }}>
+          {hasCamera ? (
+            <Button kind="secondary" icon="camera" label="Fotoğraf çek" disabled={disabled} onPress={() => onPick('camera')} />
+          ) : null}
+          <Button
+            kind="secondary"
+            icon="images-outline"
+            label="Galeriden seç"
+            disabled={disabled}
+            onPress={() => onPick('gallery')}
+          />
+        </View>
+      )}
+    </View>
+  );
+}
+
+// "Etiketten okunan: %92 Polyester %8 Elastan" ya da "Etiket okunamadı" + uyarılar.
+function LabelCard({ info }: { info: LabelReadResult }) {
+  const t = useTheme();
+  return (
+    <Card style={{ gap: t.space[2] }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
+        <Icon
+          name={info.read ? 'pricetag-outline' : 'warning'}
+          size={t.size.iconSm}
+          color={info.read ? 'ink2' : 'warning'}
+        />
+        <Text style={[t.type.body16Strong, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>
+          {info.read ? `Etiketten okunan: ${info.compositionText}` : 'Etiket okunamadı'}
+        </Text>
+      </View>
+      {info.warnings.map((w) => (
+        <Text key={w} style={[t.type.body14, { color: t.colors.warning }]}>
+          {w}
+        </Text>
+      ))}
+    </Card>
   );
 }
 
@@ -236,11 +338,11 @@ function SimilarResultCard({ item, onPress }: { item: SimilarProductResult; onPr
         imageUri={imageUri}
         onPress={onPress}
       />
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-        <Badge kind="info" label={`%${item.similarity} benzer`} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: t.space[2], minWidth: 0 }}>
+        <Badge kind="info" label={item.look ? `%${item.similarity} benzer` : `%${item.similarity} içerik`} />
         {item.reasons.length ? (
-          <Text numberOfLines={1} style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
-            {item.reasons.slice(0, 3).join(' · ')}
+          <Text numberOfLines={3} style={[t.type.body14, { color: t.colors.ink2, flex: 1, minWidth: 0 }]}>
+            {item.reasons.slice(0, 4).join(' · ')}
           </Text>
         ) : null}
       </View>

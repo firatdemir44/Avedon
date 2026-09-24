@@ -1364,11 +1364,26 @@ export interface SimilarProductResult {
   similarity: number;
   /** Türkçe nedenler: "aynı desen türü", "aynı ana renk", "yakın doku"... */
   reasons: string[];
-  look: FabricLookView;
+  /** Yalnız etiketle aramada null. */
+  look: FabricLookView | null;
+  /** Etiketle aramada içerik uyumu (0-100); ürünün içeriği yoksa null. */
+  compositionMatch?: number | null;
+}
+
+/** Etiket fotoğrafından okunan içerik. */
+export interface LabelReadResult {
+  read: boolean;
+  /** "%92 Polyester %8 Elastan" */
+  compositionText: string;
+  fibers: { key: string; label: string; percent: number }[];
+  warnings: string[];
 }
 
 export interface LookSearchResult {
-  look: FabricLookView;
+  /** Kumaş fotoğrafı gönderilmediyse null. */
+  look: FabricLookView | null;
+  /** Etiket gönderildiyse dolu. */
+  label?: LabelReadResult | null;
   /** false: fotoğrafta kumaş seçilemedi (results boş gelir). */
   recognized: boolean;
   results: SimilarProductResult[];
@@ -1382,10 +1397,14 @@ export interface LookSearchResult {
  * Hatalar: 429 daily_limit (gövdede `max`) · 503 llm_not_configured ·
  * 502 look_failed · 400 unsupported_image / invalid_body.
  */
-export function searchSimilarByPhoto(imageDataUrl: string, limit?: number) {
+export function searchSimilarByPhoto(imageDataUrl: string | null, limit?: number, labelDataUrl?: string | null) {
+  const body: Record<string, unknown> = {};
+  if (imageDataUrl) body.image = imageDataUrl;
+  if (labelDataUrl) body.label = labelDataUrl;
+  if (limit) body.limit = limit;
   return request<LookSearchResult>(
     '/looks/search',
-    { method: 'POST', body: JSON.stringify(limit ? { image: imageDataUrl, limit } : { image: imageDataUrl }) },
+    { method: 'POST', body: JSON.stringify(body) },
     LLM_REQUEST_TIMEOUT_MS
   );
 }

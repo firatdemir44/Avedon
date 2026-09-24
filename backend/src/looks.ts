@@ -5,6 +5,8 @@ import { extractFabricLook, splitDataUrl } from './skills/fabricLook/run';
 import { describeLook, parseLook, type FabricLook } from './skills/fabricLook/schema';
 import { scoreLooks } from './skills/fabricLook/score';
 import { YARN_PRODUCT_TYPE } from './yarns';
+import { rankWithLabel } from './labelMatch';
+import type { CompositionItem } from './domain/glossary';
 
 // Benzer kumaş arama (Faz 3, Adım 3). Görünüm kartı ürünün KAPAK fotoğrafından çıkar;
 // benzerlik deterministik ve açıklanabilir (skills/fabricLook/score.ts).
@@ -89,6 +91,52 @@ export async function findSimilarProducts(query: FabricLook, options: SimilarOpt
     reasons: s.reasons,
     look: { ...s.look, summary: describeLook(s.look) },
   }));
+}
+
+// Mağazadaki kıyafet: kumaş fotoğrafı (isteğe bağlı) + içerik etiketi. Etiket kompozisyonu
+// katalogdaki kompozisyonla karşılaştırılır (bkz. labelMatch.ts).
+export async function findSimilarWithLabel(query: FabricLook | null, label: CompositionItem[], options: { viewerCompanyId?: string | null; limit?: number } = {}) {
+  const limit = options.limit ?? 20;
+  if (query) {
+    const rows = await prisma.productLook.findMany({
+      where: { product: { type: { not: YARN_PRODUCT_TYPE } } },
+      select: { lookJson: true, product: { select: PRODUCT_SELECT } },
+    });
+    const candidates = rows.flatMap((row) => {
+      const look = parseLook(row.lookJson);
+      if (!look || !usable(look)) return [];
+      const { score, reasons } = scoreLooks(query, look);
+      if (score < MIN_LOOK_SCORE) return [];
+      return [{ id: row.product.id, composition: row.product.compositions, stock: row.product.stock, createdAt: row.product.createdAt, lookScore: score, reasons, row, look }];
+    });
+    const { ranked, warnings } = rankWithLabel(candidates, label);
+    return {
+      warnings,
+      results: ranked.slice(0, limit).map((s) => ({
+        product: toProductRow(s.item.row.product, options.viewerCompanyId ?? null),
+        similarity: Math.min(100, s.item.lookScore),
+        compositionMatch: s.item.composition.length ? s.overlap : null,
+        reasons: s.reasons,
+        look: { ...s.item.look, summary: describeLook(s.item.look) } as (FabricLook & { summary: string }) | null,
+      })),
+    };
+  }
+  const products = await prisma.product.findMany({
+    where: { type: { not: YARN_PRODUCT_TYPE }, compositions: { some: {} } },
+    select: PRODUCT_SELECT,
+  });
+  const candidates = products.map((p) => ({ id: p.id, composition: p.compositions, stock: p.stock, createdAt: p.createdAt, reasons: [] as string[], product: p }));
+  const { ranked, warnings } = rankWithLabel(candidates, label);
+  return {
+    warnings,
+    results: ranked.slice(0, limit).map((s) => ({
+      product: toProductRow(s.item.product, options.viewerCompanyId ?? null),
+      similarity: s.overlap,
+      compositionMatch: s.overlap as number | null,
+      reasons: s.reasons,
+      look: null as (FabricLook & { summary: string }) | null,
+    })),
+  };
 }
 
 export function lookView(look: FabricLook) {
