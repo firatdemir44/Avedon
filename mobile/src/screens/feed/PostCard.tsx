@@ -528,7 +528,7 @@ function PostCardComponent({
           compact={feed}
             icon="sample"
             label={tr('{code} için numune talep et', { code: product.code })}
-            text={feed ? tr('Numune') : tr('Numune talep et')}
+            text={tr('Numune talep et')}
             brand
             onPress={() => onRequestSample(post)}
           />
