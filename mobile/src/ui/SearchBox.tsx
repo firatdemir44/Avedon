@@ -5,7 +5,7 @@
 import React from 'react';
 import { Pressable, TextInput, View, Text, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Icon } from './Icon';
+import { Icon, type AnyIconName } from './Icon';
 
 export interface SearchBoxProps {
   placeholder: string;
@@ -18,6 +18,8 @@ export interface SearchBoxProps {
   autoFocus?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  /** Kutunun içinde sağda ikon düğme (ör. fotoğrafla ara). */
+  trailingAction?: { icon: AnyIconName; label: string; onPress: () => void };
 }
 
 export function SearchBox({
@@ -30,8 +32,20 @@ export function SearchBox({
   autoFocus,
   style,
   testID,
+  trailingAction,
 }: SearchBoxProps) {
   const t = useTheme();
+  const trailing = trailingAction ? (
+    <Pressable
+      onPress={trailingAction.onPress}
+      accessibilityRole="button"
+      accessibilityLabel={trailingAction.label}
+      hitSlop={t.space[2]}
+      style={({ pressed }) => ({ width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+    >
+      <Icon name={trailingAction.icon} size={t.size.iconSm} color="brand" />
+    </Pressable>
+  ) : null;
 
   const box: ViewStyle = {
     minHeight: t.size.control,
@@ -48,18 +62,20 @@ export function SearchBox({
 
   if (onPress) {
     return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="search"
-        accessibilityLabel={accessibilityLabel ?? placeholder}
-        testID={testID}
-        style={({ pressed }) => [box, pressed && { backgroundColor: t.colors.surface2 }, style]}
-      >
-        <Icon name="search" size={t.size.iconSm} color="ink3" />
-        <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink3, flex: 1, minWidth: 0 }]}>
-          {placeholder}
-        </Text>
-      </Pressable>
+      <View style={[box, { paddingHorizontal: 0, paddingRight: t.space[3] }, style]} testID={testID}>
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="search"
+          accessibilityLabel={accessibilityLabel ?? placeholder}
+          style={({ pressed }) => ({ flex: 1, minWidth: 0, minHeight: t.size.control, flexDirection: 'row', alignItems: 'center', gap: t.space[2], paddingLeft: t.space[3], borderRadius: t.radius.md, backgroundColor: pressed ? t.colors.surface2 : undefined })}
+        >
+          <Icon name="search" size={t.size.iconSm} color="ink3" />
+          <Text numberOfLines={1} style={[t.type.body16, { color: t.colors.ink3, flex: 1, minWidth: 0 }]}>
+            {placeholder}
+          </Text>
+        </Pressable>
+        {trailing}
+      </View>
     );
   }
 
@@ -91,6 +107,7 @@ export function SearchBox({
           <Icon name="x" size={t.size.iconSm} color="ink3" />
         </Pressable>
       ) : null}
+      {trailing}
     </View>
   );
 }

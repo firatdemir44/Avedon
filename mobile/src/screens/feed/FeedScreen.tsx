@@ -293,6 +293,7 @@ export function FeedScreen({ navigation }: Props) {
         placeholder="Kumaş, iplik veya firma ara"
         accessibilityLabel="Arama yap"
         onPress={() => navigation.navigate('GlobalSearch')}
+        trailingAction={{ icon: 'camera', label: 'Fotoğrafla benzer kumaş ara', onPress: () => navigation.navigate('SimilarSearch') }}
       />
 
       {/* Bugün */}

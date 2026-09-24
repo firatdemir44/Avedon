@@ -421,6 +421,18 @@ export function ProductListScreen({ navigation, route }: Props) {
             <Icon name="x" size={t.size.iconSm} color="ink2" />
           </Pressable>
         ) : null}
+        {/* Fotoğrafla benzer kumaş ara: üst banttan arama kutusunun içine taşındı (Fırat 2026-09-24). */}
+        {user ? (
+          <Pressable
+            onPress={() => navigation.navigate('SimilarSearch')}
+            accessibilityRole="button"
+            accessibilityLabel="Fotoğrafla benzer kumaş ara"
+            hitSlop={t.space[2]}
+            style={({ pressed }) => ({ width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+          >
+            <Icon name="camera" size={t.size.iconSm} color="brand" />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -696,15 +708,6 @@ export function ProductListScreen({ navigation, route }: Props) {
       title="Katalog"
       leading="none"
       actions={[
-        ...(user
-          ? [
-              {
-                icon: 'camera' as const,
-                label: 'Fotoğrafla benzer kumaş ara',
-                onPress: () => navigation.navigate('SimilarSearch'),
-              },
-            ]
-          : []),
         ...(user
           ? [
               {
