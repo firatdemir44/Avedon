@@ -111,6 +111,7 @@ export const size = {
   // Sekme çubuğunda Asistan sekmesinin Takyon işareti (~1.4× icon).
   tabIconLg: 40,
   avatar: 40,
+  avatarLg: 48, // akış gönderisindeki firma logosu (Fırat 2026-09-24: bir ölçek büyük)
   thumb: 72,
   appbar: 56,
   tabbar: 64,

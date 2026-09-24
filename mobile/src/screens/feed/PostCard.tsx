@@ -242,8 +242,8 @@ function PostCardComponent({
               // Logo kareye sığar, kırpılmaz; şeffaf/renkli logolar için beyaz zemin.
               resizeMode="contain"
               style={{
-                width: t.size.avatar,
-                height: t.size.avatar,
+                width: t.size.avatarLg,
+                height: t.size.avatarLg,
                 borderRadius: t.radius.sm,
                 borderWidth: 1,
                 borderColor: t.colors.line,
@@ -251,7 +251,7 @@ function PostCardComponent({
               }}
             />
           ) : (
-            <Avatar name={company?.name ?? authorName} kind="company" />
+            <Avatar name={company?.name ?? authorName} kind="company" size={t.size.avatarLg} />
           )}
           <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
