@@ -361,9 +361,10 @@ export function buildTools(ctx: ToolContext): ToolSet {
       city: z.string().max(60).optional(),
     }),
     run: async (args) => {
-      const results = await searchCapacity({ ...args, contractOpen: args.contractOpen ? '1' : undefined, availableOnly: args.availableOnly ? '1' : undefined, limit: 8 }, ctx.companyId);
+      const results = await searchCapacity({ ...args, contractOpen: args.contractOpen ? '1' : undefined, availableOnly: args.availableOnly ? '1' : undefined, limit: 8 }, null);
+      // Kullanıcının kendi parkı da çıkar (Melide kendi 30/28 interlokunu bulamıyordu); işaretlenir.
       const summary = results.length
-        ? `${results.length} firma bulundu: ${results.map((r) => `${r.company.name} (${r.matchedCount} makine${r.capacity.contractOpen ? ', fason açık' : ''})`).join('; ')}`
+        ? `${results.length} firma bulundu: ${results.map((r) => `${r.company.name}${r.company.id === ctx.companyId ? ' [kullanıcının kendi firması]' : ''} (${r.matchedCount} makine${r.capacity.contractOpen ? ', fason açık' : ''})`).join('; ')}`
         : 'Bu parkura sahip firma bulunamadı.';
       calls.push({ name: 'kapasite_ara', title: 'Fason kapasite araması', input: args, output: { results }, summary });
       return JSON.stringify({ summary, results });

@@ -270,10 +270,17 @@ const searchSchema = z.object({
 export type MachineSearch = z.infer<typeof searchSchema>;
 
 // Arama mantığı asistan aracıyla ortak (assistant/tools.ts kapasite_ara).
+function kindTerms(kind: string) {
+  const k = fold(kind).replace(/interlock/g, 'interlok');
+  const set = new Set([k, kind.trim(), kind.trim().toLocaleUpperCase('tr-TR')]);
+  if (k.includes('interlok')) ['interlok', 'İNTERLOK', 'Interlok', 'İnterlok', 'INTER', 'İNTER'].forEach((x) => set.add(x));
+  return [...set].filter(Boolean);
+}
+
 export async function searchCapacity(query: MachineSearch, excludeCompanyId?: string | null) {
   const machineWhere: Prisma.MachineWhereInput = {
     ...(query.group ? { group: query.group } : {}),
-    ...(query.kind ? { kindKey: { contains: fold(query.kind) } } : {}),
+    
     ...(query.diameterInch ? { diameterInch: query.diameterInch } : {}),
     ...(query.widthMin ? { workingWidthCm: { gte: query.widthMin } } : {}),
     // Fine aralıklı olabilir ("28-22" → 28 ve 22 aramasında da çıkar).
@@ -281,6 +288,8 @@ export async function searchCapacity(query: MachineSearch, excludeCompanyId?: st
     ...(query.feeders ? { feeders: query.feeders } : {}),
     AND: [
       ...(query.gauge ? [rangeMatch('gauge', 'gaugeText', query.gauge)] : []),
+      // Tür ya da örgü cinsi (Melide 30/28 'interlok' kaydı kind'da değil fabricType'ta duruyordu).
+      ...(query.kind ? [{ OR: kindTerms(query.kind).flatMap((k) => [{ kindKey: { contains: k } }, { fabricType: { contains: k } }, { group: { contains: k } }]) }] : []),
       ...(query.availableOnly ? [{ OR: [{ busyUntil: null }, { busyUntil: { lte: new Date() } }] }] : []),
     ],
   };
