@@ -239,34 +239,46 @@ export function toggleSpeak(id: string, text: string) {
     return;
   }
   window.speechSynthesis.cancel();
-  const voice = pickVoice();
   const chunks = sentences(spoken(text));
   if (!chunks.length) return;
   speakingId = id;
   emit();
-  chunks.forEach((chunk, i) => {
-    const u = new SpeechSynthesisUtterance(chunk);
-    u.lang = locale();
-    if (voice) u.voice = voice;
-    u.pitch = 1;
-    // Doğal sesler normal hızda akıcı; basit seslerde hafif hızlandırma tekdüzeliği azaltır.
-    u.rate = voice && voiceScore(voice) >= 4 ? 1 : 1.08;
-    if (i === chunks.length - 1) {
-      u.onend = () => {
-        if (speakingId === id) {
-          speakingId = null;
-          emit();
-        }
-      };
-    }
-    u.onerror = () => {
+  // Android'de belirli bir sesi (özellikle ağ sesi) zorlamak bazı telefonlarda HİÇ ses çıkarmıyor
+  // (Fırat 2026-09-24: "okuma sesi gelmiyor"). Android'de telefonun kendi varsayılan Türkçe sesi kullanılır;
+  // masaüstü/iPhone'da en doğal ses seçilir. Ses hata verirse o cümle varsayılan sesle yeniden denenir.
+  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+  const voice = isAndroid ? null : pickVoice();
+  const speakChunk = (i: number, withVoice: boolean) => {
+    if (speakingId !== id || i >= chunks.length) {
       if (speakingId === id) {
         speakingId = null;
         emit();
       }
+      return;
+    }
+    const u = new SpeechSynthesisUtterance(chunks[i]);
+    u.lang = locale();
+    if (withVoice && voice) u.voice = voice;
+    u.pitch = 1;
+    u.rate = voice && withVoice && voiceScore(voice) >= 4 ? 1 : 1.05;
+    let started = false;
+    u.onstart = () => {
+      started = true;
+    };
+    u.onend = () => speakChunk(i + 1, withVoice);
+    u.onerror = (e) => {
+      const err = (e as SpeechSynthesisErrorEvent).error;
+      if (err === 'interrupted' || err === 'canceled') return;
+      // Seçilen ses çalışmadıysa varsayılan sesle aynı cümleyi tekrar dene.
+      if (withVoice && voice && !started) speakChunk(i, false);
+      else speakChunk(i + 1, withVoice);
     };
     window.speechSynthesis.speak(u);
-  });
+    // Chrome bazen duraklatılmış kalır; güvence olarak sürdür.
+    window.speechSynthesis.resume();
+  };
+  // cancel()'dan hemen sonra speak() bazı tarayıcılarda sessizce düşüyor; kısa bekleme.
+  setTimeout(() => speakChunk(0, true), 80);
 }
 
 // Kayıt yolu (2026-09-23): tarayıcı tanıması telefonda kısa sürede kapandığı için ses kaydedilir,
