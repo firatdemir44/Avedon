@@ -447,6 +447,13 @@ model Post {
   editedAt   DateTime?
   // Farklı firmalardan yeterli şikâyet gelince gizlenir (yalnızca yazar görür); yönetici geri açabilir.
   hiddenAt   DateTime?
+  // Paylaşılan haber/makale bağlantısı (önizleme kartı). Bağlantılı gönderide
+  // fotoğraf/video olmaz. linkImage data URL; akışta ayrı uçtan çekilir.
+  linkUrl         String?
+  linkTitle       String  @default("")
+  linkDescription String  @default("")
+  linkSiteName    String  @default("")
+  linkImage       String?
   likes      PostLike[]
   comments   PostComment[]
 

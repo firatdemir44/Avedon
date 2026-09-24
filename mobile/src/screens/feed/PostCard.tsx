@@ -17,6 +17,8 @@ import type { RootStackParamList } from '../../navigation/types';
 import { tenderBadge, tenderMetaLine } from '../../features/tenders/format';
 import { TenderAttachmentLine, TenderCoverThumb } from '../../components/TenderCover';
 import { PostVideo } from '../../components/PostVideo';
+import { LinkPreviewCard } from '../../components/LinkPreviewCard';
+import { getCachedLinkImage, loadLinkImage } from '../../features/feed/postLinkImageCache';
 import { formatRelativeTime } from '../../features/time';
 import { getCachedPostImage, loadPostImage } from '../../features/feed/postImageCache';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
@@ -91,7 +93,7 @@ function PostCardComponent({
   }, [post.id, post.hasImage, imageUrl]);
 
   // Gönderide kendi fotoğrafı/videosu yoksa ürünün kapak fotoğrafı gösterilir.
-  const productWithImage = !post.hasImage && !post.video && post.product?.hasImage ? post.product : null;
+  const productWithImage = !post.hasImage && !post.video && !post.link && post.product?.hasImage ? post.product : null;
   const [productImageUrl, setProductImageUrl] = useState<string | null>(() =>
     productWithImage ? (getCachedProductImage(productWithImage.id) ?? null) : null
   );
@@ -408,6 +410,13 @@ function PostCardComponent({
         </View>
       ) : null}
 
+      {/* Paylaşılan bağlantı */}
+      {post.link ? (
+        <View style={[pad, { paddingTop: t.space[3] }]}>
+          <PostLinkCard postId={post.id} link={post.link} />
+        </View>
+      ) : null}
+
       {/* Görsel */}
       {post.video ? (
         <View style={{ paddingTop: t.space[3] }}>
@@ -641,3 +650,32 @@ function MenuAction({
 }
 
 export const PostCard = React.memo(PostCardComponent);
+
+// Bağlantı kartı: görsel akış yanıtında gelmez, kart çizilince tek tek çekilir.
+function PostLinkCard({ postId, link }: { postId: string; link: NonNullable<FeedPost['link']> }) {
+  const [imageUri, setImageUri] = useState<string | null>(() => getCachedLinkImage(postId) ?? null);
+  useEffect(() => {
+    if (!link.hasImage || imageUri) return;
+    let cancelled = false;
+    loadLinkImage(postId)
+      .then((uri) => {
+        if (!cancelled) setImageUri(uri);
+      })
+      .catch(() => {
+        // Görsel gelmezse yer tutucu kalır.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, link.hasImage, imageUri]);
+  return (
+    <LinkPreviewCard
+      url={link.url}
+      title={link.title}
+      description={link.description}
+      siteName={link.siteName}
+      hasImage={link.hasImage}
+      imageUri={imageUri}
+    />
+  );
+}

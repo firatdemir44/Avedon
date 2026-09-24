@@ -187,7 +187,13 @@ Emin değilsen ilgili say (textile=true). Yalnızca açıkça ilgisizse false.`;
 let lastRelevanceError: string | null = null;
 export type RelevanceResult = { textile: boolean; reason: string; checked: boolean };
 
-export async function checkTextileRelevance(input: { body: string; imageDataUrl?: string | null; productAttached?: boolean }): Promise<RelevanceResult> {
+export async function checkTextileRelevance(input: { body: string; imageDataUrl?: string | null; productAttached?: boolean; link?: { title: string; description: string; siteName?: string } | null }): Promise<RelevanceResult> {
+  // Paylaşılan bağlantının başlığı/açıklaması da denetlenen metne katılır.
+  if (input.link && (input.link.title || input.link.description)) {
+    const extra = `Paylaşılan bağlantı: ${input.link.siteName ? input.link.siteName + ' — ' : ''}${input.link.title}${input.link.description ? '. ' + input.link.description : ''}`;
+    input = { ...input, body: input.body ? `${input.body}
+${extra}` : extra, link: null };
+  }
   if (input.productAttached) return { textile: true, reason: 'Ürün iliştirilmiş', checked: false };
   if (isLlmMock()) return { textile: !/\b(kedi|köpek|kedim|köpeğim)\b/i.test(input.body), reason: 'mock', checked: true };
   const client = getAnthropic();

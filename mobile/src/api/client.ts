@@ -518,7 +518,24 @@ export type FeedPost = {
   likedByMe: boolean;
   // Açık talep gönderisi: doluysa kart metin yerine talep özetini çizer.
   tender: FeedTender | null;
+  // Paylaşılan haber/makale bağlantısı; görsel fetchPostLinkImage ile çekilir.
+  link?: FeedLink | null;
 };
+
+export type FeedLink = { url: string; title: string; description: string; siteName: string; hasImage: boolean };
+
+// Gönderiye eklenen bağlantı (önizlemeden ya da önizleme alınamadıysa yalnızca adres).
+export type PostLinkInput = { url: string; title: string; description: string; siteName: string; imageDataUrl?: string | null };
+
+export type LinkPreview = { url: string; title: string; description: string; siteName: string; hasImage: boolean; imageDataUrl?: string };
+
+export function fetchLinkPreview(url: string) {
+  return request<{ preview: LinkPreview }>('/posts/link-preview', { method: 'POST', body: JSON.stringify({ url }) });
+}
+
+export function fetchPostLinkImage(id: string) {
+  return request<{ imageUrl: string }>(`/posts/${id}/link-image`);
+}
 
 export type FeedTender = {
   id: string;
@@ -578,6 +595,7 @@ export interface NewPostInput {
   videoId?: string;
   productId?: string;
   visibility: PostVisibility;
+  link?: PostLinkInput;
 }
 
 export function createPost(input: NewPostInput) {
@@ -596,6 +614,8 @@ export interface UpdatePostInput {
   body?: string;
   productId?: string | null;
   visibility?: PostVisibility;
+  // null bağlantıyı kaldırır.
+  link?: PostLinkInput | null;
 }
 
 export function updatePost(id: string, input: UpdatePostInput) {

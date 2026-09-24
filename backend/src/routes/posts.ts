@@ -16,6 +16,7 @@ import {
   tenderCardsFor,
 } from '../posts';
 import { deleteVideoCompletely, refreshPendingVideos } from '../videos';
+import { fetchPreview, isPreviewError, parseHttpUrl } from '../linkPreview';
 import { NOT_TEXTILE_MESSAGE, REPORT_REASONS, checkTextileRelevance, feedFilters, publicPostRule, reportPost } from '../feedRules';
 
 export const postsRouter = Router();
@@ -24,6 +25,42 @@ postsRouter.use(requireAuth);
 const handle = makeHandle('posts');
 
 const DEFAULT_LIMIT = 10;
+
+// Paylaşılan bağlantı (önizleme kartı). Görsel yalnızca data URL (izleme pikseli olmasın).
+const linkSchema = z
+  .object({
+    url: z.string().trim().min(1).max(2000).refine((u) => !!parseHttpUrl(u), { message: 'invalid_url' }),
+    title: z.string().trim().max(300).default(''),
+    description: z.string().trim().max(240).default(''),
+    siteName: z.string().trim().max(100).default(''),
+    imageDataUrl: z.string().startsWith('data:image/').max(1_600_000).nullable().optional(),
+  })
+  .strict();
+type LinkInput = z.infer<typeof linkSchema>;
+
+function linkData(link: LinkInput | null) {
+  if (!link) return { linkUrl: null, linkTitle: '', linkDescription: '', linkSiteName: '', linkImage: null };
+  const url = parseHttpUrl(link.url)!;
+  return {
+    linkUrl: url.toString(),
+    linkTitle: link.title,
+    linkDescription: link.description,
+    linkSiteName: link.siteName || url.hostname.replace(/^www\./i, ''),
+    linkImage: link.imageDataUrl ?? null,
+  };
+}
+
+// Önizleme isteği sınırı: kullanıcı başına saatte 30 (bellekte).
+const PREVIEW_LIMIT = 30;
+const previewHits = new Map<string, number[]>();
+function previewAllowed(userId: string) {
+  const now = Date.now();
+  const hits = (previewHits.get(userId) ?? []).filter((t) => now - t < 60 * 60 * 1000);
+  const ok = hits.length < PREVIEW_LIMIT;
+  if (ok) hits.push(now);
+  previewHits.set(userId, hits);
+  return ok;
+}
 
 async function loadViewablePost(req: Request, res: Response) {
   const post = await prisma.post.findUnique({ where: { id: req.params.id } });
@@ -136,6 +173,33 @@ postsRouter.get(
   })
 );
 
+// Bağlantı önizlemesi: başlık, kısa açıklama, site adı ve (varsa) görsel.
+postsRouter.post(
+  '/link-preview',
+  handle(async (req, res) => {
+    const parsed = z.object({ url: z.string().trim().min(1).max(2000) }).safeParse(req.body);
+    if (!parsed.success || !parseHttpUrl(parsed.data.url)) return res.status(400).json({ error: 'invalid_url' });
+    if (!previewAllowed(req.user!.id)) return res.status(429).json({ error: 'rate_limited' });
+    try {
+      const p = await fetchPreview(parsed.data.url);
+      res.json({
+        preview: {
+          url: p.url,
+          title: p.title,
+          description: p.description,
+          siteName: p.siteName,
+          hasImage: !!p.imageDataUrl,
+          ...(p.imageDataUrl ? { imageDataUrl: p.imageDataUrl } : {}),
+        },
+      });
+    } catch (err) {
+      // Ağ hataları (DNS yok, bağlantı reddedildi) da önizleme hatasıdır; istemci alan adıyla kart gösterir.
+      const reason = isPreviewError(err) ? err.message : (err as NodeJS.ErrnoException).code ?? 'network';
+      return res.status(422).json({ error: 'preview_failed', reason });
+    }
+  })
+);
+
 // Herkese açık paylaşım hakkı: istemci seçeneği kilitli/açık gösterir, nedenini yazar.
 postsRouter.get(
   '/public-rule',
@@ -201,14 +265,14 @@ postsRouter.post(
 async function checkPublicAllowed(
   req: Request,
   res: Response,
-  input: { body: string; imageUrl?: string | null; productId?: string | null; excludePostId?: string }
+  input: { body: string; imageUrl?: string | null; productId?: string | null; excludePostId?: string; link?: { title: string; description: string; siteName?: string } | null }
 ) {
   const rule = await publicPostRule(req.user!, { productId: input.productId, excludePostId: input.excludePostId });
   if (!rule.allowed) {
     res.status(403).json({ error: 'public_not_allowed', reason: rule.reason, message: rule.message, rule });
     return false;
   }
-  const rel = await checkTextileRelevance({ body: input.body, imageDataUrl: input.imageUrl, productAttached: !!input.productId });
+  const rel = await checkTextileRelevance({ body: input.body, imageDataUrl: input.imageUrl, productAttached: !!input.productId, link: input.link });
   if (!rel.textile) {
     res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
     return false;
@@ -227,6 +291,17 @@ postsRouter.get(
       return res.status(404).json({ error: 'image_not_found' });
     }
     res.json({ imageUrl: post.imageUrl });
+  })
+);
+
+// Bağlantı kartının görseli: fotoğraf gibi akış yanıtında dönmez, tek tek çekilir.
+postsRouter.get(
+  '/:id/link-image',
+  handle(async (req, res) => {
+    const post = await loadViewablePost(req, res);
+    if (!post) return;
+    if (!post.linkImage) return res.status(404).json({ error: 'image_not_found' });
+    res.json({ imageUrl: post.linkImage });
   })
 );
 
@@ -282,6 +357,8 @@ const updateSchema = z
     body: z.string().trim().max(3000).optional(),
     productId: z.string().min(1).nullable().optional(),
     visibility: z.enum(['public', 'connections']).optional(),
+    // Bağlantı değiştirilebilir/kaldırılabilir (null). Fotoğraf/videolu gönderiye eklenemez.
+    link: linkSchema.nullable().optional(),
   })
   .strict();
 
@@ -295,7 +372,7 @@ postsRouter.patch(
 
     const existing = await prisma.post.findUnique({
       where: { id: req.params.id },
-      select: { id: true, authorId: true, body: true, imageUrl: true, videoId: true, productId: true, visibility: true, createdAt: true },
+      select: { id: true, authorId: true, body: true, imageUrl: true, videoId: true, productId: true, visibility: true, createdAt: true, linkUrl: true, linkTitle: true, linkDescription: true, linkSiteName: true, linkImage: true },
     });
     if (!existing) {
       return res.status(404).json({ error: 'post_not_found' });
@@ -304,9 +381,25 @@ postsRouter.patch(
       return res.status(403).json({ error: 'not_author' });
     }
 
-    const { body, productId, visibility } = parsed.data;
+    const { body, productId, visibility, link } = parsed.data;
     const nextBody = body !== undefined ? body : existing.body;
-    if (!nextBody && !existing.imageUrl && !existing.videoId) {
+    if (link && (existing.imageUrl || existing.videoId)) {
+      return res.status(400).json({ error: 'link_and_media' });
+    }
+    const nextLink =
+      link !== undefined
+        ? link
+          ? { title: link.title, description: link.description, siteName: link.siteName }
+          : null
+        : existing.linkUrl
+          ? { title: existing.linkTitle, description: existing.linkDescription, siteName: existing.linkSiteName }
+          : null;
+    const linkChanged =
+      link !== undefined &&
+      (link
+        ? parseHttpUrl(link.url)!.toString() !== existing.linkUrl || link.title !== existing.linkTitle || link.description !== existing.linkDescription
+        : !!existing.linkUrl);
+    if (!nextBody && !existing.imageUrl && !existing.videoId && !nextLink) {
       return res.status(400).json({ error: 'empty_post' });
     }
     if (productId && productId !== existing.productId && !(await checkOwnProduct(req, res, productId))) return;
@@ -314,16 +407,17 @@ postsRouter.patch(
     const nextVisibility = visibility ?? existing.visibility;
     const nextProductId = productId !== undefined ? productId : existing.productId;
     if (nextVisibility === 'public' && existing.visibility !== 'public') {
-      if (!(await checkPublicAllowed(req, res, { body: nextBody, imageUrl: existing.imageUrl, productId: nextProductId, excludePostId: existing.id }))) return;
-    } else if (nextVisibility === 'public' && nextBody !== existing.body && !nextProductId) {
-      const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl });
+      if (!(await checkPublicAllowed(req, res, { body: nextBody, imageUrl: existing.imageUrl, productId: nextProductId, excludePostId: existing.id, link: nextLink }))) return;
+    } else if (nextVisibility === 'public' && (nextBody !== existing.body || linkChanged) && !nextProductId) {
+      const rel = await checkTextileRelevance({ body: nextBody, imageDataUrl: existing.imageUrl, link: nextLink });
       if (!rel.textile) return res.status(422).json({ error: 'not_textile', message: NOT_TEXTILE_MESSAGE, detail: rel.reason });
     }
 
     const changed =
       nextBody !== existing.body ||
       (visibility !== undefined && visibility !== existing.visibility) ||
-      (productId !== undefined && productId !== existing.productId);
+      (productId !== undefined && productId !== existing.productId) ||
+      linkChanged;
 
     const post = await prisma.post.update({
       where: { id: existing.id },
@@ -331,6 +425,7 @@ postsRouter.patch(
         body: nextBody,
         ...(visibility !== undefined ? { visibility } : {}),
         ...(productId !== undefined ? { productId } : {}),
+        ...(link !== undefined ? linkData(link) : {}),
         // Hiçbir şey değişmediyse "düzenlendi" işareti konmaz.
         ...(changed ? { editedAt: new Date() } : {}),
       },
@@ -350,10 +445,13 @@ const createSchema = z
     productId: z.string().min(1).optional(),
     videoId: z.string().min(1).optional(),
     visibility: z.enum(['public', 'connections']).optional(),
+    link: linkSchema.optional(),
   })
   .strict()
-  .refine((data) => !!data.body?.trim() || !!data.imageUrl || !!data.videoId, { message: 'empty_post' })
-  .refine((data) => !(data.imageUrl && data.videoId), { message: 'image_and_video' });
+  .refine((data) => !!data.body?.trim() || !!data.imageUrl || !!data.videoId || !!data.link, { message: 'empty_post' })
+  .refine((data) => !(data.imageUrl && data.videoId), { message: 'image_and_video' })
+  // Bir gönderide bağlantı ya da fotoğraf/video olur, ikisi birden olmaz.
+  .refine((data) => !(data.link && (data.imageUrl || data.videoId)), { message: 'link_and_media' });
 
 postsRouter.post(
   '/',
@@ -362,7 +460,7 @@ postsRouter.post(
     if (!parsed.success) {
       return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
     }
-    const { body, imageUrl, productId, videoId, visibility } = parsed.data;
+    const { body, imageUrl, productId, videoId, visibility, link } = parsed.data;
 
     if (videoId) {
       const video = await prisma.video.findUnique({
@@ -383,7 +481,7 @@ postsRouter.post(
     }
 
     if (productId && !(await checkOwnProduct(req, res, productId))) return;
-    if ((visibility ?? 'public') === 'public' && !(await checkPublicAllowed(req, res, { body: body?.trim() ?? '', imageUrl, productId }))) return;
+    if ((visibility ?? 'public') === 'public' && !(await checkPublicAllowed(req, res, { body: body?.trim() ?? '', imageUrl, productId, link }))) return;
 
     let post;
     try {
@@ -395,6 +493,7 @@ postsRouter.post(
           productId,
           videoId,
           visibility: visibility ?? 'public',
+          ...(link ? linkData(link) : {}),
         },
         include: POST_INCLUDE,
       });

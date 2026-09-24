@@ -14,12 +14,16 @@ import {
   fetchMyProducts,
   fetchPost,
   fetchProduct,
+  fetchLinkPreview,
   fetchPublicPostRule,
   updatePost,
+  type PostLinkInput,
   type PostVisibility,
   type PublicPostRule,
 } from '../../api/client';
 import { setCachedPostImage } from '../../features/feed/postImageCache';
+import { loadLinkImage, setCachedLinkImage } from '../../features/feed/postLinkImageCache';
+import { LinkPreviewCard, hostOf } from '../../components/LinkPreviewCard';
 import { markFeedStale } from '../../features/feed/feedRefresh';
 import { pickCompressedImage } from '../../features/imagePicker';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
@@ -48,6 +52,26 @@ const MAX_BODY = 3000;
 const BODY_MIN_HEIGHT = 120;
 const PREVIEW_RATIO = 4 / 3;
 const PROGRESS_HEIGHT = 6;
+// Metne yapıştırılan bağlantı yazma durduktan bu kadar sonra önizlenir.
+const LINK_DEBOUNCE_MS = 700;
+
+// Ekrandaki bağlantı kartı: önizleme gelmezse yalnızca adres + alan adı.
+type LinkState = PostLinkInput & { hasImage: boolean; imageUri: string | null };
+
+// Metindeki ilk http(s) bağlantısı (sondaki noktalama hariç).
+function firstUrlIn(text: string): string | null {
+  const m = text.match(/https?:\/\/[^\s<>"']+/i);
+  if (!m) return null;
+  const url = m[0].replace(/[),.;:!?]+$/, '');
+  return /^https?:\/\/[^/\s]+\.[^/\s]+/i.test(url) ? url : null;
+}
+
+function normalizeUrl(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  const withScheme = /^https?:\/\//i.test(v) ? v : `https://${v}`;
+  return /^https?:\/\/[^/\s]+\.[^/\s]+/i.test(withScheme) && !/\s/.test(withScheme) ? withScheme : null;
+}
 
 // Seçili ürünün ekranda gösterilen özeti.
 interface SelectedProduct {
@@ -90,6 +114,17 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const [originalVisibility, setOriginalVisibility] = useState<PostVisibility | null>(null);
   // Sunucu herkese açık paylaşımı reddettiyse (403/422) tek dokunuşla "Bağlantılarımla paylaş".
   const [offerConnections, setOfferConnections] = useState(false);
+  // Paylaşılan bağlantı (fotoğraf/video ile birlikte olmaz).
+  const [link, setLink] = useState<LinkState | null>(null);
+  const [linkLoading, setLinkLoading] = useState(false);
+  // Düzenlemede bağlantıya dokunulmadıysa sunucuya gönderilmez.
+  const [linkDirty, setLinkDirty] = useState(false);
+  const [linkInputOpen, setLinkInputOpen] = useState(false);
+  const [linkDraft, setLinkDraft] = useState('');
+  const [linkDraftError, setLinkDraftError] = useState<string | null>(null);
+  // Kullanıcının kaldırdığı adres metinde dursa da yeniden önizlenmez.
+  const dismissedUrlRef = useRef<string | null>(null);
+  const linkRequestRef = useRef(0);
 
   // Seçme, yükleme, ilerleme ve paylaşılmadan çıkılınca temizleme ortak
   // kancada (ürün sayfası ve sohbet de aynısını kullanıyor).
@@ -112,6 +147,19 @@ export function CreatePostScreen({ navigation, route }: Props) {
         setOriginalVisibility(post.visibility);
         setProductId(post.product?.id ?? null);
         setExistingMedia(post.video ? 'video' : post.hasImage ? 'image' : null);
+        if (post.link) {
+          const existing = post.link;
+          setLink({ ...existing, imageDataUrl: null, imageUri: null });
+          if (existing.hasImage) {
+            loadLinkImage(post.id)
+              .then((uri) => {
+                if (!cancelled) setLink((prev) => (prev && prev.url === existing.url ? { ...prev, imageUri: uri } : prev));
+              })
+              .catch(() => {
+                // Görsel gelmezse yer tutucu kalır.
+              });
+          }
+        }
       })
       .catch((err) => {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Gönderi yüklenemedi');
@@ -272,6 +320,64 @@ export function CreatePostScreen({ navigation, route }: Props) {
     }
   };
 
+  // Bağlantı önizlemesi: önce alan adıyla boş kart, sonra sunucunun önizlemesi.
+  const loadLinkPreview = useCallback(async (url: string) => {
+    const request = ++linkRequestRef.current;
+    setLinkDirty(true);
+    setLinkLoading(true);
+    setLink({ url, title: '', description: '', siteName: hostOf(url), imageDataUrl: null, hasImage: false, imageUri: null });
+    try {
+      const { preview } = await fetchLinkPreview(url);
+      if (request !== linkRequestRef.current) return;
+      setLink({
+        url: preview.url,
+        title: preview.title,
+        description: preview.description,
+        siteName: preview.siteName || hostOf(url),
+        imageDataUrl: preview.imageDataUrl ?? null,
+        hasImage: !!preview.imageDataUrl,
+        imageUri: preview.imageDataUrl ?? null,
+      });
+    } catch {
+      // Önizleme alınamadı: alan adlı sade kart kalır, yine paylaşılabilir.
+    } finally {
+      if (request === linkRequestRef.current) setLinkLoading(false);
+    }
+  }, []);
+
+  const hasAnyMedia = !!imageDataUrl || !!videoUpload.video || !!existingMedia;
+
+  // Metne yapıştırılan bağlantı: yazma durunca önizlenir (fotoğraf/video yoksa).
+  useEffect(() => {
+    if (loadingPost || link || hasAnyMedia) return;
+    const url = firstUrlIn(body);
+    if (!url || url === dismissedUrlRef.current) return;
+    const timer = setTimeout(() => loadLinkPreview(url), LINK_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [body, link, hasAnyMedia, loadingPost, loadLinkPreview]);
+
+  const removeLink = () => {
+    haptics.selection();
+    linkRequestRef.current++;
+    if (link) dismissedUrlRef.current = link.url;
+    setLink(null);
+    setLinkLoading(false);
+    setLinkDirty(true);
+  };
+
+  const submitLinkDraft = () => {
+    const url = normalizeUrl(linkDraft);
+    if (!url) {
+      setLinkDraftError('Geçerli bir adres yazın (ör. https://site.com/haber).');
+      return;
+    }
+    setLinkDraftError(null);
+    setLinkInputOpen(false);
+    setLinkDraft('');
+    dismissedUrlRef.current = null;
+    loadLinkPreview(url);
+  };
+
   const pickAndUploadVideo = async () => {
     setError(null);
     await videoUpload.pickAndUpload();
@@ -291,8 +397,11 @@ export function CreatePostScreen({ navigation, route }: Props) {
   const videoRef = videoUpload.uploadedRef;
   const hasMedia = !!imageDataUrl || !!video;
   const canSubmit = isEditing
-    ? (body.trim().length > 0 || !!existingMedia) && !submitting && !loadingPost
-    : (body.trim().length > 0 || !!imageDataUrl || !!videoRef) && !submitting && !uploadingVideo;
+    ? (body.trim().length > 0 || !!existingMedia || !!link) && !submitting && !loadingPost && !linkLoading
+    : (body.trim().length > 0 || !!imageDataUrl || !!videoRef || !!link) && !submitting && !uploadingVideo && !linkLoading;
+  const linkPayload: PostLinkInput | null = link
+    ? { url: link.url, title: link.title, description: link.description, siteName: link.siteName, imageDataUrl: link.imageDataUrl ?? null }
+    : null;
 
   const handleSubmit = async (overrideVisibility?: PostVisibility) => {
     if (!canSubmit) return;
@@ -303,7 +412,13 @@ export function CreatePostScreen({ navigation, route }: Props) {
     setOfferConnections(false);
     try {
       if (editingPostId) {
-        await updatePost(editingPostId, { body: body.trim(), visibility, productId });
+        await updatePost(editingPostId, {
+          body: body.trim(),
+          visibility,
+          productId,
+          // Dokunulmayan bağlantı gönderilmez (görseli yeniden yüklenmesin).
+          ...(linkDirty ? { link: linkPayload } : {}),
+        });
         markFeedStale();
         navigation.goBack();
         return;
@@ -315,6 +430,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
         videoId: videoRef?.id,
         productId: productId ?? undefined,
         visibility,
+        link: linkPayload ?? undefined,
       });
       // Video artık gönderiye bağlı; ekrandan çıkarken silinmesin.
       videoUpload.markAttached();
@@ -322,6 +438,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
       // Az önce yüklediğimiz fotoğrafı önbelleğe koyuyoruz ki akışa dönünce
       // tekrar indirilmesin.
       if (post.imageUrl) setCachedPostImage(post.id, post.imageUrl);
+      if (link?.imageDataUrl) setCachedLinkImage(post.id, link.imageDataUrl);
       navigation.goBack();
     } catch (err) {
       // Herkese açık reddi: sunucunun açıklaması + "Bağlantılarımla paylaş".
@@ -445,6 +562,56 @@ export function CreatePostScreen({ navigation, route }: Props) {
     </View>
   ) : null;
 
+  const canAddLink = !link && !linkInputOpen && (isEditing ? !existingMedia : !hasMedia && !uploadingVideo);
+  const linkSection = link ? (
+    <LinkPreviewCard
+      url={link.url}
+      title={link.title}
+      description={link.description}
+      siteName={link.siteName}
+      imageUri={link.imageUri}
+      hasImage={link.hasImage}
+      loading={linkLoading}
+      onRemove={removeLink}
+    />
+  ) : linkInputOpen ? (
+    <Card>
+      <View style={{ gap: t.space[3] }}>
+        <Input
+          label="Bağlantı adresi"
+          placeholder="https://…"
+          value={linkDraft}
+          onChangeText={(v) => {
+            setLinkDraft(v);
+            setLinkDraftError(null);
+          }}
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="url"
+          returnKeyType="done"
+          onSubmitEditing={submitLinkDraft}
+          error={linkDraftError ?? undefined}
+          autoFocus
+        />
+        <View style={{ flexDirection: 'row', gap: t.space[2] }}>
+          <Button
+            kind="secondary"
+            label="Vazgeç"
+            onPress={() => {
+              setLinkInputOpen(false);
+              setLinkDraft('');
+              setLinkDraftError(null);
+            }}
+            style={{ flex: 1 }}
+          />
+          <Button label="Ekle" icon="link-outline" onPress={submitLinkDraft} style={{ flex: 1 }} />
+        </View>
+      </View>
+    </Card>
+  ) : isEditing && canAddLink ? (
+    <Button kind="secondary" label="Bağlantı ekle" icon="link-outline" fullWidth onPress={() => setLinkInputOpen(true)} />
+  ) : null;
+
   const mediaSection = isEditing ? (
     <View style={{ gap: t.space[3] }}>
       <SectionTitle title="Fotoğraf veya video" />
@@ -470,8 +637,14 @@ export function CreatePostScreen({ navigation, route }: Props) {
       <Card>
         <View style={{ gap: t.space[3] }}>
           <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
-            Bir gönderiye bir fotoğraf ya da en fazla {MAX_VIDEO_SECONDS} saniyelik bir video eklenebilir.
+            Bir gönderiye bir fotoğraf, en fazla {MAX_VIDEO_SECONDS} saniyelik bir video ya da bir haber/makale
+            bağlantısı eklenebilir.
           </Text>
+          {link ? (
+            <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+              Gönderide bağlantı var; fotoğraf veya video eklemek için önce bağlantıyı kaldırın.
+            </Text>
+          ) : null}
 
           {imageUri ? (
             <Image
@@ -521,8 +694,8 @@ export function CreatePostScreen({ navigation, route }: Props) {
             </View>
           ) : null}
 
-          <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-            {!video ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+            {!video && !link ? (
               <Button
                 kind="secondary"
                 label={pickingImage ? 'İşleniyor…' : imageUri ? 'Fotoğrafı değiştir' : 'Fotoğraf ekle'}
@@ -532,12 +705,22 @@ export function CreatePostScreen({ navigation, route }: Props) {
                 style={{ flex: 1 }}
               />
             ) : null}
-            {!imageUri && !video ? (
+            {!imageUri && !video && !link ? (
               <Button
                 kind="secondary"
                 label="Video ekle"
                 icon="videocam-outline"
                 onPress={pickAndUploadVideo}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            {canAddLink ? (
+              <Button
+                kind="secondary"
+                label="Bağlantı"
+                accessibilityLabel="Bağlantı ekle"
+                icon="link-outline"
+                onPress={() => setLinkInputOpen(true)}
                 style={{ flex: 1 }}
               />
             ) : null}
@@ -597,6 +780,7 @@ export function CreatePostScreen({ navigation, route }: Props) {
           containerStyle={{ minHeight: BODY_MIN_HEIGHT }}
         />
 
+        {linkSection}
         {productSection}
         {mediaSection}
 

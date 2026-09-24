@@ -105,6 +105,11 @@ type PostWithIncludes = {
   id: string;
   body: string;
   imageUrl: string | null;
+  linkUrl?: string | null;
+  linkTitle?: string;
+  linkDescription?: string;
+  linkSiteName?: string;
+  linkImage?: string | null;
   visibility: string;
   createdAt: Date;
   editedAt: Date | null;
@@ -146,6 +151,10 @@ export function toFeedRow(post: PostWithIncludes, likedByMe: boolean, includeIma
     body: post.body,
     hasImage: !!post.imageUrl,
     imageUrl: includeImage ? post.imageUrl : null,
+    // Paylaşılan bağlantı kartı; görsel ayrı uçtan (/posts/:id/link-image) çekilir.
+    link: post.linkUrl
+      ? { url: post.linkUrl, title: post.linkTitle ?? '', description: post.linkDescription ?? '', siteName: post.linkSiteName ?? '', hasImage: !!post.linkImage }
+      : null,
     visibility: post.visibility,
     createdAt: post.createdAt,
     editedAt: post.editedAt,
