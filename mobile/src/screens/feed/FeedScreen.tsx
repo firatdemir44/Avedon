@@ -25,7 +25,6 @@ import {
   type TodaySummary,
 } from '../../api/client';
 import { PostCard } from './PostCard';
-import { SectorNewsCard } from '../news/SectorNewsCard';
 import { friendlyMessage } from '../../components/StateView';
 import { refreshControl } from '../../components/refresh';
 import { consumeFeedStale } from '../../features/feed/feedRefresh';
@@ -74,7 +73,6 @@ export function FeedScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Aşağı çekip yenilemede Sektör gündemi kartı da yenilenir.
-  const [newsRefreshKey, setNewsRefreshKey] = useState(0);
   // Varsayılan "Bağlantılarım" (akış düzeni 2026-09-23); seçim hatırlanır.
   const [scope, setScope] = useState<FeedScope>('connections');
   // "Sektör" sekmesinde "Benim için" süzgeci: varsayılan açık, hatırlanır.
@@ -376,7 +374,7 @@ export function FeedScreen({ navigation }: Props) {
       </View>
 
       {/* Sektör gündemi: firma türüne göre günün başlıkları (iki akış sekmesinde de). */}
-      <SectorNewsCard refreshKey={newsRefreshKey} onSeeAll={() => navigation.navigate('SectorNews')} />
+      {/* Sektör gündemi kartı Fırat'ın kararıyla şimdilik kaldırıldı (2026-09-24: akışa yoğunluk veriyor). Bileşen ve SectorNews ekranı duruyor. */}
 
       {error && posts.length > 0 ? (
         <View
@@ -443,7 +441,6 @@ export function FeedScreen({ navigation }: Props) {
           refreshControl={refreshControl(refreshing, () => {
             setRefreshing(true);
             loadToday();
-            setNewsRefreshKey((k) => k + 1);
             loadFirstPage(true);
           })}
           onEndReached={loadMore}
