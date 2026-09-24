@@ -9,7 +9,7 @@ import { buildIndex, findTerms, matchTerm, type TermMatch } from './normalize';
 // Anahtarlar catalog.ts'teki SUBTYPES ile aynı olmalı; test dosyası bunu denetler.
 export const SUBTYPE_SYNONYMS: Record<string, readonly string[]> = {
   // Örme
-  suprem: ['süprem', 'single jersey', 'singlejersey', 'tek plaka', 'jersey', 'sj', 'suprem'],
+  suprem: ['süprem', 'single jersey', 'singlejersey', 'tek plaka', 'jersey', 'sj', 'suprem', 'supreme'],
   iki_iplik: ['iki iplik', '2 iplik', 'two thread fleece', '2 thread', 'iki iplik sardonlu'],
   uc_iplik: ['üç iplik', '3 iplik', 'three thread fleece', '3 thread', 'sardonlu uc iplik'],
   interlok: ['interlock', 'interlok'],

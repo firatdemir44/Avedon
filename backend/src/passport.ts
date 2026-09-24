@@ -85,7 +85,7 @@ export const testReportSchema = z
   })
   .strict();
 
-export const FIELD_META_SOURCES = ['manual', 'parsed_content', 'extracted', 'whatsapp'] as const;
+export const FIELD_META_SOURCES = ['manual', 'parsed_content', 'extracted', 'whatsapp', 'web', 'file'] as const;
 
 // İstemci hangi alanların çıkarımdan geldiğini bildirir (Adım 3); onaylananlar
 // confirmed: true. Elle girilen alanlar için satır gönderilmez.

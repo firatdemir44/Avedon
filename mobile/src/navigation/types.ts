@@ -134,6 +134,8 @@ export type RootStackParamList = {
   MachineForm: { machineId?: string } | undefined;
   // Parkur tablosunun fotoğrafından/PDF'inden toplu makine aktarımı.
   MachineImport: undefined;
+  // Toplu ürün aktarımı: firma web sitesinden ya da Excel/CSV/PDF/fotoğraftan.
+  CatalogImport: { source?: 'web' | 'file' } | undefined;
   CapacitySearch: undefined;
   // İplik dizini (Faz 2, Adım 6). preset: kumaş pasaportundaki "Kim satıyor?"
   // bağlantısı dizini o numara/birimle ön dolu açar; presetKey her açılışta

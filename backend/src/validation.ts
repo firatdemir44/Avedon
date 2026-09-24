@@ -24,7 +24,7 @@ export const MAX_PRODUCT_IMAGES = 6;
 // Telefon fotoğrafı 1000 px'e küçültüp JPEG %60 ile gönderiyor (~150-250 KB,
 // base64 ile ~%33 büyür). Sınır, sıkıştırılmamış bir fotoğrafın yanlışlıkla
 // veritabanına girmesini engelliyor.
-const MAX_PRODUCT_IMAGE_CHARS = 700_000;
+export const MAX_PRODUCT_IMAGE_CHARS = 700_000;
 
 const imageDataUrl = z.string().startsWith('data:image/').max(MAX_PRODUCT_IMAGE_CHARS);
 const usageKeys = USAGES.map((u) => u.key) as [string, ...string[]];

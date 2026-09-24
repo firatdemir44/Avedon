@@ -41,6 +41,7 @@ import { CompanyFaqScreen } from '../screens/assistant/CompanyFaqScreen';
 import { MachineParkScreen } from '../screens/machines/MachineParkScreen';
 import { MachineFormScreen } from '../screens/machines/MachineFormScreen';
 import { MachineImportScreen } from '../screens/machines/MachineImportScreen';
+import { CatalogImportScreen } from '../screens/company/CatalogImportScreen';
 import { CapacitySearchScreen } from '../screens/machines/CapacitySearchScreen';
 import { YarnDirectoryScreen } from '../screens/yarns/YarnDirectoryScreen';
 import { YarnFormScreen } from '../screens/yarns/YarnFormScreen';
@@ -324,6 +325,7 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Makine Ekle' }}
             />
             <Stack.Screen name="MachineImport" component={MachineImportScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="CatalogImport" component={CatalogImportScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CapacitySearch"
               component={CapacitySearchScreen}

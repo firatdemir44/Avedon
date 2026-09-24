@@ -1432,6 +1432,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {tab === 'machines' ? machinesContent : null}
       {tab === 'products' ? (
         <View style={{ gap: t.space[3] }}>
+          {isOwnCompany ? (
+            <ButtonRow>
+              <Button kind="secondary" label="Web sitesinden aktar" icon="globe-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'web' })} />
+              <Button kind="secondary" label="Dosyadan aktar" icon="document-outline" onPress={() => navigation.navigate('CatalogImport', { source: 'file' })} />
+            </ButtonRow>
+          ) : null}
           {productFilters}
           {visibleProducts.length ? (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>

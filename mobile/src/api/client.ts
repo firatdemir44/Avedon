@@ -802,7 +802,7 @@ export interface TestReportInput {
 export interface FieldMetaInput {
   field: string;
   confidence: number;
-  source: 'manual' | 'parsed_content' | 'extracted' | 'whatsapp';
+  source: 'manual' | 'parsed_content' | 'extracted' | 'whatsapp' | 'web' | 'file';
   confirmed: boolean;
 }
 
@@ -3251,4 +3251,67 @@ export interface BuyerLeadItem {
 }
 export function fetchBuyerLeads() {
   return request<{ leads: BuyerLeadItem[] }>('/export/leads');
+}
+
+// --- Toplu ürün aktarımı: web sitesinden ya da dosyadan (backend/src/routes/catalogImport.ts) ---
+
+export type CatalogImportStatus = 'scanning' | 'ready' | 'committing' | 'done' | 'failed';
+
+export interface CatalogImportItem {
+  key: string;
+  code: string;
+  name: string;
+  type: ProductType | null;
+  subtype: string;
+  weightGsm: number | null;
+  widthCm: number | null;
+  compositionText: string;
+  usages: string[];
+  unmappedUses: string[];
+  // Önizleme için sitedeki (uzak) küçük görseller; kayıtta sunucu indirir.
+  imageUrls: string[];
+  sourceUrl: string;
+  exists: boolean;
+  duplicate: boolean;
+  canImport: boolean;
+  warnings: string[];
+  commerce: {
+    priceValue: number | null;
+    priceCurrency: '' | 'TRY' | 'USD' | 'EUR';
+    priceUnit: '' | 'm' | 'kg';
+    stock: number | null;
+    stockUnit: 'm' | 'kg';
+    moq: number | null;
+    leadTimeDays: number | null;
+  };
+}
+
+export interface CatalogImportJob {
+  jobId: string;
+  source: 'web' | 'file';
+  url: string;
+  fileName: string;
+  notices: string[];
+  status: CatalogImportStatus;
+  error: string | null;
+  progress: { done: number; total: number };
+  commit: { done: number; total: number; created: number; skipped: number; failed: number } | null;
+  items: CatalogImportItem[];
+}
+
+export function startCatalogScan(url: string) {
+  return request<{ jobId: string }>('/products/import/scan', { method: 'POST', body: JSON.stringify({ url }) });
+}
+
+// Dosya data URL olarak gider (10 MB'a kadar); yükleme uzun sürebilir.
+export function startCatalogFileImport(file: string, fileName: string) {
+  return request<{ jobId: string }>('/products/import/file', { method: 'POST', body: JSON.stringify({ file, fileName }) }, 120_000);
+}
+
+export function fetchCatalogImportJob(jobId: string) {
+  return request<CatalogImportJob>(`/products/import/scan/${encodeURIComponent(jobId)}`);
+}
+
+export function commitCatalogImport(jobId: string, keys: string[]) {
+  return request<{ status: 'committing'; total: number }>('/products/import/commit', { method: 'POST', body: JSON.stringify({ jobId, keys }) });
 }
