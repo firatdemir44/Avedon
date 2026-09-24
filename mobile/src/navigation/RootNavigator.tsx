@@ -28,6 +28,7 @@ import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
 import { ProductDraftsScreen } from '../screens/company/ProductDraftsScreen';
 import { ProductDetailScreen } from '../screens/products/ProductDetailScreen';
+import { SampleSetScreen } from '../screens/export/SampleSetScreen';
 import { ProductFiltersScreen } from '../screens/products/ProductFiltersScreen';
 import { SimilarSearchScreen } from '../screens/products/SimilarSearchScreen';
 import { FavoriteProductsScreen } from '../screens/products/FavoriteProductsScreen';
@@ -224,6 +225,7 @@ export function RootNavigator() {
             <Stack.Screen name="ExportRadar" component={ExportRadarScreen} />
             <Stack.Screen name="ExportBuyers" component={BuyerListScreen} />
             <Stack.Screen name="ExportLeads" component={LeadsScreen} />
+            <Stack.Screen name="SampleSet" component={SampleSetScreen} />
             <Stack.Screen name="ClaimCompany" component={ClaimCompanyScreen} />
             <Stack.Screen
               name="EditCompany"

@@ -199,4 +199,9 @@ export const server: Record<string, string> = {
   'İçerik %{p} uyumlu (etiket: {label})': 'Composition {p}% match (label: {label})',
   'etikette elastan var, bu üründe yok': 'the label has elastane, this product does not',
   'bu üründe elastan var, etikette yok': 'this product has elastane, the label does not',
+  // Kartela önerisi
+  'Kataloğunuzda ürün yok; önce ürün ekleyin.': 'Your catalog has no products; add products first.',
+  '{buyer} için kartela': 'Swatch set for {buyer}',
+  'Deneme kipi: ilk ürünler önerildi.': 'Test mode: the first products were suggested.',
+  'Deneme kipi önerisi.': 'Test mode suggestion.',
 };

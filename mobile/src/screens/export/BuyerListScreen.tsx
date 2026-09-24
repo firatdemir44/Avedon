@@ -194,7 +194,9 @@ export function BuyerListScreen({ navigation, route }: Props) {
       <FlatList
         data={buyers}
         keyExtractor={(b) => b.id}
-        renderItem={({ item }) => <BuyerCard buyer={item} onStatus={() => setEditing(item)} />}
+        renderItem={({ item }) => (
+          <BuyerCard buyer={item} onStatus={() => setEditing(item)} onSampleSet={() => navigation.navigate('SampleSet', { buyerId: item.id, buyerName: item.name })} />
+        )}
         ItemSeparatorComponent={() => <View style={{ height: t.space[3] }} />}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
@@ -213,7 +215,7 @@ export function BuyerListScreen({ navigation, route }: Props) {
   );
 }
 
-function BuyerCard({ buyer, onStatus }: { buyer: ExportBuyer; onStatus: () => void }) {
+function BuyerCard({ buyer, onStatus, onSampleSet }: { buyer: ExportBuyer; onStatus: () => void; onSampleSet: () => void }) {
   const t = useTheme();
   const status = buyer.lead ? leadStatusOf(buyer.lead.status) : null;
   const subtitle = [buyer.city, buyer.sizeLabel, buyer.foundedYear ? tr("{year}'den beri", { year: buyer.foundedYear }) : null].filter(Boolean).join(' · ');
@@ -247,6 +249,7 @@ function BuyerCard({ buyer, onStatus }: { buyer: ExportBuyer; onStatus: () => vo
           ))}
         </View>
         {buyer.lead?.note ? <Text style={[t.type.body14, { color: t.colors.ink }]}>{tr('Not: {note}', { note: buyer.lead.note })}</Text> : null}
+        <Button kind="primary" icon="color-palette-outline" label={tr('Kartela öner')} onPress={onSampleSet} fullWidth />
         <ButtonRow>
           <Button kind="secondary" icon="bookmark-outline" label={status ? tr('Durumu değiştir') : tr('Takibe al')} onPress={onStatus} />
           {buyer.website ? (

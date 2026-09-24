@@ -3302,6 +3302,69 @@ export function fetchBuyerLeads() {
   return request<{ leads: BuyerLeadItem[] }>('/export/leads');
 }
 
+// --- Kartela önerisi (backend/src/routes/sampleSets.ts) ---
+export type SampleSetStatus = 'taslak' | 'gonderildi';
+export interface SampleSetItem {
+  productId: string;
+  score: number;
+  reason: string;
+  selected: boolean;
+  product: {
+    id: string;
+    code: string;
+    type: string;
+    typeLabel: string;
+    subtypeLabel: string;
+    composition: string;
+    weightGsm: number | null;
+    widthCm: number | null;
+    stock: number | null;
+    stockUnit: string;
+    hasImage: boolean;
+  };
+}
+export interface SampleSet {
+  id: string;
+  buyerId: string;
+  title: string;
+  summary: string;
+  lang: string;
+  status: SampleSetStatus;
+  shareUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+  items: SampleSetItem[];
+}
+export interface SampleSetSummary {
+  id: string;
+  buyerId: string;
+  buyerName: string;
+  title: string;
+  status: SampleSetStatus;
+  itemCount: number;
+  selectedCount: number;
+  shareUrl: string | null;
+  updatedAt: string;
+}
+export function suggestSampleSet(buyerId: string) {
+  return request<{ set: SampleSet }>(`/export/buyers/${encodeURIComponent(buyerId)}/sample-set/suggest`, { method: 'POST', body: '{}' });
+}
+export function fetchSampleSets(buyerId?: string) {
+  return request<{ sets: SampleSetSummary[] }>(`/export/sample-sets${buyerId ? `?buyerId=${encodeURIComponent(buyerId)}` : ''}`);
+}
+export function fetchSampleSet(id: string) {
+  return request<{ set: SampleSet }>(`/export/sample-sets/${encodeURIComponent(id)}`);
+}
+export function updateSampleSet(id: string, body: { selected?: string[]; title?: string }) {
+  return request<{ set: SampleSet }>(`/export/sample-sets/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+export function shareSampleSet(id: string) {
+  return request<{ url: string }>(`/export/sample-sets/${encodeURIComponent(id)}/share`, { method: 'POST', body: '{}' });
+}
+export function markSampleSetSent(id: string) {
+  return request<{ set: SampleSet; lead: { status: BuyerLeadStatus } }>(`/export/sample-sets/${encodeURIComponent(id)}/sent`, { method: 'POST', body: '{}' });
+}
+
 // --- Toplu ürün aktarımı: web sitesinden ya da dosyadan (backend/src/routes/catalogImport.ts) ---
 
 export type CatalogImportStatus = 'scanning' | 'ready' | 'committing' | 'done' | 'failed';

@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Linking, RefreshControl, ScrollView, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { tr } from '../../i18n';
-import { fetchBuyerLeads, type BuyerLeadItem, type BuyerLeadStatus } from '../../api/client';
+import { fetchBuyerLeads, fetchSampleSets, type BuyerLeadItem, type BuyerLeadStatus, type SampleSetSummary } from '../../api/client';
 import { friendlyMessage } from '../../components/StateView';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Badge, Button, ButtonRow, Card, EmptyState, SectionTitle, SkeletonRow, useBottomPadding } from '../../ui';
@@ -18,13 +18,15 @@ export function LeadsScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<BuyerLeadItem | null>(null);
+  const [sets, setSets] = useState<SampleSetSummary[]>([]);
 
   const load = useCallback(async (refresh = false) => {
     if (refresh) setRefreshing(true);
     setError(null);
     try {
-      const res = await fetchBuyerLeads();
+      const [res, setsRes] = await Promise.all([fetchBuyerLeads(), fetchSampleSets().catch(() => ({ sets: [] as SampleSetSummary[] }))]);
       setLeads(res.leads);
+      setSets(setsRes.sets);
     } catch (err) {
       setError(friendlyMessage(err, tr('Takip listesi alınamadı')));
     } finally {
@@ -32,9 +34,8 @@ export function LeadsScreen({ navigation }: Props) {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // İlk açılışta ve kartela ekranından dönünce (numune gönderildi) liste tazelensin.
+  useEffect(() => navigation.addListener('focus', () => load()), [navigation, load]);
 
   const groups = useMemo(
     () => LEAD_STATUS.map((s) => ({ ...s, items: (leads ?? []).filter((l) => l.status === s.key) })).filter((g) => g.items.length),
@@ -87,6 +88,19 @@ export function LeadsScreen({ navigation }: Props) {
                       <Badge kind={g.badge} label={tr(g.label)} />
                     </View>
                     {l.note ? <Text style={[t.type.body14, { color: t.colors.ink }]}>{tr('Not: {note}', { note: l.note })}</Text> : null}
+                    {sets
+                      .filter((s) => s.buyerId === l.buyer.id)
+                      .slice(0, 3)
+                      .map((s) => (
+                        <Button
+                          key={s.id}
+                          kind="quiet"
+                          icon="color-palette-outline"
+                          label={tr('{title} · {n} ürün · {status}', { title: s.title, n: s.selectedCount, status: s.status === 'gonderildi' ? tr('gönderildi') : tr('taslak') })}
+                          onPress={() => navigation.navigate('SampleSet', { buyerId: l.buyer.id, buyerName: l.buyer.name, setId: s.id })}
+                        />
+                      ))}
+                    <Button kind="secondary" icon="color-palette-outline" label={tr('Kartela öner')} onPress={() => navigation.navigate('SampleSet', { buyerId: l.buyer.id, buyerName: l.buyer.name })} />
                     <ButtonRow>
                       <Button kind="secondary" icon="bookmark-outline" label={tr('Durumu değiştir')} onPress={() => setEditing(l)} />
                       <Button

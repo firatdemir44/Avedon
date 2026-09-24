@@ -20,7 +20,7 @@ const handle = makeHandle('dpp');
 
 export const DPP_SCHEMA = 'avedon-dpp-hazirlik/1';
 
-const publicBase = () => (process.env.PUBLIC_WEB_URL ?? 'https://avedon-blond.vercel.app').replace(/\/+$/, '');
+export const publicBase = () => (process.env.PUBLIC_WEB_URL ?? 'https://avedon-blond.vercel.app').replace(/\/+$/, '');
 export const passportUrl = (productId: string) => `${publicBase()}/pasaport.html?id=${encodeURIComponent(productId)}`;
 
 const SELECT = {

@@ -23,6 +23,7 @@ datasource db {
 model Company {
   id                String    @id @default(cuid())
   buyerLeads        BuyerLead[]
+  sampleSets        SampleSet[]
   name              String
   taxId             String
   about             String    @default("")
@@ -1211,6 +1212,7 @@ model BuyerCompany {
   fetchedAt       DateTime    @default(now())
   raw             String      @default("")
   leads           BuyerLead[]
+  sampleSets      SampleSet[]
 
   @@unique([source, sourceId])
   @@index([countryIso2, segment])
@@ -1275,4 +1277,25 @@ model FxRate {
 
   @@unique([date, code])
   @@index([code, date])
+}
+
+// Kartela önerisi (2026-10-04): alıcıya gönderilecek ilk numune seti. Model alıcı profiline göre
+// firmanın kataloğundan 5-10 ürün seçer; itemsJson = [{productId, score, reason, selected}].
+// shareToken: alıcıya giden herkese açık sayfa (numune-seti.html); fiyat/stok asla dışa çıkmaz.
+model SampleSet {
+  id         String       @id @default(cuid())
+  companyId  String
+  company    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  buyerId    String
+  buyer      BuyerCompany @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  title      String       @default("")
+  itemsJson  String       @default("[]")
+  summary    String       @default("")
+  lang       String       @default("tr")
+  shareToken String?      @unique
+  status     String       @default("taslak") // taslak | gonderildi
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([companyId, buyerId])
 }

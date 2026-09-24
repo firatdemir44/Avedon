@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en" translate="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="google" content="notranslate">
+<title>Takyon Swatch Set</title>
+<style>
+  body { margin: 0; background: #EEF1F4; color: #111A22; font-family: 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.5; }
+  header { background: #133C5F; color: #fff; padding: 20px 16px; }
+  header div { max-width: 820px; margin: 0 auto; }
+  header small { opacity: .8; letter-spacing: .5px; font-size: 12px; }
+  header h1 { margin: 4px 0 2px; font-size: 24px; }
+  header p { margin: 0; opacity: .9; font-size: 15px; }
+  main { max-width: 820px; margin: 0 auto; padding: 16px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar button, .toolbar a { padding: 9px 14px; border-radius: 6px; border: 1px solid #133C5F; background: #133C5F; color: #fff; font-size: 14px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .toolbar a { background: #fff; color: #133C5F; }
+  .items { display: grid; gap: 12px; }
+  article { background: #fff; border: 1px solid #D9DEE4; border-radius: 6px; padding: 14px 16px; display: flex; gap: 14px; break-inside: avoid; page-break-inside: avoid; }
+  article img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; flex: none; background: #E5E9EE; }
+  article .body { flex: 1; min-width: 0; }
+  article h2 { margin: 0 0 2px; font-size: 18px; font-family: Consolas, 'IBM Plex Mono', monospace; }
+  article .kind { color: #5B6672; font-size: 14px; margin-bottom: 8px; }
+  dl { display: grid; grid-template-columns: minmax(96px, 30%) 1fr; gap: 4px 12px; margin: 0; font-size: 14.5px; }
+  dt { color: #5B6672; } dd { margin: 0; word-break: break-word; }
+  .num { color: #5B6672; font-size: 13px; float: right; }
+  a.pp { color: #133C5F; font-size: 14px; }
+  .note { font-size: 12.5px; color: #5B6672; margin-top: 16px; }
+  #state { padding: 40px 16px; text-align: center; color: #5B6672; }
+  @media (max-width: 480px) { article { flex-direction: column; } article img { width: 100%; height: 160px; } }
+  @media print {
+    body { background: #fff; }
+    header { background: #fff; color: #111A22; border-bottom: 2px solid #133C5F; padding: 0 0 8px; }
+    .toolbar { display: none; }
+    main { padding: 8px 0; }
+    article { border-color: #BFC6CE; }
+    a.pp::after { content: ' (' attr(href) ')'; font-size: 10px; color: #5B6672; word-break: break-all; }
+  }
+</style>
+</head>
+<body>
+<header><div><small id="brand">TAKYON · SWATCH SET</small><h1 id="title">…</h1><p id="sub"></p></div></header>
+<main>
+  <div id="state">Loading… / Yükleniyor…</div>
+  <div id="content" hidden>
+    <div class="toolbar"><button type="button" id="print">Print / Save as PDF</button><a id="langLink" href="#">Türkçe</a></div>
+    <div id="items" class="items"></div>
+    <p class="note" id="note"></p>
+  </div>
+</main>
+<script>
+(function () {
+  // Canlıda Render; yerelde denemek için ?api=http://localhost:4000/api verilebilir (yalnızca localhost kabul edilir).
+  var params = new URLSearchParams(location.search);
+  var api = 'https://avedon-backend.onrender.com/api';
+  var override = params.get('api');
+  if (override && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api$/.test(override)) api = override;
+  var token = params.get('t') || '';
+  var lang = params.get('lang') === 'tr' ? 'tr' : 'en';
+  var state = document.getElementById('state');
+  var T = {
+    en: { brand: 'TAKYON · SWATCH SET', prepared: 'Prepared by {c} for {b}', comp: 'Composition', gsm: 'Weight', width: 'Width', fin: 'Finishes', use: 'End uses', pp: 'Product passport', print: 'Print / Save as PDF', other: 'Türkçe', invalid: 'Invalid link.', missing: 'This swatch set is not available.', err: 'Could not load. Please try again.', empty: 'No products in this set.', note: 'Technical data declared by the supplier. Prices and availability on request.', upd: 'Updated' },
+    tr: { brand: 'TAKYON · KARTELA', prepared: '{c} tarafından {b} için hazırlandı', comp: 'Kompozisyon', gsm: 'Gramaj', width: 'En', fin: 'Apreler', use: 'Kullanım', pp: 'Ürün pasaportu', print: 'Yazdır / PDF kaydet', other: 'English', invalid: 'Geçersiz bağlantı.', missing: 'Bu kartela bulunamadı.', err: 'Yüklenemedi. Lütfen tekrar deneyin.', empty: 'Bu sette ürün yok.', note: 'Teknik bilgiler tedarikçinin beyanıdır. Fiyat ve stok bilgisi talep üzerine verilir.', upd: 'Güncelleme' },
+  }[lang];
+  document.documentElement.lang = lang;
+
+  function el(tag, text, cls) { var e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+  function row(dl, label, value) { if (value === '' || value == null) return; dl.appendChild(el('dt', label)); dl.appendChild(el('dd', String(value))); }
+  function fmt(s, v) { return s.replace(/\{(\w+)\}/g, function (m, k) { return v[k] != null ? v[k] : m; }); }
+
+  document.getElementById('brand').textContent = T.brand;
+  document.getElementById('print').textContent = T.print;
+  document.getElementById('print').onclick = function () { window.print(); };
+  var other = new URLSearchParams(location.search); other.set('lang', lang === 'en' ? 'tr' : 'en');
+  var link = document.getElementById('langLink'); link.textContent = T.other; link.href = '?' + other.toString();
+
+  if (!/^[A-Za-z0-9_-]{10,64}$/.test(token)) { state.textContent = T.invalid; document.getElementById('title').textContent = ''; return; }
+
+  fetch(api + '/public/sample-sets/' + encodeURIComponent(token) + '?lang=' + lang).then(function (r) {
+    if (r.status === 404) throw new Error('missing');
+    if (!r.ok) throw new Error('err');
+    return r.json();
+  }).then(function (d) {
+    document.title = d.title + ' · ' + d.company;
+    document.getElementById('title').textContent = d.title;
+    document.getElementById('sub').textContent = fmt(T.prepared, { c: d.company, b: d.buyer });
+    var box = document.getElementById('items');
+    if (!d.items.length) box.appendChild(el('p', T.empty));
+    d.items.forEach(function (it, i) {
+      var a = el('article');
+      if (it.hasImage) {
+        var img = el('img'); img.alt = it.code; img.loading = 'lazy';
+        fetch(api + '/products/' + encodeURIComponent(it.id) + '/image').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+          var src = j && j.imageUrl; if (src && /^data:image\//.test(src)) img.src = src; else img.remove();
+        }).catch(function () { img.remove(); });
+        a.appendChild(img);
+      }
+      var b = el('div', null, 'body');
+      var h = el('h2', it.code || '—'); h.appendChild(el('span', '#' + (i + 1), 'num')); b.appendChild(h);
+      b.appendChild(el('div', [it.type, it.subtype].filter(Boolean).join(' · '), 'kind'));
+      var dl = el('dl');
+      row(dl, T.comp, it.composition);
+      row(dl, T.gsm, it.weightGsm ? it.weightGsm + ' g/m²' : '');
+      row(dl, T.width, it.widthCm ? it.widthCm + ' cm' : '');
+      row(dl, T.fin, (it.finishes || []).join(', '));
+      row(dl, T.use, (it.usages || []).join(', '));
+      b.appendChild(dl);
+      var pp = el('a', T.pp + ' →', 'pp'); pp.href = it.passportUrl; pp.target = '_blank'; pp.rel = 'noopener';
+      var p = el('p'); p.style.margin = '8px 0 0'; p.appendChild(pp); b.appendChild(p);
+      a.appendChild(b);
+      box.appendChild(a);
+    });
+    var upd = new Date(d.updatedAt);
+    document.getElementById('note').textContent = T.note + (isNaN(upd) ? '' : ' · ' + T.upd + ': ' + upd.toLocaleDateString(lang === 'tr' ? 'tr-TR' : 'en-GB'));
+    state.hidden = true;
+    document.getElementById('content').hidden = false;
+  }).catch(function (e) {
+    state.textContent = e.message === 'missing' ? T.missing : T.err;
+  });
+})();
+</script>
+</body>
+</html>

@@ -81,6 +81,8 @@ export type RootStackParamList = {
   ExportBuyers: { hs6: string; hsLabel?: string; country: string; countryName: string };
   // Aday alıcı takip listesi (durumlara göre).
   ExportLeads: undefined;
+  // Kartela önerisi: alıcı için yeni öneri (buyerId) ya da kayıtlı set (setId).
+  SampleSet: { buyerId: string; buyerName: string; setId?: string };
   // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
   ClaimCompany: { companyId: string; companyName: string };
   EditCompany: { companyId: string };
