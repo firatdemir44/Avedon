@@ -10,7 +10,7 @@ import { COMPANY_TYPES, PRODUCT_TYPES } from '../catalog';
 import { prisma } from '../db';
 import { FIBERS } from '../domain/glossary';
 import { notifyMany } from '../notifications';
-import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
+import { PRODUCT_SELECT, STOCK_FIRST_ORDER, buildProductWhere, toProductRow } from '../products';
 import { getSkill, runSkill } from '../skills';
 import type { ToolCallRecord, ToolSet } from './tools';
 
@@ -66,7 +66,7 @@ export function buildBuyerTools(ctx: { askerId: string; threadId: string; seller
     }),
     run: async (args) => {
       const where = buildProductWhere({ search: args.search, type: args.type, fiber: args.fiber, gsmMin: args.gsmMin, gsmMax: args.gsmMax, companyId: ctx.sellerCompanyId });
-      const rows = await prisma.product.findMany({ where, select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: args.limit });
+      const rows = await prisma.product.findMany({ where, select: PRODUCT_SELECT, orderBy: STOCK_FIRST_ORDER, take: args.limit });
       const products = rows.map((r) => {
         // viewerCompanyId null: toProductRow fiyatı hiç yazmaz. Yine de yalnızca açık alanlar seçilir.
         const p = toProductRow(r, null) as Record<string, unknown>;

@@ -253,3 +253,14 @@ export function buildProductWhere(query: ProductQuery): Prisma.ProductWhereInput
 
 // Kullanıcı başına tutulan "son bakılan" kaydı; eskiler budanır.
 export const MAX_RECENT_VIEWS = 50;
+
+// Kural (Fırat 2026-09-24): katalog ve aramalarda STOKTA olan ürünler her zaman önce gelir,
+// ardından diğer kaliteler; her grubun kendi içindeki sıra (ör. en yeni) korunur (kararlı sıralama).
+export function stockFirst<T extends { stock?: number | null }>(rows: T[]): T[] {
+  return rows
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => Number((b.r.stock ?? 0) > 0) - Number((a.r.stock ?? 0) > 0) || a.i - b.i)
+    .map((x) => x.r);
+}
+// Sınırlı (take) sorgularda: önce stoklu, sonra en yeni.
+export const STOCK_FIRST_ORDER = [{ stock: 'desc' as const }, { createdAt: 'desc' as const }];

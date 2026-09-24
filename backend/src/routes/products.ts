@@ -15,6 +15,7 @@ import {
   productQuerySchema,
   replaceProductImages,
   serializeUsages,
+  stockFirst,
   toProductRow,
 } from '../products';
 import {
@@ -57,11 +58,13 @@ productsRouter.get(
       return res.status(400).json({ error: 'invalid_query', details: parsed.error.flatten() });
     }
 
-    const products = await prisma.product.findMany({
-      where: buildProductWhere(parsed.data),
-      orderBy: { createdAt: 'desc' },
-      select: PRODUCT_SELECT,
-    });
+    const products = stockFirst(
+      await prisma.product.findMany({
+        where: buildProductWhere(parsed.data),
+        orderBy: { createdAt: 'desc' },
+        select: PRODUCT_SELECT,
+      })
+    );
     const favorites = await favoriteIdsFor(
       req.user?.id,
       products.map((p) => p.id)

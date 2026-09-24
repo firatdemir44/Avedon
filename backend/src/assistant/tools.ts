@@ -18,7 +18,7 @@ import { insightFor, overview, referenceShare } from '../export/insight';
 import { MAX_TARGETS, askCompanyAssistants } from './delegate';
 import { searchKey } from '../directory';
 import { FIBERS } from '../domain/glossary';
-import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
+import { PRODUCT_SELECT, STOCK_FIRST_ORDER, buildProductWhere, toProductRow } from '../products';
 import { SKILLS, runSkill } from '../skills';
 import { runPassportExtract } from '../skills/passportExtract';
 import { MEMORY_KEYS, MEMORY_KEY_SET, memoryKeyDef } from './memoryKeys';
@@ -109,7 +109,7 @@ export function buildTools(ctx: ToolContext): ToolSet {
         gsmMax: args.gsmMax,
         companyId: ctx.companyId,
       });
-      const rows = await prisma.product.findMany({ where, select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: args.limit });
+      const rows = await prisma.product.findMany({ where, select: PRODUCT_SELECT, orderBy: STOCK_FIRST_ORDER, take: args.limit });
       const products = rows.map((r) => {
         const p = toProductRow(r, ctx.companyId) as Record<string, unknown>;
         return {

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../db';
 import { makeHandle } from './handle';
 import { optionalAuth, requireAuth } from '../middleware/auth';
-import { PRODUCT_SELECT, toProductRow } from '../products';
+import { PRODUCT_SELECT, STOCK_FIRST_ORDER, toProductRow } from '../products';
 import { isValidCompanyType } from '../catalog';
 import {
   COMPANY_PHOTO_KINDS,
@@ -87,7 +87,7 @@ companiesRouter.get(
       include: {
         // Ürün fotoğrafları burada da dönmüyor: bir firmanın tüm kataloğu tek
         // yanıtta geldiği için en çok şişen yer burasıydı (bkz. src/products.ts).
-        products: { select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' } },
+        products: { select: PRODUCT_SELECT, orderBy: STOCK_FIRST_ORDER },
         users: { select: { id: true, firstName: true, lastName: true, position: true, avatarUpdatedAt: true } },
         // Fotoğrafların kendisi değil yalnızca sayıları dönüyor.
         photos: { select: { kind: true } },

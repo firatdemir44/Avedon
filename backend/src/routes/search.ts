@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../db';
 import { optionalAuth } from '../middleware/auth';
-import { PRODUCT_SELECT, buildProductWhere, toProductRow } from '../products';
+import { PRODUCT_SELECT, STOCK_FIRST_ORDER, buildProductWhere, toProductRow } from '../products';
 import { buildYarnWhere } from '../yarns';
 import { makeHandle } from './handle';
 import { buildMachineWhere, machineTypeLabel, parseMachineQuery } from '../machines/query';
@@ -35,8 +35,8 @@ searchRouter.get(
         orderBy: { name: 'asc' },
         take: 40,
       }),
-      prisma.product.findMany({ where: buildProductWhere({ search: q }), select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: limit + 1 }),
-      prisma.product.findMany({ where: buildYarnWhere({ search: q }), select: PRODUCT_SELECT, orderBy: { createdAt: 'desc' }, take: limit + 1 }),
+      prisma.product.findMany({ where: buildProductWhere({ search: q }), select: PRODUCT_SELECT, orderBy: STOCK_FIRST_ORDER, take: limit + 1 }),
+      prisma.product.findMany({ where: buildYarnWhere({ search: q }), select: PRODUCT_SELECT, orderBy: STOCK_FIRST_ORDER, take: limit + 1 }),
       machineQuery
         ? prisma.machine.findMany({
             where: buildMachineWhere(machineQuery),

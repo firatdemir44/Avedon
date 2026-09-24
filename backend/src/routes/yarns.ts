@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { prisma } from '../db';
 import { optionalAuth, requireAuth } from '../middleware/auth';
 import { PassportError, replacePassportRelations } from '../passport';
-import { PRODUCT_SELECT, ProductImageError, replaceProductImages, toProductRow } from '../products';
+import { PRODUCT_SELECT, STOCK_FIRST_ORDER, ProductImageError, replaceProductImages, toProductRow } from '../products';
 import {
   YARN_OPTIONS,
   YARN_PRODUCT_TYPE,
