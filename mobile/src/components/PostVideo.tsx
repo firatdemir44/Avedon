@@ -210,6 +210,8 @@ function InlinePlayer({ uri }: { uri: string }) {
         backgroundColor: t.colors.surfaceBrand,
       }}
       nativeControls
+      // iPhone Safari video etiketi playsinline olmadan dokununca tam ekrana geçiyordu (2026-09-24).
+      playsInline
       contentFit="contain"
     />
   );
