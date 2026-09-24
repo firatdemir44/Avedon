@@ -70,7 +70,7 @@ const EXAMPLES = [
   '220 gr/m² 180 cm süprem, 1.000 metre kaç kilo eder?',
   '30/1 Ne iplik kaç tex?',
   'Kataloğumda elastanlı süprem var mı?',
-  '%92 PES %8 EA, 220 gr, 180 cm açık en',
+  '34/28 Terrot 108 sistem müsait makine ara?',
 ];
 
 // Girdi kutusuna başlangıç metni yazan çipler; kullanıcı düzenleyip gönderir.
