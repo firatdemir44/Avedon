@@ -621,7 +621,7 @@ function BarAction({
         backgroundColor: pressed ? t.colors.surface2 : 'transparent',
       })}
     >
-      <Icon name={icon} size={compact ? t.size.icon : t.size.iconSm} colorValue={color} />
+      <Icon name={icon} size={t.size.iconSm} colorValue={color} />
       {showCount ? <Text style={[t.type.label14, { color }]}>{count}</Text> : null}
       {text ? (
         <Text numberOfLines={1} style={[t.type.label14, { color, flexShrink: 1 }]}>
