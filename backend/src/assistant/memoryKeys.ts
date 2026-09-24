@@ -10,12 +10,15 @@ export interface MemoryKeyDef {
   // Ekranda boş alanın yanında gösterilen önerilen başlangıç (Fırat 2026-09-16).
   // Hesaba OTOMATİK girmez; kullanıcı kaydederse kullanılır.
   suggested?: number;
+  // TCMB'den otomatik gelir (2026-10-02): hafızaya önerilmez, ekranda salt okunur.
+  // Anahtar eski kayıtlar için duruyor; hesaplarda kullanılmaz.
+  auto?: 'fx';
 }
 
 export const MEMORY_KEYS: readonly MemoryKeyDef[] = [
   { key: 'defaultCurrency', label: 'Varsayılan para birimi', hint: 'TRY, USD ya da EUR', kind: 'text' },
-  { key: 'usdTry', label: 'USD/TRY kuru', hint: 'Hesaplarda kullanılan kur', kind: 'number' },
-  { key: 'eurTry', label: 'EUR/TRY kuru', hint: 'Hesaplarda kullanılan kur', kind: 'number' },
+  { key: 'usdTry', label: "USD kuru (TCMB'den otomatik)", hint: 'USD/TRY; TCMB döviz satış kuru her gün otomatik alınır', kind: 'number', auto: 'fx' },
+  { key: 'eurTry', label: "EUR kuru (TCMB'den otomatik)", hint: 'EUR/TRY; TCMB döviz satış kuru her gün otomatik alınır', kind: 'number', auto: 'fx' },
   { key: 'knittingFeePerKg', label: 'Örme fason ücreti', hint: 'TRY/kg', kind: 'number' },
   { key: 'dyeingFeePerKg', label: 'Boya fason ücreti', hint: 'TRY/kg, ham kilo üzerinden', kind: 'number' },
   { key: 'dyeingLossPercent', label: 'Boya firesi', hint: '%', kind: 'number' },
@@ -31,6 +34,8 @@ export const MEMORY_KEYS: readonly MemoryKeyDef[] = [
 ];
 
 export const MEMORY_KEY_SET = new Set(MEMORY_KEYS.map((k) => k.key));
+// Kullanıcının yazabildiği (asistanın önerebildiği) anahtarlar.
+export const WRITABLE_MEMORY_KEYS = MEMORY_KEYS.filter((k) => !k.auto);
 
 export function memoryKeyDef(key: string) {
   return MEMORY_KEYS.find((k) => k.key === key) ?? null;

@@ -1260,3 +1260,17 @@ model NewsItem {
   @@unique([source, guid])
   @@index([publishedAt])
 }
+
+// TCMB günlük kurları (2026-10-02): tüm TL maliyet hesapları döviz SATIŞ kurunu kullanır.
+// date = TCMB bülten tarihi (YYYY-MM-DD, İstanbul). Kaynak: tcmb.gov.tr/kurlar/today.xml
+model FxRate {
+  id           String   @id @default(cuid())
+  date         String
+  code         String
+  forexSelling Float
+  forexBuying  Float
+  fetchedAt    DateTime @default(now())
+
+  @@unique([date, code])
+  @@index([code, date])
+}

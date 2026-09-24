@@ -281,8 +281,9 @@ export function CalcResultRow({ label, value, unit, note, emphasis, _first }: Re
 export function CalcNoteRow({
   text,
   tone = 'muted',
+  action,
   _first,
-}: { text: string; tone?: 'muted' | 'warning' } & RowInternals) {
+}: { text: string; tone?: 'muted' | 'warning'; action?: { label: string; onPress: () => void } } & RowInternals) {
   const t = useTheme();
   const divider = useDivider(_first);
   const warning = tone === 'warning';
@@ -304,6 +305,16 @@ export function CalcNoteRow({
       <Text style={[t.type.body14, styles.flexCell, { color: warning ? t.colors.danger : t.colors.ink3 }]}>
         {text}
       </Text>
+      {action ? (
+        <Pressable
+          onPress={action.onPress}
+          accessibilityRole="link"
+          accessibilityLabel={action.label}
+          hitSlop={t.space[2]}
+        >
+          <Text style={[t.type.label14, { color: t.colors.brand }]}>{action.label}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

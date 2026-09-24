@@ -21,7 +21,8 @@ import { FIBERS } from '../domain/glossary';
 import { PRODUCT_SELECT, STOCK_FIRST_ORDER, buildProductWhere, toProductRow } from '../products';
 import { SKILLS, runSkill } from '../skills';
 import { runPassportExtract } from '../skills/passportExtract';
-import { MEMORY_KEYS, MEMORY_KEY_SET, memoryKeyDef } from './memoryKeys';
+import { MEMORY_KEYS, MEMORY_KEY_SET, WRITABLE_MEMORY_KEYS, memoryKeyDef } from './memoryKeys';
+import { fillFxDefaults } from '../fx';
 import { readMemory } from './memory';
 import { MACHINE_GROUPS, searchCapacity } from '../routes/machines';
 import { buildDigest, listNews } from '../news/query';
@@ -78,7 +79,9 @@ export function buildTools(ctx: ToolContext): ToolSet {
       name: skill.name,
       description: `${skill.title}. ${skill.description} Formül: ${skill.formula}`,
       inputSchema: skill.inputSchema,
-      run: (args) => {
+      run: async (args) => {
+        // Kur verilmediyse (0/boş) TCMB döviz satış kuru sunucuda doldurulur.
+        await fillFxDefaults((skill.inputSchema as { shape?: Record<string, unknown> }).shape, args);
         const result = runSkill(skill, args);
         if (!result.ok) return `Girdi hatası: ${JSON.stringify(result.details)}`;
         calls.push({ name: skill.name, title: skill.title, input: args, output: result.output, summary: result.summary, formula: skill.formula });
@@ -162,27 +165,28 @@ export function buildTools(ctx: ToolContext): ToolSet {
 
   const hafizaOku = betaZodTool({
     name: 'firma_hafizasi_oku',
-    description: 'Firmanın kayıtlı varsayılanlarını getirir: kur, fason ücretleri, fire, genel gider, kâr, sık kaliteler.',
+    description: 'Firmanın kayıtlı varsayılanlarını getirir: fason ücretleri, fire, genel gider, kâr, sık kaliteler.',
     inputSchema: z.object({}),
     run: async () => {
       if (!ctx.companyId) return 'Kullanıcının kayıtlı firması yok.';
       const entries = await readMemory(ctx.companyId);
-      return JSON.stringify({ entries, knownKeys: MEMORY_KEYS.map((k) => ({ key: k.key, label: k.label, hint: k.hint })) });
+      return JSON.stringify({ entries: entries.filter((e) => !memoryKeyDef(e.key)?.auto), knownKeys: WRITABLE_MEMORY_KEYS.map((k) => ({ key: k.key, label: k.label, hint: k.hint })) });
     },
   });
 
   const hafizaOner = betaZodTool({
     name: 'hafiza_oner',
     description:
-      'Kullanıcının verdiği bir varsayılanın (kur, fason ücreti, fire, kâr oranı vb.) firma hafızasına kaydedilmesini ÖNERİR. Kaydetmez; kullanıcı ekranda onaylar. Yalnızca kullanıcının açıkça söylediği değerler için kullan.',
+      'Kullanıcının verdiği bir varsayılanın (fason ücreti, fire, kâr oranı vb.; kur DEĞİL, kur TCMB kaynağından otomatik gelir) firma hafızasına kaydedilmesini ÖNERİR. Kaydetmez; kullanıcı ekranda onaylar. Yalnızca kullanıcının açıkça söylediği değerler için kullan.',
     inputSchema: z.object({
-      key: z.enum(MEMORY_KEYS.map((k) => k.key) as [string, ...string[]]).describe('Hafıza anahtarı'),
+      key: z.enum(WRITABLE_MEMORY_KEYS.map((k) => k.key) as [string, ...string[]]).describe('Hafıza anahtarı'),
       value: z.union([z.number(), z.string()]).describe('Kaydedilecek değer'),
       reason: z.string().max(200).describe('Kullanıcıya gösterilecek kısa gerekçe'),
     }),
     run: (args) => {
       if (!MEMORY_KEY_SET.has(args.key)) return 'Bilinmeyen anahtar.';
       const def = memoryKeyDef(args.key)!;
+      if (def.auto) return 'Kur hafızaya kaydedilmez; TCMB döviz satış kuru otomatik kullanılır.';
       // Model sayıyı metin olarak verebiliyor ("6"); sayı anahtarında çevir.
       const num = typeof args.value === 'string' ? Number(args.value.replace(',', '.')) : args.value;
       const value = def.kind === 'number' && Number.isFinite(num) ? num : args.value;

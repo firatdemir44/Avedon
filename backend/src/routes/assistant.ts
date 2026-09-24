@@ -157,6 +157,7 @@ assistantRouter.put(
     if (!companyId) return res.status(403).json({ error: 'no_company' });
     const def = memoryKeyDef(req.params.key);
     if (!def) return res.status(404).json({ error: 'unknown_memory_key' });
+    if (def.auto) return res.status(409).json({ error: 'auto_memory_key' });
     const parsed = memoryValueSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
     if (def.kind === 'number' && typeof parsed.data.value !== 'number') {

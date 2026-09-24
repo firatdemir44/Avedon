@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { tlEquivalent, useFx } from '../../features/fx/useFx';
 import { View, Text, ScrollView, Pressable, Image, Linking, Platform, Share, ActivityIndicator } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
@@ -319,6 +320,7 @@ function Gallery({
 // kod + STOKTA rozeti, ürün adı, firma satırı, çizgili özellik kartı, ardından
 // pasaport bölümleri; eylemler yapışkan alt çubukta.
 export function ProductDetailScreen({ route, navigation }: Props) {
+  const { fx } = useFx();
   const { productId } = route.params;
   const { user } = useSession();
   const t = useTheme();
@@ -553,6 +555,10 @@ export function ProductDetailScreen({ route, navigation }: Props) {
     ...(product.leadTimeDays != null ? [{ label: 'Termin', value: `${product.leadTimeDays} gün` }] : []),
     // Fiyat yanıtta yalnızca sahibine geliyor; başkasına alan hiç gelmiyor.
     ...(product.price ? [{ label: 'Fiyat', value: formatPrice(product.price) }] : []),
+    // Döviz fiyatın TL karşılığı: TCMB döviz satış kuru (kullanıcı kuralı 2026-10-02).
+    ...(product.price && product.price.currency !== 'TRY' && tlEquivalent(product.price.value, product.price.currency, fx)
+      ? [{ label: 'TL karşılığı', value: tlEquivalent(product.price.value, product.price.currency, fx)! }]
+      : []),
   ];
 
   const openDocImage = async (kind: 'certificate' | 'report', position: number) => {

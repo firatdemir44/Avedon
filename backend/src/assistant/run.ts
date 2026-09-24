@@ -6,6 +6,7 @@ import { prisma } from '../db';
 import { LLM_MODELS, LlmNotConfiguredError, getAnthropic, isLlmMock } from '../llm';
 import { buildBuyerTools, buyerSystemPrompt } from './buyer';
 import { readMemory } from './memory';
+import { fxContextLine, getRates } from '../fx';
 import { mockAssistantTurn } from './mock';
 import { identityBlock } from './persona';
 import { ASSISTANT_SYSTEM_PROMPT, memoryBlock } from './system';
@@ -95,11 +96,12 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
       : null;
   if (threadRow?.channel === 'buyer' && !sellerCompany) throw new Error('seller_company_not_found');
 
-  const [rows, memory, company, user] = await Promise.all([
+  const [rows, memory, company, user, fx] = await Promise.all([
     prisma.assistantMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' }, select: { apiJson: true } }),
     companyId && !sellerCompany ? readMemory(companyId) : Promise.resolve([]),
     companyId ? prisma.company.findUnique({ where: { id: companyId }, select: { name: true } }) : Promise.resolve(null),
     prisma.user.findUnique({ where: { id: userId }, select: { firstName: true } }),
+    getRates().catch(() => null),
   ]);
   const history = historyFromRows(rows);
   const userApi: ApiMessage = { role: 'user', content: text };
@@ -133,7 +135,9 @@ export async function runAssistantTurn(params: { threadId: string; userId: strin
         // Kimlik + kullanıcı adı kullanıcıya özel: önbellek dışı blokta.
         { type: 'text', text: `${identityBlock(user?.firstName ?? null)}
 
-${memoryBlock(memory, company?.name ?? null)}` },
+${memoryBlock(memory, company?.name ?? null)}
+
+${fxContextLine(fx)}` },
       ],
       messages,
       tools: toolSet.tools,

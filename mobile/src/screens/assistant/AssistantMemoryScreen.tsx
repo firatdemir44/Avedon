@@ -1,4 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { fxDateLabel, useFx } from '../../features/fx/useFx';
+import { formatNumber } from '../../features/calculators/parse';
 import { View, Text } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import {
@@ -51,6 +53,7 @@ function parseNumber(raw: string): number | null {
 
 export function AssistantMemoryScreen({ navigation }: Props) {
   const t = useTheme();
+  const { fx } = useFx();
   const { data, status, error, reload } = useFocusLoad(fetchCompanyMemory);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -210,6 +213,23 @@ export function AssistantMemoryScreen({ navigation }: Props) {
             bırakılan değerleri her seferinde size sorar.
           </Text>
           {keys.map((def, index) => {
+            if (def.auto === 'fx') {
+              // Kur hafızada tutulmaz: TCMB döviz satış kuru her gün otomatik gelir, salt okunur.
+              const rate = def.key === 'eurTry' ? fx?.eur : fx?.usd;
+              return (
+                <ListRow
+                  key={def.key}
+                  title={def.label}
+                  subtitle={fx ? `TCMB döviz satış · ${fxDateLabel(fx.date)}` : def.hint}
+                  divider={index < keys.length - 1}
+                  right={
+                    <Text numberOfLines={1} style={[rate ? t.type.mono14 : t.type.body14, { color: t.colors.ink3, textAlign: 'right' }]}>
+                      {rate ? `${formatNumber(rate, 4)} ₺` : 'Otomatik'}
+                    </Text>
+                  }
+                />
+              );
+            }
             const entry = entryByKey.get(def.key);
             const isEditing = editingKey === def.key;
 

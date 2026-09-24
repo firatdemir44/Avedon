@@ -1768,6 +1768,8 @@ export interface MemoryKeyDef {
   label: string;
   hint: string;
   kind: MemoryKind;
+  // TCMB'den otomatik gelen salt okunur anahtar (kur).
+  auto?: 'fx';
 }
 
 export interface MemoryEntry extends MemoryKeyDef {
@@ -3379,4 +3381,33 @@ export function fetchNews(params: { topic?: NewsTopicKey; lang?: 'tr' | 'en'; pa
   if (params.lang) q.set('lang', params.lang);
   q.set('page', String(params.page ?? 1));
   return request<{ items: NewsItem[]; page: number; pageSize: number; total: number; hasMore: boolean }>(`/news?${q.toString()}`);
+}
+
+// --- TCMB kurları (2026-10-02): tüm TL hesaplarında TCMB döviz SATIŞ kuru ---------------
+
+export interface FxRates {
+  date: string; // YYYY-MM-DD, TCMB bülten tarihi
+  source: string;
+  usd: number | null;
+  eur: number | null;
+  gbp: number | null;
+  fetchedAt: string;
+}
+
+const FX_CACHE_MS = 60 * 60 * 1000;
+let fxCache: { at: number; value: FxRates } | null = null;
+let fxInflight: Promise<FxRates> | null = null;
+
+export async function fetchFx(): Promise<FxRates> {
+  if (fxCache && Date.now() - fxCache.at < FX_CACHE_MS) return fxCache.value;
+  if (fxInflight) return fxInflight;
+  fxInflight = request<FxRates>('/fx')
+    .then((value) => {
+      fxCache = { at: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      fxInflight = null;
+    });
+  return fxInflight;
 }

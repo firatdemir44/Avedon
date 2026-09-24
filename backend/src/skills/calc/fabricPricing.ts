@@ -18,8 +18,8 @@ const inputSchema = z.object({
     .min(1)
     .max(8)
     .describe('Kumaşı oluşturan iplikler; oranların toplamı 100 olmalı'),
-  usdTry: z.number().nonnegative().default(0).describe('USD/TRY kuru; USD fiyat yoksa 0'),
-  eurTry: z.number().nonnegative().default(0).describe('EUR/TRY kuru; EUR fiyat yoksa 0'),
+  usdTry: z.number().nonnegative().default(0).describe('USD/TRY kuru; kullanıcı ayrıca söylemediyse 0 bırak (TCMB döviz satış otomatik)'),
+  eurTry: z.number().nonnegative().default(0).describe('EUR/TRY kuru; kullanıcı ayrıca söylemediyse 0 bırak (TCMB döviz satış otomatik)'),
   knittingFeePerKg: z.number().nonnegative().default(0).describe('Örme fason ücreti (TRY/kg)'),
   overheadPercent: z.number().min(0).max(100).default(0).describe('Genel gider oranı (%)'),
   dyeingFeePerKg: z.number().nonnegative().default(0).describe('Boya fason ücreti (TRY/kg, ham kilo üzerinden)'),
@@ -35,7 +35,7 @@ export const fabricPricing = defineSkill<typeof inputSchema, FabricPricingResult
   description:
     'Örme kumaşın kg başına iplik maliyetini, ham (örülmüş) maliyet ve satış fiyatını, boyalı maliyet ve satış fiyatını hesaplar; gramaj ve en verilirse metre başına da çevirir. ' +
     'Kullan: "bu kumaşın maliyeti ne olur", "boyalı satış fiyatı", "kg fiyatını metreye çevir" gibi sorularda. ' +
-    'Fiyat, kur, fason ücreti, fire ve kâr oranını kullanıcı verir; hiçbirini tahmin etme, eksikse sor.',
+    'Fiyat, fason ücreti, fire ve kâr oranını kullanıcı verir; hiçbirini tahmin etme, eksikse sor. Kur verilmezse (0) sunucu TCMB döviz satış kurunu kullanır.',
   formula:
     'İplik maliyeti = Σ fiyat(TRY) × oran × (1 + iplik firesi). Ham maliyet = (iplik + örme fason) × (1 + genel gider). ' +
     'Boyalı maliyet = (ham maliyet + boya fason) / (1 − boya firesi). Satış = maliyet × (1 + kâr). Metre/kg = 100.000 / (gramaj × en).',

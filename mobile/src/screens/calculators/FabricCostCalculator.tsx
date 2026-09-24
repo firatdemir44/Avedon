@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { TableInput } from '../../components/TableInput';
@@ -22,6 +22,7 @@ import { parseNumber, formatNumber } from '../../features/calculators/parse';
 import { usePersistedFields } from '../../features/calculators/usePersistedFields';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppBar, Screen } from '../../ui';
+import { fxDateLabel, useFx } from '../../features/fx/useFx';
 
 interface YarnFields {
   price: string;
@@ -34,6 +35,9 @@ interface Fields {
   yarns: YarnFields[];
   usdTry: string;
   eurTry: string;
+  // Kullanıcı kuru elle değiştirdiyse true; değilse TCMB döviz satışı otomatik yazılır.
+  usdManual: boolean;
+  eurManual: boolean;
   knittingFee: string;
   overhead: string;
   dyeingFee: string;
@@ -49,6 +53,8 @@ const INITIAL: Fields = {
   yarns: [{ ...EMPTY_YARN, ratio: '100' }],
   usdTry: '',
   eurTry: '',
+  usdManual: false,
+  eurManual: false,
   knittingFee: '',
   overhead: '0',
   dyeingFee: '',
@@ -82,6 +88,24 @@ export function FabricCostCalculator({ navigation }: RootStackScreenProps<'Fabri
 
   // Kendi üst bandımızı (AppBar) çiziyoruz; yığının başlığı kapanıyor.
   useLayoutEffect(() => navigation.setOptions({ headerShown: false }), [navigation]);
+
+  // TCMB döviz satış kuru (kullanıcı kuralı): elle değiştirilmedikçe alanlara yazılır.
+  const { fx, failed: fxFailed } = useFx();
+  const tcmbUsd = fx?.usd ? formatNumber(fx.usd, 4) : null;
+  const tcmbEur = fx?.eur ? formatNumber(fx.eur, 4) : null;
+  useEffect(() => {
+    const patch: Partial<Fields> = {};
+    if (tcmbUsd && !f.usdManual && f.usdTry !== tcmbUsd) patch.usdTry = tcmbUsd;
+    if (tcmbEur && !f.eurManual && f.eurTry !== tcmbEur) patch.eurTry = tcmbEur;
+    if (Object.keys(patch).length) update(patch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tcmbUsd, tcmbEur, f.usdManual, f.eurManual, f.usdTry, f.eurTry]);
+  const fxCaption = (manual: boolean, reset: () => void) => {
+    if (fx && !manual) return <CalcNoteRow text={`TCMB döviz satış · ${fxDateLabel(fx.date)}`} />;
+    if (fx && manual) return <CalcNoteRow text="Elle girildi" action={{ label: "TCMB'ye dön", onPress: reset }} />;
+    if (fxFailed && !manual) return <CalcNoteRow text="Kur alınamadı, elle girin" />;
+    return null;
+  };
 
   const updateYarn = (index: number, patch: Partial<YarnFields>) =>
     update({ yarns: f.yarns.map((y, i) => (i === index ? { ...y, ...patch } : y)) });
@@ -120,7 +144,7 @@ export function FabricCostCalculator({ navigation }: RootStackScreenProps<'Fabri
       <Screen>
         <Text style={[t.type.body14, { color: t.colors.ink3 }]}>
           Kumaşa giren her ipliğin kilo fiyatını, kumaştaki oranını ve firesini girin. Oranların toplamı 100 olmalı.
-          Uygulama internetten kur çekmez; güncel kuru siz girin.
+          Kur, TCMB döviz satış kurundan otomatik gelir; isterseniz değiştirebilirsiniz.
         </Text>
 
         <CalcTable title="Kumaş maliyeti ve satış fiyatı">
@@ -179,20 +203,22 @@ export function FabricCostCalculator({ navigation }: RootStackScreenProps<'Fabri
             label="1 $"
             hint="Dolarla iplik girdiyseniz zorunlu"
             value={f.usdTry}
-            onChangeText={(v) => update({ usdTry: v })}
+            onChangeText={(v) => update({ usdTry: v, usdManual: true })}
             placeholder="43,17"
             unit="₺"
             error={needsUsd && parseNumber(f.usdTry) <= 0 ? 'Dolar kuru gerekli' : undefined}
           />
+          {fxCaption(f.usdManual, () => update({ usdManual: false }))}
           <CalcInputRow
             label="1 €"
             hint="Euro ile iplik girdiyseniz zorunlu"
             value={f.eurTry}
-            onChangeText={(v) => update({ eurTry: v })}
+            onChangeText={(v) => update({ eurTry: v, eurManual: true })}
             placeholder="48,35"
             unit="₺"
             error={needsEur && parseNumber(f.eurTry) <= 0 ? 'Euro kuru gerekli' : undefined}
           />
+          {fxCaption(f.eurManual, () => update({ eurManual: false }))}
 
           <CalcSectionRow label="Fason, gider ve kâr" />
           <CalcInputRow

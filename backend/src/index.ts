@@ -46,6 +46,8 @@ import { searchRouter } from './routes/search';
 import { productDraftsRouter } from './routes/productDrafts';
 import { invitesRouter } from './routes/invites';
 import { newsRouter } from './routes/news';
+import { fxRouter } from './routes/fx';
+import { fxHealth, startFxScheduler } from './fx';
 import { newsHealth, startNewsScheduler } from './news/fetch';
 import { isLlmConfigured } from './llm';
 import { ensureWabaSubscription, getWhatsAppStatus } from './whatsapp';
@@ -99,6 +101,7 @@ app.get('/api/health', async (_req, res) => {
     buyers: await buyersHealth().catch(() => null),
     // Sektör gündemi: kayıtlı haber sayısı, son çekim, kaynak başına durum.
     news: await newsHealth().catch(() => null),
+    fx: await fxHealth().catch(() => null),
   });
 });
 app.use('/api/register', registerRouter);
@@ -143,6 +146,7 @@ app.use('/api/search', searchRouter);
 app.use('/api/product-drafts', productDraftsRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/news', newsRouter);
+app.use('/api/fx', fxRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
@@ -155,6 +159,7 @@ app.listen(port, () => {
   startDigestScheduler();
   // Sektör gündemi: RSS kaynakları 2 saatte bir (ilk çekim açılıştan 2 dk sonra).
   startNewsScheduler();
+  startFxScheduler();
   backfillNormalizedNames()
     .then(() => seedDirectoryFromFiles())
     .catch((err) => console.error('[directory] backfill/seed', err));
