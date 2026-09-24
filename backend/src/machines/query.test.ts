@@ -4,7 +4,7 @@ import { buildMachineWhere, machineTypeLabel, parseMachineQuery } from './query'
 
 test('"raschel 28 fine" → Raschel, fayn 28', () => {
   const q = parseMachineQuery('raschel 28 fine');
-  assert.deepEqual(q, { types: ['raschel'], gauge: 28, diameterInch: null, feeders: null, bare: [], availableOnly: false });
+  assert.deepEqual(q, { types: ['raschel'], gauge: 28, diameterInch: null, feeders: null, bare: [], availableOnly: false, brand: null });
 });
 
 test('büyük harf ve Türkçe karakter: "YUVARLAK ÖRME 30 İNÇ 24 FAYN"', () => {
@@ -64,4 +64,11 @@ test('görünen tür adı', () => {
   assert.equal(machineTypeLabel({ kind: 'Raschel', group: 'orme' }), 'Raschel');
   assert.equal(machineTypeLabel({ kind: 'Rapierli tezgâh', group: 'dokuma' }), 'Dokuma');
   assert.equal(machineTypeLabel({ kind: 'Ram', group: 'boya_terbiye' }), 'Ram');
+});
+
+test('"34/28 Terrot 108 sistem müsait" → pus 34, fayn 28, marka, sistem, müsait', () => {
+  const q = parseMachineQuery('34/28 Terrot 108 sistem müsait makine ara');
+  assert.deepEqual(q, { types: [], gauge: 28, diameterInch: 34, feeders: 108, bare: [], availableOnly: true, brand: 'terrot' });
+  // İplik numarası (30/1) makine araması sayılmaz.
+  assert.equal(parseMachineQuery('30/1 Ne iplik'), null);
 });

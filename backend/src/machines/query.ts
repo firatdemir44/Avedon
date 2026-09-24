@@ -21,6 +21,8 @@ const GAUGE_UNITS = new Set(['fine', 'fayn', 'gg', 'gauge', 'e']);
 const DIAMETER_UNITS = new Set(['inc', 'inch', 'pus', 'in', '"']);
 const AVAILABLE_WORDS = new Set(['musait', 'bos', 'available']);
 const FEEDER_UNITS = new Set(['sistem', 'system', 'feeder']);
+// Örme sektöründe sık geçen makine markaları (fold edilmiş); aramada marka süzgeci olur.
+export const KNOWN_BRANDS = ['terrot', 'mayer', 'monarch', 'pailong', 'santoni', 'fukuhara', 'orizio', 'vignoni', 'pilotelli', 'jiunn', 'juin', 'wellknit', 'ssangyong', 'stoll', 'shima', 'keumyong', 'baitai', 'imex', 'unitex', 'lonati', 'picanol', 'dornier', 'itema', 'tsudakoma', 'toyota'];
 
 export interface MachineQuery {
   types: MachineTypeKey[];
@@ -31,18 +33,35 @@ export interface MachineQuery {
   bare: number[];
   /** 'müsait' geçtiyse yalnızca bugün boş olan makineler. */
   availableOnly: boolean;
+  /** Bilinen marka geçtiyse (ör. Terrot). */
+  brand: string | null;
 }
 
 export function parseMachineQuery(input: string): MachineQuery | null {
   // "28fine", "30\"" gibi bitişik yazımlar ayrılır.
   const text = fold(input.replace(/"/g, ' inc ')).replace(/(\d)([a-z])/g, '$1 $2');
   const tokens = text.split(/\s+/).filter(Boolean);
-  const result: MachineQuery = { types: [], gauge: null, diameterInch: null, feeders: null, bare: [], availableOnly: false };
+  const result: MachineQuery = { types: [], gauge: null, diameterInch: null, feeders: null, bare: [], availableOnly: false, brand: null };
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (AVAILABLE_WORDS.has(token)) {
       result.availableOnly = true;
       continue;
+    }
+    if (KNOWN_BRANDS.includes(token)) {
+      result.brand = token;
+      continue;
+    }
+    // Örme yazımı "34/28" = pus/fayn (çap 34 inç, fayn 28). Aralık "28-22" ayrı (aşağıda).
+    const pusFayn = /^(\d{2})\/(\d{1,2})$/.exec(token);
+    if (pusFayn && !(tokens[i + 1] && (GAUGE_UNITS.has(tokens[i + 1]) || DIAMETER_UNITS.has(tokens[i + 1])))) {
+      const d = Number(pusFayn[1]);
+      const g = Number(pusFayn[2]);
+      if (d >= 10 && d <= 60 && g >= 3 && g <= 60) {
+        result.diameterInch = d;
+        result.gauge = g;
+        continue;
+      }
     }
     const type = MACHINE_TYPES.find((t) => t.words.includes(token));
     if (type) {
@@ -74,7 +93,7 @@ export function parseMachineQuery(input: string): MachineQuery | null {
       result.bare.push(n);
     }
   }
-  const hasUnit = result.gauge != null || result.diameterInch != null || result.feeders != null;
+  const hasUnit = result.gauge != null || result.diameterInch != null || result.feeders != null || result.brand != null;
   // Makine araması yalnızca bir tür sözcüğü ya da birimli bir ölçü varsa yapılır;
   // "Bursa" ya da "30/1" gibi aramalar makine grubunu boşuna doldurmaz.
   if (!result.types.length && !hasUnit && !result.availableOnly) return null;
@@ -99,6 +118,7 @@ export function buildMachineWhere(q: MachineQuery, now = new Date()): Prisma.Mac
   if (q.gauge != null) and.push(rangeMatch('gauge', 'gaugeText', q.gauge));
   if (q.diameterInch != null) and.push({ diameterInch: q.diameterInch });
   if (q.feeders != null) and.push({ feeders: q.feeders });
+  if (q.brand) and.push({ brand: { contains: q.brand } });
   // Birimsiz sayı: fayn ya da pus tutsun.
   for (const n of q.bare) {
     and.push({ OR: [...(rangeMatch('gauge', 'gaugeText', n).OR as Prisma.MachineWhereInput[]), { diameterInch: n }] });

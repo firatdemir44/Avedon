@@ -259,6 +259,10 @@ const searchSchema = z.object({
   widthMin: z.coerce.number().positive().optional(),
   contractOpen: z.enum(['1', 'true']).optional(),
   city: z.string().trim().max(60).optional(),
+  brand: z.string().trim().max(40).optional(),
+  feeders: z.coerce.number().int().positive().optional(),
+  // Yalnızca bugün boş (müsait) makineler.
+  availableOnly: z.enum(['1', 'true']).optional(),
   limit: z.coerce.number().int().min(1).max(50).optional(),
   offset: z.coerce.number().int().min(0).max(5000).optional(),
 });
@@ -273,7 +277,12 @@ export async function searchCapacity(query: MachineSearch, excludeCompanyId?: st
     ...(query.diameterInch ? { diameterInch: query.diameterInch } : {}),
     ...(query.widthMin ? { workingWidthCm: { gte: query.widthMin } } : {}),
     // Fine aralıklı olabilir ("28-22" → 28 ve 22 aramasında da çıkar).
-    ...(query.gauge ? { AND: [rangeMatch('gauge', 'gaugeText', query.gauge)] } : {}),
+    ...(query.brand ? { brand: { contains: query.brand } } : {}),
+    ...(query.feeders ? { feeders: query.feeders } : {}),
+    AND: [
+      ...(query.gauge ? [rangeMatch('gauge', 'gaugeText', query.gauge)] : []),
+      ...(query.availableOnly ? [{ OR: [{ busyUntil: null }, { busyUntil: { lte: new Date() } }] }] : []),
+    ],
   };
   const companies = await prisma.company.findMany({
     where: {
