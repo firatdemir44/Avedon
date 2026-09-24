@@ -986,4 +986,6 @@ export const catalog: Record<string, string> = {
   "Yuvarlak örme": "Circular knitting",
   "İğne": "Needles",
   "Şehir": "City",
+  "Kod ya da çeşit ara": "Search code or type",
+  "Başka ürün seç ({n})": "Choose another product ({n})",
 };

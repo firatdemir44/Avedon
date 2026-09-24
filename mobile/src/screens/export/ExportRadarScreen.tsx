@@ -38,6 +38,7 @@ import {
   Icon,
   ListRow,
   Screen,
+  SearchBox,
   SectionTitle,
   SkeletonRow,
 } from '../../ui';
@@ -118,6 +119,10 @@ export function ExportRadarScreen({ navigation }: Props) {
   const [baseError, setBaseError] = useState<string | null>(null);
 
   const [productId, setProductId] = useState<string | null>(null);
+  // Ürün seçilince liste kapanır, yalnızca seçilen görünür (Fırat 2026-09-24: kalite çoğaldıkça
+  // liste uzuyordu). "Değiştir" ile yeniden açılır; çok üründe arama kutusu çıkar.
+  const [listOpen, setListOpen] = useState(true);
+  const [productQuery, setProductQuery] = useState('');
   const [hs, setHs] = useState<{ hs6: string; label: string } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [region, setRegion] = useState<ExportRegion | null>(null);
@@ -209,6 +214,8 @@ export function ExportRadarScreen({ navigation }: Props) {
     haptics.selection();
     setProductId(p.id);
     setHs({ hs6: p.hs.hs6, label: p.hs.label });
+    setListOpen(false);
+    setProductQuery('');
   };
 
   const sorted = useMemo(() => {
@@ -249,8 +256,20 @@ export function ExportRadarScreen({ navigation }: Props) {
           </View>
         </Card>
       ) : (
+        <View style={{ gap: t.space[2] }}>
+        {listOpen && products.length > 6 ? (
+          <SearchBox placeholder={tr('Kod ya da çeşit ara')} value={productQuery} onChangeText={setProductQuery} />
+        ) : null}
         <Card noPadding>
-          {products.map((p, i) => {
+          {(() => {
+            const q = productQuery.trim().toLocaleLowerCase(locale());
+            const visible = !listOpen && productId
+              ? products.filter((p) => p.id === productId)
+              : q
+                ? products.filter((p) => [p.code, p.subtype, p.type, p.content].filter(Boolean).join(' ').toLocaleLowerCase(locale()).includes(q))
+                : products;
+            return visible;
+          })().map((p, i, arr) => {
             const conf = CONFIDENCE[p.hs.confidence];
             const sel = p.id === productId;
             return (
@@ -265,13 +284,17 @@ export function ExportRadarScreen({ navigation }: Props) {
                     <Badge kind={conf.kind} label={tr(conf.label)} />
                   </View>
                 }
-                divider={i < products.length - 1}
-                onPress={() => chooseProduct(p)}
+                divider={i < arr.length - 1}
+                onPress={() => (!listOpen && p.id === productId ? setListOpen(true) : chooseProduct(p))}
                 testID={`export-product-${p.id}`}
               />
             );
           })}
         </Card>
+        {!listOpen && productId && products.length > 1 ? (
+          <Button kind="quiet" icon="swap-horizontal-outline" label={tr('Başka ürün seç ({n})', { n: products.length })} onPress={() => setListOpen(true)} />
+        ) : null}
+        </View>
       )}
 
       {hs ? (
