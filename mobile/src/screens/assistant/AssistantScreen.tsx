@@ -64,7 +64,7 @@ const FALLBACK_SKILL_COUNT = 10;
 // Yanıt geldikten sonra "anlatıyor"/"sonuç" hali ne kadar kalır.
 const AVATAR_FLASH_MS = 2600;
 
-const WELCOME = 'Hesap sor, etiket metni yapıştır ya da kataloğunu sor.';
+const WELCOME = 'Soru sor, kumaş ya da firma arat, etiket fotoğrafı gönder, hesap yaptır.';
 
 const EXAMPLES = [
   '220 gr/m² 180 cm süprem, 1.000 metre kaç kilo eder?',
@@ -554,7 +554,7 @@ export function AssistantScreen({ navigation }: Props) {
     );
   }
 
-  const greetingLine = greeting?.text ?? `Merhaba, ben ${personaName}. Ne hesaplayalım?`;
+  const greetingLine = greeting?.text ?? `Merhaba, ben ${personaName}. Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?`;
 
   return (
     <View style={chat.screen}>

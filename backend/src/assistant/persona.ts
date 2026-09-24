@@ -16,6 +16,8 @@ export function identityBlock(userFirstName: string | null) {
   );
 }
 
+export const GREETING_CLOSE = 'Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?';
+
 // Karşılama: model çağrılmaz (maliyet yok, anında). Saat + ad + bekleyen işler.
 export function greetingText(input: { firstName: string | null; hour: number; pendingIncoming: number; unreadMessages: number; memoryEmpty: boolean }) {
   const hello = input.hour < 6 ? 'İyi geceler' : input.hour < 11 ? 'Günaydın' : input.hour < 18 ? 'Merhaba' : 'İyi akşamlar';
@@ -25,7 +27,8 @@ export function greetingText(input: { firstName: string | null; hour: number; pe
   if (input.pendingIncoming > 0) pending.push(`${input.pendingIncoming} numune talebi cevap bekliyor`);
   if (input.unreadMessages > 0) pending.push(`${input.unreadMessages} okunmamış mesajın var`);
   if (pending.length) parts.push(`${pending.join(', ')}.`);
-  if (input.memoryEmpty) parts.push('Kur, fason ve fire değerlerini bir kez söylersen bir daha sormam.');
-  parts.push('Ne hesaplayalım?');
+  if (input.memoryEmpty) parts.push('Fason ve fire değerlerini bir kez söylersen bir daha sormam.');
+  // Asistan yalnız hesap aracı değil (Fırat 2026-09-24): kumaş/iplik bulur, firmalara sorar, pazar araştırır.
+  parts.push(GREETING_CLOSE);
   return parts.join(' ');
 }
