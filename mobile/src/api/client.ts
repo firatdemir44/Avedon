@@ -384,6 +384,9 @@ export type TodaySummary = {
   unreadMessages: number;
   unreadNotifications: number;
   companyName: string | null;
+  companyId?: string | null;
+  companyLogoUpdatedAt?: string | null;
+  companyVerification?: string | null;
 };
 
 export function fetchToday() {

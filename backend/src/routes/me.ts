@@ -91,6 +91,10 @@ meRouter.get(
       unreadMessages,
       unreadNotifications,
       companyName: me.company?.name ?? null,
+      // Hesap menüsündeki "Firmam" satırında logo için.
+      companyId: me.company?.id ?? null,
+      companyLogoUpdatedAt: me.company?.logoUpdatedAt ?? null,
+      companyVerification: me.company?.verification ?? null,
     });
   })
 );

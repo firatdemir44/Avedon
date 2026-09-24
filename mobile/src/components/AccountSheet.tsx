@@ -9,6 +9,7 @@ import { ThemeSwitch } from './ThemeSwitch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { tr } from '../i18n';
 import { UserAvatar } from './UserAvatar';
+import { CompanyAvatar } from './CompanyAvatar';
 
 export interface AccountSheetProps {
   visible: boolean;
@@ -16,9 +17,11 @@ export interface AccountSheetProps {
   onOpenProfile: () => void;
   /** Firmaya bağlı kullanıcıda "Firmam" satırı. */
   onOpenCompany?: () => void;
+  /** Firmam satırında logo ve ad. */
+  company?: { id: string; name: string; logoUpdatedAt: string | null } | null;
 }
 
-export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany }: AccountSheetProps) {
+export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany, company }: AccountSheetProps) {
   const t = useTheme();
   const { user, logout } = useSession();
   const name = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '';
@@ -49,7 +52,14 @@ export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany }:
       {onOpenCompany ? (
         <ListRow
           title={tr('Firmam')}
-          left={<Icon name="business-outline" color="brand" />}
+          subtitle={company?.name}
+          left={
+            company ? (
+              <CompanyAvatar name={company.name} companyId={company.id} logoUpdatedAt={company.logoUpdatedAt} size={t.size.avatar} />
+            ) : (
+              <Icon name="business-outline" color="brand" />
+            )
+          }
           onPress={() => {
             onClose();
             onOpenCompany();

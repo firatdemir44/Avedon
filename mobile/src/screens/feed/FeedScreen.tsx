@@ -436,6 +436,7 @@ export function FeedScreen({ navigation }: Props) {
         onClose={() => setAccountOpen(false)}
         onOpenProfile={() => navigation.navigate('MyProfile')}
         onOpenCompany={user?.companyId ? () => navigation.navigate('CompanyProfile') : undefined}
+        company={today?.companyId && today.companyName ? { id: today.companyId, name: today.companyName, logoUpdatedAt: today.companyLogoUpdatedAt ?? null } : null}
       />
       <Screen scroll={false} noPadding>
         <FlatList
