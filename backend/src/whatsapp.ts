@@ -46,6 +46,7 @@ const status = {
   lastPostSummary: '' as string,
   // WABA aboneliği (ensureWabaSubscription): uygulama hesaba abone değilse Meta gerçek mesajları webhook'a iletmez.
   wabaSubscription: 'not_checked' as string,
+  accessDiagnostics: [] as string[],
 };
 
 export function markWebhookVerified() {
@@ -84,6 +85,7 @@ export function getWhatsAppStatus() {
     signatureFailureCount: status.signatureFailureCount,
     wabaIdSet: !!process.env.WHATSAPP_WABA_ID,
     wabaSubscription: status.wabaSubscription,
+    accessDiagnostics: status.accessDiagnostics,
   };
 }
 
@@ -219,4 +221,26 @@ export async function ensureWabaSubscription(): Promise<void> {
     status.wabaSubscription = `istek hatası: ${(err as Error).message}`;
   }
   console.log('[whatsapp] WABA aboneliği:', status.wabaSubscription);
+  await diagnoseAccess(token, wabaId);
+}
+
+// 'API access blocked' gibi hatalarda nedeni görmek için (2026-09-24): anahtarın kime ait olduğu,
+// numara ve işletme hesabının durumu. Anahtar değeri asla yazılmaz; yalnızca Meta'nın cevabı.
+async function diagnoseAccess(token: string, wabaId: string) {
+  const phoneId = env().phoneNumberId;
+  const probe = async (label: string, path: string) => {
+    try {
+      const r = await fetch(`https://graph.facebook.com/v21.0/${path}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+      const txt = (await r.text()).replace(/[A-Za-z0-9_-]{40,}/g, '***').slice(0, 300);
+      return `${label}: ${r.status} ${txt}`;
+    } catch (err) {
+      return `${label}: istek hatası ${(err as Error).message}`;
+    }
+  };
+  status.accessDiagnostics = [
+    await probe('anahtar', 'me?fields=id,name'),
+    await probe('waba', `${wabaId}?fields=name,account_review_status,business_verification_status`),
+    ...(phoneId ? [await probe('numara', `${phoneId}?fields=display_phone_number,verified_name,quality_rating,status,code_verification_status`)] : []),
+  ];
+  console.log('[whatsapp] erişim teşhisi:', status.accessDiagnostics.join(' | '));
 }
