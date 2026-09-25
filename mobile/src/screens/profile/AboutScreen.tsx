@@ -5,7 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { Card, Icon, ListRow, Screen, TakyonMark } from '../../ui';
 import { tr } from '../../i18n';
 
-const PUBLIC_WEB = 'https://avedon-blond.vercel.app';
+const PUBLIC_WEB = 'https://app.takyon.ai';
 
 function webUrl(path: string) {
   const origin = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.origin : PUBLIC_WEB;

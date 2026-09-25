@@ -25,7 +25,11 @@ import type { AnyProductType, StockUnit } from '../features/products/catalog';
 // ziyaretçinin kendi localhost'una istek atmaya çalışır ve çalışmaz.
 // Android emülatöründe localhost host makineyi göstermez, 10.0.2.2 kullanılır.
 // Web ve iOS simülatöründe geliştirme sırasında localhost doğrudan çalışır.
+// takyon.ai alan adından açılınca sunucu da kendi alan adından (api.takyon.ai) çağrılır.
+const onTakyonDomain =
+  Platform.OS === 'web' && typeof window !== 'undefined' && /(^|.)takyon.ai$/.test(window.location.hostname);
 const API_BASE_URL =
+  (onTakyonDomain ? 'https://api.takyon.ai/api' : undefined) ??
   process.env.EXPO_PUBLIC_API_URL ??
   Platform.select({
     android: 'http://10.0.2.2:4000/api',
