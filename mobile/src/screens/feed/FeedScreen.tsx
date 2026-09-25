@@ -289,52 +289,13 @@ export function FeedScreen({ navigation }: Props) {
   const stat = (value: number | undefined) => (today ? String(value ?? 0) : '—');
 
   const header = (
-    <View style={{ gap: t.space[6], paddingBottom: t.space[4], paddingHorizontal: t.space[4] }}>
+    <View style={{ gap: t.space[6], paddingTop: t.space[1], paddingBottom: t.space[4], paddingHorizontal: t.space[4] }}>
       <SearchBox
         placeholder={tr('Kumaş, iplik veya firma ara')}
         accessibilityLabel={tr('Arama yap')}
         onPress={() => navigation.navigate('GlobalSearch')}
-        trailingAction={{ icon: 'camera', label: tr('Fotoğrafla benzer kumaş ara'), onPress: () => navigation.navigate('SimilarSearch') }}
+        trailingAction={{ icon: 'camera', label: tr('Fotoğrafla benzer kumaş ara'), onPress: () => navigation.navigate('SimilarSearch'), prominent: true }}
       />
-
-      {/* Fotoğrafla kumaş bul (Fırat 2026-09-25): tasarımcıların en çok beğendiği özellik; tanıtımın
-          merkezi olduğu için ana sayfada arama kutusunun hemen altında büyük kart. */}
-      <Pressable
-        onPress={() => {
-          haptics.selection();
-          navigation.navigate('SimilarSearch');
-        }}
-        accessibilityRole="button"
-        accessibilityLabel={tr('Fotoğrafla kumaş bul')}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: t.space[4],
-          backgroundColor: pressed ? t.colors.brandStrong : t.colors.brand,
-          borderRadius: t.radius.lg,
-          padding: t.space[4],
-        })}
-      >
-        <View
-          style={{
-            width: t.size.control,
-            height: t.size.control,
-            borderRadius: t.radius.md,
-            backgroundColor: t.colors.brandStrong,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Icon name="camera" color="onBrand" />
-        </View>
-        <View style={{ flex: 1, minWidth: 0, gap: t.space[1] }}>
-          <Text style={[t.type.title18, { color: t.colors.onBrand }]}>{tr('Fotoğrafla kumaş bul')}</Text>
-          <Text style={[t.type.body14, { color: t.colors.onBrand }]}>
-            {tr('Modelin ya da kumaşın fotoğrafını çekin; katalogdaki en yakın kumaşları hemen bulalım.')}
-          </Text>
-        </View>
-        <Icon name="chevron" color="onBrand" />
-      </Pressable>
 
       {/* Bugün */}
       <View style={{ gap: t.space[3] }}>

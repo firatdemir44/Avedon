@@ -20,7 +20,8 @@ export interface SearchBoxProps {
   style?: StyleProp<ViewStyle>;
   testID?: string;
   /** Kutunun içinde sağda ikon düğme (ör. fotoğrafla ara). */
-  trailingAction?: { icon: AnyIconName; label: string; onPress: () => void };
+  // prominent: öne çıkan büyük, hafif renkli daire (ana sayfadaki fotoğrafla arama; Fırat 2026-09-25).
+  trailingAction?: { icon: AnyIconName; label: string; onPress: () => void; prominent?: boolean };
 }
 
 export function SearchBox({
@@ -42,9 +43,25 @@ export function SearchBox({
       accessibilityRole="button"
       accessibilityLabel={trailingAction.label}
       hitSlop={t.space[2]}
-      style={({ pressed }) => ({ width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+      style={({ pressed }) =>
+        trailingAction.prominent
+          ? {
+              // Kutudan biraz taşan daire: kutu 48px, daire 56px.
+              width: t.size.control + t.space[2],
+              height: t.size.control + t.space[2],
+              marginVertical: -t.space[1],
+              marginRight: -t.space[2],
+              borderRadius: t.radius.full,
+              backgroundColor: pressed ? t.colors.brand : t.colors.brandSoft,
+              borderWidth: 1,
+              borderColor: t.colors.brand,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }
+          : { width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }
+      }
     >
-      <Icon name={trailingAction.icon} size={t.size.iconSm} color="brand" />
+      <Icon name={trailingAction.icon} size={trailingAction.prominent ? t.size.icon : t.size.iconSm} color="brand" />
     </Pressable>
   ) : null;
 
