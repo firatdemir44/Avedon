@@ -46,6 +46,18 @@ import { useTheme } from '../../theme/ThemeContext';
 import { consumeVoiceTurn, toggleSpeak } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 import { locale, tr } from '../../i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSession } from '../../context/SessionContext';
+
+const INTRO_KEY = 'takyon.assistant.introSeen';
+
+// Asistanın ilk tanışma konuşması: ne yaptığını birkaç cümlede anlatır (sesli de okunur).
+function introText(firstName: string | null | undefined, name: string) {
+  return tr(
+    'Merhaba{who}, ben {name}. Tekstili bilen, firmanız adına her an çalışan yapay zekâ asistanınızım. Kumaş, iplik ya da boş makine kapasitesi ararım; firmalardan teklif ve numune toplarım. Kumaş, iplik ve konfeksiyon maliyetinizi hesaplar; gramaj, fire, iplik numarası gibi teknik sorularınızı cevaplarım. Ürününüz için yurt dışında hangi ülkelerde alıcı olduğunu bulur, alıcıya özel numune seti hazırlarım. Bana buraya yazabilir ya da mikrofona basıp konuşabilirsiniz. Ne isterseniz söyleyin, birlikte halledelim.',
+    { who: firstName ? ' ' + firstName : '', name }
+  );
+}
 
 type Props = MainTabScreenProps<'AssistantTab'>;
 
@@ -102,6 +114,7 @@ const skillChips = (): { label: string; starter: string }[] => [
 type ChatItem = AssistantMessage & { local?: boolean };
 
 export function AssistantScreen({ navigation }: Props) {
+  const { user } = useSession();
   const t = useTheme();
   const chat = useChatStyles();
   const insets = useSafeAreaInsets();
@@ -173,6 +186,27 @@ export function AssistantScreen({ navigation }: Props) {
   useEffect(() => {
     messageCountRef.current = messages.length;
   }, [messages.length]);
+
+  // İlk tanışma (Fırat 2026-09-25): asistan ilk kez açıldığında kendini tanıtan daha uzun bir
+  // konuşma gösterir ve sesli okur. Cihaz başına bir kez; sonrasında olağan kısa karşılama.
+  const [intro, setIntro] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(INTRO_KEY)
+      .then((seen) => {
+        if (cancelled || seen || messageCountRef.current > 0) return;
+        setIntro(true);
+        AsyncStorage.setItem(INTRO_KEY, '1').catch(() => undefined);
+        // Sekmeye dokunuş hâlâ "kullanıcı hareketi" sayılırken okumaya başla; tarayıcı izin
+        // vermezse metin ekranda kalır, hoparlör simgesiyle dinlenebilir.
+        setTimeout(() => toggleSpeak('intro', introText(user?.firstName, personaName)), 300);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Karşılama modelsiz ve anında; sohbet kaydına YAZILMAZ, yalnızca gösterilir.
   useEffect(() => {
@@ -555,7 +589,7 @@ export function AssistantScreen({ navigation }: Props) {
     );
   }
 
-  const greetingLine = greeting?.text ?? tr('Merhaba, ben {name}. Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?', { name: personaName });
+  const greetingLine = intro ? introText(user?.firstName, personaName) : greeting?.text ?? tr('Merhaba, ben {name}. Kumaş ya da iplik bulmak, maliyet hesaplamak, firmalara sormak, ihracat pazarı aramak… Bugün sana nasıl yardımcı olayım?', { name: personaName });
 
   return (
     <View style={chat.screen}>
