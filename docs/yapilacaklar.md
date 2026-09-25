@@ -6,7 +6,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 
 **Takyon (ana proje)**
 1. **TÜRKPATENT "Takyon Ai":** ön araştırma YAPILDI, boş (Fırat 2026-09-25). Kalan: başvuru (sınıf 9, 35, 42), şirket Takyon Ai Sanayi ve Ticaret A.Ş.
-2. **takyon.ai bağlama:** alan adı Fırat'ın, DNS Cloudflare'da, kökte mevcut Takyon AI sitesi + e-posta var → kök DEĞİŞMEZ; uygulama app.takyon.ai (Vercel), sunucu api.takyon.ai (Render). Kod hazır (2026-09-25). Fırat panel adımlarını yapacak; sonra asistan doğrulayıp paylaşım bağlantılarını yeni adrese çevirir, eski adresten yönlendirme kurar.
+2. **takyon.ai bağlama — BEKLEMEDE (2026-09-25):** alan adı Porkbun'da (Fırat'ın, 2029'a kadar), DNS BAŞKA bir Cloudflare hesabında (Fırat'ın firatdemir@ hesabında değil; muhtemelen eski ortak/site kurucusu). Fırat hesap kendisine geçince devam. Yapılmış: Vercel'e app.takyon.ai eklendi (Verification Required; _vercel TXT + app CNAME bekliyor), kod hazır. Kalan: Cloudflare'de _vercel TXT, app CNAME, api CNAME → avedon-backend.onrender.com (hepsi DNS only), Render Custom Domains'e api.takyon.ai. Kökteki site ve e-posta kayıtlarına dokunulmaz. Kendi hesabına Add domain YAPILMAZ (site/e-posta kesilir).
 3. **WhatsApp gerçek numara:** şirket adına SIM + Meta işletme doğrulaması (Takyon Ai A.Ş. belgeleriyle) → Yönetim > WhatsApp'ta PIN ile kayıt. Sonra uygulamaya "WhatsApp'tan sor" simgesi.
 4. **Net Takyon Ai logo dosyası** (SVG/PNG, işaret + yazı).
 5. **Stok girişi:** stoğu 0 görünen Melide ürünlerine stok miktarı (başkalarına yalnız stoklu ürün görünür; canlıda şu an 3 ürün görünüyor).
