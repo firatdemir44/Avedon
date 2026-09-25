@@ -242,7 +242,7 @@ adminRouter.get(
 const MERGE_MESSAGES: Record<MergeError, string> = {
   same_user: 'Aynı hesap iki kez seçildi.',
   user_not_found: 'Hesaplardan biri bulunamadı (zaten birleştirilmiş olabilir).',
-  not_duplicates: 'Bu iki hesabın telefon numarası aynı değil; birleştirilemez.',
+  not_duplicates: 'Bu iki hesabın telefon numarası da adı da aynı değil; birleştirilemez.',
   different_companies: 'Hesaplar farklı firmalarda. Emin değilseniz önce kişiyle görüşün.',
 };
 
@@ -252,7 +252,8 @@ adminRouter.post(
     const body = z.object({ keepUserId: z.string().min(1), removeUserId: z.string().min(1) }).safeParse(req.body ?? {});
     if (!body.success) return res.status(400).json({ error: 'invalid_body' });
     const force = req.query.force === '1' || req.query.force === 'true';
-    const result = await mergeAccounts(body.data.keepUserId, body.data.removeUserId, { force });
+    const sameName = req.query.sameName === '1';
+    const result = await mergeAccounts(body.data.keepUserId, body.data.removeUserId, { force, sameName });
     if (!result.ok) {
       const status = result.error === 'user_not_found' ? 404 : result.error === 'different_companies' ? 409 : 400;
       return res.status(status).json({ error: result.error, message: t(req.lang, MERGE_MESSAGES[result.error]) });

@@ -113,3 +113,17 @@ test('birleştirme: kayıtlar taşınır, tekil çakışmalar ayıklanır, fazla
   assert.equal(await p.assistantThread.count({ where: { userId: keep.id } }), 1);
   assert.equal((await m.listDuplicateAccounts()).some((g) => g.accounts.some((a) => a.id === keep.id)), false);
 });
+
+test('aynı firmada aynı adlı, telefonu farklı hesaplar listelenir ve onayla birleştirilir', { skip: !hasDb }, async () => {
+  const m = await modP!;
+  const co = await m.prisma.company.create({ data: { name: `Deneme ${rnd()}`, taxId: '', companyCode: `T${rnd()}` } });
+  const a = await m.prisma.user.create({ data: { ...base, firstName: 'Fatih', lastName: 'DEMİR', phone: `053${rnd()}`, companyId: co.id } });
+  const b = await m.prisma.user.create({ data: { ...base, firstName: 'fatih', lastName: 'Demir ', phone: `054${rnd()}`, companyId: co.id } });
+  const groups = await m.listDuplicateAccounts();
+  const g = groups.find((x) => x.accounts.some((acc) => acc.id === a.id));
+  assert.ok(g, 'grup listelenmeli');
+  assert.equal(g!.reason, 'ad');
+  assert.deepEqual((await m.mergeAccounts(a.id, b.id)), { ok: false, error: 'not_duplicates' });
+  assert.deepEqual((await m.mergeAccounts(a.id, b.id, { sameName: true })), { ok: true });
+  assert.equal(await m.prisma.user.findUnique({ where: { id: b.id } }), null);
+});

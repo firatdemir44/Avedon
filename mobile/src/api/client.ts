@@ -3552,7 +3552,10 @@ export interface DuplicateAccount {
   counts: Record<'posts' | 'comments' | 'likes' | 'messages' | 'conversations' | 'connections' | 'assistantThreads' | 'sampleRequests' | 'quoteRequests' | 'quotes' | 'productDrafts' | 'notifications', number>;
 }
 export interface DuplicateGroup {
+  /** Telefon grubunda maskeli numara, ad grubunda ad soyad. */
   phone: string;
+  /** telefon: aynı numara; ad: aynı firmada aynı ad, telefon farklı. Eski sunucu göndermez. */
+  reason?: 'telefon' | 'ad';
   /** Eskiden yeniye sıralı. */
   accounts: DuplicateAccount[];
 }
@@ -3561,8 +3564,9 @@ export function fetchDuplicateAccounts() {
   return request<{ groups: DuplicateGroup[] }>('/admin/duplicate-accounts');
 }
 
-export function mergeDuplicateAccounts(keepUserId: string, removeUserId: string, force = false) {
-  return request<{ ok: true; groups: DuplicateGroup[] }>(`/admin/duplicate-accounts/merge${force ? '?force=1' : ''}`, {
+export function mergeDuplicateAccounts(keepUserId: string, removeUserId: string, force = false, sameName = false) {
+  const q = [force ? 'force=1' : '', sameName ? 'sameName=1' : ''].filter(Boolean).join('&');
+  return request<{ ok: true; groups: DuplicateGroup[] }>(`/admin/duplicate-accounts/merge${q ? '?' + q : ''}`, {
     method: 'POST',
     body: JSON.stringify({ keepUserId, removeUserId }),
   });

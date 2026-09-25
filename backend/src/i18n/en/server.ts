@@ -214,6 +214,6 @@ export const server: Record<string, string> = {
   // --- Çift hesaplar (yönetim) ---
   'Aynı hesap iki kez seçildi.': 'The same account was selected twice.',
   'Hesaplardan biri bulunamadı (zaten birleştirilmiş olabilir).': 'One of the accounts was not found (it may already have been merged).',
-  'Bu iki hesabın telefon numarası aynı değil; birleştirilemez.': 'These two accounts do not share a phone number; they cannot be merged.',
+  'Bu iki hesabın telefon numarası da adı da aynı değil; birleştirilemez.': 'These two accounts share neither a phone number nor a name; they cannot be merged.',
   'Hesaplar farklı firmalarda. Emin değilseniz önce kişiyle görüşün.': 'The accounts belong to different companies. If unsure, talk to the person first.',
 };

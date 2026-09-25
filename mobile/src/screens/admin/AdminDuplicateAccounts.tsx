@@ -55,7 +55,8 @@ export function AdminDuplicateAccounts() {
       message: tr(
         '{keep} ({date}) hesabı kalır. Diğer {n} hesabın paylaşımları, mesajları, bağlantıları ve talepleri bu hesaba taşınır, sonra o hesaplar silinir. Bu işlem geri alınamaz.',
         { keep: `${keep.firstName} ${keep.lastName}`, date: fmtDate(keep.createdAt), n: removes.length }
-      ),
+      ) +
+        (g.reason === 'ad' ? ' ' + tr('Telefon numaraları farklı; bundan sonra yalnızca kalan hesabın numarasıyla giriş yapılır.') : ''),
       confirmLabel: tr('Birleştir'),
       destructive: true,
     });
@@ -66,7 +67,7 @@ export function AdminDuplicateAccounts() {
     try {
       for (const r of removes) {
         try {
-          await mergeDuplicateAccounts(keep.id, r.id);
+          await mergeDuplicateAccounts(keep.id, r.id, false, g.reason === 'ad');
         } catch (err) {
           if (!(err instanceof ApiError && err.code === 'different_companies')) throw err;
           const force = await confirmAction({
@@ -80,7 +81,7 @@ export function AdminDuplicateAccounts() {
             destructive: true,
           });
           if (!force) return;
-          await mergeDuplicateAccounts(keep.id, r.id, true);
+          await mergeDuplicateAccounts(keep.id, r.id, true, g.reason === 'ad');
         }
       }
       setNotice(tr('Hesaplar birleştirildi.'));
@@ -147,8 +148,8 @@ export function AdminDuplicateAccounts() {
           <Card key={key}>
             <View style={{ gap: t.space[3], minWidth: 0 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[2], minWidth: 0 }}>
-                <Icon name="call-outline" size={t.size.iconSm} color="ink2" />
-                <Text style={[t.type.mono14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>{g.phone}</Text>
+                <Icon name={g.reason === 'ad' ? 'person-outline' : 'call-outline'} size={t.size.iconSm} color="ink2" />
+                <Text style={[g.reason === 'ad' ? t.type.label14 : t.type.mono14, { color: t.colors.ink, flex: 1, minWidth: 0 }]}>{g.phone}</Text>
                 <Badge kind="pending" label={tr('{n} hesap', { n: g.accounts.length })} />
               </View>
 

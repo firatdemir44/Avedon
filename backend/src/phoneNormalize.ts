@@ -11,6 +11,18 @@ import { maskPhone, normalizePhone } from './phone';
 
 type Db = PrismaClient;
 
+// Aynı firmada aynı ad-soyadla açılmış hesaplar (Fırat 2026-09-25: "Fatih Demir" telefonu farklı
+// yazıldığı için telefon grubuna düşmedi). Ad karşılaştırması büyük/küçük harf ve Türkçe harf farkı gözetmez.
+export function nameKey(first: string | null, last: string | null) {
+  return `${first ?? ''} ${last ?? ''}`
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[ıi̇]/g, 'i')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/s+/g, ' ')
+    .trim();
+}
+
 export type NormalizeResult = { usersUpdated: number; invitesUpdated: number; otpsDeleted: number; duplicateGroups: number };
 
 export async function normalizeStoredPhones(db: Db = defaultPrisma): Promise<NormalizeResult> {
@@ -56,6 +68,23 @@ export async function normalizeStoredPhones(db: Db = defaultPrisma): Promise<Nor
   return { usersUpdated, invitesUpdated, otpsDeleted, duplicateGroups };
 }
 
+/** Aynı firmada aynı adlı, telefonu farklı hesap grupları (telefon grubuna girenler hariç). */
+async function sameNameGroups(db: Db, phoneGrouped: Set<string>) {
+  const users = await db.user.findMany({ where: { companyId: { not: null } }, select: { id: true, companyId: true, firstName: true, lastName: true } });
+  const by = new Map<string, string[]>();
+  for (const u of users) {
+    const n = nameKey(u.firstName, u.lastName);
+    if (n.length < 3) continue;
+    const k = `${u.companyId}|${n}`;
+    by.set(k, [...(by.get(k) ?? []), u.id]);
+  }
+  return [...by.values()].filter((ids) => ids.length > 1 && ids.some((id) => !phoneGrouped.has(id)));
+}
+
+export async function countSameNameGroups(db: Db = defaultPrisma) {
+  return (await sameNameGroups(db, new Set())).length;
+}
+
 export async function countDuplicatePhoneGroups(db: Db = defaultPrisma): Promise<number> {
   const users = await db.user.findMany({ select: { phone: true } });
   const counts = new Map<string, number>();
@@ -74,8 +103,12 @@ export async function listDuplicateAccounts(db: Db = defaultPrisma) {
     byKey.set(k, [...(byKey.get(k) ?? []), u.id]);
   }
   const groups = [];
-  for (const [key, ids] of byKey) {
-    if (ids.length < 2) continue;
+  const phoneGrouped = new Set([...byKey.values()].filter((ids) => ids.length > 1).flat());
+  const entries: { key: string; ids: string[]; reason: 'telefon' | 'ad' }[] = [
+    ...[...byKey].filter(([, ids]) => ids.length > 1).map(([key, ids]) => ({ key, ids, reason: 'telefon' as const })),
+    ...(await sameNameGroups(db, phoneGrouped)).map((ids) => ({ key: '', ids, reason: 'ad' as const })),
+  ];
+  for (const { key, ids, reason } of entries) {
     const accounts = [];
     for (const id of ids) {
       const u = await db.user.findUniqueOrThrow({
@@ -114,21 +147,24 @@ export async function listDuplicateAccounts(db: Db = defaultPrisma) {
       });
     }
     accounts.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    groups.push({ phone: maskPhone(key), accounts });
+    groups.push({ phone: reason === 'telefon' ? maskPhone(key) : `${accounts[0].firstName} ${accounts[0].lastName}`, reason, accounts });
   }
   return groups;
 }
 
 export type MergeError = 'same_user' | 'user_not_found' | 'not_duplicates' | 'different_companies';
+// sameName: telefonları farklı ama aynı firmada aynı adlı hesaplar (yönetici ayrıca onaylar).
 
 // removeUserId hesabının tüm kayıtları keepUserId'ye taşınır, sonra removeUserId silinir. Tek işlem
 // (transaction): bir adım hata verirse hiçbir şey değişmez.
-export async function mergeAccounts(keepUserId: string, removeUserId: string, opts: { force?: boolean } = {}, db: Db = defaultPrisma): Promise<{ ok: true } | { ok: false; error: MergeError }> {
+export async function mergeAccounts(keepUserId: string, removeUserId: string, opts: { force?: boolean; sameName?: boolean } = {}, db: Db = defaultPrisma): Promise<{ ok: true } | { ok: false; error: MergeError }> {
   if (keepUserId === removeUserId) return { ok: false, error: 'same_user' };
   const [keep, remove] = await Promise.all([db.user.findUnique({ where: { id: keepUserId } }), db.user.findUnique({ where: { id: removeUserId } })]);
   if (!keep || !remove) return { ok: false, error: 'user_not_found' };
   const canonical = normalizePhone(keep.phone);
-  if (canonical !== normalizePhone(remove.phone)) return { ok: false, error: 'not_duplicates' };
+  const samePhone = canonical === normalizePhone(remove.phone);
+  const sameNameCo = !!opts.sameName && !!keep.companyId && keep.companyId === remove.companyId && nameKey(keep.firstName, keep.lastName) === nameKey(remove.firstName, remove.lastName);
+  if (!samePhone && !sameNameCo) return { ok: false, error: 'not_duplicates' };
   if (keep.companyId && remove.companyId && keep.companyId !== remove.companyId && !opts.force) return { ok: false, error: 'different_companies' };
 
   const K = keepUserId;
