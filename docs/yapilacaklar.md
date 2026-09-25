@@ -16,7 +16,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 9. **Dernek üye listeleri** (İTHİB, İHKİB, EİB, TOBB…; Excel/CSV) ve **danışman geri bildirimi**.
 
 **Texart (fotoğraf düzenleme)**
-1. **Test fotoğrafları (~40)** sohbete yüklenir, her birine kısa not ("siyah süprem", "kırışık dantel"…). Zor vakalar: siyah, beyaz, parlak likralı, dantel/tül, baskılı, kırışık, eğik, sarı ışık, flaşlı.
+1. **Test fotoğrafları:** 28 fotoğraf yüklendi (2026-09-25; tüm zor vakalar dahil: siyah, beyaz, saten parlama, dantel, 2 tül, file, baskılı, kırışık, eğik, flaşlı, TL84/D65 çifti). 40 hedefi normal çekimlerle tamamlanacak.
 2. **Adım 3 onayı:** işleme hattı Fable 5.1 limiti açılınca (2026-09-26) başlar; her adımdan sonra karşılaştırma sayfasına bakıp onay.
 3. **Sonuçların göz kontrolü:** "uydurulmuş doku yok" son kontrolü Fırat yapar (kabul ölçütü).
 
