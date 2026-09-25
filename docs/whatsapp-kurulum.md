@@ -6,13 +6,13 @@ Kaynak: Meta resmi dokümanları, 2026-09-16'da okundu (Cloud API Get Started 16
 
 - **Numara:** Meta her uygulamaya ücretsiz bir **test numarası** verir; bu numara yalnızca "To" listesine eklediğiniz **en fazla 5 telefona** mesaj atabilir. Pilot denemesi için yeterli. Gerçek numara için ayrı bir SIM gerekir: Cloud API'ye bağlanan numara **WhatsApp uygulamasında kullanılamaz** (kişisel numaranızı bağlarsanız telefondaki WhatsApp'ınız kapanır). Mobil hat önerilir.
 - **Ücret:** kullanıcı size yazınca 24 saatlik pencere açılır; bu pencerede gönderilen serbest metin (asistan cevapları) **ücretsiz**. Ücret yalnızca **şablon** mesajlarında (ör. pencere dışında numune talebi bildirimi) ve mesaj başına. Test numarasında da aynı kural.
-- **Asistan sizi tanısın diye** WhatsApp'tan yazdığınız numara, Texflow'a kayıtlı telefon numaranızla aynı olmalı.
+- **Asistan sizi tanısın diye** WhatsApp'tan yazdığınız numara, Takyon Ai'a kayıtlı telefon numaranızla aynı olmalı.
 - Gerekli 4 değer (Render'a girilecek): `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`. Bunları sohbete yazmayın; doğrudan Render'a girin.
 
 ## Adım 1 - Geliştirici kaydı ve uygulama (developers.facebook.com)
 
 1. Facebook hesabınızla `developers.facebook.com` adresine girin; ilk kez giriyorsanız geliştirici kaydını tamamlayın.
-2. **My Apps → Create App**. Uygulama adı: `Texflow`, e-posta: sizinki.
+2. **My Apps → Create App**. Uygulama adı: `Takyon Ai`, e-posta: sizinki.
 3. Kullanım amacı olarak **Connect with customers through WhatsApp** seçin → Next.
 4. İş portföyü (business portfolio) seçin; yoksa **Create a new business portfolio** ile firmanız adına oluşturun → Next → Create app.
 5. Sizi **Customize use case → Connect on WhatsApp → Quickstart** sayfasına yönlendirir.
@@ -30,12 +30,12 @@ Kaynak: Meta resmi dokümanları, 2026-09-16'da okundu (Cloud API Get Started 16
 API Setup'taki "Generate access token" geçicidir (saatler içinde biter); kalıcı olanı sistem kullanıcısıyla alınır:
 
 1. `business.facebook.com` → **Business Settings** (Ayarlar) → sol menüde **Users → System users**.
-2. Sağ üst **Add** → ad `texflow-backend`, rol **Admin** → oluşturun.
+2. Sağ üst **Add** → ad `takyon-backend`, rol **Admin** → oluşturun.
 3. Sistem kullanıcısını seçin → **Assign Assets**:
-   - **Apps** → `Texflow` → **Manage app** (Full control) açın.
+   - **Apps** → `Takyon Ai` → **Manage app** (Full control) açın.
    - **WhatsApp accounts** → hesabınız → **Manage WhatsApp Business accounts** (Full control) açın.
    - **Assign assets**.
-4. **Generate token** → uygulama `Texflow`, süre **Never** (asla dolmasın), izinler: `business_management`, `whatsapp_business_messaging`, `whatsapp_business_management` → Generate.
+4. **Generate token** → uygulama `Takyon Ai`, süre **Never** (asla dolmasın), izinler: `business_management`, `whatsapp_business_messaging`, `whatsapp_business_management` → Generate.
 5. Anahtarı kopyalayıp güvenli yere alın → `WHATSAPP_ACCESS_TOKEN`. (Pencere kapanınca bir daha gösterilmez; kaybolursa yenisi üretilir.)
 
 ## Adım 4 - Uygulama gizli anahtarı
@@ -48,7 +48,7 @@ App Dashboard → sol alt **App settings → Basic** → **App secret → Show**
 
 ## Adım 6 - Render'a değerleri girin (webhook'tan ÖNCE)
 
-1. `dashboard.render.com` → `texflow-backend` servisi → **Environment**.
+1. `dashboard.render.com` → `takyon-backend` servisi → **Environment**.
 2. Dört değişkeni ekleyin: `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` → **Save Changes** (servis kendini yeniden yayınlar, 3-5 dk).
 3. Kontrol: `https://avedon-backend.onrender.com/api/health` içinde `whatsapp` alanı `configured: true`, `appSecretSet: true`, `verifyTokenSet: true` olmalı. Bana "Render'a girdim" demeniz yeter, gerisini ben okurum.
 
@@ -63,7 +63,7 @@ App Dashboard → sol alt **App settings → Basic** → **App secret → Show**
 
 ## Adım 8 - Test
 
-Telefonunuzdan test numarasına yazın: `30/1 Ne iplik kaç tex?` Beklenen: birkaç saniyede İpek/Mert cevap verir; `health` içinde `lastInboundAt` dolar. Kayıtlı olmayan bir numaradan yazılırsa "Texflow'a kayıt olun" cevabı gider.
+Telefonunuzdan test numarasına yazın: `30/1 Ne iplik kaç tex?` Beklenen: birkaç saniyede İpek/Mert cevap verir; `health` içinde `lastInboundAt` dolar. Kayıtlı olmayan bir numaradan yazılırsa "Takyon Ai'a kayıt olun" cevabı gider.
 
 ## Sonrası
 
@@ -76,6 +76,6 @@ Telefonunuzdan test numarasına yazın: `30/1 Ne iplik kaç tex?` Beklenen: birk
 `/api/health` içindeki `whatsapp` alanı her şeyi gösterir:
 - `postCount: 0` ve imza hatası yok → Meta hiç istek göndermiyor: mesaj **doğru numaraya** mı yazılıyor (test numarası panelde Step 1'de; sohbeti `https://wa.me/<numara>` ile açın), `messages` alanı abone mi, uygulama **Live** mı.
 - `signatureFailureCount > 0` → Render'daki `WHATSAPP_APP_SECRET` yanlış (App settings → Basic → App secret → Show; 32 karakter).
-- `wabaSubscription: hata 401 ... Session has expired` → `WHATSAPP_ACCESS_TOKEN` geçici token; sistem kullanıcısından **süresi "Asla"** olan token üretin. Beklenen: `ok (abone uygulamalar: Texflow, ...)`.
+- `wabaSubscription: hata 401 ... Session has expired` → `WHATSAPP_ACCESS_TOKEN` geçici token; sistem kullanıcısından **süresi "Asla"** olan token üretin. Beklenen: `ok (abone uygulamalar: Takyon Ai, ...)`.
 - Panel artık rehberli: Kullanım durumları → Customize → **Step 1. Try it out** (test numarası, Phone Number ID, WABA ID), webhook **Step 2. Production setup** içinde. Sistem kullanıcıları: `business.facebook.com/latest/settings/system_users?business_id=<portföy no>`.
 - Uygulamayı yayınlamak için gizlilik politikası adresi gerekir: `https://avedon-blond.vercel.app/gizlilik.html`.

@@ -5,22 +5,22 @@ Kaliteli Kumaş aramanın yenilikçi yoluna hoş geldiniz! · Merhaba · Başlay
 Kaliteli kumaş aramanın yenilikçi yoluna hoş geldiniz! · Merhaba · Başlayalım
 
 ### 1.2 Welcome -2 
-İleri · Sadece belirli bir kalite standartında olan firmalar Texflow’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar
+İleri · Sadece belirli bir kalite standartında olan firmalar Takyon Ai’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar
 
 ### 1.2 Welcome -2 – 1
-Sadece belirli bir kalite standartında olan firmalar Texflow’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar · İleri
+Sadece belirli bir kalite standartında olan firmalar Takyon Ai’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar · İleri
 
 ### 1.3 Welcome -3 
-İleri · Texflow, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı
+İleri · Takyon Ai, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı
 
 ### 1.3 Welcome -3 – 1
-Texflow, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı · İleri
+Takyon Ai, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı · İleri
 
 ### 1.4 Welcome -4
-İleri · Texflow dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler
+İleri · Takyon Ai dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler
 
 ### 1.4 Welcome -4 – 1
-Texflow dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler · İleri
+Takyon Ai dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler · İleri
 
 ### 2.1 Login Screen – 1
 Kaliteli kumaş bulmanın en inovatif uygulamasına hoş geldiniz ! · Merhaba · Şifre · Şifremi Unuttum · Kullanıcı Adı · Giriş · Hesabınız yok mu? Ücretsiz kayıt olun · Google ile giriş yapın · Facebook ile giriş yapın · Linkedin ile giriş yapın
@@ -29,22 +29,22 @@ Kaliteli kumaş bulmanın en inovatif uygulamasına hoş geldiniz ! · Merhaba �
 Bu sizin hesabınız değil mi? Ücretsiz kayıt olun · FIRAT DEMİR OLARAK DEVAM ET · BAŞKA BİR HESABA GEÇ · Fırat Demir · Tekrardan Hoşgeldiniz
 
 ### 5.6 3 AY ÜCRETSİZ – 1
-İleri · TEXFLOW’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Texflow
+İleri · TAKYON AI’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Takyon Ai
 
 ### 5.6 3 AY ÜCRETSİZ – 2
-TEXFLOW’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Free · İleri
+TAKYON AI’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Free · İleri
 
 ### 5.7 SONRASI 100$ – 1
-İleri · TEXFLOW’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · Texflow
+İleri · TAKYON AI’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · Takyon Ai
 
 ### 5.7 SONRASI 100$ – 2
-TEXFLOW’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · İleri
+TAKYON AI’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · İleri
 
 ### Ana sayfa
 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 1 · 9:41 · Arama Yapın · 2
 
 ### Ana sayfa – altta bildirim
-Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 2 · X · 9:41 · Arama Yapın · 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Texflow da Şirket Sayfası oluşturmak ister misin? · Bir daha sorma
+Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 2 · X · 9:41 · Arama Yapın · 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Takyon Ai da Şirket Sayfası oluşturmak ister misin? · Bir daha sorma
 
 ### Ana sayfa – Profil Menüsü 
 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 9:41 · Arama Yapın · Bildirimler · X · Fırat Demir · Melide Tekstil AŞ · Firma Yetkilisi · Çıkış · Yeni Koleksiyonlar · Favori Ürünler · Son Bakılan Ürünler · Gönderi Paylaş · Profili Düzenle · Numune Talepleri
@@ -59,7 +59,7 @@ Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fa
 Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör
 
 ### Anasayfa - Scrolling 2 – 1
-Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Texflow da şirket sayfası oluşturmak ister misin ? · Bir daha sorma · Berke Tekstil · Fatih Tekstil
+Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Takyon Ai da şirket sayfası oluşturmak ister misin ? · Bir daha sorma · Berke Tekstil · Fatih Tekstil
 
 ### Anasayfa – Profil Menüsü
 Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Berke Tekstil · Fatih Tekstil · Fırat Demir · Melide Tekstil AŞ Firma Yetkilisi · Profili Düzenle Numune Talepleri Gönderi Paylaş Son Bakılan Ürünler Favori Ürünler Yeni Koleksiyonlar Çıkış
@@ -77,10 +77,10 @@ Ahmet · Kişiler · Şirketler · Gönderiler · Ürünler · Ankara · Ahmet M
 Ahmet · Kişiler · Şirketler · Gönderiler · Ürünler · Ankara · Ahmet Mehmet · Melide Tekstil Üretim Planlayıcısı · İstanbul · Ahmet Tekstil · Tekstil Üreticisi · AHMT Tekstil · 3 ortak bağlantı · 2 ortak bağlantı · Daha fazla gör + · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Ahmet Polar · DAHA FAZLA GÖR DİYİNCE NE OLACAK SAYFASI
 
 ### Bağlantı Kur butonu sonucu
-Fırat Demir · CEO - TEXFLOW Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · X
+Fırat Demir · CEO - TAKYON AI Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Takyon Ai da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · X
 
 ### Bağlantı Kur butonu sonucu – 2
-Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · Fatih Demir · CEO - TEXFLOW Yetkilisi · +
+Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Takyon Ai da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · Fatih Demir · CEO - TAKYON AI Yetkilisi · +
 
 ### Firma listesi
 Ribana · 2x1 - 3x1 - 3x2 -4x3 K.Korse · Selanik · Double Face · Ottoman · Yağmur Desen · Air File · Değişken K.Korse · Raschel · Pantolonluk · Taytlık · Tişörtlük · Donluk · Kullanım Amaçlarına göre kumaşlar · Düz İnterlok · LYC İnterlok · Sukuba · Çelikli İnterlok · Torba Krep · Örme · Torba Jakar · İnterlok Jakar · Kapitone · Dokuma · Düz Süprem · LYC Süprem · LYC İkiiplik · LYC Diagonel iki iplik · Lokost · Krep · Vanize Süprem · Petek Süprem · Dantel · Ürün Kategorileri · Firmalar · Konfeksiyoncu · Boyahane · İplik · Aksesuar · Baskı ve diğerleri · Üretici Kumaşçı · 1 · 9:41 · Arama Yapın · 2
@@ -116,7 +116,7 @@ Pantolonluk Kumaşlar · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik St
 15s · . · Ahmet Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Bağlantı Kur · Tekstil Üreticisi · 1 · 9:41 · Arama Yapın · 2
 
 ### Firma Sayfası Ürünler – 2
-Fırat Demir · CEO - TEXFLOW Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 1 · 9:41 · Arama Yapın · 2
+Fırat Demir · CEO - TAKYON AI Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Takyon Ai da 10 çalışan · ONAYSIZ FİRMA · ? · 1 · 9:41 · Arama Yapın · 2
 
 ### Firma Sayfası Ürünler – 3
 Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tümü · Örme · Raschel · Dantel · Dokuma · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Ahmet Polar · 1 · Arama Yapın · Taytlık · Tişörtlük · Mayoluk · Kullanım amaçlarına göre kumaşlar · Pantolonluk
@@ -140,7 +140,7 @@ Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · 
 Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Arama Yapın · 1
 
 ### Firma Sayfası Ürünler 6 – 2
-Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Arama Yapın · 1 · Depo Görevlisi · Ahmet Mehmet · Melide Tekstil · CEO - TEXFLOW Yetkilisi · +
+Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Arama Yapın · 1 · Depo Görevlisi · Ahmet Mehmet · Melide Tekstil · CEO - TAKYON AI Yetkilisi · +
 
 ### Firmalar – 1
 1 · Arama Yapın · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Özel Polar
@@ -281,19 +281,19 @@ Fırat Demir · Herkese Açık · Gönderi Paylaş · Ne hakkında paylaşmak is
 Gönderiler · Fırat Demir 3,828 Takipçi · Takip Ediliyor · 15s · Fırat Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · 1
 
 ### Şirket sayfası oluşturmak
-Şirket Sayfası Oluştur · İleri · Tekstil’in kalbi Texflow da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Texflow Şirket Sayfasını oluştur! · Texflow Şirket
+Şirket Sayfası Oluştur · İleri · Tekstil’in kalbi Takyon Ai da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Takyon Ai Şirket Sayfasını oluştur! · Takyon Ai Şirket
 
 ### Şirket sayfası oluşturmak – 1
-Şirket Sayfası Oluştur · İleri · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz
+Şirket Sayfası Oluştur · İleri · TAKYON AI’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz
 
 ### Şirket sayfası oluşturmak – 10
-İleri · Şirket Sayfası Oluştur · Tekstil’in kalbi Texflow da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Texflow Şirket Sayfasını oluştur! · Texflow Şirket
+İleri · Şirket Sayfası Oluştur · Tekstil’in kalbi Takyon Ai da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Takyon Ai Şirket Sayfasını oluştur! · Takyon Ai Şirket
 
 ### Şirket sayfası oluşturmak – 11
-İleri · Şirket Sayfası Oluştur · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz · Free
+İleri · Şirket Sayfası Oluştur · TAKYON AI’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz · Free
 
 ### Şirket sayfası oluşturmak – 12
-Başlayalım · Şirket Sayfası Oluştur · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
+Başlayalım · Şirket Sayfası Oluştur · TAKYON AI’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
 
 ### Şirket sayfası oluşturmak – 13
 İleri · Başlayalım · Firma Kısa İsmi · Firma Konumu · Firma Ticari İsmi · Melide Tekstil San. Ve Tic. Ltd Şti. · Melide Tekstil · Türkiye, İstanbul
@@ -314,7 +314,7 @@ Firma Hakkında Küçük Bir Yazı · Firma Hakkında Yazı · Çok hoş bir fir
 Firma Hakkında Küçük Bir Yazı · Firma Hakkında Yazı · Çok hoş bir firmayız, harikayız, mükemeliz biz bizsiz olmaz bu dünya, valla olmaz billa olmaz kanıtlayabiliriz bi gel hele · İleri
 
 ### Şirket sayfası oluşturmak – 2
-Şirket Sayfası Oluştur · BAŞLAYALIM · TEXFLOW’un kolaylıklar dünyasında devam etmeniz için için ilk yıl, aylığı sadece XX$ · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
+Şirket Sayfası Oluştur · BAŞLAYALIM · TAKYON AI’un kolaylıklar dünyasında devam etmeniz için için ilk yıl, aylığı sadece XX$ · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
 
 ### Şirket sayfası oluşturmak – 20
 İleri · Firmanın Liste Bilgileri · Toplam Çalışan · Firma Tipi · Üretici, Ticaret Şirketi · 11-50 Kişi

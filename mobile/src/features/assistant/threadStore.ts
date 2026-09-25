@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // asistan ekranı odaklandığında burayı okur. Nested (sekme içi) rota
 // parametresi taşımak yerine bu yol seçildi: web'de de aynı çalışıyor ve
 // React Navigation'ın iç içe params birleştirme kurallarına bağımlı değil.
-const STORAGE_KEY = 'texflow.assistant.threadId';
+const STORAGE_KEY = 'takyon.assistant.threadId';
 
 // undefined: henüz diskten okunmadı. null: sohbet yok (yeni sohbet).
 let cached: string | null | undefined;

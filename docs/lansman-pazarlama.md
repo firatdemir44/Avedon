@@ -4,9 +4,9 @@ Uygulama tamamlanıp lansman ve pazarlama aşamasına geçildiğinde bu dosya te
 
 ## Ana mesaj (Fırat, 2026-09-22)
 
-Texflow, **dağınık ve dağılmış tekstil sektörünü tek platformda toplayan, aynı zamanda düzenleyen** bir sistemdir. Firmaları **birçok masraftan kurtarır ve işleri kolaylaştırır**.
+Takyon Ai, **dağınık ve dağılmış tekstil sektörünü tek platformda toplayan, aynı zamanda düzenleyen** bir sistemdir. Firmaları **birçok masraftan kurtarır ve işleri kolaylaştırır**.
 
-Somut bir örnek: numune alma-verme gibi işler için firmalar arasında **araçların gidip gelmesi** var. Texflow bunları en aza indirir; böylece şehir **trafiğinin çözülmesine de bir nebze fayda** sağlar.
+Somut bir örnek: numune alma-verme gibi işler için firmalar arasında **araçların gidip gelmesi** var. Takyon Ai bunları en aza indirir; böylece şehir **trafiğinin çözülmesine de bir nebze fayda** sağlar.
 
 Pazarlama stratejisi bu fikirleri dikkate alarak kurulur:
 - **Toplayan:** Dağınık sektör tek yerde — firmalar, ürünler, iplikler, numune ve teklif akışı.
@@ -17,7 +17,7 @@ Pazarlama stratejisi bu fikirleri dikkate alarak kurulur:
 ## Kullanılabilecek sloganlar (taslak, karar bekliyor)
 
 - "Tekstil tek platformda."
-- "Numune yolda değil, Texflow'da."
+- "Numune yolda değil, Takyon Ai'da."
 - "Dağınık sektörü toplar, işinizi düzenler, masrafınızı azaltır."
 
 ## Ölçülebilir iddialar için hazırlanacak veriler
@@ -31,7 +31,7 @@ Lansmandan önce sunucudan çıkarılacak sayılar (iddialar veriye dayansın):
 
 - Hedef kitle: üretici ve alıcı firmaların sahipleri, satın alma ve pazarlama sorumluları (35–60 yaş, telefondan).
 - İlk kanal: Fırat'ın sektör çevresi ve davet mekanizması (WhatsApp paylaşımı). Sonra: LinkedIn, sektör fuarları, dernek/OSB ağları.
-- Uygulama adı "Texflow" geçici (bkz. `yol-haritasi.md` §8); lansmandan önce karar verilir.
+- Uygulama adı "Takyon Ai" geçici (bkz. `yol-haritasi.md` §8); lansmandan önce karar verilir.
 
 ## İlgili belgeler
 

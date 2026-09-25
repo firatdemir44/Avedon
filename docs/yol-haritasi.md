@@ -1,11 +1,11 @@
-# Texflow — Ürün Vizyonu ve Yol Haritası (2027)
+# Takyon Ai — Ürün Vizyonu ve Yol Haritası (2027)
 
 > Bu dosya deponun tek yetkili ürün yol haritasıdır. Claude Code oturumları yeni bir işe başlamadan önce `docs/yapilacaklar.md` ile birlikte bu dosyayı okur; mevcut kodla çelişen bir ürün kararı gerekirse önce bu dosya güncellenir.
-> Kaynak: 2021 Takyon Ai "Texflow" ürün belgesi + Eylül 2026 yeniden tasarım görüşmeleri.
+> Kaynak: 2021 Takyon Ai "Takyon Ai" ürün belgesi + Eylül 2026 yeniden tasarım görüşmeleri.
 
 ## 1. Tek cümle
 
-Texflow, tekstil sektörünün işletim sistemidir: her firmanın kendi adına 7/24 çalışan bir yapay zeka asistanı vardır; kumaşlar makine tarafından okunabilir bir "kumaş pasaportu" ile tanımlanır; firmalar birbirini bulur, numune ister, maliyet hesaplar ve ticareti bu asistanlar üzerinden yürütür.
+Takyon Ai, tekstil sektörünün işletim sistemidir: her firmanın kendi adına 7/24 çalışan bir yapay zeka asistanı vardır; kumaşlar makine tarafından okunabilir bir "kumaş pasaportu" ile tanımlanır; firmalar birbirini bulur, numune ister, maliyet hesaplar ve ticareti bu asistanlar üzerinden yürütür.
 
 ## 2. 2021'den ne kaldı, ne değişti
 
@@ -132,7 +132,7 @@ Platinum üyelere yapay zekâlı ihracat alıcı eşleştirme: kumaş pasaportun
 
 - Lansman ve pazarlama mesajları `lansman-pazarlama.md` dosyasında birikir (Fırat, 2026-09-22: dağınık sektörü toplayan, düzenleyen, masraftan kurtaran; numune araç trafiğini azaltan).
 
-- Uygulama adı: "Texflow" geçici; ürün oturunca yeniden değerlendirilecek.
+- Uygulama adı: "Takyon Ai" geçici; ürün oturunca yeniden değerlendirilecek.
 - AB Dijital Ürün Pasaportu tekstil takvimi ve zorunlu alanlar araştırılacak; sonuç §4'e işlenecek.
 - Fiyatlandırma: 2021 modeli (3 ay ücretsiz, sonra aylık ücret) ve rakip (kişi başı yıllık) karşılaştırılacak; hesaplayıcı ve bilgi asistanı katmanı ücretsiz kalacak.
 - Beceri 1 ve 2 formülleri: Fırat'tan bekleniyor (girdi kalemleri, fire uygulama noktası, kg mi metre mi bazlı çıktı).

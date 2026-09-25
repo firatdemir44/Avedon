@@ -1,6 +1,8 @@
+> **Ad notu (Fırat 2026-09-25):** "Texflow" ve "Texart" adlarından vazgeçildi; tek marka **Takyon Ai**. Aşağıdaki "Texart" bu bileşenin iç çalışma adıdır, arayüzde gösterilmez.
+
 # TEXART.md — Takyon Texart proje tanımı (Claude Code bunu her oturumda okur)
 
-Takyon Texart, Takyon Texflow B2B tekstil platformunun kumaş görseli işleme bileşenidir. Firmalar kumaşlarını telefonla sıradan şekilde çeker ve yükler; Texart bu fotoğrafları otomatik olarak platformun tek ve profesyonel katalog standardına getirir.
+Takyon Texart, Takyon Ai B2B tekstil platformunun kumaş görseli işleme bileşenidir. Firmalar kumaşlarını telefonla sıradan şekilde çeker ve yükler; Texart bu fotoğrafları otomatik olarak platformun tek ve profesyonel katalog standardına getirir.
 
 **Hedef:** 1000 farklı firma kumaş yüklese bile tasarımcı 1000 farklı amatör fotoğraf değil, tek bir katalog standardı görür.
 
@@ -18,7 +20,7 @@ Takyon Texart, Takyon Texflow B2B tekstil platformunun kumaş görseli işleme b
 ## 2. Mimari
 
 - **Texart servisi:** Ayrı bir arka uç servisi. Varsayılan: Python 3.11+, FastAPI, OpenCV, scikit-image, numpy; kumaş ayırma için açık kaynaklı bir segmentasyon modeli (ör. rembg/U²-Net ya da SAM ailesinden bir model). İşler asenkron kuyrukta çalışır.
-- **Texflow entegrasyonu:** Texflow (telefon öncelikli web uygulaması) görseli Texart'a gönderir, sonucu ve ölçümleri alır, firmaya onay ekranı gösterir, onaylanan görseli katalogda kullanır.
+- **Takyon Ai entegrasyonu:** Takyon Ai (telefon öncelikli web uygulaması) görseli Texart'a gönderir, sonucu ve ölçümleri alır, firmaya onay ekranı gösterir, onaylanan görseli katalogda kullanır.
 - **Saklama:** Orijinal + işlenmiş görseller + işlem kaydı (uygulanan adımlar ve ölçümler) birlikte saklanır; işlem her zaman orijinalden yeniden üretilebilir olmalı.
 
 ### API sözleşmesi (taslak)
@@ -51,7 +53,7 @@ GET  /jobs/{id}       → { durum: kuyrukta|işleniyor|tamam|yeniden_çekim|hata
 - **Global renk kayması:** Ortalama ΔE2000 ≤ 8 (hafif beyaz dengesi düzeltmesine izin verir)
 - **Yerellik (bölgesel değişiklik yok):** Kumaş 8×8 parçaya bölünür; parçalar arası ΔE2000 değişiminin standart sapması ≤ 2
 
-E�ik aşılırsa sistem sırasıyla daha hafif ayarla yeniden dener (doz yarıya), yine aşılırsa yalnızca Güvenli adımlarla (1, 2, 5, 9) sonuç üretir ve uyarı ekler. Bu eşikler başlangıç değeridir; test setiyle kalibre edilir.
+E�ik aşılırsa sistem sırasıyla daha hafif ayarla yeniden dener (doz yarıya), yine aşılırsa yalnızca Güvenli adımlarla (1, 2, 5, 9) sonuç üretir ve uyarı ekler. Bu eşikler başlangıç değeridir; test setiyle kalibre edilir.
 
 ## 5. Çıktılar (tek fotoğraftan)
 1. **Katalog görseli:** 1024×1024 (kaynak 2× sınırı içinde izin veriyorsa ayrıca 2048×2048), nötr zemin, standart kadraj.
@@ -59,7 +61,7 @@ E�ik aşılırsa sistem sırasıyla daha hafif ayarla yeniden dener (doz yarıya
 3. **Renk çipi:** Kumaşın baskın rengi (HEX + yaklaşık Türkçe renk adı); baskılı/çok renkli kumaşta ilk 3 renk.
 4. **İşlem kaydı (JSON):** Uygulanan adımlar, dozlar, ölçümler, uyarılar.
 
-## 6. Texflow tarafındaki akış
+## 6. Takyon Ai tarafındaki akış
 1. Ürün ekle → "Fotoğraf çek / yükle" (kamera ekranında tek satır ipucu: "Gün ışığında, flaşsız, kumaşı düz serin").
 2. Kalite kapısı başarısızsa sade Türkçe mesaj + "Tekrar çek" (örn. "Fotoğraf bulanık çıktı, telefonu sabit tutup tekrar çekin").
 3. İşlem bitince **önce/sonra onay ekranı:** "Onayla" (dolu düğme) · "Orijinali kullan" (kenarlıklı).
@@ -72,7 +74,7 @@ E�ik aşılırsa sistem sırasıyla daha hafif ayarla yeniden dener (doz yarıya
 - **Kabul:** Test setinin ≥ %90'ı sadakat denetimini geçer; katalog görselleri yan yana konduğunda kadraj, zemin ve yakınlık tutarlı görünür; hiçbir çıktıda uydurulmuş doku yoktur (insan kontrolü: Fırat).
 
 ## 8. Aşamalar
-- **Faz 1 (bu proje):** Adımlar 0–9, sadakat denetimi, API, Texflow onay akışı, test seti ve karşılaştırma sayfası.
+- **Faz 1 (bu proje):** Adımlar 0–9, sadakat denetimi, API, Takyon Ai onay akışı, test seti ve karşılaştırma sayfası.
 - **Faz 2:** Dökümlülük ve ürün üzerinde görünüm (üretken; yalnızca "Görselleştirme" etiketiyle, katalog görselinden ayrı).
 - **Faz 3:** 3D dijital kumaş dışa aktarımı (CLO vb.), esneme videosu.
 

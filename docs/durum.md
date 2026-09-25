@@ -1,8 +1,8 @@
-# Texflow Projesi — Mevcut Durum Envanteri
+# Takyon Ai Projesi — Mevcut Durum Envanteri
 
 _Bu rapor, depodaki mevcut kod tabanı okunarak (kod yazılmadan) çıkarılmıştır. Amaç: projeye yeni başlayan birinin "burada ne var, ne çalışıyor, ne eksik" sorusuna hızlıca cevap bulabilmesi._
 
-**Depo:** `texflow` (GitHub, özel depo)
+**Depo:** `takyon` (GitHub, özel depo)
 **İnceleme tarihi:** 2026-09-12
 **Toplam commit sayısı:** 5 (hepsi tek gün içinde, 2026-09-08)
 
@@ -13,13 +13,13 @@ _Bu rapor, depodaki mevcut kod tabanı okunarak (kod yazılmadan) çıkarılmı�
 Depo kökünde tek bir proje yok; iki bağımsız alt proje var:
 
 ```
-texflow/
+takyon/
 ├── backend/     → Node.js + TypeScript + Express + Prisma API sunucusu
 ├── mobile/      → Expo (React Native) mobil uygulama
 └── .gitignore
 ```
 
-Kökte `CLAUDE.md`, `package.json`, `src/` veya `docs/` **yok**. Bunlar sadece `backend/` ve `mobile/` alt klasörlerinin içinde var (aşağıda detaylı). Kodda `texflow-mvp-spec.md` adlı bir spesifikasyon dosyasına atıf var (`mobile/src/types/index.ts` içinde yorum satırı) ama bu dosya **depoda yok** — muhtemelen geliştirici bir yerde ayrı tutuyor veya kaybolmuş.
+Kökte `CLAUDE.md`, `package.json`, `src/` veya `docs/` **yok**. Bunlar sadece `backend/` ve `mobile/` alt klasörlerinin içinde var (aşağıda detaylı). Kodda `takyon-mvp-spec.md` adlı bir spesifikasyon dosyasına atıf var (`mobile/src/types/index.ts` içinde yorum satırı) ama bu dosya **depoda yok** — muhtemelen geliştirici bir yerde ayrı tutuyor veya kaybolmuş.
 
 ---
 
@@ -154,7 +154,7 @@ Depoda toplam **5 commit** var (15'ten az — hepsi burada listeleniyor), hepsi 
 
 | Commit | Saat | Açıklama |
 |---|---|---|
-| `511a9cb` | 14:14 | **Initial commit:** Texflow MVP — kayıt akışı, backend API, AI danışman, hesap araçları |
+| `511a9cb` | 14:14 | **Initial commit:** Takyon Ai MVP — kayıt akışı, backend API, AI danışman, hesap araçları |
 | `9f7d227` | 17:11 | Ürün fotoğrafı ekleme ve listelerde görsel gösterimi ekle |
 | `9e7e546` | 17:25 | Ürün fotoğrafı kaydetme hatasını düzelt: gönderim öncesi sıkıştırma ve istek zaman aşımı |
 | `915a249` | 17:43 | Ürün düzenleme/silme ekle, virgüllü sayı girişi hatasını düzelt |
@@ -182,7 +182,7 @@ Ancak **çalıştırmak için** aşağıdakiler gerekli, henüz hiçbiri yapılm
 - **Ödeme akışı hiç yok** — ne backend'de ne mobile'da ödeme/fatura ile ilgili kod yok.
 - **WhatsApp webhook'u gelen mesajları sadece logluyor**, platform içi mesajlaşmaya henüz bağlanmamış (kod içindeki yorum bunu açıkça belirtiyor).
 - **`mobile/src/types/index.ts` ile `backend/prisma/schema.prisma` arasında küçük bir tutarsızlık var:** Mobile taraftaki `Company` tipi `productCategories: string[]` ve `employeeIds: string[]` alanlarını bekliyor, ama Prisma şemasında `productCategories` düz bir `String` (dizi değil) ve `employeeIds` diye bir alan hiç yok (çalışanlar `users` ters ilişkisiyle tutuluyor). Bu iki taraf henüz birbirine tam senkron değil — muhtemelen ileride firma profili detaylandırılınca fark edilecek.
-- **`texflow-mvp-spec.md`** adlı bir spesifikasyon dosyasına kodda atıf var ama depoda yok — muhtemelen geliştiricinin yerel makinesinde kalmış ya da hiç eklenmemiş.
+- **`takyon-mvp-spec.md`** adlı bir spesifikasyon dosyasına kodda atıf var ama depoda yok — muhtemelen geliştiricinin yerel makinesinde kalmış ya da hiç eklenmemiş.
 
 ### Özetle çalıştırılabilirlik
 

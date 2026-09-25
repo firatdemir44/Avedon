@@ -182,7 +182,7 @@ export function RootNavigator() {
   return (
     <NavigationContainer
       // Sekme başlığı her ekranda marka adı (ekran adları "RoleSelection" gibi görünmesin).
-      documentTitle={{ formatter: () => 'Takyon Ai Texflow' }}
+      documentTitle={{ formatter: () => 'Takyon Ai' }}
       ref={navigationRef}
       theme={navigationTheme}
       onReady={() => {

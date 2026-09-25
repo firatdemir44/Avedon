@@ -9,7 +9,7 @@ import type { AddressInfo } from 'node:net';
 // denenir (asıl dev.db'ye dokunulmaz). Kopya yoksa (dev.db kurulmamış makine) testler atlanır.
 const src = path.join(__dirname, '..', 'prisma', 'dev.db');
 const hasDb = fs.existsSync(src);
-const tmp = path.join(os.tmpdir(), `texflow-team-invite-${process.pid}.db`);
+const tmp = path.join(os.tmpdir(), `takyon-team-invite-${process.pid}.db`);
 if (hasDb) {
   fs.copyFileSync(src, tmp);
   process.env.DATABASE_URL = `file:${tmp.replace(/\\/g, '/')}`;

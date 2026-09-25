@@ -6,7 +6,7 @@ import { buildTheme, type Theme, type ThemeName } from './tokens';
 // Açık/koyu tema anahtarı (DESIGN.md §1): seçilmemişse sistem tercihi. Seçim cihazda saklanır;
 // web'de <html data-theme> de güncellenir ki design/tokens.css'i kullanan sayfalar aynı temada olsun.
 export type ThemePreference = 'system' | ThemeName;
-const STORAGE_KEY = 'texflow.theme';
+const STORAGE_KEY = 'takyon.theme';
 
 interface ThemeContextValue {
   theme: Theme;

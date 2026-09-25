@@ -1,9 +1,9 @@
 # Claude Code'a başlangıç
 
 ## Hazırlık
-1. TEXART.md dosyasını Texart projesinin köküne koy (Texflow ile aynı depoda `texart/` klasörü ya da ayrı depo — Claude Code'a hangisini istediğini söyle).
-2. Texflow'daki CLAUDE.md'nin sonuna şu satırları ekle:
-   - "Projenin adı Takyon Texflow'dur (eski çalışma adı Texflow). Arayüzde ve kodda Texflow geçen yerler Takyon Texflow olarak güncellenir."
+1. TEXART.md dosyasını Texart projesinin köküne koy (Takyon Ai ile aynı depoda `texart/` klasörü ya da ayrı depo — Claude Code'a hangisini istediğini söyle).
+2. Takyon Ai'daki CLAUDE.md'nin sonuna şu satırları ekle:
+   - "Projenin adı Takyon Ai'dur (eski çalışma adı Takyon Ai). Arayüzde ve kodda Takyon Ai geçen yerler Takyon Ai olarak güncellenir."
    - "Kumaş görselleri Takyon Texart servisi tarafından işlenir; kurallar texart/TEXART.md dosyasındadır."
 
 ## Claude Code'a yazılacak komut
@@ -16,8 +16,8 @@ Sıra:
 3. İşleme hattını §3'teki sırayla, her adımı ayrı ve ayarlanabilir modül olarak yaz: kalite kapısı → ayırma → perspektif → ışık dengeleme → beyaz dengesi → en düz bölge → doku belirginleştirme → ölçek normalizasyonu (deneysel) → çözünürlük (≤2×, Lanczos) → kompozisyon.
 4. §4'teki sadakat denetimini ve geri düşme mantığını yaz; ölçümler işlem kaydına ve API yanıtına girsin.
 5. §5'teki üç çıktıyı üret (katalog, yakın plan, renk çipi).
-6. Texflow entegrasyonu (§6): Ürün ekle akışına yükleme, kalite kapısı mesajları, önce/sonra onay ekranı, katalogda işlenmiş görsel ve ürün detayında "Orijinal fotoğraf" bağlantısı + renk notu. Arayüz DESIGN.md'ye uyar.
-7. Uygulamada ve kodda "Texflow" geçen yerleri "Takyon Texflow" olarak güncelle.
+6. Takyon Ai entegrasyonu (§6): Ürün ekle akışına yükleme, kalite kapısı mesajları, önce/sonra onay ekranı, katalogda işlenmiş görsel ve ürün detayında "Orijinal fotoğraf" bağlantısı + renk notu. Arayüz DESIGN.md'ye uyar.
+7. Uygulamada ve kodda "Takyon Ai" geçen yerleri "Takyon Ai" olarak güncelle.
 
 Her adımdan sonra kısa özet ver, test karşılaştırma sayfasının yolunu yaz ve devam etmeden önce onay bekle.
 ---

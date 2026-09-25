@@ -1,8 +1,8 @@
-# Takyon Ai Texflow — çalışma düzeni
+# Takyon Ai — çalışma düzeni
 
 **TEK MAKİNE, TEK OTURUM (kullanıcı kararı, 2026-09-15):** Geliştirme yalnızca **iş PC'sinde** yapılır. İş PC'si sürekli açık kalır; kullanıcı evden ve telefondan bu makinedeki oturuma **Remote Control** ile bağlanır (Claude mobil uygulamasının Code sekmesi veya claude.ai/code). Gerekçe: 2026-09-14/15'te iki makinede çalışmak ayrı `.env`, ayrı veritabanı ve senkron kaymasıyla sürekli sorun çıkardı.
 
-- **Ev PC'sinde geliştirme yapılmaz.** Oradaki Claude oturumu ("Texflow projesini ilk çalıştırma") kullanılmaz. Ev PC'sinde bu projeyle ilgili bir istek gelirse: işi yapma, kullanıcıya iş PC'sindeki oturumu hatırlat.
+- **Ev PC'sinde geliştirme yapılmaz.** Oradaki Claude oturumu ("Takyon Ai projesini ilk çalıştırma") kullanılmaz. Ev PC'sinde bu projeyle ilgili bir istek gelirse: işi yapma, kullanıcıya iş PC'sindeki oturumu hatırlat.
 - Canlı veri kalıcı olduğu için (Render diski) hiçbir makinenin yerel veritabanı "gerçek veri" değildir; iş PC'sindeki `backend/prisma/dev.db` yalnızca geliştirme/test içindir.
 - İş PC'si: kablolu ağ, `mobile/.env` → `EXPO_PUBLIC_API_URL=http://192.168.1.30:4000/api`. Telefon **iş yerindeki ağdayken** Expo Go ile `exp://192.168.1.30:8081` üzerinden bağlanır (2026-09-15'te doğrulandı). **Evdeyken telefon bu adrese ulaşamaz** — evden telefon testi için çözüm henüz kurulmadı, bkz. `docs/yapilacaklar.md`.
 - **Remote Control riskleri:** PC uyur/ağ koparsa oturum ağ gelince kendiliğinden bağlanır. Ama **Windows yeniden başlarsa oturum kapanır** ve biri PC başına gidip Claude masaüstü uygulamasını açana kadar uzaktan erişim olmaz. Windows etkin saatleri 2026-09-15'te 08:00–17:00 idi (yeniden başlatma bu saatlerin dışında olabilir); kullanıcıya en fazla 18 saatlik etkin saat önerildi. Asistan sistem/güncelleme ayarlarını değiştirmez.
@@ -44,9 +44,9 @@ Kapsam dışı — bunlar için hâlâ onay gerekir veya hiç yapılmamalı:
 - `.env` dosyalarını veya `backend/prisma/dev.db*` dosyalarını asla commit'e ekleme (zaten `.gitignore`'da, kasıtlı olarak repoya girmiyor).
 - `main` dışında bir branch'e push, PR açma/kapatma veya repo ayarlarını değiştirme — bunlar için onay iste.
 
-## Takyon Texart (kumaş görseli işleme)
+## Kumaş fotoğrafı işleme (iç ad: texart)
 
 - Kurallar ve Faz 1 kapsamı `texart/TEXART.md` (kırmızı çizgi §1: kumaş piksellerine üretken yapay zekâ yok, renk/ışık düzeltmesi yalnız global). Çalışma sırası `texart/KOMUT.md`: her adımdan sonra kısa özet + kullanıcı onayı.
-- **Marka düzeni (Fırat 2026-09-25):** Çatı marka **Takyon Ai** (Takyon Ai Sanayi ve Ticaret A.Ş., tamamen Fırat'ın; tüm resmi işler bu şirket üzerinden). Bu uygulamanın ürün adı **Texflow**: üst bantta logo + "Texflow"; giriş ekranı TEXFLOW + altında TAKYON AI; manifest/sayfa başlıkları "Takyon Ai Texflow" (kısa ad "Texflow"); Hakkında sayfası ve hesap menüsü altında "Texflow, bir Takyon Ai ürünüdür." Markasız tek başına "Texflow" yalnızca logonun yanında. Eski ad (A-v-e-d-o-n) hiçbir yerde kullanılmaz; yalnızca panelde duran canlı adresler (onrender/vercel hizmet adları, /var/data/…db) ve bilgisayardaki klasör adı takyon.ai bağlanana kadar kalır. Fotoğraf ürünü **Takyon Ai Texart**: şimdilik Texflow içinde, ileride ayrı ürün (modülü yalıtık tut).
+- **MARKA (Fırat 2026-09-25, kesin):** Tüm ürün ve işlerde tek marka **Takyon Ai** (Takyon Ai Sanayi ve Ticaret A.Ş., tamamen Fırat'ın; tüm resmi işler bu şirket üzerinden). "Texflow" ve "Texart" adlarından marka çakışması nedeniyle vazgeçildi (Texflow adlı benzer tekstil uygulaması mağazalarda var); eski ad (A-v-e-d-o-n) de kullanılmaz. Uygulamada görünen ad: üst bantta logo + "Takyon Ai", manifest/sayfa başlığı "Takyon Ai". Kumaş fotoğrafı işleme bileşeni kodda iç adıyla (texart klasörü, /api/texart) durur, arayüzde ayrı bir ürün adı gösterilmez; ileride ayrı ürün olursa adı o zaman marka araştırmasıyla seçilir. Panelde duran canlı adresler (onrender/vercel) ve klasör adı takyon.ai bağlanana kadar kalır.
 - Mimari kararı (2026-09-25): TEXART.md'deki "varsayılan Python/FastAPI" yerine backend içinde ayrı modül (`backend/src/texart/`, Node + sharp/libvips). Gerekçe: iş PC'sinde Python yok, ayrı Render servisi ek ücret ve panel işi demek; aynı kalıcı disk ve veritabanı kullanılır. Modül kendi uçlarıyla (`/api/texart`) yalıtık; gerekirse ayrı servise taşınabilir.
 - Saklama: veritabanının yanındaki `texart/` klasörü (canlıda `/var/data/texart`), her iş kendi klasöründe orijinal + çıktılar + `islem_kaydi.json`. Orijinal hiç silinmez.

@@ -47,7 +47,7 @@ type Props = RootStackScreenProps<'GlobalSearch'>;
 // altında "Tümünü gör" ilgili listeyi aynı arama metniyle açar.
 const DEBOUNCE_MS = 350;
 const MIN_QUERY = 2;
-const RECENT_KEY = 'texflow.recentSearches';
+const RECENT_KEY = 'takyon.recentSearches';
 const MAX_RECENT = 5;
 
 // Sonuç türü süzgeci yalnızca GÖRÜNÜMDE çalışır: istek yine tek sefer atılır,

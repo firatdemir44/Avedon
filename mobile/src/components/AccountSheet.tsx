@@ -10,8 +10,6 @@ import { LanguageSwitch } from './LanguageSwitch';
 import { tr } from '../i18n';
 import { UserAvatar } from './UserAvatar';
 import { CompanyAvatar } from './CompanyAvatar';
-import { Text } from 'react-native';
-import { BRAND_LINE } from '../screens/profile/AboutScreen';
 
 export interface AccountSheetProps {
   visible: boolean;
@@ -91,7 +89,6 @@ export function AccountSheet({ visible, onClose, onOpenProfile, onOpenAbout, onO
           logout();
         }}
       />
-      <Text style={[t.type.caption12, { color: t.colors.ink3, textAlign: 'center' }]}>{BRAND_LINE()}</Text>
     </BottomSheet>
   );
 }

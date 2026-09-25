@@ -54,8 +54,8 @@ type Props = MainTabScreenProps<'Feed'>;
 
 // Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
 const REFRESH_THROTTLE_MS = 30000;
-const SCOPE_KEY = 'texflow.feedScope';
-const FOR_ME_KEY = 'texflow.feedForMe';
+const SCOPE_KEY = 'takyon.feedScope';
+const FOR_ME_KEY = 'takyon.feedForMe';
 const NOTICE_MS = 6000;
 
 export function FeedScreen({ navigation }: Props) {
@@ -409,7 +409,7 @@ export function FeedScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
         leading="logo"
-        title="Texflow"
+        title="Takyon Ai"
         actions={[
           {
             icon: 'bell',

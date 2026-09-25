@@ -1,7 +1,6 @@
 // İngilizce sözlük: account alanı (Türkçe kaynak metin → İngilizce).
 export const account: Record<string, string> = {
   'Gizlilik politikası': 'Privacy policy',
-  'Texflow, bir Takyon Ai ürünüdür.': 'Texflow is a Takyon Ai product.',
   "WhatsApp'tan gelen bu taslak silinsin mi? Girdiğiniz bilgiler kaydedilmez.": "Delete this draft received via WhatsApp? The information you entered will not be saved.",
   "WhatsApp'tan gönderdiğiniz etiketten hazırlandı. Fiyat ve stok etiketten alınmaz.": "Prepared from the label you sent via WhatsApp. Price and stock are not taken from the label.",
   "WhatsApp'tan gelen etiket bilgisi": "Label details received via WhatsApp",

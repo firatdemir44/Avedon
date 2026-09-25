@@ -35,7 +35,7 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of all) {
         if ('focus' in client) {
           await client.focus();
-          client.postMessage({ type: 'texflow-push-open', target });
+          client.postMessage({ type: 'takyon-push-open', target });
           return;
         }
       }

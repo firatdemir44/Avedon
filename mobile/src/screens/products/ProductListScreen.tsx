@@ -61,12 +61,12 @@ type Props = MainTabScreenProps<'ProductList'>;
 // çeşidine göre ("Çeşitler") görülebilsin; seçim hatırlanır. Yeni tasarımda
 // klasör listesi yerine çeşit ÇİPLERİ var, mantık aynı.
 type ViewMode = 'all' | 'groups';
-const VIEW_MODE_KEY = 'texflow.productListViewMode';
+const VIEW_MODE_KEY = 'takyon.productListViewMode';
 
 // Faz 2, Adım 6: ürün sekmesi ikiye ayrıldı. {tr('Kumaş')} mevcut katalog,
 // {tr('İplik')} iplik dizini. Seçim cihazda hatırlanır.
 type Domain = 'kumas' | 'iplik';
-const DOMAIN_KEY = 'texflow.productListDomain';
+const DOMAIN_KEY = 'takyon.productListDomain';
 
 // Sıralama yalnızca GÖRÜNÜM işidir: sunucuya gitmez, eldeki liste sıralanır.
 type SortKey = 'onerilen' | 'gramaj' | 'en' | 'stok';

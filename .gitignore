@@ -40,7 +40,7 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# Orijinal Texflow tasarım görselleri (2020-2021, Drive "Texflow Tasarım"): yerel başvuru, repoya girmez
+# Orijinal Takyon Ai tasarım görselleri (2020-2021, Drive "Takyon Ai Tasarım"): yerel başvuru, repoya girmez
 docs/orijinal-tasarim/
 
 # Texart yerel iş dosyaları (orijinal + çıktılar)
