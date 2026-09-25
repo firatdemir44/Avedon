@@ -45,3 +45,8 @@ docs/orijinal-tasarim/
 
 # Texart yerel iş dosyaları (orijinal + çıktılar)
 backend/prisma/texart/
+
+# Texart test fotoğrafları ve raporları (yerel; gerçek firma fotoğrafları repoya girmez)
+texart/testset/*
+!texart/testset/README.md
+texart/reports/
