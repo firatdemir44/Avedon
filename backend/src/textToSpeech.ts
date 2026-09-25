@@ -32,7 +32,14 @@ function readCredentials(): ServiceAccount | null {
   return tryParse(raw) ?? tryParse(Buffer.from(raw, 'base64').toString('utf8'));
 }
 
-export const isTtsConfigured = () => !!readCredentials();
+// Alternatif: API anahtarı (GOOGLE_TTS_API_KEY). Organizasyon politikası hizmet hesabı anahtar dosyasını
+// engellerse daha kolay yol; anahtar Google panelinde yalnızca Text-to-Speech API ile sınırlandırılır.
+const apiKey = () => {
+  const v = process.env.GOOGLE_TTS_API_KEY?.trim();
+  return v && /^[A-Za-z0-9_-]{20,}$/.test(v) ? v : undefined;
+};
+
+export const isTtsConfigured = () => !!readCredentials() || !!apiKey();
 
 export function voiceFor(lang: string) {
   if (lang === 'en') return { languageCode: 'en-GB', name: process.env.GOOGLE_TTS_VOICE_EN?.trim() || 'en-GB-Chirp3-HD-Kore' };
@@ -86,14 +93,17 @@ export function checkAndCount(userId: string, chars: number) {
 
 export async function synthesize(text: string, lang: string): Promise<Buffer> {
   const sa = readCredentials();
-  if (!sa) throw new TtsNotConfiguredError('Ses anahtarı girilmemiş');
+  const key0 = apiKey();
+  if (!sa && !key0) throw new TtsNotConfiguredError('Ses anahtarı girilmemiş');
   const voice = voiceFor(lang);
   const key = crypto.createHash('sha1').update(`${voice.name}|${text}`).digest('hex');
   const hit = cache.get(key);
   if (hit) return hit;
   const res = await fetch(TTS_URL, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${await accessToken(sa)}`, 'Content-Type': 'application/json', ...(sa.project_id ? { 'x-goog-user-project': sa.project_id } : {}) },
+    headers: sa
+      ? { Authorization: `Bearer ${await accessToken(sa)}`, 'Content-Type': 'application/json', ...(sa.project_id ? { 'x-goog-user-project': sa.project_id } : {}) }
+      : { 'X-goog-api-key': key0!, 'Content-Type': 'application/json' },
     body: JSON.stringify({ input: { text }, voice, audioConfig: { audioEncoding: 'MP3' } }),
   });
   const body = (await res.json().catch(() => null)) as { audioContent?: string; error?: { message?: string } } | null;
@@ -114,8 +124,8 @@ let check: { at: number; ok: boolean; detail?: string } | null = null;
 
 // /api/health: anahtar girilmiş mi, gerçekten ses üretebiliyor mu (kısa metin, 30 dk önbellek), ses adı.
 export async function ttsStatus() {
-  const sa = readCredentials();
-  const raw = process.env.GOOGLE_TTS_CREDENTIALS?.trim();
+  const sa = readCredentials() ?? apiKey();
+  const raw = process.env.GOOGLE_TTS_CREDENTIALS?.trim() || process.env.GOOGLE_TTS_API_KEY?.trim();
   if (!sa) return { configured: false, credentialsUnreadable: !!raw, voice: voiceFor('tr').name };
   if (!check || Date.now() - check.at > 30 * 60_000) {
     try {
@@ -125,5 +135,5 @@ export async function ttsStatus() {
       check = { at: Date.now(), ok: false, detail: redact(String((err as Error)?.message ?? err)) };
     }
   }
-  return { configured: true, ok: check.ok, detail: check.detail ?? null, voice: voiceFor('tr').name, lastOkAt, lastError, charsSinceStart };
+  return { configured: true, method: readCredentials() ? 'hizmet_hesabi' : 'api_anahtari', ok: check.ok, detail: check.detail ?? null, voice: voiceFor('tr').name, lastOkAt, lastError, charsSinceStart };
 }
