@@ -52,7 +52,7 @@
 (function () {
   // Canlıda Render; yerelde denemek için ?api=http://localhost:4000/api verilebilir (yalnızca localhost kabul edilir).
   var params = new URLSearchParams(location.search);
-  var api = /(^|.)takyon.ai$/.test(location.hostname) ? 'https://api.takyon.ai/api' : 'https://avedon-backend.onrender.com/api';
+  var api = /(^|\.)takyon\.ai$/.test(location.hostname) ? 'https://api.takyon.ai/api' : 'https://avedon-backend.onrender.com/api';
   var override = params.get('api');
   if (override && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/api$/.test(override)) api = override;
   var id = params.get('id') || '';
