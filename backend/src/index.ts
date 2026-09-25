@@ -62,6 +62,7 @@ import { adminVerificationRouter, verificationRouter } from './routes/verificati
 import { backfillLooksInBackground } from './looks';
 import { getAnthropic, isLlmMock } from './llm';
 import { getStorageInfo } from './storageCheck';
+import { ttsStatus } from './textToSpeech';
 import { texartRouter } from './routes/texart';
 import { startTexartWorker, texartHealth } from './texart/queue';
 import { storeStatus as texartStoreStatus } from './texart/store';
@@ -102,6 +103,8 @@ app.get('/api/health', async (_req, res) => {
     push: await pushStatus(),
     // Asistana sesli soru: Workers AI (Whisper) anahtarı girilmiş mi, token geçerli mi.
     speech: await speechStatus(),
+    // Asistanın doğal sesi (Google Chirp 3 HD): anahtar okunuyor mu, ses üretebiliyor mu (değer dönmez).
+    tts: await ttsStatus().catch(() => null),
     // Firma rehberi: toplam ve sahipsiz (birlik listelerinden) firma sayısı.
     directory: { companies: await prisma.company.count(), unclaimed: await prisma.company.count({ where: { claimed: false } }) },
     // Akış içerik denetimi (tekstille ilgisiz genel paylaşımı engeller).

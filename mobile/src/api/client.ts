@@ -3238,7 +3238,21 @@ export function fetchExportMarkets(hs6: string, opts: { region?: string | null; 
 
 // Sesli soru: kaydedilen ses sunucuda (Whisper) yazıya çevrilir.
 export function fetchSpeechAvailable() {
-  return request<{ available: boolean }>('/assistant/speech');
+  // voice: sunucuda doğal ses (Google) açık mı; eski sunucu göndermez.
+  return request<{ available: boolean; voice?: boolean }>('/assistant/speech');
+}
+// Doğal ses: metin sunucuda MP3'e çevrilir (textToSpeech.ts). Hata olursa çağıran telefonun sesine döner.
+export async function fetchSpeechAudio(text: string, lang: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE_URL}/assistant/speak`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+    body: JSON.stringify({ text, lang }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ApiError(body?.error ?? `İstek başarısız (${res.status})`, res.status, body?.error);
+  }
+  return res.blob();
 }
 export async function transcribeAudio(blob: Blob): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/assistant/transcribe`, {

@@ -1,5 +1,6 @@
 import express, { Router } from 'express';
 import { SpeechNotConfiguredError, isSpeechConfigured, transcribe } from '../speechToText';
+import { MAX_REQUEST_BYTES, TtsLimitError, TtsNotConfiguredError, checkAndCount, isTtsConfigured, synthesize } from '../textToSpeech';
 import { assistantReport } from '../assistantReport';
 import { z } from 'zod';
 import { prisma } from '../db';
@@ -29,7 +30,7 @@ assistantRouter.get('/report', async (req, res) => {
 
 // Sesli soru: telefonun kaydettiği ses (webm/mp4, en çok ~2 dk) yazıya çevrilir.
 assistantRouter.get('/speech', (_req, res) => {
-  res.json({ available: isSpeechConfigured() });
+  res.json({ available: isSpeechConfigured(), voice: isTtsConfigured() });
 });
 assistantRouter.post('/transcribe', express.raw({ type: () => true, limit: '8mb' }), async (req, res) => {
   const audio = req.body as Buffer;
@@ -40,6 +41,25 @@ assistantRouter.post('/transcribe', express.raw({ type: () => true, limit: '8mb'
     if (err instanceof SpeechNotConfiguredError) return res.status(503).json({ error: t(req.lang, 'Sesli soru şu an kullanılamıyor') });
     console.error('[transcribe]', (err as Error).message);
     res.status(502).json({ error: t(req.lang, 'Ses yazıya çevrilemedi, lütfen tekrar deneyin') });
+  }
+});
+// Doğal ses (textToSpeech.ts): telefon metni parça parça gönderir, MP3 döner. Hata/sınırda telefon kendi sesine döner.
+assistantRouter.post('/speak', async (req, res) => {
+  const text = typeof req.body?.text === 'string' ? req.body.text.trim() : '';
+  const lang = req.body?.lang === 'en' ? 'en' : 'tr';
+  if (!text) return res.status(400).json({ error: 'text_required' });
+  if (Buffer.byteLength(text, 'utf8') > MAX_REQUEST_BYTES) return res.status(413).json({ error: 'text_too_long' });
+  try {
+    checkAndCount(req.user!.id, text.length);
+    const audio = await synthesize(text, lang);
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(audio);
+  } catch (err) {
+    if (err instanceof TtsNotConfiguredError) return res.status(503).json({ error: 'tts_unavailable' });
+    if (err instanceof TtsLimitError) return res.status(429).json({ error: 'tts_limit' });
+    console.error('[speak]', (err as Error).message);
+    res.status(502).json({ error: 'tts_failed' });
   }
 });
 const handle = makeHandle('assistant');

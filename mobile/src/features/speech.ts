@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { getLang, locale } from '../i18n';
+import { fetchSpeechAudio, fetchSpeechAvailable } from '../api/client';
 
 // Asistanla sesli konuşma (Fırat 2026-09-23): tarayıcının kendi Türkçe konuşma tanıması
 // (Web Speech API) ile ses → yazı, speechSynthesis ile yazı → ses. Ek ücret ve sunucu yok.
@@ -23,7 +24,24 @@ function recognitionCtor(): (new () => Recognition) | null {
 }
 
 export const canListen = () => !!recognitionCtor();
-export const canSpeak = () => Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
+export const canSpeak = () =>
+  Platform.OS === 'web' && typeof window !== 'undefined' && ('speechSynthesis' in window || typeof Audio !== 'undefined');
+const canBrowserSpeak = () => Platform.OS === 'web' && typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+// Doğal ses (Fırat 2026-09-25): sunucuda Google Chirp 3 HD açıksa cevap MP3 olarak çalınır; kapalıysa,
+// hata verirse ya da günlük sınır dolarsa telefonun kendi sesine dönülür.
+let cloudVoice: Promise<boolean> | null = null;
+const hasCloudVoice = () =>
+  (cloudVoice ??= fetchSpeechAvailable()
+    .then((r) => !!r.voice)
+    .catch(() => {
+      cloudVoice = null; // bağlantı sorunu: bir sonraki okumada yeniden sor
+      return false;
+    }));
+let player: HTMLAudioElement | null = null;
+const getPlayer = () => (player ??= new Audio());
+// 0,1 sn sessiz WAV: dokunuş anında çalınıp ses öğesinin kilidi açılır (iPhone otomatik okumaya izin versin).
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
 
 export type ListenError = 'not-allowed' | 'no-speech' | 'network' | 'other';
 
@@ -205,6 +223,15 @@ export const onSpeakingChange = (l: (id: string | null) => void) => {
 let voiceTurn = false;
 export function unlockSpeech() {
   if (!canSpeak()) return;
+  void hasCloudVoice();
+  try {
+    const p = getPlayer();
+    p.src = SILENT_WAV;
+    p.play().catch(() => undefined);
+  } catch {
+    // sessiz
+  }
+  if (!canBrowserSpeak()) return;
   try {
     const u = new SpeechSynthesisUtterance(' ');
     u.volume = 0;
@@ -226,7 +253,12 @@ export function consumeVoiceTurn() {
 
 export function stopSpeaking() {
   if (!canSpeak()) return;
-  window.speechSynthesis.cancel();
+  if (player) {
+    player.pause();
+    player.onended = null;
+    player.onerror = null;
+  }
+  if (canBrowserSpeak()) window.speechSynthesis.cancel();
   speakingId = null;
   emit();
 }
@@ -238,11 +270,75 @@ export function toggleSpeak(id: string, text: string) {
     stopSpeaking();
     return;
   }
-  window.speechSynthesis.cancel();
+  stopSpeaking();
   const chunks = sentences(spoken(text));
   if (!chunks.length) return;
   speakingId = id;
   emit();
+  void hasCloudVoice().then((ok) => (ok ? speakCloud(id, chunks) : speakBrowser(id, chunks, 0)));
+}
+
+// Sunucu parçaları: birkaç cümle birleştirilir (ilk parça kısa tutulur, ses hemen başlasın);
+// bir parça çalarken sonraki indirilir.
+function cloudParts(chunks: string[]) {
+  const out: string[] = [];
+  for (const c of chunks) {
+    const limit = out.length <= 1 ? 160 : 600;
+    if (out.length && out[out.length - 1].length + c.length < limit) out[out.length - 1] += ' ' + c;
+    else out.push(c);
+  }
+  return out;
+}
+
+async function speakCloud(id: string, chunks: string[]) {
+  const parts = cloudParts(chunks);
+  const lang = getLang();
+  const load = (i: number) => (i < parts.length ? fetchSpeechAudio(parts[i], lang) : null);
+  let next = load(0);
+  for (let i = 0; i < parts.length; i++) {
+    if (speakingId !== id) return;
+    let blob: Blob | null;
+    try {
+      blob = await next;
+    } catch {
+      // Sunucu sesi alınamadı: kalan cümleler telefonun sesiyle okunur.
+      const done = parts.slice(0, i).join(' ').length;
+      let consumed = 0;
+      const rest = chunks.findIndex((c) => (consumed += c.length + 1) > done);
+      if (speakingId === id) speakBrowser(id, chunks, Math.max(0, rest));
+      return;
+    }
+    next = load(i + 1);
+    if (!blob || speakingId !== id) return;
+    const url = URL.createObjectURL(blob);
+    const played = await new Promise<boolean>((resolve) => {
+      const p = getPlayer();
+      p.onended = () => resolve(true);
+      p.onerror = () => resolve(false);
+      p.src = url;
+      p.play().catch(() => resolve(false));
+    });
+    URL.revokeObjectURL(url);
+    if (!played) {
+      // Çalma izni yok (ör. dokunuşsuz otomatik okuma): telefonun sesiyle devam.
+      if (speakingId === id) speakBrowser(id, sentences(parts.slice(i).join(' ')), 0);
+      return;
+    }
+  }
+  if (speakingId === id) {
+    speakingId = null;
+    emit();
+  }
+}
+
+function speakBrowser(id: string, chunks: string[], from: number) {
+  if (!canBrowserSpeak()) {
+    if (speakingId === id) {
+      speakingId = null;
+      emit();
+    }
+    return;
+  }
   // Android'de belirli bir sesi (özellikle ağ sesi) zorlamak bazı telefonlarda HİÇ ses çıkarmıyor
   // (Fırat 2026-09-24: "okuma sesi gelmiyor"). Android'de telefonun kendi varsayılan Türkçe sesi kullanılır;
   // masaüstü/iPhone'da en doğal ses seçilir. Ses hata verirse o cümle varsayılan sesle yeniden denenir.
@@ -278,7 +374,7 @@ export function toggleSpeak(id: string, text: string) {
     window.speechSynthesis.resume();
   };
   // cancel()'dan hemen sonra speak() bazı tarayıcılarda sessizce düşüyor; kısa bekleme.
-  setTimeout(() => speakChunk(0, true), 80);
+  setTimeout(() => speakChunk(from, true), 80);
 }
 
 // Kayıt yolu (2026-09-23): tarayıcı tanıması telefonda kısa sürede kapandığı için ses kaydedilir,
