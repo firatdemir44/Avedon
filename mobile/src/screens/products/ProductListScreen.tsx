@@ -709,11 +709,13 @@ export function ProductListScreen({ navigation, route }: Props) {
       title={tr('Katalog')}
       leading="none"
       actions={[
-        ...(user
+        // Yalnızca başka firmaların ürünü listedeyse (kendi ürününüze teklif istenmez; Fırat 2026-09-25:
+        // 'Seç'e basıp kendi ürünlerine dokununca ürün açılıyordu, işlevi anlaşılmıyordu).
+        ...(user && (selection.active || products.some((p) => p.companyId !== user.companyId))
           ? [
               {
                 // Metinli sessiz düğme (tasarım incelemesi): ikon anlamı belirsizdi.
-                text: selection.active ? tr('Vazgeç') : tr('Seç'),
+                text: selection.active ? tr('Vazgeç') : tr('Teklif iste'),
                 label: selection.active ? tr('Seçmeyi bırak') : tr('Teklif için seç'),
                 onPress: () => {
                   haptics.selection();
@@ -890,6 +892,8 @@ function CatalogCard({
       style={[
         { marginHorizontal: t.space[4] },
         selectable && selected ? { borderColor: t.colors.brand, backgroundColor: t.colors.brandSoft } : null,
+        // Seçim kipinde seçilemeyen (kendi) ürün soluk görünür.
+        selection.active && !canSelect ? { opacity: 0.5 } : null,
       ]}
     />
   );
