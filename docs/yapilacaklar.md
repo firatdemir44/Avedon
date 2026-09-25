@@ -7,11 +7,11 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 **Takyon (ana proje)**
 1. **TÜRKPATENT "Takyon Ai":** ön araştırma YAPILDI, boş (Fırat 2026-09-25). Kalan: başvuru (sınıf 9, 35, 42), şirket Takyon Ai Sanayi ve Ticaret A.Ş.
 2. **takyon.ai bağlama — BEKLEMEDE (2026-09-25):** alan adı Porkbun'da (Fırat'ın, 2029'a kadar), DNS BAŞKA bir Cloudflare hesabında (Fırat'ın firatdemir@ hesabında değil; muhtemelen eski ortak/site kurucusu). Fırat hesap kendisine geçince devam. Yapılmış: Vercel'e app.takyon.ai eklendi (Verification Required; _vercel TXT + app CNAME bekliyor), kod hazır. Kalan: Cloudflare'de _vercel TXT, app CNAME, api CNAME → avedon-backend.onrender.com (hepsi DNS only), Render Custom Domains'e api.takyon.ai. Kökteki site ve e-posta kayıtlarına dokunulmaz. Kendi hesabına Add domain YAPILMAZ (site/e-posta kesilir).
-3. **WhatsApp gerçek numara:** şirket adına SIM + Meta işletme doğrulaması (Takyon Ai A.Ş. belgeleriyle) → Yönetim > WhatsApp'ta PIN ile kayıt. Sonra uygulamaya "WhatsApp'tan sor" simgesi.
+3. **WhatsApp gerçek numara:** SIM istendi, kargo bekleniyor (2026-09-25). şirket adına SIM + Meta işletme doğrulaması (Takyon Ai A.Ş. belgeleriyle) → Yönetim > WhatsApp'ta PIN ile kayıt. Sonra uygulamaya "WhatsApp'tan sor" simgesi.
 4. **Net Takyon Ai logo dosyası** (SVG/PNG, işaret + yazı).
 5. **Stok girişi:** stoğu 0 görünen Melide ürünlerine stok miktarı (başkalarına yalnız stoklu ürün görünür; canlıda şu an 3 ürün görünüyor).
-6. **Fatih Demir çift kaydı:** Yönetim > Çift hesaplar'da birleştir (görünmüyorsa bildir; firmadan çıkar/birleştir aracı yapılır).
-7. **Doğal Türkçe ses kararı** (Google Chirp 3 HD; aylık ilk 1 milyon karakter ücretsiz, sonrası 1M karakter 30 $).
+6. **Fatih Demir çift kaydı:** 2026-09-25 araç genişletildi (aynı firmada aynı ad, farklı telefon da listelenir) → Fırat Yönetim > Çift hesaplar'da birleştirecek.
+7. **Doğal ses: KARAR ÖDE (2026-09-25).** Kod canlıda (health tts.configured). Fırat: Google Cloud proje + faturalandırma + Cloud Text-to-Speech API + hizmet hesabı JSON anahtarı → Render GOOGLE_TTS_CREDENTIALS. Sonra health tts.ok true olmalı.
 8. **Apple Developer hesabı (şirket adına, D-U-N-S gerekir, yıllık 99 $)** — App Store ve Apple ile giriş için; takyon.ai bağlandıktan sonra.
 9. **Dernek üye listeleri** (İTHİB, İHKİB, EİB, TOBB…; Excel/CSV) ve **danışman geri bildirimi**.
 
