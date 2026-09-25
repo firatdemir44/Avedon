@@ -46,22 +46,24 @@ export function SearchBox({
       style={({ pressed }) =>
         trailingAction.prominent
           ? {
-              // Kutudan biraz taşan daire: kutu 48px, daire 56px.
-              width: t.size.control + t.space[2],
-              height: t.size.control + t.space[2],
-              marginVertical: -t.space[1],
+              // Fırat 2026-09-25 örneği: kenarlıksız, açık mavi, hafif gölgeli daire; dolu kamera ikonu.
+              width: t.size.control,
+              height: t.size.control,
               marginRight: -t.space[2],
               borderRadius: t.radius.full,
-              backgroundColor: pressed ? t.colors.brand : t.colors.brandSoft,
-              borderWidth: 1,
-              borderColor: t.colors.brand,
+              backgroundColor: pressed ? t.colors.line : t.colors.brandSoft,
+              ...t.shadowRaised,
               alignItems: 'center',
               justifyContent: 'center',
             }
           : { width: t.size.touchMin, height: t.size.touchMin, marginRight: -t.space[2], alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 }
       }
     >
-      <Icon name={trailingAction.icon} size={trailingAction.prominent ? t.size.icon : t.size.iconSm} color="brand" />
+      <Icon
+        name={trailingAction.prominent && trailingAction.icon === 'camera' ? 'camera-sharp' : trailingAction.icon}
+        size={trailingAction.prominent ? t.size.icon + t.space[1] : t.size.iconSm}
+        color="brand"
+      />
     </Pressable>
   ) : null;
 
