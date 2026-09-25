@@ -42,7 +42,15 @@ export interface LookOutcome {
   model: string;
 }
 
-export async function extractFabricLook(image: { mediaType: LookImageMediaType; data: string }): Promise<LookOutcome> {
+export const MAX_LOOK_IMAGES = 4;
+
+type LookImage = { mediaType: LookImageMediaType; data: string };
+
+// Birden çok fotoğraf (Fırat 2026-09-25): aynı kumaşın genel + yakın çekimleri birlikte değerlendirilir;
+// tek fotoğrafa göre doku/örgü ve renk daha güvenilir okunur. Tek görüntü de kabul edilir (eski çağrılar).
+export async function extractFabricLook(input: LookImage | LookImage[]): Promise<LookOutcome> {
+  const images = (Array.isArray(input) ? input : [input]).slice(0, MAX_LOOK_IMAGES);
+  const image = images[0];
   if (isLlmMock()) return { look: mockLook(image.data), model: 'mock' };
   const client = getAnthropic();
   if (!client) throw new LlmNotConfiguredError();
@@ -56,8 +64,14 @@ export async function extractFabricLook(image: { mediaType: LookImageMediaType; 
       {
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
-          { type: 'text', text: 'Bu kumaşın görünüm kartını çıkar.' },
+          ...images.map((img) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.data } })),
+          {
+            type: 'text',
+            text:
+              images.length > 1
+                ? `Bunlar AYNI kumaşın ${images.length} fotoğrafı (genel görünüm ve yakın çekimler). Hepsini birlikte değerlendirip TEK görünüm kartı çıkar: örgü/doku ve yüzeyi en net yakın çekimden, renk ve desen ölçeğini genel fotoğraftan oku; fotoğraflar çelişirse en net olanı esas al.`
+                : 'Bu kumaşın görünüm kartını çıkar.',
+          },
         ],
       },
     ],

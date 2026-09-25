@@ -1,5 +1,11 @@
 // İngilizce sözlük: catalog alanı (Türkçe kaynak metin → İngilizce).
 export const catalog: Record<string, string> = {
+  "Kumaşın fotoğrafları": "Fabric photos",
+  "Önce kumaşın genel görüntüsünü çekin, sonra 1-3 yakın çekim ekleyin; ne kadar net, o kadar doğru sonuç.": "First take an overall photo of the fabric, then add 1–3 close-ups; the sharper they are, the better the result.",
+  "{n}/{max} fotoğraf. Dokunun görüneceği yakın çekimler sonucu iyileştirir.": "{n}/{max} photos. Close-ups that show the texture improve the result.",
+  "Genel görüntü": "Overall view",
+  "Yakın çekim {n}": "Close-up {n}",
+  "Yakın çekim ekle": "Add close-up",
   "Bu alana sayı girilir.": "Enter a number in this field.",
   "Boş bırakılamaz; silmek için \"Sil\" düğmesini kullanın.": "Cannot be empty; use the \"Delete\" button to remove it.",
   "Kaydedilemedi, tekrar deneyin.": "Could not save, please try again.",

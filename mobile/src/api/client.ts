@@ -1430,9 +1430,12 @@ export interface LookSearchResult {
  * Hatalar: 429 daily_limit (gövdede `max`) · 503 llm_not_configured ·
  * 502 look_failed · 400 unsupported_image / invalid_body.
  */
-export function searchSimilarByPhoto(imageDataUrl: string | null, limit?: number, labelDataUrl?: string | null) {
+// Kumaş için tek fotoğraf ya da aynı kumaşın birkaç fotoğrafı (genel + yakın çekim, en çok 4).
+export function searchSimilarByPhoto(imageDataUrl: string | string[] | null, limit?: number, labelDataUrl?: string | null) {
   const body: Record<string, unknown> = {};
-  if (imageDataUrl) body.image = imageDataUrl;
+  if (Array.isArray(imageDataUrl)) {
+    if (imageDataUrl.length) body.images = imageDataUrl;
+  } else if (imageDataUrl) body.image = imageDataUrl;
   if (labelDataUrl) body.label = labelDataUrl;
   if (limit) body.limit = limit;
   return request<LookSearchResult>(

@@ -8,7 +8,7 @@ import { formatComposition, type CompositionItem } from '../domain/glossary';
 import { runPassportExtract } from '../skills/passportExtract';
 import { MAX_LOOK_SEARCHES_PER_DAY, findSimilarProducts, findSimilarWithLabel, lookView, refreshProductLook, usable } from '../looks';
 import { optionalAuth, requireAuth } from '../middleware/auth';
-import { extractFabricLook, splitDataUrl } from '../skills/fabricLook/run';
+import { MAX_LOOK_IMAGES, extractFabricLook, splitDataUrl } from '../skills/fabricLook/run';
 import { LOOK_OPTIONS, parseLook } from '../skills/fabricLook/schema';
 import { makeHandle } from './handle';
 
@@ -25,9 +25,15 @@ looksRouter.get('/options', (_req, res) => {
 
 const imageField = z.string().startsWith('data:image/').max(MAX_IMAGE_CHARS);
 const searchSchema = z
-  .object({ image: imageField.optional(), label: imageField.optional(), limit: z.number().int().min(1).max(30).optional() })
+  .object({
+    image: imageField.optional(),
+    // Aynı kumaşın birden çok fotoğrafı (genel + yakın çekim); image ile birlikte en çok MAX_LOOK_IMAGES.
+    images: z.array(imageField).max(MAX_LOOK_IMAGES).optional(),
+    label: imageField.optional(),
+    limit: z.number().int().min(1).max(30).optional(),
+  })
   .strict()
-  .refine((b) => b.image || b.label, { message: 'image_or_label_required' });
+  .refine((b) => b.image || b.images?.length || b.label, { message: 'image_or_label_required' });
 
 interface LabelRead {
   read: boolean;
@@ -63,9 +69,11 @@ looksRouter.post(
     const parsed = searchSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: 'invalid_body', details: parsed.error.flatten() });
     if (!isLlmConfigured()) return res.status(503).json({ error: 'llm_not_configured' });
-    const image = parsed.data.image ? splitDataUrl(parsed.data.image) : null;
+    const rawImages = [...(parsed.data.image ? [parsed.data.image] : []), ...(parsed.data.images ?? [])].slice(0, MAX_LOOK_IMAGES);
+    const images = rawImages.map((d) => splitDataUrl(d));
     const labelImage = parsed.data.label ? splitDataUrl(parsed.data.label) : null;
-    if ((parsed.data.image && !image) || (parsed.data.label && !labelImage)) return res.status(400).json({ error: 'unsupported_image' });
+    if (images.some((i) => !i) || (parsed.data.label && !labelImage)) return res.status(400).json({ error: 'unsupported_image' });
+    const image = images.length ? (images as NonNullable<(typeof images)[number]>[]) : null;
 
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const used = await prisma.lookSearch.count({ where: { userId: req.user!.id, createdAt: { gte: since } } });

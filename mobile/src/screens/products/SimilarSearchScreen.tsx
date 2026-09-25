@@ -35,6 +35,8 @@ const LABEL_NOTE = () => tr('Etiketteki içerik (lif oranları) platformdaki ür
 const HINT = () =>
   tr('Mağazada beğendiğiniz kıyafetin kumaşını yakından, etiketini de okunur şekilde çekin; ikisi birlikte daha doğru sonuç verir.');
 
+const MAX_FABRIC_PHOTOS = 4;
+
 // Önizleme karesi (DESIGN.md'de adı olmayan ekran-içi ölçü).
 const PREVIEW_SIZE = 72;
 
@@ -64,7 +66,10 @@ function errorMessage(err: unknown): string {
 
 export function SimilarSearchScreen({ navigation }: Props) {
   const t = useTheme();
-  const [fabric, setFabric] = useState<PickedPhoto | null>(null);
+  // Aynı kumaşın birkaç fotoğrafı (Fırat 2026-09-25): biri genel, diğerleri yakın çekim; sunucu
+  // hepsini birlikte değerlendirip daha net bir görünüm kartı çıkarır. Etiket tek.
+  const [fabrics, setFabrics] = useState<PickedPhoto[]>([]);
+  const fabric = fabrics[0] ?? null;
   const [label, setLabel] = useState<PickedPhoto | null>(null);
   const [searching, setSearching] = useState(false);
   const [result, setResult] = useState<LookSearchResult | null>(null);
@@ -81,7 +86,7 @@ export function SimilarSearchScreen({ navigation }: Props) {
       const picked = await pickLookPhoto(source, MAX_LOOK_IMAGE_CHARS);
       if (!picked) return;
       const photo = { uri: picked.uri, dataUrl: picked.dataUrl };
-      if (slot === 'fabric') setFabric(photo);
+      if (slot === 'fabric') setFabrics((list) => [...list, photo].slice(0, MAX_FABRIC_PHOTOS));
       else setLabel(photo);
       setResult(null);
     } catch (err) {
@@ -90,12 +95,12 @@ export function SimilarSearchScreen({ navigation }: Props) {
   };
 
   const search = async () => {
-    if (!fabric && !label) return;
+    if (!fabrics.length && !label) return;
     setError(null);
     setResult(null);
     setSearching(true);
     try {
-      const found = await searchSimilarByPhoto(fabric?.dataUrl ?? null, undefined, label?.dataUrl ?? null);
+      const found = await searchSimilarByPhoto(fabrics.map((p) => p.dataUrl), undefined, label?.dataUrl ?? null);
       setResult(found);
       haptics.success();
     } catch (err) {
@@ -107,7 +112,7 @@ export function SimilarSearchScreen({ navigation }: Props) {
   };
 
   const reset = () => {
-    setFabric(null);
+    setFabrics([]);
     setLabel(null);
     setResult(null);
     setError(null);
@@ -131,12 +136,11 @@ export function SimilarSearchScreen({ navigation }: Props) {
           <Card style={{ gap: t.space[3] }}>
             <Text style={[t.type.title18, { color: t.colors.ink }]}>{tr('Beğendiğin kumaşın benzerini bul')}</Text>
             <Text style={[t.type.body14, { color: t.colors.ink2 }]}>{HINT()}</Text>
-            <PhotoSlot
-              title={tr('Kumaşın fotoğrafı')}
-              photo={fabric}
+            <FabricPhotos
+              photos={fabrics}
               disabled={searching}
               onPick={(src) => pick('fabric', src)}
-              onRemove={() => setFabric(null)}
+              onRemove={(i) => setFabrics((list) => list.filter((_, k) => k !== i))}
             />
             <PhotoSlot
               title={tr('Etiket fotoğrafı (isteğe bağlı)')}
@@ -150,7 +154,7 @@ export function SimilarSearchScreen({ navigation }: Props) {
               icon="search"
               label={tr('Benzerlerini ara')}
               loading={searching}
-              disabled={!fabric && !label}
+              disabled={!fabrics.length && !label}
               onPress={search}
             />
             {note(label ? LABEL_NOTE() : HONESTY_NOTE())}
@@ -175,7 +179,9 @@ export function SimilarSearchScreen({ navigation }: Props) {
           <>
             <Card style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
               <View style={{ flexDirection: 'row', gap: t.space[2] }}>
-                {fabric ? <Preview uri={fabric.uri} label={tr('Kumaş fotoğrafı')} /> : null}
+                {fabrics.map((p, i) => (
+                  <Preview key={p.uri + i} uri={p.uri} label={tr('Kumaş fotoğrafı')} />
+                ))}
                 {label ? <Preview uri={label.uri} label={tr('Etiket fotoğrafı')} /> : null}
               </View>
               <View style={{ flex: 1, minWidth: 0, gap: t.space[1] / 2 }}>
@@ -247,6 +253,57 @@ function Preview({ uri, label }: { uri: string; label: string }) {
 }
 
 // Tek fotoğraf yuvası: boşken kamera + galeri, doluyken önizleme + {tr('Kaldır')}.
+// Kumaş fotoğrafları: ilk fotoğraf genel görünüm, sonrakiler yakın çekim (en çok 4).
+function FabricPhotos({
+  photos,
+  disabled,
+  onPick,
+  onRemove,
+}: {
+  photos: PickedPhoto[];
+  disabled: boolean;
+  onPick: (source: 'camera' | 'gallery') => void;
+  onRemove: (index: number) => void;
+}) {
+  const t = useTheme();
+  const hasCamera = Platform.OS !== 'web';
+  const full = photos.length >= MAX_FABRIC_PHOTOS;
+  return (
+    <View style={{ gap: t.space[2], padding: t.space[3], borderRadius: t.radius.md, borderWidth: 1, borderColor: t.colors.line, minWidth: 0 }}>
+      <Text style={[t.type.body16Strong, { color: t.colors.ink }]}>{tr('Kumaşın fotoğrafları')}</Text>
+      <Text style={[t.type.body14, { color: t.colors.ink2 }]}>
+        {photos.length === 0
+          ? tr('Önce kumaşın genel görüntüsünü çekin, sonra 1-3 yakın çekim ekleyin; ne kadar net, o kadar doğru sonuç.')
+          : tr('{n}/{max} fotoğraf. Dokunun görüneceği yakın çekimler sonucu iyileştirir.', { n: photos.length, max: MAX_FABRIC_PHOTOS })}
+      </Text>
+      {photos.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[2] }}>
+          {photos.map((p, i) => (
+            <View key={p.uri + i} style={{ alignItems: 'center', gap: t.space[1] }}>
+              <Preview uri={p.uri} label={i === 0 ? tr('Genel görüntü') : tr('Yakın çekim {n}', { n: i })} />
+              <Button kind="quiet" icon="close-outline" label={tr('Kaldır')} disabled={disabled} onPress={() => onRemove(i)} />
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {!full ? (
+        <View style={{ flexDirection: 'row', gap: t.space[2], flexWrap: 'wrap' }}>
+          {hasCamera ? (
+            <Button
+              kind="secondary"
+              icon="camera"
+              label={photos.length ? tr('Yakın çekim ekle') : tr('Fotoğraf çek')}
+              disabled={disabled}
+              onPress={() => onPick('camera')}
+            />
+          ) : null}
+          <Button kind="secondary" icon="images-outline" label={tr('Galeriden seç')} disabled={disabled} onPress={() => onPick('gallery')} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 function PhotoSlot({
   title,
   photo,
