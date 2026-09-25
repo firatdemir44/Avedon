@@ -20,6 +20,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 - 2026-09-24: **Cihaz uyumluluğu telefonda GEÇTİ (Fırat):** iOS 15 Safari, WhatsApp/Instagram iç tarayıcıları, büyük yazı boyutu sorunsuz. Tarayıcı otomatik çevirisi kapatıldı (Ad→Reklam hatası), vergi no kayıtta atlanabilir, İngilizce sürüm yayında.
 
 ## ASİSTANIN SIRADAKİ İŞLERİ (Fırat onayladı)
+- **Texart (kumaş görseli) — 2026-09-26 devam, Fable 5.1 ile:** Adım 1 (iskelet, /api/texart) ve Adım 2 (npm.cmd run texart:test, texart/reports/son.html) bitti. Sıradaki Adım 3: işleme hattı 0–9 (texart/TEXART.md §3), sonra 4 sadakat denetimi, 5 çıktılar, 6 uygulama onay ekranı, 7 ad ("Takyon Texflow" netleşecek). Her adımdan sonra Fırat onayı. Fırat ~40 test fotoğrafı yükleyecek (texart/testset/).
 
 - **Sektör gündemi: YAPILDI, sonra akıştan KALDIRILDI (2026-09-24, Fırat: gereksiz yoğunluk).** Haber altyapısı (backend/src/news, 2 saatte bir çekim), SectorNews ekranı ve asistan aracı duruyor; akış kartı kapalı. Yeniden açmak için FeedScreen içine SectorNewsCard geri eklenir. Eski plan: Türkiye ve dünya tekstil haber sitelerinin açık RSS/haber akışlarından günlük başlıklar; akışta günde bir "Sektör gündemi" kartı; firma türüne göre süzme (iplikçi: pamuk/polyester fiyatları; konfeksiyon: fuar/moda). Yalnızca başlık + kısa tanıtım + bağlantı (tam metin kopyalanmaz, telif). Kaynak listesi ve RSS kullanım koşulları uygulamadan önce doğrulanacak. Bağlantı paylaşma özelliğinin (önizleme kartı) üzerine kurulur.
 
