@@ -14,7 +14,7 @@ export interface StorageInfo {
   separateDisk: boolean | null;
 }
 
-function resolveSqlitePath(url: string | undefined): string | null {
+export function resolveSqlitePath(url: string | undefined): string | null {
   if (!url || !url.startsWith('file:')) return null;
   const raw = url.slice('file:'.length);
   // Prisma göreli SQLite yollarını schema.prisma'nın klasörüne göre çözer.

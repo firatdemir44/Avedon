@@ -42,3 +42,6 @@ yarn-error.*
 
 # Orijinal Avedon tasarım görselleri (2020-2021, Drive "Avedon Tasarım"): yerel başvuru, repoya girmez
 docs/orijinal-tasarim/
+
+# Texart yerel iş dosyaları (orijinal + çıktılar)
+backend/prisma/texart/

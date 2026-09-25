@@ -43,3 +43,9 @@ Kapsam dışı — bunlar için hâlâ onay gerekir veya hiç yapılmamalı:
 - Force push yapma.
 - `.env` dosyalarını veya `backend/prisma/dev.db*` dosyalarını asla commit'e ekleme (zaten `.gitignore`'da, kasıtlı olarak repoya girmiyor).
 - `main` dışında bir branch'e push, PR açma/kapatma veya repo ayarlarını değiştirme — bunlar için onay iste.
+
+## Takyon Texart (kumaş görseli işleme)
+
+- Kurallar ve Faz 1 kapsamı `texart/TEXART.md` (kırmızı çizgi §1: kumaş piksellerine üretken yapay zekâ yok, renk/ışık düzeltmesi yalnız global). Çalışma sırası `texart/KOMUT.md`: her adımdan sonra kısa özet + kullanıcı onayı.
+- Mimari kararı (2026-09-25): TEXART.md'deki "varsayılan Python/FastAPI" yerine backend içinde ayrı modül (`backend/src/texart/`, Node + sharp/libvips). Gerekçe: iş PC'sinde Python yok, ayrı Render servisi ek ücret ve panel işi demek; aynı kalıcı disk ve veritabanı kullanılır. Modül kendi uçlarıyla (`/api/texart`) yalıtık; gerekirse ayrı servise taşınabilir.
+- Saklama: veritabanının yanındaki `texart/` klasörü (canlıda `/var/data/texart`), her iş kendi klasöründe orijinal + çıktılar + `islem_kaydi.json`. Orijinal hiç silinmez.

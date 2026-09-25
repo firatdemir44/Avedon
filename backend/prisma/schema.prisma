@@ -21,60 +21,60 @@ datasource db {
 // valid values are enforced at the API layer with zod.
 
 model Company {
-  id                String    @id @default(cuid())
-  buyerLeads        BuyerLead[]
-  sampleSets        SampleSet[]
-  name              String
-  taxId             String
-  about             String    @default("")
-  contactEmail      String    @default("")
-  contactPhone      String    @default("")
-  productCategories String    @default("")
+  id                     String             @id @default(cuid())
+  buyerLeads             BuyerLead[]
+  sampleSets             SampleSet[]
+  name                   String
+  taxId                  String
+  about                  String             @default("")
+  contactEmail           String             @default("")
+  contactPhone           String             @default("")
+  productCategories      String             @default("")
   // Firma sayfası "Şirket Genel Bakışı" (Aşama B). companyType anahtarları
   // src/catalog.ts COMPANY_TYPES; boş = belirtilmemiş. Ürün grupları ayrı alan
   // değil, firmanın ürünlerinden hesaplanıyor.
-  companyType       String    @default("")
-  foundedYear       Int?
-  website           String    @default("")
-  city              String    @default("")
-  district          String    @default("")
-  address           String    @default("")
-  mainMarkets       String    @default("")
-  verification      String    @default("dogrulanmamis")
+  companyType            String             @default("")
+  foundedYear            Int?
+  website                String             @default("")
+  city                   String             @default("")
+  district               String             @default("")
+  address                String             @default("")
+  mainMarkets            String             @default("")
+  verification           String             @default("dogrulanmamis")
   // Faz 2 Adım 7: doğrulamanın nasıl yapıldığı: "" | belge (vergi levhası/ticaret sicil) | ziyaret (yerinde ziyaret)
-  verificationLevel String    @default("")
-  verifiedAt        DateTime?
+  verificationLevel      String             @default("")
+  verifiedAt             DateTime?
   // Akış düzeni (2026-09-23): çok şikâyet alan firma bu tarihe kadar herkese açık paylaşamaz.
   publicPostBlockedUntil DateTime?
-  companyCode       String    @unique
+  companyCode            String             @unique
   // Logonun kendisi CompanyLogo'da. Burada yalnızca son değişme zamanı var:
   // istemci "logo var mı" bilgisini ve önbellek anahtarını buradan alır.
   // Faz 2 Adım 5: fason kapasite ağı. Aylık tonaj firmanın BEYANIDIR (Fırat 2026-09-17).
-  monthlyCapacityTons   Float?
-  capacityNote          String    @default("")
+  monthlyCapacityTons    Float?
+  capacityNote           String             @default("")
   // Fason (dışarıya) kapasite açık mı
-  contractOpen          Boolean   @default(false)
-  capacityUpdatedAt     DateTime?
-  logoUpdatedAt     DateTime?
+  contractOpen           Boolean            @default(false)
+  capacityUpdatedAt      DateTime?
+  logoUpdatedAt          DateTime?
   // Firma rehberi (2026-09-23): dernek listelerinden içe aktarılan firmalar sahipsiz (claimed=false)
   // listelenir; sahiplenme onaylanınca true olur. source: liste kaynağı (itkib, ithib, ito, orsad…).
   // categoryTags: ek kategoriler (JSON dizi); normalizedName: arama/mükerrer anahtarı.
-  claimed           Boolean   @default(true)
-  source            String    @default("")
-  categoryTags      String    @default("[]")
-  normalizedName    String    @default("")
-  createdAt         DateTime  @default(now())
-  users             User[]
-  products          Product[]
-  logo              CompanyLogo?
-  photos            CompanyPhoto[]
-  assistantThreads  AssistantThread[]
-  memories          CompanyMemory[]
-  faqs              CompanyFaq[]
-  machines          Machine[]
-  referencesGiven   CompanyReference[] @relation("ReferenceFrom")
-  referencesReceived CompanyReference[] @relation("ReferenceTo")
-  questions         CompanyQuestion[]
+  claimed                Boolean            @default(true)
+  source                 String             @default("")
+  categoryTags           String             @default("[]")
+  normalizedName         String             @default("")
+  createdAt              DateTime           @default(now())
+  users                  User[]
+  products               Product[]
+  logo                   CompanyLogo?
+  photos                 CompanyPhoto[]
+  assistantThreads       AssistantThread[]
+  memories               CompanyMemory[]
+  faqs                   CompanyFaq[]
+  machines               Machine[]
+  referencesGiven        CompanyReference[] @relation("ReferenceFrom")
+  referencesReceived     CompanyReference[] @relation("ReferenceTo")
+  questions              CompanyQuestion[]
 
   @@index([companyType])
   @@index([normalizedName])
@@ -108,29 +108,29 @@ model CompanyLogo {
 }
 
 model User {
-  id                   String          @id @default(cuid())
+  id                   String               @id @default(cuid())
   accountType          String
   position             String
   firstName            String
   lastName             String
-  phone                String          @unique
-  phoneVerified        Boolean         @default(false)
+  phone                String               @unique
+  phoneVerified        Boolean              @default(false)
   // Asistan kişiliği: "" (seçilmedi) | ipek | mert (assistant/persona.ts).
-  assistantPersona     String          @default("")
+  assistantPersona     String               @default("")
   // Arayüz dili (tr | en): uygulama her istekte X-Lang gönderir; bildirim ve asistan bu dilde.
-  language             String          @default("tr")
-  isAdmin              Boolean         @default(false)
+  language             String               @default("tr")
+  isAdmin              Boolean              @default(false)
   // Kişisel profil fotoğrafı (Fırat 2026-09-21). Fotoğrafın kendisi UserAvatar'da; burada yalnızca
   // "var mı / ne zaman değişti" bilgisi (istemci önbellek anahtarı; firma logosuyla aynı desen).
   avatarUpdatedAt      DateTime?
   avatar               UserAvatar?
   companyId            String?
-  company              Company?        @relation(fields: [companyId], references: [id])
+  company              Company?             @relation(fields: [companyId], references: [id])
   sampleRequests       SampleRequest[]
-  sentConnections      Connection[]    @relation("ConnectionRequester")
-  receivedConnections  Connection[]    @relation("ConnectionAddressee")
-  conversationsAsUserA Conversation[]  @relation("ConversationUserA")
-  conversationsAsUserB Conversation[]  @relation("ConversationUserB")
+  sentConnections      Connection[]         @relation("ConnectionRequester")
+  receivedConnections  Connection[]         @relation("ConnectionAddressee")
+  conversationsAsUserA Conversation[]       @relation("ConversationUserA")
+  conversationsAsUserB Conversation[]       @relation("ConversationUserB")
   messages             Message[]
   posts                Post[]
   postLikes            PostLike[]
@@ -146,71 +146,71 @@ model User {
   quoteRequests        QuoteRequest[]
   quotes               Quote[]
   companyQuestions     CompanyQuestion[]
-  createdAt            DateTime        @default(now())
+  createdAt            DateTime             @default(now())
 }
 
 // Katalog anahtarları (type, subtype, usages) src/catalog.ts'te tanımlı ve API'de
 // doğrulanıyor. type: "orme" | "raschel" | "dokuma" | "dantel" | "triko" | "diger".
 model Product {
-  id             String          @id @default(cuid())
-  companyId      String
-  company        Company         @relation(fields: [companyId], references: [id])
-  code           String
-  type           String
+  id                String               @id @default(cuid())
+  companyId         String
+  company           Company              @relation(fields: [companyId], references: [id])
+  code              String
+  type              String
   // Alt çeşit anahtarı (ör. "suprem"); boş = belirtilmemiş.
-  subtype        String          @default("")
+  subtype           String               @default("")
   // Kullanım amaçları: JSON dizi metni, ör. ["pantolonluk","taytlik"].
-  usages         String          @default("[]")
+  usages            String               @default("[]")
   // Float: form "220,5" gibi ondalık kabul ediyor; Int iken sunucu 201 dönüp
   // değeri sessizce 220'ye kesiyordu.
-  stock          Float
+  stock             Float
   // "m" | "kg"
-  stockUnit      String          @default("m")
-  weightGsm      Float
-  widthCm        Float
-  content        String
+  stockUnit         String               @default("m")
+  weightGsm         Float
+  widthCm           Float
+  content           String
   // Serbest kullanım notu (isteğe bağlı); etiketler usages'ta.
-  useArea        String          @default("")
+  useArea           String               @default("")
   // --- Kumaş pasaportu (Faz 1, Adım 2; docs/faz1-plani.md) ---
   // Hepsi isteğe bağlı; eski istemciler bu alanlar olmadan çalışır.
   // widthType: "" | acik | tup
-  widthType         String    @default("")
+  widthType         String               @default("")
   // Enin anlamı (Fırat 2026-09-16): "" | acik (girilen en açık en) | tup_tek_yuz (tek yüz tüp eni;
   // hesap eni iki katı). Otomatik çarpma yok, satıcı seçer.
-  widthMeaning      String    @default("")
+  widthMeaning      String               @default("")
   // MOQ değeri ve birimi stok biriminden bağımsız (kullanıcı kararı 2026-09-16).
   moq               Float?
-  moqUnit           String    @default("")
+  moqUnit           String               @default("")
   leadTimeDays      Int?
   // Fiyat yalnızca ürünün sahibi firmaya döner (API katmanı süzer).
   priceValue        Float?
-  priceCurrency     String    @default("")
-  priceUnit         String    @default("")
+  priceCurrency     String               @default("")
+  priceUnit         String               @default("")
   // Boya/apre etiketleri: JSON dizi metni (usages ile aynı desen).
-  finishTags        String    @default("[]")
+  finishTags        String               @default("[]")
   passportUpdatedAt DateTime?
   // Faz 3 Adım 7: AB Dijital Ürün Pasaportu'na HAZIRLIK alanları (hepsi isteğe bağlı).
-  originCountry     String    @default("")
-  careNotes         String    @default("")
+  originCountry     String               @default("")
+  careNotes         String               @default("")
   // Bakım sembolleri: JSON dizi metni (domain/care.ts anahtarları; grup başına en çok bir sembol).
-  careSymbols       String    @default("[]")
+  careSymbols       String               @default("[]")
   recycledPercent   Float?
   compositions      ProductComposition[]
   yarns             ProductYarn[]
   certificates      ProductCertificate[]
   testReports       ProductTestReport[]
   fieldMeta         ProductFieldMeta[]
-  images         ProductImage[]
-  favorites      ProductFavorite[]
-  views          ProductView[]
-  sampleRequests SampleRequest[]
-  quoteRequests  QuoteRequest[]
-  posts          Post[]
+  images            ProductImage[]
+  favorites         ProductFavorite[]
+  views             ProductView[]
+  sampleRequests    SampleRequest[]
+  quoteRequests     QuoteRequest[]
+  posts             Post[]
   // Faz 2 Adım 6: type = "iplik" olan ürünün ipliğe özel alanları.
-  yarnSpec       YarnSpec?
+  yarnSpec          YarnSpec?
   // Faz 3 Adım 3: kapak fotoğrafından çıkarılan görünüm kartı (benzer kumaş arama).
-  look           ProductLook?
-  createdAt      DateTime        @default(now())
+  look              ProductLook?
+  createdAt         DateTime             @default(now())
 }
 
 // Kumaş pasaportu alt tabloları (Faz 1, Adım 2). Kompozisyon doğruluk
@@ -430,35 +430,35 @@ model Message {
 //   ürününü kendi gönderisine iliştirip talep toplamasın diye). Ürün silinirse
 //   SetNull ile boşalır, gönderi ayakta kalır.
 model Post {
-  id         String        @id @default(cuid())
-  authorId   String
-  author     User          @relation(fields: [authorId], references: [id])
-  body       String        @default("")
-  imageUrl   String?
-  productId  String?
-  product    Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
-  visibility String        @default("public")
+  id              String        @id @default(cuid())
+  authorId        String
+  author          User          @relation(fields: [authorId], references: [id])
+  body            String        @default("")
+  imageUrl        String?
+  productId       String?
+  product         Product?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  visibility      String        @default("public")
   // Bir gönderide ya fotoğraf ya video olur, ikisi birden olmaz (API'de zorunlu).
-  videoId    String?       @unique
-  video      Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  videoId         String?       @unique
+  video           Video?        @relation(fields: [videoId], references: [id], onDelete: SetNull)
   // Açık talep kartı (Tender.id; ilişki yok, yalnızca sütun eklendi).
-  tenderId   String?
-  createdAt  DateTime      @default(now())
+  tenderId        String?
+  createdAt       DateTime      @default(now())
   // Yazar yazıyı/görünürlüğü/ürünü değiştirince dolar; akışta "düzenlendi"
   // gösterilir (alıcı metnin sonradan değiştiğini bilsin). Fotoğraf ve video
   // düzenlenemez.
-  editedAt   DateTime?
+  editedAt        DateTime?
   // Farklı firmalardan yeterli şikâyet gelince gizlenir (yalnızca yazar görür); yönetici geri açabilir.
-  hiddenAt   DateTime?
+  hiddenAt        DateTime?
   // Paylaşılan haber/makale bağlantısı (önizleme kartı). Bağlantılı gönderide
   // fotoğraf/video olmaz. linkImage data URL; akışta ayrı uçtan çekilir.
   linkUrl         String?
-  linkTitle       String  @default("")
-  linkDescription String  @default("")
-  linkSiteName    String  @default("")
+  linkTitle       String        @default("")
+  linkDescription String        @default("")
+  linkSiteName    String        @default("")
   linkImage       String?
-  likes      PostLike[]
-  comments   PostComment[]
+  likes           PostLike[]
+  comments        PostComment[]
 
   @@index([createdAt])
   @@index([authorId, createdAt])
@@ -536,35 +536,35 @@ model Connection {
 // Sohbet kaydı sunucuda: araç çağrıları ve sonuçları geçmişin parçası, istemci
 // yalnızca threadId tutar; WhatsApp kanalında istemci yok.
 model AssistantThread {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  companyId String?
-  company   Company? @relation(fields: [companyId], references: [id])
+  id              String             @id @default(cuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id])
+  companyId       String?
+  company         Company?           @relation(fields: [companyId], references: [id])
   // "app" | "whatsapp" | "buyer" (Faz 2 Adım 3: alıcı, targetCompanyId firmasının asistanıyla konuşur)
-  channel   String   @default("app")
+  channel         String             @default("app")
   targetCompanyId String?
   // İlk sorudan türetilen kısa başlık (liste için).
-  title     String   @default("")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  messages  AssistantMessage[]
+  title           String             @default("")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  messages        AssistantMessage[]
 
   @@index([userId, updatedAt])
 }
 
 model AssistantMessage {
-  id        String          @id @default(cuid())
-  threadId  String
-  thread    AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  id          String          @id @default(cuid())
+  threadId    String
+  thread      AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
   // "user" | "assistant"
-  role      String
+  role        String
   // Ekrana giden içerik: { text, toolCalls: [{ name, title, input, output, summary }], memorySuggestions: [{ key, value, reason }] }
   contentJson String
   // Modele giden/gelen ham mesajlar (tool_use / tool_result dahil); sonraki
   // turda geçmiş buradan kurulur. JSON dizi metni.
-  apiJson   String          @default("[]")
-  createdAt DateTime        @default(now())
+  apiJson     String          @default("[]")
+  createdAt   DateTime        @default(now())
 
   @@index([threadId, createdAt])
 }
@@ -756,42 +756,42 @@ model CompanyQuestion {
 // Makine türü SERBEST METİN (Fırat 2026-09-17: tür çok, üretici yazar); kindKey aramada
 // eşleşsin diye katlanmış hali. group: orme | dokuma | boya_terbiye | baski | konfeksiyon | iplik | diger
 model Machine {
-  id           String   @id @default(cuid())
-  companyId    String
-  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  group        String
-  kind         String
-  kindKey      String
+  id                    String    @id @default(cuid())
+  companyId             String
+  company               Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  group                 String
+  kind                  String
+  kindKey               String
   // Firmanın kendi makine numarası (parkur tablosundaki "Mak No").
-  machineNo    Int?
-  brand        String   @default("")
-  model        String   @default("")
-  year         Int?
+  machineNo             Int?
+  brand                 String    @default("")
+  model                 String    @default("")
+  year                  Int?
   // Pus (çap, inç) ve fayn (incelik); örme dışında boş kalır.
-  diameterInch Float?
-  gauge        Float?
-  feeders      Int?
-  needles      Int?
+  diameterInch          Float?
+  gauge                 Float?
+  feeders               Int?
+  needles               Int?
   // Dönüştürülebilir makinelerde aralık metni ("28-22", "2808-2210"); sayısal
   // gauge/needles ilk sayıdır (arama için), metin tüm değerleri taşır.
-  gaugeText    String   @default("")
-  needlesText  String   @default("")
+  gaugeText             String    @default("")
+  needlesText           String    @default("")
   // Örgü cinsi: "SÜPREM. TÜP", "İNTER-RİBANA", "AÇIK EN SÜPREM".
-  fabricType   String   @default("")
+  fabricType            String    @default("")
   // Çalışma eni (cm): dokuma, raschel, ram vb.
-  workingWidthCm Float?
+  workingWidthCm        Float?
   // Serbest özellik: tek plaka, çift plaka, jakar, elektronik...
-  feature      String   @default("")
-  count        Int      @default(1)
+  feature               String    @default("")
+  count                 Int       @default(1)
   // Günlük üretim kapasitesi (kg), makine başına beyan.
-  dailyCapacityKg Float?
+  dailyCapacityKg       Float?
   // Fason müsaitlik: bu tarihe kadar dolu (boş/geçmiş = müsait). Metin her gün yeniden hesaplanır.
-  busyUntil    DateTime?
+  busyUntil             DateTime?
   availabilityUpdatedAt DateTime?
-  note         String   @default("")
-  position     Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  note                  String    @default("")
+  position              Int       @default(0)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   @@index([companyId, position])
   @@index([group, kindKey])
@@ -802,16 +802,16 @@ model Machine {
 // fromCompany, toCompany için "bizim <relation>'imiz" der; toCompany onaylarsa iki firmanın
 // sayfasında görünür. relation: musteri | tedarikci. status: pending | confirmed | rejected
 model CompanyReference {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   fromCompanyId String
-  fromCompany   Company  @relation("ReferenceFrom", fields: [fromCompanyId], references: [id], onDelete: Cascade)
+  fromCompany   Company   @relation("ReferenceFrom", fields: [fromCompanyId], references: [id], onDelete: Cascade)
   toCompanyId   String
-  toCompany     Company  @relation("ReferenceTo", fields: [toCompanyId], references: [id], onDelete: Cascade)
+  toCompany     Company   @relation("ReferenceTo", fields: [toCompanyId], references: [id], onDelete: Cascade)
   relation      String
-  note          String   @default("")
-  status        String   @default("pending")
+  note          String    @default("")
+  status        String    @default("pending")
   createdById   String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
   respondedAt   DateTime?
 
   @@unique([fromCompanyId, toCompanyId, relation])
@@ -822,40 +822,40 @@ model CompanyReference {
 // weightGsm/widthCm = 0) ki teklif, numune, favori, gönderi altyapısı aynen çalışsın.
 // Karışım ProductComposition'da, sertifika ProductCertificate'ta tutulur.
 model YarnSpec {
-  productId     String  @id
-  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId      String  @id
+  product        Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   // Ana alan (Fırat 2026-09-18): pamuk | viskon | polyester | naylon | akrilik | yun | keten | karisim | fantezi | elastan_gipe | diger
-  family        String
-  count         Float
+  family         String
+  count          Float
   // ne | nm | tex | dtex | denye
-  countUnit     String
-  ply           Int     @default(1)
+  countUnit      String
+  ply            Int     @default(1)
   // Tek katın dtex karşılığı: birimden bağımsız aralık araması için.
-  countDtex     Float
-  filaments     Int?
+  countDtex      Float
+  filaments      Int?
   // "" | ring | open_end | vortex | kompakt | siro
-  spinning      String  @default("")
+  spinning       String  @default("")
   // "" | karde | penye
-  combing       String  @default("")
+  combing        String  @default("")
   // "" | dty | fdy | poy | aty | bcf | mono
-  filamentType  String  @default("")
+  filamentType   String  @default("")
   // "" | parlak | yari_mat | mat
-  luster        String  @default("")
+  luster         String  @default("")
   // "" | S | Z
-  twistDirection String @default("")
-  twistTpm      Float?
+  twistDirection String  @default("")
+  twistTpm       Float?
   // Kullanım yerleri: JSON dizi metni (yuvarlak_orme, triko, dokuma_cozgu, ...)
-  endUses       String  @default("[]")
+  endUses        String  @default("[]")
   // ham | boyali | melanj | elyaf_boyali | dope_dyed
-  colorState    String  @default("")
-  color         String  @default("")
+  colorState     String  @default("")
+  color          String  @default("")
   // Serbest çeşit adı: fantezi (şönil, buklet...), gipe yapısı vb.
-  variety       String  @default("")
-  origin        String  @default("")
-  brand         String  @default("")
-  coneWeightKg  Float?
+  variety        String  @default("")
+  origin         String  @default("")
+  brand          String  @default("")
+  coneWeightKg   Float?
   // tuccar ise üretici değil satıcı stoğu
-  sellerRole    String  @default("")
+  sellerRole     String  @default("")
 
   @@index([family])
   @@index([countDtex])
@@ -885,8 +885,8 @@ model LookSearch {
 // izlemez; yalnızca iki tarafın BEYANI tutulur. Ödeme konusuna hiç girilmez (Fırat kararı 2026-09-18).
 // İlişkiler bilinçli olarak yok (mevcut tablolar yeniden kurulmasın); bütünlük uygulama katmanında.
 model Deal {
-  id                 String    @id @default(cuid())
-  quoteRequestId     String    @unique
+  id                 String       @id @default(cuid())
+  quoteRequestId     String       @unique
   quoteId            String
   buyerId            String
   buyerCompanyId     String?
@@ -898,14 +898,14 @@ model Deal {
   // Satıcının kendi teklifindeki terminden hesaplanır (kabul tarihi + termin günü); yoksa alıcının istediği tarih.
   agreedDeliveryDate DateTime?
   // acik | teslim_bildirildi | teslim_edildi | itiraz | iptal
-  status             String    @default("acik")
+  status             String       @default("acik")
   sellerDeliveredAt  DateTime?
   buyerConfirmedAt   DateTime?
-  disputeNote        String    @default("")
-  cancelledByRole    String    @default("")
-  cancelReason       String    @default("")
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  disputeNote        String       @default("")
+  cancelledByRole    String       @default("")
+  cancelReason       String       @default("")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
   reviews            DealReview[]
 
   @@index([buyerId, createdAt])
@@ -1154,17 +1154,17 @@ model TradeStat {
 // Akış düzeni (2026-09-23): şikâyet ve firma gizleme. İlişki alanı yok, yalnızca sütunlar
 // (mevcut tabloları yeniden kurmamak için).
 model PostReport {
-  id         String   @id @default(cuid())
-  postId     String
-  reporterId String
+  id                String    @id @default(cuid())
+  postId            String
+  reporterId        String
   // Şikâyet edenin firması: eşik "farklı firmalardan" sayılır (tek firmanın çalışanları yetmez).
   reporterCompanyId String?
   // Şikâyet edilen gönderinin firması (firma düzeyi eşik için).
   authorCompanyId   String?
-  reason     String
-  note       String   @default("")
-  createdAt  DateTime @default(now())
-  resolvedAt DateTime?
+  reason            String
+  note              String    @default("")
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
 
   @@unique([postId, reporterId])
   @@index([authorCompanyId, createdAt])
@@ -1306,4 +1306,32 @@ model AppSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Takyon Texart (texart/TEXART.md): kumaş fotoğrafını katalog standardına getiren iş.
+// Orijinal ve çıktılar diskte (texart/store.ts), burada yalnızca durum + ölçüm + işlem kaydı.
+model TexartJob {
+  id           String   @id @default(cuid())
+  companyId    String
+  productId    String?
+  createdById  String
+  // kuyrukta | isleniyor | tamam | yeniden_cekim | hata
+  status       String   @default("kuyrukta")
+  // Orijinal dosya adı (uzantı dahil) ve boyutu; dosya iş klasöründe.
+  originalName String
+  width        Int?
+  height       Int?
+  outputsJson  String   @default("{}")
+  metricsJson  String   @default("{}")
+  warningsJson String   @default("[]")
+  logJson      String   @default("[]")
+  error        String?
+  // Firma kararı: onaylandi | orijinal | null (bekliyor)
+  decision     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([companyId, createdAt])
+  @@index([productId])
 }

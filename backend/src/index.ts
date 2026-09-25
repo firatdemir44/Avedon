@@ -62,6 +62,9 @@ import { adminVerificationRouter, verificationRouter } from './routes/verificati
 import { backfillLooksInBackground } from './looks';
 import { getAnthropic, isLlmMock } from './llm';
 import { getStorageInfo } from './storageCheck';
+import { texartRouter } from './routes/texart';
+import { startTexartWorker, texartHealth } from './texart/queue';
+import { storeStatus as texartStoreStatus } from './texart/store';
 import { checkStreamAccess, isStreamConfigured } from './stream';
 
 const app = express();
@@ -109,6 +112,8 @@ app.get('/api/health', async (_req, res) => {
     news: await newsHealth().catch(() => null),
     fx: await fxHealth().catch(() => null),
     // Çift hesap: aynı telefonun farklı yazımıyla açılmış hesap grupları (Yönetim > Çift hesaplar).
+    // Takyon Texart: iş sayıları ve saklama klasörü yazılabilir mi.
+    texart: { ...(await texartHealth().catch(() => null)), store: await texartStoreStatus() },
     users: { phoneDuplicateGroups: await countDuplicatePhoneGroups().catch(() => null) },
   });
 });
@@ -157,6 +162,7 @@ app.use('/api/product-drafts', productDraftsRouter);
 app.use('/api/invites', invitesRouter);
 app.use('/api/news', newsRouter);
 app.use('/api/fx', fxRouter);
+app.use('/api/texart', texartRouter);
 app.use('/api/whatsapp/webhook', whatsappWebhookRouter);
 
 const port = Number(process.env.PORT) || 4000;
@@ -175,6 +181,9 @@ app.listen(port, () => {
   // Sektör gündemi: RSS kaynakları 2 saatte bir (ilk çekim açılıştan 2 dk sonra).
   startNewsScheduler();
   startFxScheduler();
+  void startTexartWorker()
+    .then((n) => n && console.log('[texart] kuyruğa geri alınan iş', n))
+    .catch((err) => console.error('[texart] başlatma', err));
   backfillNormalizedNames()
     .then(() => seedDirectoryFromFiles())
     .catch((err) => console.error('[directory] backfill/seed', err));
