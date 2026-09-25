@@ -46,6 +46,8 @@ Kapsam dışı — bunlar için hâlâ onay gerekir veya hiç yapılmamalı:
 
 ## Kumaş fotoğrafı işleme (iç ad: texart)
 
+- **Konuşma dili (Fırat 2026-09-25):** Fırat "Takyon" dediğinde ana proje (bu uygulama), "Texart" dediğinde fotoğraf düzenleme işi anlaşılır. Yalnızca aramızdaki iş adı; ekranda gösterilmez.
+
 - Kurallar ve Faz 1 kapsamı `texart/TEXART.md` (kırmızı çizgi §1: kumaş piksellerine üretken yapay zekâ yok, renk/ışık düzeltmesi yalnız global). Çalışma sırası `texart/KOMUT.md`: her adımdan sonra kısa özet + kullanıcı onayı.
 - **MARKA (Fırat 2026-09-25, kesin):** Tüm ürün ve işlerde tek marka **Takyon Ai** (Takyon Ai Sanayi ve Ticaret A.Ş., tamamen Fırat'ın; tüm resmi işler bu şirket üzerinden). "Texflow" ve "Texart" adlarından marka çakışması nedeniyle vazgeçildi (Texflow adlı benzer tekstil uygulaması mağazalarda var); eski ad (A-v-e-d-o-n) de kullanılmaz. Uygulamada görünen ad: üst bantta logo + "Takyon Ai", manifest/sayfa başlığı "Takyon Ai". Kumaş fotoğrafı işleme bileşeni kodda iç adıyla (texart klasörü, /api/texart) durur, arayüzde ayrı bir ürün adı gösterilmez; ileride ayrı ürün olursa adı o zaman marka araştırmasıyla seçilir. Panelde duran canlı adresler (onrender/vercel) ve klasör adı takyon.ai bağlanana kadar kalır.
 - Mimari kararı (2026-09-25): TEXART.md'deki "varsayılan Python/FastAPI" yerine backend içinde ayrı modül (`backend/src/texart/`, Node + sharp/libvips). Gerekçe: iş PC'sinde Python yok, ayrı Render servisi ek ücret ve panel işi demek; aynı kalıcı disk ve veritabanı kullanılır. Modül kendi uçlarıyla (`/api/texart`) yalıtık; gerekirse ayrı servise taşınabilir.
