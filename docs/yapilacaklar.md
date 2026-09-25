@@ -2,22 +2,23 @@
 
 Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen kararları tutar. Yeni bir çalışma oturumuna başlarken önce burası kontrol edilir.
 
-## FIRAT'IN YAPACAKLARI ("ne yapmamız gerekiyor / eksikler neler" sorulunca BUNU hatırlat; 2026-09-23)
+## FIRAT'IN YAPACAKLARI ("ne kaldı" sorulunca BUNU oku; güncel 2026-09-25)
 
-1. ~~Meta WhatsApp engeli~~ **ÇÖZÜLDÜ 2026-09-24:** eski anahtar engelliydi; Fırat sistem kullanıcısından yeni süresiz anahtar girdi; health accessDiagnostics 200, Fırat WhatsApp testinde asistan cevap verdi. Kalan: gerçek numara + işletme doğrulaması (madde 2).
-2. **WhatsApp gerçek numara:** ayrı SIM + Meta işletme doğrulaması (şu an test numarası, 5 alıcı sınırı). Numara gelince uygulamaya "WhatsApp'tan sor" simgesi (wa.me + hazır mesaj) eklenecek.
-3. ~~Cloudflare AI anahtarını yenile~~ **YAPILDI 2026-09-24** (Roll + Render; health speech.tokenActive true, önbellek süresi sonrası da doğrulandı).
-4. **Net Takyon logosu + yazı dosyası** (SVG/PNG): geçici girdap çizimi değiştirilecek.
-5. **Doğal Türkçe ses (isteğe bağlı):** Google Cloud Chirp 3 HD (tr-TR destekli, doğrulandı); fiyat/ücretsiz kota doğrulanıp panel adımları verilecek; Fırat onaylarsa.
-6. **TÜRKPATENT "takyon" ön araştırması** (sınıf 9, 35, 42).
-7. **Dernek üye listeleri:** UTİB herkese açık listesinden 2.301 firma eklendi (2026-09-23, `backend/data/directory/utib.json`). İTHİB, İHKİB, EİB, TOBB Sanayi Veritabanı vb. için Fırat kuruluşlarla görüşüp listeyi kendisi alacak (Excel/CSV: unvan, sektör, il, web) → aynı yolla `data/directory/*.json` olarak eklenir. Öneri bekliyor: "Diğer" kategorisindeki 1.609 firmanın 805 web sitesinden kategori zenginleştirme.
-8. **Pilot firmaları doğrula:** herkese açık paylaşım artık yalnızca doğrulanmış firmalara açık (Yönetim ekranı).
-9. **Danışman geri bildirimi** (Ticaret Bakanlığı destek taslağı).
-10. **İngiltere sicili anahtarı (Companies House, ücretsiz):** alıcı listesinde İngiltere firmaları için; tıklama yolları doğrulanıp tek seferde verilecek, Render `COMPANIES_HOUSE_KEY`.
-11. **Telefon kontrolleri:** sesli soru göstergesi, makine parkuru fotoğraftan aktarma (Melide listesi), asistandan asistana soru, tasarım düzeltmeleri, akış şikâyet/gizleme, Dünyayı Keşfet.
-11. ~~Dünyayı Keşfet B telefonda kontrol~~ **GEÇTİ 2026-09-23 (Fırat: "sonuçlar harika").** Eski not: ülke ayrıntısı → "Aday alıcıları gör" (Fransa: sicil + Wikidata; diğer ülkeler yalnız Wikidata markaları), ilk açılışta 1-2 dk "getiriliyor" yoklaması, takibe alma, Takip listem. BK sicili için `COMPANIES_HOUSE_KEY` (ücretsiz anahtar) Render ortamına girilince İngiltere de sicil kapsamına girer; girilince `/api/health` → `buyers.companiesHouseKeySet: true` olmalı.
+**Takyon (ana proje)**
+1. **TÜRKPATENT "Takyon Ai" marka araştırması + başvuru** (sınıf 9, 35, 42) — marka vekiliyle; şirket Takyon Ai Sanayi ve Ticaret A.Ş.
+2. **takyon.ai alan adını uygulamaya bağlama** — Fırat onay verince panel adımları (Vercel + DNS, sunucu için api.takyon.ai) doğrulanıp tek seferde verilir; eski ad içeren adresler kalkar, Apple/Google girişin önkoşulu.
+3. **WhatsApp gerçek numara:** şirket adına SIM + Meta işletme doğrulaması (Takyon Ai A.Ş. belgeleriyle) → Yönetim > WhatsApp'ta PIN ile kayıt. Sonra uygulamaya "WhatsApp'tan sor" simgesi.
+4. **Net Takyon Ai logo dosyası** (SVG/PNG, işaret + yazı).
+5. **Stok girişi:** stoğu 0 görünen Melide ürünlerine stok miktarı (başkalarına yalnız stoklu ürün görünür; canlıda şu an 3 ürün görünüyor).
+6. **Fatih Demir çift kaydı:** Yönetim > Çift hesaplar'da birleştir (görünmüyorsa bildir; firmadan çıkar/birleştir aracı yapılır).
+7. **Doğal Türkçe ses kararı** (Google Chirp 3 HD; aylık ilk 1 milyon karakter ücretsiz, sonrası 1M karakter 30 $).
+8. **Apple Developer hesabı (şirket adına, D-U-N-S gerekir, yıllık 99 $)** — App Store ve Apple ile giriş için; takyon.ai bağlandıktan sonra.
+9. **Dernek üye listeleri** (İTHİB, İHKİB, EİB, TOBB…; Excel/CSV) ve **danışman geri bildirimi**.
 
-- 2026-09-24: **Cihaz uyumluluğu telefonda GEÇTİ (Fırat):** iOS 15 Safari, WhatsApp/Instagram iç tarayıcıları, büyük yazı boyutu sorunsuz. Tarayıcı otomatik çevirisi kapatıldı (Ad→Reklam hatası), vergi no kayıtta atlanabilir, İngilizce sürüm yayında.
+**Texart (fotoğraf düzenleme)**
+1. **Test fotoğrafları (~40)** sohbete yüklenir, her birine kısa not ("siyah süprem", "kırışık dantel"…). Zor vakalar: siyah, beyaz, parlak likralı, dantel/tül, baskılı, kırışık, eğik, sarı ışık, flaşlı.
+2. **Adım 3 onayı:** işleme hattı Fable 5.1 limiti açılınca (2026-09-26) başlar; her adımdan sonra karşılaştırma sayfasına bakıp onay.
+3. **Sonuçların göz kontrolü:** "uydurulmuş doku yok" son kontrolü Fırat yapar (kabul ölçütü).
 
 ## ASİSTANIN SIRADAKİ İŞLERİ (Fırat onayladı)
 - **Kumaş fotoğrafı işleme (iç ad texart) — 2026-09-26 devam, Fable 5.1 ile:** Adım 1 (iskelet, /api/texart) ve Adım 2 (npm.cmd run texart:test, texart/reports/son.html) bitti. Sıradaki Adım 3: işleme hattı 0–9 (texart/TEXART.md §3), sonra 4 sadakat denetimi, 5 çıktılar, 6 uygulama onay ekranı, 7 ad ("Takyon Ai" netleşecek). Her adımdan sonra Fırat onayı. Fırat ~40 test fotoğrafı yükleyecek (texart/testset/).
