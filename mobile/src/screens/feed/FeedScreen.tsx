@@ -409,7 +409,7 @@ export function FeedScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
         leading="logo"
-        title="Takyon"
+        title="Takyon Texflow"
         actions={[
           {
             icon: 'bell',

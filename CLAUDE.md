@@ -47,5 +47,6 @@ Kapsam dışı — bunlar için hâlâ onay gerekir veya hiç yapılmamalı:
 ## Takyon Texart (kumaş görseli işleme)
 
 - Kurallar ve Faz 1 kapsamı `texart/TEXART.md` (kırmızı çizgi §1: kumaş piksellerine üretken yapay zekâ yok, renk/ışık düzeltmesi yalnız global). Çalışma sırası `texart/KOMUT.md`: her adımdan sonra kısa özet + kullanıcı onayı.
+- **Ürün adları (Fırat 2026-09-25):** Takyon = ana şirket (Takyon Ai Sanayi ve Ticaret A.Ş., tamamen Fırat'ın; tüm resmi işler bu şirket üzerinden). Bu uygulama **Takyon Texflow** (ana ekranda kısa ad "Texflow"), fotoğraf ürünü **Takyon Texart** — şimdilik Texflow içinde, ileride ayrı uygulama/ürün olacak (modülü yalıtık tut).
 - Mimari kararı (2026-09-25): TEXART.md'deki "varsayılan Python/FastAPI" yerine backend içinde ayrı modül (`backend/src/texart/`, Node + sharp/libvips). Gerekçe: iş PC'sinde Python yok, ayrı Render servisi ek ücret ve panel işi demek; aynı kalıcı disk ve veritabanı kullanılır. Modül kendi uçlarıyla (`/api/texart`) yalıtık; gerekirse ayrı servise taşınabilir.
 - Saklama: veritabanının yanındaki `texart/` klasörü (canlıda `/var/data/texart`), her iş kendi klasöründe orijinal + çıktılar + `islem_kaydi.json`. Orijinal hiç silinmez.

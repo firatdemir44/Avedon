@@ -130,7 +130,7 @@ export function ensureManifestLink(): void {
 
     addLink('manifest', '/manifest.webmanifest');
     addMeta('apple-mobile-web-app-capable', 'yes');
-    addMeta('apple-mobile-web-app-title', 'Takyon');
+    addMeta('apple-mobile-web-app-title', 'Texflow');
     addLink('apple-touch-icon', '/apple-touch-icon.png');
     addMeta('mobile-web-app-capable', 'yes');
     // Çentikli ekranlarda içerik güvenli alan (env(safe-area-inset-*)) hesabıyla yerleşsin;

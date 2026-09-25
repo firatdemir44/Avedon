@@ -130,9 +130,13 @@ export function LoginScreen({ navigation, route }: Props) {
             <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, alignSelf: 'center' }}>
               {/* Takyon logosu: girdap işareti + aralıklı büyük harf yazı (logo kartındaki gibi).
                   Eski Avedon yazılı görsel kaldırıldı; net logo dosyası gelince görselle değişecek. */}
-              <View accessible accessibilityRole="header" accessibilityLabel="Takyon" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+              <View accessible accessibilityRole="header" accessibilityLabel="Takyon Texflow" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
                 <TakyonMark size={logoHeight} />
-                <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON</Text>
+                <View>
+                  <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON</Text>
+                  {/* Ürün adı (Fırat 2026-09-25): Takyon ana şirket, bu uygulama Texflow. */}
+                  <Text style={[t.type.label14, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TEXFLOW</Text>
+                </View>
               </View>
               <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>
                 {tr('Kaliteli kumaş aramanın yenilikçi yolu')}
