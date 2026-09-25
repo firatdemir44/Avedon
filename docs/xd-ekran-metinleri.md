@@ -5,22 +5,22 @@ Kaliteli Kumaş aramanın yenilikçi yoluna hoş geldiniz! · Merhaba · Başlay
 Kaliteli kumaş aramanın yenilikçi yoluna hoş geldiniz! · Merhaba · Başlayalım
 
 ### 1.2 Welcome -2 
-İleri · Sadece belirli bir kalite standartında olan firmalar Avedon’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar
+İleri · Sadece belirli bir kalite standartında olan firmalar Texflow’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar
 
 ### 1.2 Welcome -2 – 1
-Sadece belirli bir kalite standartında olan firmalar Avedon’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar · İleri
+Sadece belirli bir kalite standartında olan firmalar Texflow’a dahil edilmektedir. · Sadece Kaliteli Kumaşlar · İleri
 
 ### 1.3 Welcome -3 
-İleri · Avedon, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı
+İleri · Texflow, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı
 
 ### 1.3 Welcome -3 – 1
-Avedon, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı · İleri
+Texflow, en hızlı ve en kaliteli ürüne ulaşılabilmesi için özenle tasarlanmıştır. · En Hızlı · İleri
 
 ### 1.4 Welcome -4
-İleri · Avedon dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler
+İleri · Texflow dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler
 
 ### 1.4 Welcome -4 – 1
-Avedon dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler · İleri
+Texflow dijital ölçüm sistemleri sayesinde kumaşçıların sadece deposunda olan kumaşlardan örnek istenebilir ve sipariş için görüşebilirsiniz. · Sadece Stok Ürünler · İleri
 
 ### 2.1 Login Screen – 1
 Kaliteli kumaş bulmanın en inovatif uygulamasına hoş geldiniz ! · Merhaba · Şifre · Şifremi Unuttum · Kullanıcı Adı · Giriş · Hesabınız yok mu? Ücretsiz kayıt olun · Google ile giriş yapın · Facebook ile giriş yapın · Linkedin ile giriş yapın
@@ -29,22 +29,22 @@ Kaliteli kumaş bulmanın en inovatif uygulamasına hoş geldiniz ! · Merhaba �
 Bu sizin hesabınız değil mi? Ücretsiz kayıt olun · FIRAT DEMİR OLARAK DEVAM ET · BAŞKA BİR HESABA GEÇ · Fırat Demir · Tekrardan Hoşgeldiniz
 
 ### 5.6 3 AY ÜCRETSİZ – 1
-İleri · AVEDON’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Avedon
+İleri · TEXFLOW’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Texflow
 
 ### 5.6 3 AY ÜCRETSİZ – 2
-AVEDON’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Free · İleri
+TEXFLOW’un size katacaklarını keşfetmeniz için sizlere 3 ay ücretsiz tam sürüm kullanımı sunuyoruz. · 3 Ay Ücretsiz · Free · İleri
 
 ### 5.7 SONRASI 100$ – 1
-İleri · AVEDON’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · Avedon
+İleri · TEXFLOW’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · Texflow
 
 ### 5.7 SONRASI 100$ – 2
-AVEDON’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · İleri
+TEXFLOW’un kolaylıklar dünyasından ayrılmamanız için ilk yıl, aylığı sadece XXX$ · Sonrasında Aylık XXX$ · İleri
 
 ### Ana sayfa
 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 1 · 9:41 · Arama Yapın · 2
 
 ### Ana sayfa – altta bildirim
-Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 2 · X · 9:41 · Arama Yapın · 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Avedon da Şirket Sayfası oluşturmak ister misin? · Bir daha sorma
+Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 2 · X · 9:41 · Arama Yapın · 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Texflow da Şirket Sayfası oluşturmak ister misin? · Bir daha sorma
 
 ### Ana sayfa – Profil Menüsü 
 15s · Fatih Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ahmet Demir · 1 · Berke Tekstil · Fatih Tekstil · Zeynep Tekstil · Abc tekstil · Hikayen · 9:41 · Arama Yapın · Bildirimler · X · Fırat Demir · Melide Tekstil AŞ · Firma Yetkilisi · Çıkış · Yeni Koleksiyonlar · Favori Ürünler · Son Bakılan Ürünler · Gönderi Paylaş · Profili Düzenle · Numune Talepleri
@@ -59,7 +59,7 @@ Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fa
 Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör
 
 ### Anasayfa - Scrolling 2 – 1
-Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Avedon da şirket sayfası oluşturmak ister misin ? · Bir daha sorma · Berke Tekstil · Fatih Tekstil
+Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Texflow da şirket sayfası oluşturmak ister misin ? · Bir daha sorma · Berke Tekstil · Fatih Tekstil
 
 ### Anasayfa – Profil Menüsü
 Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Berke Tekstil · Fatih Tekstil · Fırat Demir · Melide Tekstil AŞ Firma Yetkilisi · Profili Düzenle Numune Talepleri Gönderi Paylaş Son Bakılan Ürünler Favori Ürünler Yeni Koleksiyonlar Çıkış
@@ -77,10 +77,10 @@ Ahmet · Kişiler · Şirketler · Gönderiler · Ürünler · Ankara · Ahmet M
 Ahmet · Kişiler · Şirketler · Gönderiler · Ürünler · Ankara · Ahmet Mehmet · Melide Tekstil Üretim Planlayıcısı · İstanbul · Ahmet Tekstil · Tekstil Üreticisi · AHMT Tekstil · 3 ortak bağlantı · 2 ortak bağlantı · Daha fazla gör + · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Ahmet Polar · DAHA FAZLA GÖR DİYİNCE NE OLACAK SAYFASI
 
 ### Bağlantı Kur butonu sonucu
-Fırat Demir · CEO - AVEDON Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Avedon da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · X
+Fırat Demir · CEO - TEXFLOW Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · X
 
 ### Bağlantı Kur butonu sonucu – 2
-Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Avedon da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · Fatih Demir · CEO - AVEDON Yetkilisi · +
+Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 9:41 · Arama Yapın · 1 · Fatih Demir · CEO - TEXFLOW Yetkilisi · +
 
 ### Firma listesi
 Ribana · 2x1 - 3x1 - 3x2 -4x3 K.Korse · Selanik · Double Face · Ottoman · Yağmur Desen · Air File · Değişken K.Korse · Raschel · Pantolonluk · Taytlık · Tişörtlük · Donluk · Kullanım Amaçlarına göre kumaşlar · Düz İnterlok · LYC İnterlok · Sukuba · Çelikli İnterlok · Torba Krep · Örme · Torba Jakar · İnterlok Jakar · Kapitone · Dokuma · Düz Süprem · LYC Süprem · LYC İkiiplik · LYC Diagonel iki iplik · Lokost · Krep · Vanize Süprem · Petek Süprem · Dantel · Ürün Kategorileri · Firmalar · Konfeksiyoncu · Boyahane · İplik · Aksesuar · Baskı ve diğerleri · Üretici Kumaşçı · 1 · 9:41 · Arama Yapın · 2
@@ -116,7 +116,7 @@ Pantolonluk Kumaşlar · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik St
 15s · . · Ahmet Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Bağlantı Kur · Tekstil Üreticisi · 1 · 9:41 · Arama Yapın · 2
 
 ### Firma Sayfası Ürünler – 2
-Fırat Demir · CEO - AVEDON Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Avedon da 10 çalışan · ONAYSIZ FİRMA · ? · 1 · 9:41 · Arama Yapın · 2
+Fırat Demir · CEO - TEXFLOW Yetkilisi · Fatih Demir · COO · Murat Demir · CMO · Nusret Demir · YK. Başkanı - big guy · Ahmet XYZD · Depo Departmanı · Zeynep Demiroğlu · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tekstil Üreticisi · Bağlantı Kur · Texflow da 10 çalışan · ONAYSIZ FİRMA · ? · 1 · 9:41 · Arama Yapın · 2
 
 ### Firma Sayfası Ürünler – 3
 Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Tümü · Örme · Raschel · Dantel · Dokuma · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Ahmet Polar · 1 · Arama Yapın · Taytlık · Tişörtlük · Mayoluk · Kullanım amaçlarına göre kumaşlar · Pantolonluk
@@ -140,7 +140,7 @@ Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · 
 Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Arama Yapın · 1
 
 ### Firma Sayfası Ürünler 6 – 2
-Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Arama Yapın · 1 · Depo Görevlisi · Ahmet Mehmet · Melide Tekstil · CEO - AVEDON Yetkilisi · +
+Tekstil Üreticisi · Bağlantı Kur · Web sitesini ziyaret et · Ürünler · Firma Akışı · Kişiler · Firma Hakkında · Arama Yapın · 1 · Depo Görevlisi · Ahmet Mehmet · Melide Tekstil · CEO - TEXFLOW Yetkilisi · +
 
 ### Firmalar – 1
 1 · Arama Yapın · Kumaş Kodu: MLD-R0096A Kategori: Vanize Üç İplik Stok: 14 Metre Kumaş Tipi: Örme Kumaş Ağırlık: 165 gr/m2 Genişlik: 160 cm İçeriği: %94 PES %6 EA Kullanım Alanı: Moda, Giysilik · MELİDE SAN. ve TİC. LTD. ŞTİ · Özel Polar
@@ -251,22 +251,22 @@ XYZ Tekstil sizden X kumaşı numunesini istedi. · Yeni Numune Talebi · 15 dak
 Arama Yapın · 1 · 29 · Beğen · 7 · Yorum Yap · Paylaş · Talep Et · Fatih Demir · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Berke Tekstil · Fatih Tekstil
 
 ### Profil Sayfası - Bağlantı Var
-Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://www.avedon.com.tr/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://www.avedon.com.tr/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör · Bağlantı Kur · Mesaj Gönder · 1
+Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://takyon.ai/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://takyon.ai/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör · Bağlantı Kur · Mesaj Gönder · 1
 
 ### Profil Sayfası - Bağlantı Yok
-Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://www.avedon.com.tr/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://www.avedon.com.tr/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör · Bağlantı Kur · 1
+Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://takyon.ai/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://takyon.ai/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör · Bağlantı Kur · 1
 
 ### Profil Sayfası - Kendi Sayfası 1
-Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · 100 Profil Görüntülemesi · 150 Blog Görüntülemesi · 200 Aramada Görüntülenme · Göstergeler (Sana özel) · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · 1 · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://www.avedon.com.tr/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://www.avedon.com.tr/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör
+Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye . 100 Bağlantı · 100 Profil Görüntülemesi · 150 Blog Görüntülemesi · 200 Aramada Görüntülenme · Göstergeler (Sana özel) · Tümünü gör · Tüm yetenekleri gör · Gönderiler 200 Takipçi · Gönderi Paylaş · 1 · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 9 Ay · Tamamlayıcı Açık ilahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Deneyim · Eğitim · Yetenekler · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · Email: firat@melide.com.tr · Telefon: +90 532 571 35 34 · Website: https://takyon.ai/on/ melide-tekstil www.melide.com.tr · Fırat’ın Profili: https://takyon.ai/on/ firat-demir · Tüm iletişim bilgilerini gör · Tüm gönderileri gör
 
 ### Profil Sayfası -başka sayfası – bağlantı var
-Fırat Demir · Fatih Demir · Melide Tekstil - COO · İstanbul, Türkiye 100 Bağlantı · . · Gönderiler · 200 Takipçi · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Yardımcısı Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil Mühendisliği Anadolu Üniversitesi Mayıs 2019 - Günümüz - 2 Yıl · İlahiyat Bölümü Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fatih’in Profili https://www.avedon.com.tr/on/firat-demir · Website https://www.avedon.com.tr/on/melide-tekstil www.melide.com.tr · Telefon Numarası Bağlantı Kurulması Gerekmektedir · Email fatih@melide.com.tr · Bağlantıdasın · Mesaj Gönder · 1
+Fırat Demir · Fatih Demir · Melide Tekstil - COO · İstanbul, Türkiye 100 Bağlantı · . · Gönderiler · 200 Takipçi · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Yardımcısı Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil Mühendisliği Anadolu Üniversitesi Mayıs 2019 - Günümüz - 2 Yıl · İlahiyat Bölümü Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fatih’in Profili https://takyon.ai/on/firat-demir · Website https://takyon.ai/on/melide-tekstil www.melide.com.tr · Telefon Numarası Bağlantı Kurulması Gerekmektedir · Email fatih@melide.com.tr · Bağlantıdasın · Mesaj Gönder · 1
 
 ### Profil Sayfası -başka sayfası – bağlantıda değiliz
-Fırat Demir · Fatih Demir · Melide Tekstil - COO · İstanbul, Türkiye 100 Bağlantı · . · Gönderiler · 200 Takipçi · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Yardımcısı Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil Mühendisliği Anadolu Üniversitesi Mayıs 2019 - Günümüz - 2 Yıl · İlahiyat Bölümü Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fatih’in Profili https://www.avedon.com.tr/on/firat-demir · Website https://www.avedon.com.tr/on/melide-tekstil www.melide.com.tr · Telefon Numarası Bağlantı Kurulması Gerekmektedir · Email fatih@melide.com.tr · Bağlantı Kur · 1
+Fırat Demir · Fatih Demir · Melide Tekstil - COO · İstanbul, Türkiye 100 Bağlantı · . · Gönderiler · 200 Takipçi · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Yardımcısı Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil Mühendisliği Anadolu Üniversitesi Mayıs 2019 - Günümüz - 2 Yıl · İlahiyat Bölümü Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fatih’in Profili https://takyon.ai/on/firat-demir · Website https://takyon.ai/on/melide-tekstil www.melide.com.tr · Telefon Numarası Bağlantı Kurulması Gerekmektedir · Email fatih@melide.com.tr · Bağlantı Kur · 1
 
 ### Profil Sayfası -kendi sayfası
-Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye 100 Bağlantı · . · Göstergeler(sana özel) · 100 Profil Görüntülemesi · 150 Blog Görüntülemesi · 200 Aramada Görüntüleme · Gönderiler · 200 Takipçi · Gönderi Paylaş · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Tamamlayıcı Açık İlahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fırat’ın Profili https://www.avedon.com.tr/on/firat-demir · Website https://www.avedon.com.tr/on/melide-tekstil www.melide.com.tr · Telefon Numarası +90 532 571 35 34 · Email firat@melide.com.tr · 1
+Fırat Demir · Melide Tekstil - CEO · İstanbul, Türkiye 100 Bağlantı · . · Göstergeler(sana özel) · 100 Profil Görüntülemesi · 150 Blog Görüntülemesi · 200 Aramada Görüntüleme · Gönderiler · 200 Takipçi · Gönderi Paylaş · Tüm gönderileri gör · Çalışma Tecrübesi · Eğitim · Genel Müdür Melide Tekstil Sanayi Tic. Ltd Şti. Mayıs 2002 - Günümüz - 18 Yıl 10 Ay · Pazarlama Müdürü Yerteks Tekstil Haziran 1995 - Şubat 2002 - 6 Yıl 9 Ay · Bölüm Müdürü Ündil Kuyumculuk Ekim 1988 - Haziran 1995 - 6 Yıl 10 Ay · Tekstil İlahiyatı Anadolu Üniversitesi Mayıs 2002 - Günümüz - 2 Yıl · Tamamlayıcı Açık İlahiyat Anadolu Üniversitesi Haziran 2022 - Şubat 2023 - 2 Yıl · Tümünü gör · Yetenekler · Tüm Yetenekleri gör · + · Tekstil | 4 Onay · Pazarlama Stratejisi | 3 Onay · Satış | 2 Onay · Şirket Yönetimi | 8 Onay · İletişim · Tüm İletişim Bilgilerini gör · Fırat’ın Profili https://takyon.ai/on/firat-demir · Website https://takyon.ai/on/melide-tekstil www.melide.com.tr · Telefon Numarası +90 532 571 35 34 · Email firat@melide.com.tr · 1
 
 ### Samsung Galaxy S10 - 1
 Fırat Demir · 3,828 Takipçi · Takip Ediliyor · Gönderiler · Üretim Planlayıcısı · 15s . · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Gönderi Paylaşımı · 29 · Beğen · 7 Yorum · Yorum Yap · Paylaş · Talep Et
@@ -281,19 +281,19 @@ Fırat Demir · Herkese Açık · Gönderi Paylaş · Ne hakkında paylaşmak is
 Gönderiler · Fırat Demir 3,828 Takipçi · Takip Ediliyor · 15s · Fırat Demir · Üretim Planlayıcısı · 29 · Beğen · 7 Yorum · Merhaba arkadaşlar kanalıma hoş geldiniz bugün sizlere tekstil fabrikasını tanıtacağım, ben üretim planlayıcısıyım sizinle paylaştığımı kumaş yeni bir Tür makinemizin harika çıktısıdır böylelikle daha ucu… daha fazla gör · Yorum Yap · Paylaş · Talep Et · 1
 
 ### Şirket sayfası oluşturmak
-Şirket Sayfası Oluştur · İleri · Tekstil’in kalbi Avedon da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Avedon Şirket Sayfasını oluştur! · Avedon Şirket
+Şirket Sayfası Oluştur · İleri · Tekstil’in kalbi Texflow da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Texflow Şirket Sayfasını oluştur! · Texflow Şirket
 
 ### Şirket sayfası oluşturmak – 1
-Şirket Sayfası Oluştur · İleri · AVEDON’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz
+Şirket Sayfası Oluştur · İleri · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz
 
 ### Şirket sayfası oluşturmak – 10
-İleri · Şirket Sayfası Oluştur · Tekstil’in kalbi Avedon da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Avedon Şirket Sayfasını oluştur! · Avedon Şirket
+İleri · Şirket Sayfası Oluştur · Tekstil’in kalbi Texflow da şirketinin görülmesi, ürünlerini paylaşmak daha fazla müşteri kazanmak ve varolan müşterilerinle işlemlerini hızlandırmak için Texflow Şirket Sayfasını oluştur! · Texflow Şirket
 
 ### Şirket sayfası oluşturmak – 11
-İleri · Şirket Sayfası Oluştur · AVEDON’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz · Free
+İleri · Şirket Sayfası Oluştur · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · İlk 10 Ürün Yükleme Ücretsiz · Free
 
 ### Şirket sayfası oluşturmak – 12
-Başlayalım · Şirket Sayfası Oluştur · AVEDON’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
+Başlayalım · Şirket Sayfası Oluştur · TEXFLOW’un firmanıza katacaklarını keşfetmeniz için ilk 10 ürün yüklemeyi sizlere hediye ediyoruz. · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
 
 ### Şirket sayfası oluşturmak – 13
 İleri · Başlayalım · Firma Kısa İsmi · Firma Konumu · Firma Ticari İsmi · Melide Tekstil San. Ve Tic. Ltd Şti. · Melide Tekstil · Türkiye, İstanbul
@@ -314,7 +314,7 @@ Firma Hakkında Küçük Bir Yazı · Firma Hakkında Yazı · Çok hoş bir fir
 Firma Hakkında Küçük Bir Yazı · Firma Hakkında Yazı · Çok hoş bir firmayız, harikayız, mükemeliz biz bizsiz olmaz bu dünya, valla olmaz billa olmaz kanıtlayabiliriz bi gel hele · İleri
 
 ### Şirket sayfası oluşturmak – 2
-Şirket Sayfası Oluştur · BAŞLAYALIM · AVEDON’un kolaylıklar dünyasında devam etmeniz için için ilk yıl, aylığı sadece XX$ · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
+Şirket Sayfası Oluştur · BAŞLAYALIM · TEXFLOW’un kolaylıklar dünyasında devam etmeniz için için ilk yıl, aylığı sadece XX$ · Tüm ürünlerini yüklemek ve doğrulamak istersen sonrasında XX$
 
 ### Şirket sayfası oluşturmak – 20
 İleri · Firmanın Liste Bilgileri · Toplam Çalışan · Firma Tipi · Üretici, Ticaret Şirketi · 11-50 Kişi

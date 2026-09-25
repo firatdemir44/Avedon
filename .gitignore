@@ -40,7 +40,7 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
-# Orijinal Avedon tasarım görselleri (2020-2021, Drive "Avedon Tasarım"): yerel başvuru, repoya girmez
+# Orijinal Texflow tasarım görselleri (2020-2021, Drive "Texflow Tasarım"): yerel başvuru, repoya girmez
 docs/orijinal-tasarim/
 
 # Texart yerel iş dosyaları (orijinal + çıktılar)

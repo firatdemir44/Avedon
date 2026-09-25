@@ -21,7 +21,7 @@ async function main() {
     create: {
       accountType: 'bireysel',
       position: 'Yönetici',
-      firstName: 'Avedon',
+      firstName: 'Texflow',
       lastName: 'Admin',
       phone: '05000000000',
       phoneVerified: true,
@@ -136,7 +136,7 @@ async function seedPosts() {
   await prisma.post.create({
     data: {
       authorId: admin.id,
-      body: 'Avedon yayında! Tekstil sektöründe firmaların birbirini bulması, kumaş paylaşması ve numune talep etmesi artık tek uygulamada.',
+      body: 'Texflow yayında! Tekstil sektöründe firmaların birbirini bulması, kumaş paylaşması ve numune talep etmesi artık tek uygulamada.',
       visibility: 'public',
     },
   });

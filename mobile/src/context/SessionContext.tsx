@@ -5,8 +5,8 @@ import { ApiError, fetchMe, setAuthToken } from '../api/client';
 import { deleteStoredToken, getStoredToken, setStoredToken } from '../features/tokenStorage';
 import { forgetPushOnLogout } from '../features/push/webPush';
 
-const USER_STORAGE_KEY = 'avedon_session_user';
-const TOKEN_STORAGE_KEY = 'avedon_session_token';
+const USER_STORAGE_KEY = 'texflow_session_user';
+const TOKEN_STORAGE_KEY = 'texflow_session_token';
 
 interface SessionContextValue {
   user: User | null;

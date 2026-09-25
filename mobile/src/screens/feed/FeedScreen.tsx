@@ -54,8 +54,8 @@ type Props = MainTabScreenProps<'Feed'>;
 
 // Sekme geçişlerinde akışın başa sarmaması için yenileme aralığı.
 const REFRESH_THROTTLE_MS = 30000;
-const SCOPE_KEY = 'avedon.feedScope';
-const FOR_ME_KEY = 'avedon.feedForMe';
+const SCOPE_KEY = 'texflow.feedScope';
+const FOR_ME_KEY = 'texflow.feedForMe';
 const NOTICE_MS = 6000;
 
 export function FeedScreen({ navigation }: Props) {
@@ -409,7 +409,7 @@ export function FeedScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: t.colors.surface0 }}>
       <AppBar
         leading="logo"
-        title="Takyon Texflow"
+        title="Texflow"
         actions={[
           {
             icon: 'bell',
@@ -435,6 +435,7 @@ export function FeedScreen({ navigation }: Props) {
         visible={accountOpen}
         onClose={() => setAccountOpen(false)}
         onOpenProfile={() => navigation.navigate('MyProfile')}
+        onOpenAbout={() => navigation.navigate('About')}
         onOpenCompany={user?.companyId ? () => navigation.navigate('CompanyProfile') : undefined}
         company={today?.companyId && today.companyName ? { id: today.companyId, name: today.companyName, logoUpdatedAt: today.companyLogoUpdatedAt ?? null } : null}
       />

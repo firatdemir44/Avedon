@@ -7,7 +7,7 @@ import path from 'node:path';
 // Telefon normalizasyonu ve çift hesap birleştirme: dev.db'nin GEÇİCİ KOPYASI üzerinde (asıl veriye dokunulmaz).
 const src = path.join(__dirname, '..', 'prisma', 'dev.db');
 const hasDb = fs.existsSync(src);
-const tmp = path.join(os.tmpdir(), `avedon-phone-merge-${process.pid}.db`);
+const tmp = path.join(os.tmpdir(), `texflow-phone-merge-${process.pid}.db`);
 if (hasDb) {
   fs.copyFileSync(src, tmp);
   process.env.DATABASE_URL = `file:${tmp.replace(/\\/g, '/')}`;

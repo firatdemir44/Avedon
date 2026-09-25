@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 // Bildirime dokununca nereye gidileceği (YALNIZCA WEB).
 //
 // `public/sw.js` iki yoldan haber veriyor:
-//  1) uygulama açıksa pencereye `postMessage({ type:'avedon-push-open', target })`
+//  1) uygulama açıksa pencereye `postMessage({ type:'texflow-push-open', target })`
 //  2) uygulama kapalıysa `/?bildirim=<encodeURIComponent(JSON)>` ile açıyor
 //
 // Hedef sade tutuldu: mesaj bildirimi Mesajlar'a, diğer her tür Bildirimler
@@ -16,7 +16,7 @@ export interface PushTarget {
   data: Record<string, unknown>;
 }
 
-const MESSAGE_TYPE = 'avedon-push-open';
+const MESSAGE_TYPE = 'texflow-push-open';
 
 function normalize(value: unknown): PushTarget | null {
   if (!value || typeof value !== 'object') return null;

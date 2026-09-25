@@ -74,6 +74,7 @@ import { AdminScreen } from '../screens/admin/AdminScreen';
 import { FeedMutesScreen } from '../screens/feed/FeedMutesScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { MyProfileScreen } from '../screens/profile/MyProfileScreen';
+import { AboutScreen } from '../screens/profile/AboutScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { ExperienceFormScreen } from '../screens/profile/ExperienceFormScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
@@ -180,6 +181,8 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer
+      // Sekme başlığı her ekranda marka adı (ekran adları "RoleSelection" gibi görünmesin).
+      documentTitle={{ formatter: () => 'Takyon Ai Texflow' }}
       ref={navigationRef}
       theme={navigationTheme}
       onReady={() => {
@@ -219,6 +222,7 @@ export function RootNavigator() {
               component={MyProfileScreen}
               options={{ headerShown: true, title: tr('Profilim') }}
             />
+            <Stack.Screen name="About" component={AboutScreen} options={{ headerShown: true, title: tr('Hakkında') }} />
             {/* Üst başlıktaki "Arama Yap" kutusu. */}
             <Stack.Screen
               name="GlobalSearch"

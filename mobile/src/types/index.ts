@@ -1,5 +1,5 @@
 // Takyon MVP - temel veri modeli
-// Bkz. avedon-mvp-spec.md bölüm 4.1 - 4.4
+// Bkz. texflow-mvp-spec.md bölüm 4.1 - 4.4
 import type { AnyProductType, ProductType, StockUnit } from '../features/products/catalog';
 import type { WidthType } from '../features/products/glossaryLabels';
 

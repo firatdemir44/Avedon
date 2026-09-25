@@ -9,7 +9,7 @@ import { tr } from '../../i18n';
 import { Button, Card, Icon, SkeletonText } from '../../ui';
 import { NewsRow } from './NewsRow';
 
-const HIDDEN_KEY = 'avedon.newsDigestHiddenOn';
+const HIDDEN_KEY = 'texflow.newsDigestHiddenOn';
 const MAX_ITEMS = 5;
 
 function localDay(d = new Date()) {

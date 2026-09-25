@@ -1,6 +1,6 @@
-# Avedon v4.2 Tasarım Dosyası — Envanter ve Boşluk Analizi
+# Texflow v4.2 Tasarım Dosyası — Envanter ve Boşluk Analizi
 
-**Kaynak:** `Avedon v4.2 - Tasarım.xd` (Adobe XD, 17 Haziran 2021, 59 MB, **132 ekran**)
+**Kaynak:** `Texflow v4.2 - Tasarım.xd` (Adobe XD, 17 Haziran 2021, 59 MB, **132 ekran**)
 **İnceleme tarihi:** 2026-09-13
 
 ## Dosya nasıl okundu (ileride tekrar gerekirse)
@@ -8,7 +8,7 @@
 `.xd` dosyası aslında bir ZIP arşivi. Adobe XD kurmadan içeriği okunabiliyor:
 
 ```bash
-unzip -o "Avedon v4.2 - Tasarım.xd" -d <klasör>
+unzip -o "Texflow v4.2 - Tasarım.xd" -d <klasör>
 node docs/xd-extract.js      # ekran adlarını + metinleri çıkarır
 ```
 
@@ -47,7 +47,7 @@ node docs/xd-extract.js      # ekran adlarını + metinleri çıkarır
 
 ### 2. Konumlandırma (Welcome ekranları)
 - "Kaliteli kumaş aramanın yenilikçi yolu"
-- **"Sadece belirli bir kalite standardında olan firmalar Avedon'a dahil edilmektedir"** → kurduğumuz firma doğrulama sistemi tam da bunun karşılığı
+- **"Sadece belirli bir kalite standardında olan firmalar Texflow'a dahil edilmektedir"** → kurduğumuz firma doğrulama sistemi tam da bunun karşılığı
 - **"Sadece Stok Ürünler"** — dijital ölçüm sayesinde yalnızca depoda fiilen bulunan kumaştan numune istenebilir
 
 ### 3. Numune takibi — kurduğumuzdan çok daha zengin
@@ -117,7 +117,7 @@ XD'den dışa aktarılan ekranlardan üçü tam ekran çıktı: karşılama (`re
 - Başlıklar koyu lacivert, italik-bold ("Merhaba")
 
 ### Üst bar ve sekme çubuğu (Keşfet ekranından)
-- **Üst bar:** Avedon logosu (sol) · yuvarlak arama kutusu "Arama Yapın" (kamera + mikrofon ikonlu) · **mesaj ikonu (kırmızı rozetli)** (sağ)
+- **Üst bar:** Texflow logosu (sol) · yuvarlak arama kutusu "Arama Yapın" (kamera + mikrofon ikonlu) · **mesaj ikonu (kırmızı rozetli)** (sağ)
 - **Alt sekme çubuğu 5 sekme:** Profil (rozetli) · Keşfet · **Ana Sayfa (mavi, aktif)** · Kategoriler · Takvim
 - **Önemli fark:** Tasarımda **mesajlaşma bir sekme değil**, üst barda rozetli ikon. Biz Mesajlar'ı sekme yaptık; tasarımda o slot **Takvim**'in.
 

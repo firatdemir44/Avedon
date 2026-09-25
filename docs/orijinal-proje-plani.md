@@ -1,6 +1,6 @@
-# Orijinal Avedon projesi → bugünkü uygulama: fark ve aşama planı
+# Orijinal Texflow projesi → bugünkü uygulama: fark ve aşama planı
 
-**Tarih:** 2026-09-15 · **Kaynak:** kullanıcının paylaştığı Google Drive klasörü "Avedon Tasarım" (Takyon Ai)
+**Tarih:** 2026-09-15 · **Kaynak:** kullanıcının paylaştığı Google Drive klasörü "Texflow Tasarım" (Takyon Ai)
 **Durum:** plan onaylandı (2026-09-15). Aşama A tamamlandı (ayrıntı: `docs/yapilacaklar.md`), sıradaki Aşama B.
 
 ## Kaynaklar (yerelde, repoya girmez)
@@ -10,16 +10,16 @@
 | Klasör | İçerik |
 |---|---|
 | `2020-ekranlar/` | 84 PNG, Kasım 2020 ilk tasarım (ad = ekran adı) |
-| `2021-ekranlar/` | 95 PNG, 26 Mayıs 2021 çıktıları = Avedon v4.2 XD'nin ekranları. Dosya adları `s01..s95`, gerçek adlar `eslesme.tsv`'de (zip'teki Mac biçimli Türkçe adlar Windows'ta okunamıyordu) |
+| `2021-ekranlar/` | 95 PNG, 26 Mayıs 2021 çıktıları = Texflow v4.2 XD'nin ekranları. Dosya adları `s01..s95`, gerçek adlar `eslesme.tsv`'de (zip'teki Mac biçimli Türkçe adlar Windows'ta okunamıyordu) |
 | `logo/` | Son logo (PNG), kare v3 logo (PNG/JPG/PSD), AI/EPS kaynak, Takyon renk kılavuzu PDF |
 
-Drive'daki `v4/adobe xd files` içindeki `Avedon v4.2 - Tasarım.xd` 2026-09-13'te metin olarak incelenmişti (`docs/tasarim-envanteri.md`, `docs/xd-ekran-metinleri.md`); bu belge o incelemeyi **görsellerle** tamamlıyor. `v1` klasörü boş.
+Drive'daki `v4/adobe xd files` içindeki `Texflow v4.2 - Tasarım.xd` 2026-09-13'te metin olarak incelenmişti (`docs/tasarim-envanteri.md`, `docs/xd-ekran-metinleri.md`); bu belge o incelemeyi **görsellerle** tamamlıyor. `v1` klasörü boş.
 
 ## Görsel dil kararı
 
 Kullanıcı (2026-09-15): bugünkü **C · Pazar Masası** tasarımını beğendi ve tasarımın buna göre sürmesini istedi. Orijinal ekranlar **özellik ve akış kaynağı**, görsel dil değil. Uyarlanırken:
-- **Alınacak:** Avedon logosu (mavi girdap + AVEDON yazısı, lacivert paletle uyumlu) · kumaş fotoğraflı kategori kareleri · üst sekmeler (Firma: Hakkında/Ürünler/Akış/Kişiler) · numune zaman çizelgesinde adımı yapan kişinin fotoğrafı.
-- **Alınmayacak:** yeşil (#00C46A) düğmeler, gölgeli kartlar, el yazısı "Avedon" logosu (2020, sonra değişmiş), iOS klavye/durum çubuğu gibi maket öğeleri.
+- **Alınacak:** Texflow logosu (mavi girdap + TEXFLOW yazısı, lacivert paletle uyumlu) · kumaş fotoğraflı kategori kareleri · üst sekmeler (Firma: Hakkında/Ürünler/Akış/Kişiler) · numune zaman çizelgesinde adımı yapan kişinin fotoğrafı.
+- **Alınmayacak:** yeşil (#00C46A) düğmeler, gölgeli kartlar, el yazısı "Texflow" logosu (2020, sonra değişmiş), iOS klavye/durum çubuğu gibi maket öğeleri.
 
 ## Fark analizi
 
@@ -29,7 +29,7 @@ Kullanıcı (2026-09-15): bugünkü **C · Pazar Masası** tasarımını beğend
 |---|---|---|---|
 | Karşılama | 4 tanıtım ekranı ("Kaliteli kumaş aramanın yenilikçi yolu", "Sadece stok ürünler") | Doğrudan giriş | ❌ |
 | Kayıt rolleri | Konfeksiyon mu Üretici mi → Yönetici / Tasarımcı / Depocu → Bireysel kayıt; şirket koduyla katılma | Rol seçimi + şirket kodu | 🟡 |
-| Marka | Logo her ekranın üst bandında | "Avedon" düz yazı | ❌ |
+| Marka | Logo her ekranın üst bandında | "Texflow" düz yazı | ❌ |
 | Ana sayfa | Arama (kamera + mikrofon), mesaj rozeti, **hikayeler şeridi**, gönderiler, 5'li alt menü (Profil · Keşfet · Ana sayfa · Katalog · Takvim) | Akış, 5 sekme (Akış · Ürünler · Hesaplamalar · Mesajlar · Profil) | 🟡 |
 | **Ürün kategorileri** | Sol dikey sektör menüsü (Kumaş Üretimi · Konfeksiyon · Boyahane · İplik · Aksesuar · Baskı); **kullanım amacına göre** (Pantolonluk, Taytlık, Tişörtlük, Mayoluk); çeşit → **alt çeşit** (Örme: İki İplik, Double Face, İnterlok, Mira, Ottoman, Pike Lakost; Raschel: Elastanlı/Elastansız tül, Grek, Sanal; Dantel, Dokuma, Triko); Kadife/Polar/Astarlık firma seçme | 4 düz tip (raschel/örme/dokuma/diğer); bugün eklenen "Çeşitler" klasörleri | 🟡 |
 | **Filtreleme** | Ürün kodu, stok aralığı, tip, ağırlık, genişlik, içerik, kullanım alanı, şirket; Temizle / Uygula | Yalnızca metin arama | ❌ |
@@ -39,7 +39,7 @@ Kullanıcı (2026-09-15): bugünkü **C · Pazar Masası** tasarımını beğend
 | **Ürün sayfası** | Çoklu fotoğraf (kaydırmalı), **favori yıldızı**, **görünürlük (Herkese açık / Sadece size açık)**, doğrulanmış üretici + toplam ürün rozeti, özellikler, **mesaj + arama düğmesi**, Numune Talep Et, **yorum + yıldızlı değerlendirme** | Tek fotoğraf, özellikler, firma, numune talebi | 🟡 |
 | Stok birimi | Metre **veya kg aralığı** ("100kg-500kg") | Metre | 🟡 |
 | **Favoriler** | Favori ürünler sayfası | — | ❌ |
-| **Son bakılan ürünler** | "Avedon Geçmişi" (tarih grupları, tekrar numune talebi) | — | ❌ |
+| **Son bakılan ürünler** | "Texflow Geçmişi" (tarih grupları, tekrar numune talebi) | — | ❌ |
 | Yeni koleksiyonlar | Fotoğraf ızgarası, ürün + firma | — | ❌ |
 | **Firma sayfası** | Logo, doğrulama mührü, Bağlantı Kur; sekmeler **Hakkında · Ürünler (çeşit sekmeleri + kullanım amacı) · Firma Akışı · Kişiler**; **Firma Ofisi** fotoğrafları | Logo, bilgiler, ürün listesi, çalışanlar | 🟡 |
 | **Şirket sayfası sihirbazı** | 23 adım (tanıtım, bilgiler, ürün kategorileri, "ilk 10 ürün ücretsiz"…) | Tek form (Firmayı düzenle) | 🟡 |

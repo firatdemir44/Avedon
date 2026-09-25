@@ -5,7 +5,7 @@ Adobe XD'den dışa aktarılan 127 ekran incelenerek hazırlandı (2026-09-13). 
 ## Ana Sayfa (akış)
 
 **Tasarımda:**
-- Üst bar: Avedon logosu · yuvarlak arama kutusu (kamera + mikrofon ikonlu) · rozetli mesaj ikonu — açık mavi zemin
+- Üst bar: Texflow logosu · yuvarlak arama kutusu (kamera + mikrofon ikonlu) · rozetli mesaj ikonu — açık mavi zemin
 - Altında **hikayeler şeridi**: mavi halkalı yuvarlak avatarlar, altında firma adları
 - Gönderi kartı sırası: **profil satırı → FOTOĞRAF → beğeni/yorum sayıları → metin → aksiyon satırı**
 - Fotoğrafın etrafında **kalın mavi çerçeve**, köşeler yuvarlak
@@ -60,7 +60,7 @@ Adobe XD'den dışa aktarılan 127 ekran incelenerek hazırlandı (2026-09-13). 
 
 ## Giriş
 
-**Tasarımda (`2.1 Login Screen`):** Avedon logosu + "Merhaba" · **kullanıcı adı + şifre** (açık mavi hap şeklinde alanlar) · "Şifremi Unuttum" · lacivert "Giriş" butonu · "Hesabınız yok mu? Ücretsiz kayıt olun" · **Google / Facebook / LinkedIn ile giriş** · altta büyük illüstrasyon
+**Tasarımda (`2.1 Login Screen`):** Texflow logosu + "Merhaba" · **kullanıcı adı + şifre** (açık mavi hap şeklinde alanlar) · "Şifremi Unuttum" · lacivert "Giriş" butonu · "Hesabınız yok mu? Ücretsiz kayıt olun" · **Google / Facebook / LinkedIn ile giriş** · altta büyük illüstrasyon
 
 **Aynı dosyadaki `Giriş` ekranında ise:** +90 telefon + SMS doğrulama (PDF de böyle diyor)
 

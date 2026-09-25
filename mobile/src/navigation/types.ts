@@ -53,6 +53,7 @@ export type RootStackParamList = {
   // Kendi profilim ve menü merkezi. 2026-09-21'de alt sekmeden çıkıp buraya
   // geldi: ortak üst başlıktaki yuvarlak profil düğmesi açar.
   MyProfile: undefined;
+  About: undefined;
   // Üst başlıktaki "Arama Yap" kutusu: tek kutudan firma, kumaş ve iplik
   // (GET /api/search). Oturumsuz da çalışır.
   GlobalSearch: undefined;

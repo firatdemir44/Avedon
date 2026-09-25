@@ -1,4 +1,4 @@
-# DESIGN.md — Takyon arayüz kuralları (Claude Code bunu her oturumda okur)
+# DESIGN.md — Takyon Ai Texflow arayüz kuralları (Claude Code bunu her oturumda okur)
 
 Bu dosya, onaylanmış tasarım sisteminin koda uygulanma kurallarıdır. Görsel referanslar:
 - Tasarım sistemi (token, bileşen, marka kitabı): https://claude.ai/artifact/9LnpXPcDBu3kwSuqD7rkcK

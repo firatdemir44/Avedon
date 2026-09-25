@@ -10,18 +10,21 @@ import { LanguageSwitch } from './LanguageSwitch';
 import { tr } from '../i18n';
 import { UserAvatar } from './UserAvatar';
 import { CompanyAvatar } from './CompanyAvatar';
+import { Text } from 'react-native';
+import { BRAND_LINE } from '../screens/profile/AboutScreen';
 
 export interface AccountSheetProps {
   visible: boolean;
   onClose: () => void;
   onOpenProfile: () => void;
+  onOpenAbout?: () => void;
   /** Firmaya bağlı kullanıcıda "Firmam" satırı. */
   onOpenCompany?: () => void;
   /** Firmam satırında logo ve ad. */
   company?: { id: string; name: string; logoUpdatedAt: string | null } | null;
 }
 
-export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany, company }: AccountSheetProps) {
+export function AccountSheet({ visible, onClose, onOpenProfile, onOpenAbout, onOpenCompany, company }: AccountSheetProps) {
   const t = useTheme();
   const { user, logout } = useSession();
   const name = user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() : '';
@@ -68,6 +71,16 @@ export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany, c
       ) : null}
       <ThemeSwitch />
       <LanguageSwitch />
+      {onOpenAbout ? (
+        <ListRow
+          title={tr('Hakkında')}
+          left={<Icon name="information-circle-outline" color="brand" />}
+          onPress={() => {
+            onClose();
+            onOpenAbout();
+          }}
+        />
+      ) : null}
       <Button
         kind="danger"
         fullWidth
@@ -78,6 +91,7 @@ export function AccountSheet({ visible, onClose, onOpenProfile, onOpenCompany, c
           logout();
         }}
       />
+      <Text style={[t.type.caption12, { color: t.colors.ink3, textAlign: 'center' }]}>{BRAND_LINE()}</Text>
     </BottomSheet>
   );
 }

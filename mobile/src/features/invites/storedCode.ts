@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // `https://.../?davet=KOD` biçiminde üretiyor (backend/src/invites.ts inviteUrl).
 // Uygulama açılışında bu parametre yakalanır ve cihaza yazılır; kayıt akışı
 // "Davet kodu" alanını oradan doldurur, kayıt bitince kod silinir.
-const STORAGE_KEY = 'avedon.inviteCode';
+const STORAGE_KEY = 'texflow.inviteCode';
 
 // Kodlar A-Z ve 2-9 karakterlerinden oluşuyor (I, L, O, 0, 1 yok) ve 8 hane.
 // Yine de sunucu doğrulamasına güveniyoruz: burada yalnızca kabaca temizliyoruz.

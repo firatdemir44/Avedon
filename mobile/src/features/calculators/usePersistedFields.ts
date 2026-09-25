@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_PREFIX = 'avedon_calc_';
+const STORAGE_PREFIX = 'texflow_calc_';
 
 /**
  * Bir hesap aracının alanlarını cihazda kalıcı tutar — kullanıcı aynı fiyat/oran

@@ -68,7 +68,7 @@ async function main() {
     console.log('Herkese açık pasaport');
     const pub = await api('GET', `/dpp/${id}`);
     const p = pub.json?.passport;
-    check('oturumsuz okunur; şema ve uyarı var', pub.status === 200 && p?.schema === 'avedon-dpp-hazirlik/1' && /HAZIRLIK/.test(p.disclaimer), pub.json);
+    check('oturumsuz okunur; şema ve uyarı var', pub.status === 200 && p?.schema === 'texflow-dpp-hazirlik/1' && /HAZIRLIK/.test(p.disclaimer), pub.json);
     check('"uyumlu" iddiası yok', !/uyumludur|compliant/i.test(JSON.stringify(p)));
     check('içerik, menşe, bakım, geri dönüşüm, sertifika numarasıyla', p?.composition?.[0]?.fiberLabel && p.originCountry === 'Türkiye' && p.care.includes('30°C') && p.recycledContentPercent === 30 && p.certificates?.[0]?.number === 'OT-123', p);
     check('ekonomik işletmeci ve doğrulama düzeyi', p?.economicOperator?.name === co.name && p.economicOperator.verified === true && p.economicOperator.verificationLevel === 'belge');

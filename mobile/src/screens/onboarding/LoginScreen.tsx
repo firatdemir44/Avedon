@@ -129,13 +129,13 @@ export function LoginScreen({ navigation, route }: Props) {
           >
             <View style={{ width: '100%', maxWidth: t.size.maxContentWidth, alignSelf: 'center' }}>
               {/* Takyon logosu: girdap işareti + aralıklı büyük harf yazı (logo kartındaki gibi).
-                  Eski Avedon yazılı görsel kaldırıldı; net logo dosyası gelince görselle değişecek. */}
-              <View accessible accessibilityRole="header" accessibilityLabel="Takyon Texflow" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
+                  Net logo dosyası gelince görselle değişecek. */}
+              <View accessible accessibilityRole="header" accessibilityLabel="Takyon Ai Texflow" style={{ flexDirection: 'row', alignItems: 'center', gap: t.space[3] }}>
                 <TakyonMark size={logoHeight} />
                 <View>
-                  <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON</Text>
-                  {/* Ürün adı (Fırat 2026-09-25): Takyon ana şirket, bu uygulama Texflow. */}
-                  <Text style={[t.type.label14, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TEXFLOW</Text>
+                  <Text style={[t.type.display28, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TEXFLOW</Text>
+                  {/* Ürün adı (Fırat 2026-09-25): ürün adı büyük, çatı marka Takyon Ai altında. */}
+                  <Text style={[t.type.label14, { color: t.colors.onBrand, letterSpacing: t.space[2] }]}>TAKYON AI</Text>
                 </View>
               </View>
               <Text style={[t.type.body16, { color: t.colors.onBrand, marginTop: t.space[2] }]}>

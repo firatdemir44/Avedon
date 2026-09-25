@@ -21,7 +21,7 @@ import {
 import type { AnyProductType, StockUnit } from '../features/products/catalog';
 
 // Production build'de gerçek backend adresini EXPO_PUBLIC_API_URL ortam
-// değişkeniyle verin (örn. "https://api.avedon.com/api") — aksi halde web'de
+// değişkeniyle verin (örn. "https://api.takyon.ai/api") — aksi halde web'de
 // ziyaretçinin kendi localhost'una istek atmaya çalışır ve çalışmaz.
 // Android emülatöründe localhost host makineyi göstermez, 10.0.2.2 kullanılır.
 // Web ve iOS simülatöründe geliştirme sırasında localhost doğrudan çalışır.

@@ -3,7 +3,7 @@
 ## Hazırlık
 1. TEXART.md dosyasını Texart projesinin köküne koy (Texflow ile aynı depoda `texart/` klasörü ya da ayrı depo — Claude Code'a hangisini istediğini söyle).
 2. Texflow'daki CLAUDE.md'nin sonuna şu satırları ekle:
-   - "Projenin adı Takyon Texflow'dur (eski çalışma adı Avedon). Arayüzde ve kodda Avedon geçen yerler Takyon Texflow olarak güncellenir."
+   - "Projenin adı Takyon Texflow'dur (eski çalışma adı Texflow). Arayüzde ve kodda Texflow geçen yerler Takyon Texflow olarak güncellenir."
    - "Kumaş görselleri Takyon Texart servisi tarafından işlenir; kurallar texart/TEXART.md dosyasındadır."
 
 ## Claude Code'a yazılacak komut
@@ -17,7 +17,7 @@ Sıra:
 4. §4'teki sadakat denetimini ve geri düşme mantığını yaz; ölçümler işlem kaydına ve API yanıtına girsin.
 5. §5'teki üç çıktıyı üret (katalog, yakın plan, renk çipi).
 6. Texflow entegrasyonu (§6): Ürün ekle akışına yükleme, kalite kapısı mesajları, önce/sonra onay ekranı, katalogda işlenmiş görsel ve ürün detayında "Orijinal fotoğraf" bağlantısı + renk notu. Arayüz DESIGN.md'ye uyar.
-7. Uygulamada ve kodda "Avedon" geçen yerleri "Takyon Texflow" olarak güncelle.
+7. Uygulamada ve kodda "Texflow" geçen yerleri "Takyon Texflow" olarak güncelle.
 
 Her adımdan sonra kısa özet ver, test karşılaştırma sayfasının yolunu yaz ve devam etmeden önce onay bekle.
 ---
