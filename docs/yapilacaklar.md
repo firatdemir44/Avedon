@@ -11,7 +11,7 @@ Bu dosya, sohbet geçmişinde kaybolmaması gereken önemli notları ve bekleyen
 4. **Net Takyon Ai logo dosyası** (SVG/PNG, işaret + yazı).
 5. **Stok girişi:** stoğu 0 görünen Melide ürünlerine stok miktarı (başkalarına yalnız stoklu ürün görünür; canlıda şu an 3 ürün görünüyor).
 6. **Fatih Demir çift kaydı:** 2026-09-25 araç genişletildi (aynı firmada aynı ad, farklı telefon da listelenir) → Fırat Yönetim > Çift hesaplar'da birleştirecek.
-7. **Doğal ses: KARAR ÖDE (2026-09-25).** Kod canlıda (health tts.configured). Fırat: Google Cloud proje + faturalandırma + Cloud Text-to-Speech API + hizmet hesabı JSON anahtarı → Render GOOGLE_TTS_CREDENTIALS. Sonra health tts.ok true olmalı.
+7. ~~Doğal ses~~ **CANLIDA ÇALIŞIYOR 2026-09-25:** Google Chirp 3 HD, API anahtarı (GOOGLE_TTS_API_KEY, yalnız TTS ile sınırlı); health tts.ok true. Fırat telefonda dinleyip onaylayacak.
 8. **Apple Developer hesabı (şirket adına, D-U-N-S gerekir, yıllık 99 $)** — App Store ve Apple ile giriş için; takyon.ai bağlandıktan sonra.
 9. **Dernek üye listeleri** (İTHİB, İHKİB, EİB, TOBB…; Excel/CSV) ve **danışman geri bildirimi**.
 
