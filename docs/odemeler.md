@@ -7,7 +7,7 @@ Liste koddaki ayarlar ve canlı sağlık kontrolünden çıkarıldı; gerçek tu
 | Kalem | Tutar | Tür |
 |---|---|---|
 | Anthropic Claude aboneliği (geliştirme; asistanla çalışma) | 20 $ + 100 $ | Aylık sabit (Pro + Max) |
-| Claude Console (uygulamanın API kullanımı) | 1.205,43 ₺ | Yüklenen kredi, kullandıkça düşer |
+| Claude Console (uygulamanın API kullanımı) | 1.205,43 ₺ | Yüklenen kredi; otomatik yükleme açık: bakiye 5 $ olunca 20 $ yüklenir |
 | Google Cloud (doğal ses) | 1.500 ₺ | Ön ödeme; ayda 1M karaktere kadar ses ücretsiz olduğundan uzun süre yeter |
 | Cloudflare | 244,20 ₺ | Aylık (video/Stream) |
 | İleti Merkezi (SMS) | 189 ₺ | Kredi yüklemesi (484 SMS kredisi) |
