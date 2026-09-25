@@ -2,7 +2,19 @@
 
 Liste koddaki ayarlar ve canlı sağlık kontrolünden çıkarıldı; gerçek tutarlar faturalardan doğrulanmalı. Tüm hesaplar **Takyon Ai Sanayi ve Ticaret A.Ş.** adına ve Fırat'ın erişiminde olmalı.
 
-## Aylık devam edenler
+## Fırat'ın kayıtlı ödemeleri (2026-09-25)
+
+| Kalem | Tutar | Tür |
+|---|---|---|
+| Anthropic Claude aboneliği (geliştirme; asistanla çalışma) | 20 $ + 100 $ | Aylık sabit (Pro + Max) |
+| Claude Console (uygulamanın API kullanımı) | 1.205,43 ₺ | Yüklenen kredi, kullandıkça düşer |
+| Google Cloud (doğal ses) | 1.500 ₺ | Ön ödeme; ayda 1M karaktere kadar ses ücretsiz olduğundan uzun süre yeter |
+| Cloudflare | 244,20 ₺ | Aylık (video/Stream) |
+| İleti Merkezi (SMS) | 189 ₺ | Kredi yüklemesi (484 SMS kredisi) |
+
+Aylık sabit toplam: ~120 $ (Claude) + Cloudflare ~244 ₺ + Render ~7 $. Kredi/ön ödemeler (Claude Console, Google, İleti Merkezi) kullandıkça azalır; bitince yeniden yüklenir.
+
+## Aylık devam edenler (hizmet listesi)
 
 | Hizmet | Ne için | Ücret türü | Tahmini |
 |---|---|---|---|
