@@ -6,6 +6,7 @@ import { useSession } from '../context/SessionContext';
 import { useTheme } from '../theme/ThemeContext';
 import { BottomSheet, Button, Icon, ListRow } from '../ui';
 import { ThemeSwitch } from './ThemeSwitch';
+import { TextSizeSwitch } from './TextSizeSwitch';
 import { LanguageSwitch } from './LanguageSwitch';
 import { tr } from '../i18n';
 import { UserAvatar } from './UserAvatar';
@@ -68,6 +69,7 @@ export function AccountSheet({ visible, onClose, onOpenProfile, onOpenAbout, onO
         />
       ) : null}
       <ThemeSwitch />
+      <TextSizeSwitch />
       <LanguageSwitch />
       {onOpenAbout ? (
         <ListRow

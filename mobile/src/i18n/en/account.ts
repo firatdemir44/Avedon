@@ -1,5 +1,9 @@
 // İngilizce sözlük: account alanı (Türkçe kaynak metin → İngilizce).
 export const account: Record<string, string> = {
+  'Yazı boyutu': 'Text size',
+  'Çok büyük': 'Extra large',
+  'Büyük': 'Large',
+  'Normal': 'Normal',
   'Telefon numaraları farklı; bundan sonra yalnızca kalan hesabın numarasıyla giriş yapılır.': 'The phone numbers differ; from now on only the kept account’s number can sign in.',
   'Gizlilik politikası': 'Privacy policy',
   "WhatsApp'tan gelen bu taslak silinsin mi? Girdiğiniz bilgiler kaydedilmez.": "Delete this draft received via WhatsApp? The information you entered will not be saved.",

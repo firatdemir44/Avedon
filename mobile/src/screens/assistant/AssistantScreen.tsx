@@ -43,7 +43,7 @@ import { isSameCalendarDay } from '../../features/time';
 import { rfqCandidatesView, rfqSummaryView, toolResultView } from '../../features/assistant/toolResult';
 import { readAssistantThreadId, writeAssistantThreadId } from '../../features/assistant/threadStore';
 import { useTheme } from '../../theme/ThemeContext';
-import { consumeVoiceTurn, toggleSpeak } from '../../features/speech';
+import { consumeVoiceTurn, stopSpeaking, toggleSpeak } from '../../features/speech';
 import { AppBar, Button, Card, EmptyState, Icon, Skeleton, SkeletonText } from '../../ui';
 import { locale, tr } from '../../i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -274,6 +274,9 @@ export function AssistantScreen({ navigation }: Props) {
       };
     }, [loadThread])
   );
+
+  // Başka sekmeye/ekrana geçince sesli okuma susar (Fırat 2026-09-26).
+  useFocusEffect(useCallback(() => () => stopSpeaking(), []));
 
   const scrollToEnd = useCallback(() => {
     listRef.current?.scrollToEnd({ animated: true });
