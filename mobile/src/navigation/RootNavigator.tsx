@@ -79,6 +79,9 @@ import { AboutScreen } from '../screens/profile/AboutScreen';
 import { ProfileEditScreen } from '../screens/profile/ProfileEditScreen';
 import { ExperienceFormScreen } from '../screens/profile/ExperienceFormScreen';
 import { GlobalSearchScreen } from '../screens/search/GlobalSearchScreen';
+import { ApparelSearchScreen } from '../screens/search/ApparelSearchScreen';
+import { ApparelQuoteFormScreen } from '../screens/production/ApparelQuoteFormScreen';
+import { ApparelRequestDetailScreen } from '../screens/production/ApparelRequestDetailScreen';
 import { UiGalleryScreen } from '../screens/dev/UiGalleryScreen';
 import { ConnectionsListScreen } from '../screens/connections/ConnectionsListScreen';
 import { ConnectionRequestsScreen } from '../screens/connections/ConnectionRequestsScreen';
@@ -350,6 +353,9 @@ export function RootNavigator() {
             />
             <Stack.Screen name="MachineImport" component={MachineImportScreen} options={{ headerShown: false }} />
             <Stack.Screen name="CatalogImport" component={CatalogImportScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ApparelSearch" component={ApparelSearchScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ApparelQuoteForm" component={ApparelQuoteFormScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="ApparelRequestDetail" component={ApparelRequestDetailScreen} options={{ headerShown: false }} />
             <Stack.Screen
               name="CapacitySearch"
               component={CapacitySearchScreen}

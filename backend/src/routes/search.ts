@@ -6,6 +6,9 @@ import { PRODUCT_SELECT, STOCK_FIRST_ORDER, buildProductWhere, toProductRow } fr
 import { buildYarnWhere } from '../yarns';
 import { makeHandle } from './handle';
 import { buildMachineWhere, machineTypeLabel, parseMachineQuery } from '../machines/query';
+import { hasApparelSignal, parseApparelQuery } from '../apparelQuery';
+import { searchApparel } from '../apparelSearch';
+import { normalizeLang } from '../i18n';
 
 // Üst başlıktaki "Arama Yap" kutusu (Fırat 2026-09-21): tek kutudan firma, kumaş ve iplik.
 // Her gruptan az sayıda sonuç döner; "tümünü gör" ilgili listeye (ürünler / iplik dizini) gider.
@@ -28,7 +31,10 @@ searchRouter.get(
     // Fason makine: sorguda tür sözcüğü / birimli ölçü / "müsait" varsa aranır.
     const machineQuery = parseMachineQuery(q);
 
-    const [companies, fabrics, yarns, machines] = await Promise.all([
+    // Konfeksiyon: sorguda ürün grubu (tayt, sütyen...) ya da atölye/koleksiyon sözcüğü varsa aranır.
+    const apparelWanted = hasApparelSignal(parseApparelQuery(q));
+
+    const [companies, fabrics, yarns, machines, apparel] = await Promise.all([
       prisma.company.findMany({
         where: { OR: [{ name: { contains: q } }, { city: { contains: q } }, { companyType: { contains: q } }] },
         select: { id: true, name: true, city: true, companyType: true, verification: true, logoUpdatedAt: true, _count: { select: { products: true } } },
@@ -45,6 +51,7 @@ searchRouter.get(
             select: { id: true, group: true, kind: true, brand: true, model: true, diameterInch: true, gauge: true, gaugeText: true, needlesText: true, fabricType: true, feeders: true, needles: true, count: true, dailyCapacityKg: true, busyUntil: true, availabilityUpdatedAt: true, company: { select: { id: true, name: true, verification: true, logoUpdatedAt: true } } },
           })
         : Promise.resolve([]),
+      apparelWanted ? searchApparel({ q, limit }, viewerCompanyId, normalizeLang(req.lang)) : Promise.resolve(null),
     ]);
 
     res.json({
@@ -54,6 +61,7 @@ searchRouter.get(
       fabrics: { items: fabrics.slice(0, limit).map((p) => toProductRow(p, viewerCompanyId)), hasMore: fabrics.length > limit },
       yarns: { items: yarns.slice(0, limit).map((p) => toProductRow(p, viewerCompanyId)), hasMore: yarns.length > limit },
       machines: { items: machines.slice(0, limit).map((m) => ({ ...m, typeLabel: machineTypeLabel(m) })), hasMore: machines.length > limit },
+      apparel: { items: apparel?.results ?? [], hasMore: apparel?.hasMore ?? false, searched: apparelWanted },
     });
   })
 );

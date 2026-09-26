@@ -36,6 +36,7 @@ function iconFor(kind: string): AnyIconName {
   // Açık talep (ihale): tender_new, tender_offer, tender_awarded, tender_closed.
   if (kind === 'tender_awarded') return 'trophy-outline';
   if (kind.startsWith('tender')) return 'megaphone-outline';
+  if (kind.startsWith('apparel_request')) return 'shirt-outline';
   if (kind.startsWith('sample_request')) return 'sample';
   if (kind.startsWith('connection')) return 'people-outline';
   // Teklif akışı (Faz 2, Adım 2): quote_request_new, quote_received,
@@ -208,6 +209,12 @@ export function NotificationsScreen({ navigation }: Props) {
       // Açık talep (ihale): hepsi talebin kendi sayfasına.
       if (item.kind.startsWith('tender')) {
         if (item.data.tenderId) navigation.navigate('TenderDetail', { tenderId: item.data.tenderId });
+        return;
+      }
+      // Konfeksiyon üretim teklif isteği: talep ayrıntısı.
+      if (item.kind.startsWith('apparel_request')) {
+        if (item.data.apparelRequestId) navigation.navigate('ApparelRequestDetail', { requestId: item.data.apparelRequestId });
+        else navigation.navigate('Requests');
         return;
       }
       if (item.kind.startsWith('quote')) {

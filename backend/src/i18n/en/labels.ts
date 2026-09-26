@@ -248,4 +248,13 @@ export const labels: Record<string, string> = {
   '500+ kişi': '500+ people',
   'amfori BSCI': 'amfori BSCI',
   'SEDEX (SMETA)': 'SEDEX (SMETA)',
+  // Konfeksiyon araması ve teklif isteği (src/apparelSearch.ts, src/apparelRequests.ts)
+  'Katalogdan seç': 'Pick from catalog',
+  'Kumaşı ben sağlayacağım': "I'll supply the fabric",
+  'Firma önersin': 'Let the company suggest',
+  Gönderildi: 'Sent',
+  Yanıtlandı: 'Replied',
+  Kapandı: 'Closed',
+  'Fason atölye': 'Contract workshop',
+  Koleksiyon: 'Collection',
 };

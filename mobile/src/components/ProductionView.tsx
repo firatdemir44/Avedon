@@ -19,10 +19,12 @@ interface Props {
   data: ProductionData;
   isOwn: boolean;
   onEdit: () => void;
+  /** Ziyaretçiye "Teklif iste" (Bölüm B, madde 7); sahibinde verilmez. */
+  onRequestQuote?: () => void;
 }
 
 // Firma sayfası "Üretim" sekmesi (docs/konfeksiyon-plani.md Bölüm A). Boş alanlar gizlenir.
-export function ProductionView({ companyId, companyType, data, isOwn, onEdit }: Props) {
+export function ProductionView({ companyId, companyType, data, isOwn, onEdit, onRequestQuote }: Props) {
   const t = useTheme();
   const { production: p, references, options } = data;
   const atolye = companyType === 'fason_atolye';
@@ -68,6 +70,7 @@ export function ProductionView({ companyId, companyType, data, isOwn, onEdit }: 
 
   return (
     <View style={{ gap: t.space[4] }}>
+      {!isOwn && onRequestQuote ? <Button icon="quote" label={tr('Teklif iste')} onPress={onRequestQuote} /> : null}
       <Card>
         <View style={{ gap: t.space[3] }}>
           {main.length ? (

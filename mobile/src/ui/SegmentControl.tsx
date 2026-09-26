@@ -1,7 +1,7 @@
 // Segment kontrol (DESIGN.md §3): surface-2 zemin, 4px iç boşluk, radius-md;
 // öğe 36px; seçili surface-1 + 1px line.
 import React from 'react';
-import { Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 export interface SegmentOption<T extends string> {
@@ -19,6 +19,8 @@ export interface SegmentControlProps<T extends string> {
   accessibilityLabel?: string;
   /** Öğeleri eşit genişlikte gerer. */
   stretch?: boolean;
+  /** Çok seçenekte dar ekrana sığmazsa yatay kaydırılır (etiketler kesilmez). */
+  scrollable?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -28,10 +30,11 @@ export function SegmentControl<T extends string>({
   onChange,
   accessibilityLabel,
   stretch,
+  scrollable,
   style,
 }: SegmentControlProps<T>) {
   const t = useTheme();
-  return (
+  const control = (
     <View
       accessibilityRole="radiogroup"
       accessibilityLabel={accessibilityLabel}
@@ -60,7 +63,7 @@ export function SegmentControl<T extends string>({
             accessibilityState={{ checked: on, disabled: !!o.disabled }}
             accessibilityLabel={accessibilityLabel ? `${accessibilityLabel}: ${o.label}` : o.label}
             style={{
-              flex: stretch ? 1 : undefined,
+              flex: stretch && !scrollable ? 1 : undefined,
               minHeight: t.size.chip,
               alignItems: 'center',
               justifyContent: 'center',
@@ -78,5 +81,11 @@ export function SegmentControl<T extends string>({
         );
       })}
     </View>
+  );
+  if (!scrollable) return control;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }}>
+      {control}
+    </ScrollView>
   );
 }

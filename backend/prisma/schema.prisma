@@ -1384,3 +1384,43 @@ model ProductionReference {
 
   @@unique([companyId, position])
 }
+
+// Konfeksiyon / fason atölyeye teklif isteği (docs/konfeksiyon-plani.md Bölüm B, madde 7).
+// Kumaş ürününe bağlı QuoteRequest'ten ayrı: konu bir ürün grubu ve adet. Açık talep
+// (Tender) gibi ilişkisiz alanlarla kurulur. status: gonderildi | yanitlandi | kapandi.
+// fabricMode: katalog (fabricProductId dolu) | musteri (kumaşı alıcı sağlar) | firma_onersin.
+model ApparelQuoteRequest {
+  id              String    @id @default(cuid())
+  buyerId         String
+  buyerCompanyId  String?
+  targetCompanyId String
+  productGroup    String
+  quantity        Int
+  targetDate      DateTime?
+  fabricMode      String
+  fabricProductId String?
+  note            String    @default("")
+  status          String    @default("gonderildi")
+  // "Yanıtla" ile açılan sohbet; bu sohbette bağlantı şartı aranmaz (alıcı talebi kendisi başlattı).
+  conversationId  String?
+  repliedById     String?
+  repliedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([targetCompanyId, createdAt])
+  @@index([buyerId, createdAt])
+  @@index([conversationId])
+}
+
+// Talep ekleri: en çok 4 görsel YA DA tek PDF (teknik föy), data URL.
+model ApparelQuoteAttachment {
+  id        String   @id @default(cuid())
+  requestId String
+  kind      String
+  dataUrl   String
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@index([requestId, position])
+}

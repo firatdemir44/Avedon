@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { getConnectionState, isConnectedAccepted } from '../connections';
+import { apparelChatAllowed } from './apparel';
 import {
   PARTICIPANT_SELECT,
   findOrCreateConversation,
@@ -215,7 +216,8 @@ conversationsRouter.post(
     // Bağlantı hâlâ geçerli mi — okumak serbest ama yazmak için bağlantı şart.
     const otherId = otherParticipantId(conversation, req.user!.id);
     const state = await getConnectionState(req.user!.id, otherId);
-    if (!isConnectedAccepted(state)) {
+    // İstisna: sohbet konfeksiyon teklif isteğinin "Yanıtla"sıyla açıldıysa (alıcı başlattı).
+    if (!isConnectedAccepted(state) && !(await apparelChatAllowed(conversation.id))) {
       return res.status(403).json({ error: 'not_connected' });
     }
 

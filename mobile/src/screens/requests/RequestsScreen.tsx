@@ -17,6 +17,8 @@ import { FlatList, Text, View } from 'react-native';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { useSession } from '../../context/SessionContext';
 import {
+  fetchApparelRequests,
+  type ApparelRequest,
   fetchIncomingSampleRequests,
   fetchMySampleRequests,
   fetchQuoteRequests,
@@ -51,17 +53,18 @@ import {
   SkeletonRow,
   type BadgeKind,
 } from '../../ui';
-import { tr } from '../../i18n';
+import { tr, locale } from '../../i18n';
 
 type Props = RootStackScreenProps<'Requests'>;
 
-type Kind = 'sample' | 'quote' | 'tender';
+type Kind = 'sample' | 'quote' | 'tender' | 'apparel';
 type Side = 'outgoing' | 'incoming';
 // Durum grupları: farklı türlerin durumları süzgeçte tek dilde toplanır.
 type StatusGroup = 'waiting' | 'active' | 'done' | 'closed';
 
-const KIND_LABEL = (): Record<Kind, string> => ({ sample: tr('Numune'), quote: tr('Teklif'), tender: tr('Açık talep') });
-const KIND_ORDER: Kind[] = ['sample', 'quote', 'tender'];
+// apparel: konfeksiyona üretim teklif isteği (docs/konfeksiyon-plani.md Bölüm B, madde 7).
+const KIND_LABEL = (): Record<Kind, string> => ({ sample: tr('Numune'), quote: tr('Teklif'), tender: tr('Açık talep'), apparel: tr('Üretim teklifi') });
+const KIND_ORDER: Kind[] = ['sample', 'quote', 'tender', 'apparel'];
 const STATUS_LABEL = (): Record<StatusGroup, string> => ({
   waiting: tr('Bekliyor'),
   active: tr('Sürüyor'),
@@ -97,11 +100,14 @@ const QUOTE_BADGE = (): Record<QuoteRequestRow['status'], { kind: BadgeKind; lab
   cancelled: { kind: 'cancelled', label: tr('İptal') },
 });
 
+const APPAREL_BADGE: Record<ApparelRequest['status'], BadgeKind> = { gonderildi: 'pending', yanitlandi: 'new', kapandi: 'cancelled' };
+
 type RowBadge = { kind: BadgeKind; label: string };
 type Item =
   | { kind: 'sample'; id: string; date: string; badge: RowBadge; row: SampleRequestRow }
   | { kind: 'quote'; id: string; date: string; badge: RowBadge; row: QuoteRequestRow }
-  | { kind: 'tender'; id: string; date: string; badge: RowBadge; row: Tender };
+  | { kind: 'tender'; id: string; date: string; badge: RowBadge; row: Tender }
+  | { kind: 'apparel'; id: string; date: string; badge: RowBadge; row: ApparelRequest };
 
 function toTime(iso: string): number {
   const n = new Date(iso).getTime();
@@ -127,7 +133,7 @@ export function RequestsScreen({ navigation }: Props) {
 
   // Tüm listeler tek yüklemede: segment/süzgeç değişince yeniden istek atılmaz.
   const { data, status, error, refreshing, reload, refresh } = useFocusLoad(async () => {
-    const [mine, incoming, buyerQuotes, sellerQuotes, openTenders, myTenders, offered] = await Promise.all([
+    const [mine, incoming, buyerQuotes, sellerQuotes, openTenders, myTenders, offered, apparelOut, apparelIn] = await Promise.all([
       fetchMySampleRequests().then((r) => r.sampleRequests),
       hasCompany
         ? fetchIncomingSampleRequests().then((r) => r.sampleRequests)
@@ -137,8 +143,10 @@ export function RequestsScreen({ navigation }: Props) {
       fetchTenders('open').then((r) => r.tenders),
       fetchTenders('mine').then((r) => r.tenders),
       hasCompany ? fetchTenders('offered').then((r) => r.tenders) : Promise.resolve([] as Tender[]),
+      fetchApparelRequests('outgoing').then((r) => r.requests),
+      hasCompany ? fetchApparelRequests('incoming').then((r) => r.requests) : Promise.resolve([] as ApparelRequest[]),
     ]);
-    return { mine, incoming, buyerQuotes, sellerQuotes, openTenders, myTenders, offered };
+    return { mine, incoming, buyerQuotes, sellerQuotes, openTenders, myTenders, offered, apparelOut, apparelIn };
   });
 
   const allItems = useMemo<Item[]>(() => {
@@ -168,6 +176,13 @@ export function RequestsScreen({ navigation }: Props) {
         id: `q-${row.id}`,
         date: row.updatedAt,
         badge: QUOTE_BADGE()[row.status],
+        row,
+      })),
+      ...(side === 'incoming' ? data.apparelIn : data.apparelOut).map<Item>((row) => ({
+        kind: 'apparel',
+        id: `a-${row.id}`,
+        date: row.updatedAt,
+        badge: { kind: APPAREL_BADGE[row.status], label: row.statusLabel },
         row,
       })),
       ...tenders.map<Item>((row) => ({
@@ -334,6 +349,21 @@ export function RequestsScreen({ navigation }: Props) {
           right={rightBadges(item)}
           divider={!last}
           onPress={() => navigation.navigate('QuoteRequestDetail', { requestId: row.id })}
+        />
+      );
+    }
+    if (item.kind === 'apparel') {
+      const row = item.row;
+      const who = side === 'incoming' ? [row.buyer.name, row.buyer.company?.name].filter(Boolean).join(' · ') : row.targetCompany.name;
+      return (
+        <ListRow
+          title={row.productGroupLabel}
+          subtitle={`${who} · ${tr('{n} adet', { n: row.quantity.toLocaleString(locale()) })} · ${formatRelativeTime(row.updatedAt)}`}
+          avatarName={who || row.productGroupLabel}
+          avatarKind={side === 'incoming' ? 'person' : 'company'}
+          right={rightBadges(item)}
+          divider={!last}
+          onPress={() => navigation.navigate('ApparelRequestDetail', { requestId: row.id })}
         />
       );
     }

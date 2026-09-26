@@ -767,6 +767,8 @@ export interface GlobalSearchResult {
   yarns: { items: Product[]; hasMore: boolean };
   /** Fason makine: yalnızca sorguda tür / ölçü / "müsait" varsa dolu gelir. */
   machines?: { items: GlobalSearchMachine[]; hasMore: boolean };
+  /** Konfeksiyon: yalnızca sorguda ürün grubu ya da atölye/koleksiyon sözcüğü varsa dolu. */
+  apparel?: { items: ApparelResult[]; hasMore: boolean; searched?: boolean };
 }
 
 export interface GlobalSearchMachine {
@@ -1584,9 +1586,13 @@ export type NotificationKind =
   // "Akış şikâyetleri" ekranına gider.
   | 'feed_moderation'
   // Haftalık asistan raporu (pazartesi): data.companyId; "Asistan raporu"na gider.
-  | 'assistant_digest';
+  | 'assistant_digest'
+  // Konfeksiyona üretim teklif isteği (Bölüm B): data.apparelRequestId; talep ayrıntısına gider.
+  | 'apparel_request_new'
+  | 'apparel_request_replied';
 
 export interface NotificationData {
+  apparelRequestId?: string;
   productId?: string;
   sampleRequestId?: string;
   quoteRequestId?: string;
@@ -3684,4 +3690,150 @@ export function deleteProductionReference(companyId: string, position: number) {
 
 export function fetchProductionReferenceImage(companyId: string, position: number) {
   return request<{ imageUrl: string }>(`/companies/${companyId}/production/references/${position}/image`);
+}
+
+// --- Konfeksiyon araması ve konfeksiyona teklif isteği (docs/konfeksiyon-plani.md Bölüm B) ---
+// Sunucu: backend/src/routes/apparel.ts (/api/production).
+
+export type ApparelFilterField = 'group' | 'kind' | 'capacityMin' | 'moqMax' | 'leadMax' | 'cert' | 'service' | 'city';
+export type ApparelKind = 'koleksiyon' | 'atolye' | 'hepsi';
+
+export interface ApparelFilters {
+  group: string | null;
+  kind: 'koleksiyon' | 'atolye' | null;
+  capacityMin: number | null;
+  moqMax: number | null;
+  leadMax: number | null;
+  cert: string | null;
+  service: string | null;
+  city: string | null;
+}
+
+export interface ApparelResult {
+  company: { id: string; name: string; city: string; verification: VerificationStatus; logoUpdatedAt: string | null; companyType: string };
+  isOwn: boolean;
+  mainGroups: ProductionOption[];
+  productGroups: ProductionOption[];
+  monthlyCapacity: number | null;
+  moqPerModel: number | null;
+  productionLeadDays: number | null;
+  certificates: { key: string; label: string; documented: boolean }[];
+  workMode: string;
+  workModeLabel: string;
+  fabricMode: string;
+  fabricModeLabel: string;
+  matchReasons: string[];
+}
+
+export interface ApparelSearchParams {
+  q?: string;
+  kind?: ApparelKind;
+  group?: string;
+  capacityMin?: number;
+  moqMax?: number;
+  leadMax?: number;
+  cert?: string;
+  service?: string;
+  city?: string;
+  /** Metinden çıkan ama kullanıcının çipten kaldırdığı süzgeçler. */
+  off?: ApparelFilterField[];
+  limit?: number;
+  offset?: number;
+}
+
+export interface ApparelSearchResponse {
+  results: ApparelResult[];
+  total: number;
+  hasMore: boolean;
+  filters: ApparelFilters;
+  off: ApparelFilterField[];
+  /** Etkin süzgeçler; fromText: serbest metinden çıkarıldı. */
+  chips: { field: ApparelFilterField; label: string; fromText: boolean }[];
+}
+
+export function searchApparel(params: ApparelSearchParams) {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    if (Array.isArray(v)) {
+      if (v.length) qs.set(k, v.join(','));
+    } else qs.set(k, String(v));
+  }
+  return request<ApparelSearchResponse>(`/production/search?${qs.toString()}`);
+}
+
+export type ApparelFabricMode = 'katalog' | 'musteri' | 'firma_onersin';
+export type ApparelRequestStatus = 'gonderildi' | 'yanitlandi' | 'kapandi';
+
+export interface ApparelRequest {
+  id: string;
+  status: ApparelRequestStatus;
+  statusLabel: string;
+  productGroup: string;
+  productGroupLabel: string;
+  quantity: number;
+  targetDate: string | null;
+  fabricMode: ApparelFabricMode;
+  fabricModeLabel: string;
+  fabricProduct: { id: string; code: string; type: string; content: string; company: { id: string; name: string } } | null;
+  note: string;
+  attachments: { kind: 'image' | 'pdf'; position: number }[];
+  buyer: {
+    id: string;
+    name: string;
+    avatarUpdatedAt: string | null;
+    company: { id: string; name: string; city: string; verification: VerificationStatus; logoUpdatedAt: string | null } | null;
+  };
+  targetCompany: { id: string; name: string; city: string; verification: VerificationStatus; logoUpdatedAt: string | null };
+  conversationId: string | null;
+  repliedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NewApparelRequest {
+  targetCompanyId: string;
+  productGroup: string;
+  quantity: number;
+  targetDate?: string | null;
+  fabricMode: ApparelFabricMode;
+  fabricProductId?: string | null;
+  attachments: string[];
+  note: string;
+}
+
+export function createApparelRequest(input: NewApparelRequest) {
+  return request<{ request: ApparelRequest }>(`/production/requests`, { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function fetchApparelRequests(side: 'outgoing' | 'incoming') {
+  return request<{ requests: ApparelRequest[] }>(`/production/requests?side=${side}`);
+}
+
+export function fetchApparelRequest(id: string) {
+  return request<{ request: ApparelRequest; role: 'buyer' | 'seller' }>(`/production/requests/${id}`);
+}
+
+export function fetchApparelAttachment(id: string, position: number) {
+  return request<{ kind: 'image' | 'pdf'; dataUrl: string }>(`/production/requests/${id}/attachments/${position}`);
+}
+
+export function replyApparelRequest(id: string) {
+  return request<{ conversationId: string; title: string; userId: string; avatarUpdatedAt: string | null; request: ApparelRequest }>(
+    `/production/requests/${id}/reply`,
+    { method: 'POST' }
+  );
+}
+
+export function closeApparelRequest(id: string) {
+  return request<{ request: ApparelRequest }>(`/production/requests/${id}/close`, { method: 'POST' });
+}
+
+export interface ApparelOptions extends ProductionOptions {
+  apparelFabricModes: ProductionOption[];
+}
+
+// Süzgeç ve teklif formu seçenekleri; hizmetler atölye işlemlerini de içerir.
+export function fetchApparelOptions() {
+  return request<ApparelOptions>(`/production/options`);
 }

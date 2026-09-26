@@ -327,6 +327,36 @@ export function toolResultView(call: AssistantToolCall): ToolResultView {
         text: rows.length ? undefined : call.summary,
       };
     }
+    // Konfeksiyon araması (Bölüm B, madde 8): firma, ana uzmanlık, kapasite · MOQ · termin.
+    // Satıra dokununca firmanın Üretim sekmesi.
+    case 'konfeksiyon_ara': {
+      for (const item of asArray(out.results)) {
+        const r = asObject(item);
+        const cap = asNumber(r.monthlyCapacity);
+        const moq = asNumber(r.moqPerModel);
+        const lead = asNumber(r.productionLeadDays);
+        const note = [
+          asText(r.city),
+          asArray(r.mainGroups).map((g) => asText(g)).filter(Boolean).join(', ') || null,
+          moq != null ? tr('MOQ {n}', { n: formatNumber(moq, 0) }) : null,
+          lead != null ? tr('Termin {n} gün', { n: lead }) : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        rows.push({
+          label: asText(r.name) || tr('Firma'),
+          value: cap != null ? tr('{n}/ay', { n: formatNumber(cap, 0) }) : '',
+          note: note || undefined,
+          companyId: asText(r.companyId) || undefined,
+        });
+      }
+      return {
+        ...base,
+        unit: rows.length ? tr('{n} firma', { n: rows.length }) : undefined,
+        rows,
+        text: rows.length ? undefined : call.summary,
+      };
+    }
     // Faz 2, Adım 6: iplik dizini araması. Satıra dokununca iplik sayfası
     // açılır (katalog satırındaki ürün deseninin aynısı).
     case 'iplik_ara': {

@@ -13,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RootStackScreenProps } from '../../navigation/types';
 import { globalSearch, type GlobalSearchCompany, type GlobalSearchMachine, type GlobalSearchResult } from '../../api/client';
 import { AvailabilityIndicator } from '../../components/MachineCard';
+import { ApparelResultCard } from '../../components/ApparelResultCard';
 import { machineCardTitle, machineSpecRows } from '../../features/machines/catalog';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { friendlyMessage } from '../../components/StateView';
@@ -52,14 +53,16 @@ const MAX_RECENT = 5;
 
 // Sonuç türü süzgeci yalnızca GÖRÜNÜMDE çalışır: istek yine tek sefer atılır,
 // gelen üç grup burada gizlenir/gösterilir (fazladan ağ trafiği yok).
-type Kind = 'all' | 'companies' | 'fabrics' | 'yarns' | 'machines';
+type Kind = 'all' | 'companies' | 'fabrics' | 'yarns' | 'machines' | 'apparel';
 
-const kindOptions = (): { value: Kind; label: string }[] => [
+// Konfeksiyon seçeneği yalnızca konfeksiyon sonucu varken (dar ekranda segment sığsın).
+const kindOptions = (apparel: boolean): { value: Kind; label: string }[] => [
   { value: 'all', label: tr('Tümü') },
   { value: 'companies', label: tr('Firma') },
   { value: 'fabrics', label: tr('Kumaş') },
   { value: 'yarns', label: tr('İplik') },
   { value: 'machines', label: tr('Makine') },
+  ...(apparel ? [{ value: 'apparel' as const, label: tr('Konfeksiyon') }] : []),
 ];
 
 // Kart özellik satırı: "165 gr/m² · 160 cm · %94 PES %6 EA" (DESIGN.md §3).
@@ -176,7 +179,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
 
   const trimmed = query.trim();
   const hasResults =
-    !!result && (result.companies.items.length > 0 || result.fabrics.items.length > 0 || result.yarns.items.length > 0 || (result.machines?.items.length ?? 0) > 0);
+    !!result && (result.companies.items.length > 0 || result.fabrics.items.length > 0 || result.yarns.items.length > 0 || (result.machines?.items.length ?? 0) > 0 || (result.apparel?.items.length ?? 0) > 0);
 
   // Segmentte hangi türlerin çizileceği.
   const show = useMemo(
@@ -185,6 +188,7 @@ export function GlobalSearchScreen({ navigation }: Props) {
       fabrics: kind === 'all' || kind === 'fabrics',
       yarns: kind === 'all' || kind === 'yarns',
       machines: kind === 'all' || kind === 'machines',
+      apparel: kind === 'all' || kind === 'apparel',
     }),
     [kind]
   );
@@ -194,7 +198,8 @@ export function GlobalSearchScreen({ navigation }: Props) {
     (show.companies ? result?.companies.items.length ?? 0 : 0) +
     (show.fabrics ? result?.fabrics.items.length ?? 0 : 0) +
     (show.yarns ? result?.yarns.items.length ?? 0 : 0) +
-    (show.machines ? result?.machines?.items.length ?? 0 : 0);
+    (show.machines ? result?.machines?.items.length ?? 0 : 0) +
+    (show.apparel ? result?.apparel?.items.length ?? 0 : 0);
 
   return (
     <Screen scroll={false} noPadding>
@@ -210,11 +215,12 @@ export function GlobalSearchScreen({ navigation }: Props) {
         />
         {trimmed.length >= MIN_QUERY ? (
           <SegmentControl<Kind>
+            scrollable
             stretch
             accessibilityLabel={tr('Sonuç türü')}
             value={kind}
             onChange={setKind}
-            options={kindOptions()}
+            options={kindOptions((result?.apparel?.items.length ?? 0) > 0)}
           />
         ) : null}
       </View>
@@ -325,6 +331,37 @@ export function GlobalSearchScreen({ navigation }: Props) {
                 </View>
               ) : null}
 
+              {/* Konfeksiyon: sorguda ürün grubu (tayt, sütyen...) ya da atölye/koleksiyon sözcüğü
+                  varsa dolu gelir; Tümünü gör süzgeçli konfeksiyon aramasını açar. */}
+              {show.apparel && result.apparel?.items.length ? (
+                <View style={{ gap: t.space[3] }}>
+                  <View style={{ paddingHorizontal: t.space[4] }}>
+                    <SectionTitle
+                      title={tr('Konfeksiyon')}
+                      linkLabel={tr('Tümünü gör')}
+                      onLinkPress={() => go(() => navigation.navigate('ApparelSearch', { initialQuery: trimmed }))}
+                    />
+                  </View>
+                  {result.apparel.items.map((item) => (
+                    <View key={item.company.id} style={{ paddingHorizontal: t.space[4] }}>
+                      <ApparelResultCard
+                        result={item}
+                        onPress={() => go(() => navigation.navigate('CompanyProfile', { companyId: item.company.id, initialTab: 'production' }))}
+                        onRequestQuote={() =>
+                          go(() =>
+                            navigation.navigate('ApparelQuoteForm', {
+                              companyId: item.company.id,
+                              companyName: item.company.name,
+                              productGroup: item.mainGroups[0]?.key,
+                            })
+                          )
+                        }
+                      />
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+
               {show.machines && result.machines?.items.length ? (
                 <View style={{ gap: t.space[2] }}>
                   <View style={{ paddingHorizontal: t.space[4] }}>
@@ -382,8 +419,11 @@ export function GlobalSearchScreen({ navigation }: Props) {
             icon="search"
             title={tr('Sonuç bulunamadı')}
             description={tr('“{q}” için sonuç bulunamadı. Fotoğrafla benzer kumaş arayabilirsiniz.', { q: trimmed })}
-            actionLabel={tr('Fotoğrafla kumaş ara')}
-            onAction={() => navigation.navigate('SimilarSearch')}
+            // Sorgu konfeksiyon aramasıysa (tayt, sütyen atölyesi...) süzgeçli aramaya yönlendirilir.
+            actionLabel={result?.apparel?.searched ? tr('Konfeksiyon ara') : tr('Fotoğrafla kumaş ara')}
+            onAction={() =>
+              result?.apparel?.searched ? navigation.navigate('ApparelSearch', { initialQuery: trimmed }) : navigation.navigate('SimilarSearch')
+            }
           />
         )}
       </ScrollView>

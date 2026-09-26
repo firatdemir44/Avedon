@@ -142,6 +142,10 @@ export type RootStackParamList = {
   // Toplu ürün aktarımı: firma web sitesinden ya da Excel/CSV/PDF/fotoğraftan.
   CatalogImport: { source?: 'web' | 'file' } | undefined;
   CapacitySearch: undefined;
+  // Konfeksiyon araması (docs/konfeksiyon-plani.md Bölüm B).
+  ApparelSearch: { initialQuery?: string } | undefined;
+  ApparelQuoteForm: { companyId: string; companyName: string; productGroup?: string };
+  ApparelRequestDetail: { requestId: string };
   // İplik dizini (Faz 2, Adım 6). preset: kumaş pasaportundaki "Kim satıyor?"
   // bağlantısı dizini o numara/birimle ön dolu açar; presetKey her açılışta
   // değişir ki aynı ön dolgu ikinci kez de uygulansın.

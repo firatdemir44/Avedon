@@ -477,6 +477,8 @@ export function AssistantScreen({ navigation }: Props) {
                     onCompanyPress={
                       call.name === 'kapasite_ara'
                         ? (companyId) => navigation.navigate('CompanyProfile', { companyId, initialTab: 'machines' })
+                        : call.name === 'konfeksiyon_ara'
+                          ? (companyId) => navigation.navigate('CompanyProfile', { companyId, initialTab: 'production' })
                         : call.name === 'firma_asistanlarina_sor' || call.name === 'firma_bul'
                           ? (companyId) => navigation.navigate('CompanyProfile', { companyId })
                           : undefined

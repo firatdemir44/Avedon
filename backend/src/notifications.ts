@@ -36,7 +36,9 @@ export type NotificationKind =
   | 'tender_awarded'
   | 'tender_closed'
   | 'feed_moderation'
-  | 'assistant_digest';
+  | 'assistant_digest'
+  | 'apparel_request_new'
+  | 'apparel_request_replied';
 
 export interface NotificationData {
   productId?: string;
@@ -54,6 +56,7 @@ export interface NotificationData {
   inviteId?: string;
   verificationRequestId?: string;
   tenderId?: string;
+  apparelRequestId?: string;
 }
 
 export interface NotifyInput {

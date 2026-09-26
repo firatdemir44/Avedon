@@ -25,6 +25,8 @@ import { MEMORY_KEYS, MEMORY_KEY_SET, WRITABLE_MEMORY_KEYS, memoryKeyDef } from 
 import { fillFxDefaults } from '../fx';
 import { readMemory } from './memory';
 import { MACHINE_GROUPS, searchCapacity } from '../routes/machines';
+import { CERTIFICATES, PRODUCT_GROUPS } from '../production';
+import { APPAREL_SERVICE_OPTIONS, searchApparel } from '../apparelSearch';
 import { buildDigest, listNews } from '../news/query';
 import { TOPIC_KEYS } from '../news/topics';
 import { describeWatchQuery, parseRuleQuery, watchQuerySchema, type WatchQuery } from '../watch';
@@ -371,6 +373,56 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
+  const konfeksiyonAra = betaZodTool({
+    name: 'konfeksiyon_ara',
+    description:
+      'Konfeksiyon ve fason atölye araması: ürün grubu (tayt, sütyen, tişört...), aylık kapasite, MOQ, termin, sertifika, hizmet ve ile göre hazır giyim üreticilerini bulur; ana uzmanlığı istenen grup olanlar önde. ' +
+      'Kullan: "aylık 50 bin tayt dikebilecek OEKO-TEX belgeli firma", "Bursa\'da sütyen atölyesi", "MOQ 300 olan tişört konfeksiyonu" gibi sorularda. Kumaş/iplik değil HAZIR GİYİM üretimi içindir. Fiyat dönmez; firmaya profildeki "Teklif iste" ile ulaşılır.',
+    inputSchema: z.object({
+      query: z.string().max(200).optional().describe('Kullanıcının serbest metni; ürün grubu, kapasite, sertifika, il buradan da çıkarılır'),
+      group: z.enum(PRODUCT_GROUPS.map((g) => g.key) as [string, ...string[]]).optional().describe('Ürün grubu: ic_camasiri, sutyen, mayo, tisort, sweatshirt, aktif_spor, tayt, pijama, cocuk, gomlek, pantolon, dis_giyim, abiye, triko, diger'),
+      kind: z.enum(['koleksiyon', 'atolye', 'hepsi']).optional().describe('koleksiyon: kendi koleksiyonu olan konfeksiyon; atolye: fason iş alanlar'),
+      capacityMin: z.number().int().positive().optional().describe('En az aylık kapasite (adet)'),
+      moqMax: z.number().int().positive().optional().describe('Kullanıcının sipariş adedi: model başı MOQ bu sayıyı aşmayan firmalar'),
+      leadMax: z.number().int().positive().max(365).optional().describe('En fazla üretim termini (gün)'),
+      cert: z.enum(CERTIFICATES.map((c) => c.key) as [string, ...string[]]).optional().describe('Sertifika: oeko_tex_100, gots, grs, bsci, sedex, iso_9001'),
+      service: z.enum(APPAREL_SERVICE_OPTIONS.map((o) => o.key) as [string, ...string[]]).optional().describe('Hizmet / işlem: kesim, dikim, baski, nakis, yikama, utu_paket, modelhane, overlok_recme, kalite_kontrol'),
+      city: z.string().max(60).optional(),
+    }),
+    run: async (args) => {
+      const { query, ...rest } = args;
+      const out = await searchApparel({ ...rest, q: query, limit: 8 }, ctx.companyId, ctx.lang ?? 'tr');
+      const nf = (n: number) => n.toLocaleString('tr-TR');
+      const results = out.results.map((r) => ({
+        companyId: r.company.id,
+        name: r.company.name,
+        city: r.company.city,
+        verified: r.company.verification === 'dogrulanmis',
+        isOwn: r.isOwn,
+        mainGroups: r.mainGroups.map((g) => g.label),
+        monthlyCapacity: r.monthlyCapacity,
+        moqPerModel: r.moqPerModel,
+        productionLeadDays: r.productionLeadDays,
+        certificates: r.certificates.map((c) => c.label + (c.documented ? ' (belgeli)' : '')),
+        matchReasons: r.matchReasons,
+      }));
+      const numbers = (r: (typeof results)[number]) =>
+        [
+          r.monthlyCapacity != null ? `kapasite ${nf(r.monthlyCapacity)}/ay` : '',
+          r.moqPerModel != null ? `MOQ ${nf(r.moqPerModel)}` : '',
+          r.productionLeadDays != null ? `termin ${r.productionLeadDays} gün` : '',
+        ]
+          .filter(Boolean)
+          .join(', ');
+      // Kullanıcının kendi firması da çıkabilir; işaretlenir (kapasite_ara ile aynı).
+      const summary = results.length
+        ? `${out.total} firma bulundu: ${results.map((r) => `${r.name}${r.isOwn ? ' [kullanıcının kendi firması]' : ''}${numbers(r) ? ` (${numbers(r)})` : ''}`).join('; ')}`
+        : 'Bu süzgeçlere uyan konfeksiyon firması bulunamadı.';
+      calls.push({ name: 'konfeksiyon_ara', title: 'Konfeksiyon araması', input: args, output: { results, filters: out.filters }, summary });
+      return JSON.stringify({ summary, filters: out.filters, results });
+    },
+  });
+
   const iplikAra = betaZodTool({
     name: 'iplik_ara',
     description:
@@ -522,5 +574,5 @@ export function buildTools(ctx: ToolContext): ToolSet {
     },
   });
 
-  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi, firmaBul, firmaAsistanlarinaSor, sektorHaberleri], calls, suggestions, watchSuggestions };
+  return { tools: [...skillTools, katalogAra, pasaportCikar, hafizaOku, hafizaOner, izlemeOner, izlemeleriListele, kapasiteAra, konfeksiyonAra, iplikAra, teklifTopla, teklifleriOzetle, benzerKumasAra, acikTalepleriListele, pazarAnalizi, firmaBul, firmaAsistanlarinaSor, sektorHaberleri], calls, suggestions, watchSuggestions };
 }

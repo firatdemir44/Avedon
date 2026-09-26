@@ -1506,6 +1506,13 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             data={production}
             isOwn={isOwnCompany}
             onEdit={() => navigation.navigate('ProductionEdit', { companyId: company.id })}
+            onRequestQuote={() =>
+              navigation.navigate('ApparelQuoteForm', {
+                companyId: company.id,
+                companyName: company.name,
+                productGroup: production.production.mainGroups[0],
+              })
+            }
           />
         ) : productionFailed ? (
           <Card>

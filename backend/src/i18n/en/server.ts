@@ -3,6 +3,18 @@
 // (değeri gömülü) Türkçe cümleleri de eşleştirir.
 export const server: Record<string, string> = {
   // --- Bildirimler ---
+  'Yeni üretim teklif isteği: {group}': 'New production quote request: {group}',
+  '{company} üretim teklif isteğinizi yanıtladı': '{company} replied to your production quote request',
+  // --- Konfeksiyon araması ---
+  'Ana uzmanlık: {g}': 'Main specialty: {g}',
+  'Ürün grubu: {g}': 'Product group: {g}',
+  'Aylık kapasite {n}': 'Monthly capacity {n}',
+  'MOQ {n}': 'MOQ {n}',
+  'Termin {n} gün': 'Lead time {n} days',
+  '{c} belgeli': '{c} documented',
+  'Kapasite ≥ {n}/ay': 'Capacity ≥ {n}/mo',
+  'MOQ ≤ {n}': 'MOQ ≤ {n}',
+  'Termin ≤ {n} gün': 'Lead time ≤ {n} days',
   'Asistanınıza bir soru geldi': 'Your assistant received a question',
   'Asistanınız bu hafta {n} soruyu karşıladı': 'Your assistant handled {n} questions this week',
   '{c} firmadan {q} soru geldi': '{q} questions came from {c} companies',
@@ -115,6 +127,7 @@ export const server: Record<string, string> = {
   'Firma arama': 'Company search',
   'Firma asistanlarına soruldu': "Asked companies' assistants",
   'Fason kapasite araması': 'Contract capacity search',
+  'Konfeksiyon araması': 'Apparel manufacturer search',
   'İplik araması': 'Yarn search',
   'Teklif toplama adayları': 'Quote collection candidates',
   'Teklif karşılaştırması': 'Quote comparison',
