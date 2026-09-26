@@ -90,6 +90,8 @@ export type RootStackParamList = {
   EditCompany: { companyId: string };
   // Üretim kabiliyeti düzenleme (konfeksiyon / fason atölye).
   ProductionEdit: { companyId: string };
+  // Doğrulanmış iş birlikleri (Bölüm C): firmamın seçim ekranı; focusId bildirimden gelen kayıt.
+  Collaborations: { focusId?: string } | undefined;
   // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
   // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.
   CompanySetup: { step?: string } | undefined;

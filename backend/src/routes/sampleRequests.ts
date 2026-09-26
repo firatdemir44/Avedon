@@ -5,6 +5,7 @@ import { makeHandle } from './handle';
 import { requireAuth } from '../middleware/auth';
 import { sendWhatsAppTemplate } from '../whatsapp';
 import { notify, notifyMany } from '../notifications';
+import { ensureFromSampleSafely } from '../collaborations';
 import {
   DELIVERY_MODES,
   SAMPLE_ACTOR_SELECT,
@@ -223,6 +224,9 @@ sampleRequestsRouter.patch(
         },
       }),
     ]);
+
+    // Teslim: doğrulanmış iş birliği kaydı (Bölüm C); iki firmaya "gösterelim mi?" sorulur.
+    if (parsed.data.status === 'teslim_edildi') await ensureFromSampleSafely(request.id);
 
     // Kendi yaptığı işlem için kullanıcıya bildirim gitmesin.
     if (!role.isRequester) {

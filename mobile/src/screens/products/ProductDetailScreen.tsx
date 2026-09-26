@@ -29,6 +29,7 @@ import { ImageViewerModal } from '../../components/ImageViewerModal';
 import { CompanyAvatar } from '../../components/CompanyAvatar';
 import { ProductThumbnail } from '../../components/ProductThumbnail';
 import { ProductVideos } from '../../components/ProductVideos';
+import { CollaborationSection } from '../../components/CollaborationSection';
 import { PassportCard, toPassportCardProduct } from '../../components/PassportCard';
 import { PriceIndexCard } from '../../components/PriceIndexCard';
 import { CareSymbolIcon } from '../../components/CareSymbolIcon';
@@ -913,6 +914,9 @@ export function ProductDetailScreen({ route, navigation }: Props) {
             {/* Fotoğrafların ardından videolar (en çok 3). Video varsa herkes
                 izler; ekleme/kaldırma yalnızca ürünün sahibi firmada. */}
             <ProductVideos productId={product.id} isOwner={isOwnProduct} />
+
+            {/* Bölüm C: iki tarafın da göstermeyi seçtiği iş birlikleri; boşsa bölüm çizilmez. */}
+            <CollaborationSection productId={product.id} title={tr('Bu kumaşla çalışan konfeksiyon firmaları')} />
 
             {certificates.length ? (
               <Section title={tr('Sertifikalar')} count={certificates.length}>

@@ -1589,10 +1589,13 @@ export type NotificationKind =
   | 'assistant_digest'
   // Konfeksiyona üretim teklif isteği (Bölüm B): data.apparelRequestId; talep ayrıntısına gider.
   | 'apparel_request_new'
-  | 'apparel_request_replied';
+  | 'apparel_request_replied'
+  // Doğrulanmış iş birliği (Bölüm C): "profilinizde gösterelim mi?" — data.collaborationId; İş birlikleri ekranına gider.
+  | 'collaboration_ask';
 
 export interface NotificationData {
   apparelRequestId?: string;
+  collaborationId?: string;
   productId?: string;
   sampleRequestId?: string;
   quoteRequestId?: string;
@@ -2616,6 +2619,8 @@ export interface CompanyTrust {
   verification: { status: VerificationStatus; level: '' | 'belge' | 'ziyaret'; verifiedAt: string | null };
   memberSince: string;
   confirmedReferenceCount: number;
+  // Bölüm C: iki tarafın da göstermeyi seçtiği iş birlikleri (düz sayı).
+  verifiedCollaborationCount?: number;
   asSeller: {
     completedDeals: number;
     onTimeRate: number | null;
@@ -3690,6 +3695,65 @@ export function deleteProductionReference(companyId: string, position: number) {
 
 export function fetchProductionReferenceImage(companyId: string, position: number) {
   return request<{ imageUrl: string }>(`/companies/${companyId}/production/references/${position}/image`);
+}
+
+// --- Doğrulanmış iş birliği (docs/konfeksiyon-plani.md Bölüm C) ---
+// Sunucu: backend/src/routes/collaborations.ts. Herkese açık yanıtta yalnızca firma (ya da
+// adsız ifade), ürün ve yıl vardır; miktar, fiyat, gün asla gelmez.
+
+export type CollaborationChoice = 'bekliyor' | 'adli' | 'adsiz' | 'gosterme';
+export type CollaborationSource = 'numune' | 'siparis';
+
+export interface CollaborationCompany {
+  id: string;
+  name: string;
+  logoUpdatedAt: string | null;
+  verification: VerificationStatus;
+}
+
+export interface PublicCollaboration {
+  id: string;
+  source: CollaborationSource;
+  sourceLabel: string;
+  year: number;
+  product: { id: string; code: string; typeLabel: string } | null;
+  // company yalnızca karşı taraf "adli" seçtiyse; aksi halde adsız ifade.
+  counterparty: { company: CollaborationCompany | null; anonymousLabel: string | null };
+}
+
+export interface MyCollaboration {
+  id: string;
+  source: CollaborationSource;
+  sourceLabel: string;
+  year: number;
+  product: { id: string; code: string; typeLabel: string } | null;
+  role: 'supplier' | 'apparel';
+  counterparty: CollaborationCompany | null;
+  myChoice: CollaborationChoice;
+  theirChoice: CollaborationChoice;
+  myChoiceAt: string | null;
+  published: boolean;
+  pending: boolean;
+}
+
+export function fetchCompanyCollaborations(companyId: string) {
+  return request<{ collaborations: PublicCollaboration[] }>(`/collaborations/company/${companyId}`);
+}
+
+export function fetchProductCollaborations(productId: string) {
+  return request<{ collaborations: PublicCollaboration[] }>(`/collaborations/product/${productId}`);
+}
+
+export function fetchMyCollaborations() {
+  return request<{ collaborations: MyCollaboration[]; pendingCount: number }>('/collaborations/mine');
+}
+
+// 404 collaboration_not_found (taraf değilseniz de).
+export function setCollaborationChoice(id: string, choice: Exclude<CollaborationChoice, 'bekliyor'>) {
+  return request<{ collaboration: MyCollaboration | null }>(`/collaborations/${id}/choice`, {
+    method: 'PATCH',
+    body: JSON.stringify({ choice }),
+  });
 }
 
 // --- Konfeksiyon araması ve konfeksiyona teklif isteği (docs/konfeksiyon-plani.md Bölüm B) ---

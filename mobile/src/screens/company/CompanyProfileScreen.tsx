@@ -49,6 +49,7 @@ import { useSession } from '../../context/SessionContext';
 import { CompanyPhotoGallery } from '../../components/CompanyPhotoGallery';
 import { UserAvatar } from '../../components/UserAvatar';
 import { TrustSummaryCard } from '../../components/TrustSummaryCard';
+import { CollaborationSection } from '../../components/CollaborationSection';
 import { PostCard } from '../feed/PostCard';
 import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
@@ -877,6 +878,15 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     <View style={{ gap: t.space[4] }}>
       {trust ? <TrustSummaryCard trust={trust} /> : null}
 
+      {/* Bölüm C: doğrulanmış iş birlikleri. Konfeksiyon/atölyede Üretim sekmesinde gösterilir, burada değil. */}
+      {!productionType && viewedCompanyId ? (
+        <CollaborationSection
+          companyId={viewedCompanyId}
+          title={tr('İş birlikleri')}
+          onManage={isOwnCompany ? () => navigation.navigate('Collaborations') : undefined}
+        />
+      ) : null}
+
       <SectionTitle title={tr('Referanslar')} />
 
       {refsLoading && !refs ? (
@@ -1506,6 +1516,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
             data={production}
             isOwn={isOwnCompany}
             onEdit={() => navigation.navigate('ProductionEdit', { companyId: company.id })}
+            onManageCollaborations={() => navigation.navigate('Collaborations')}
             onRequestQuote={() =>
               navigation.navigate('ApparelQuoteForm', {
                 companyId: company.id,

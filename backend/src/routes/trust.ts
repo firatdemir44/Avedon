@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db';
 import { lateDaysOf, reviewsVisible } from './deals';
+import { publishedCount } from '../collaborations';
 import { makeHandle } from './handle';
 
 // Faz 3, Adım 5: güven özeti. Tek bir "sihirli puan" YOK (Fırat kararı 2026-09-18): yalnızca
@@ -32,8 +33,10 @@ export async function companyTrustSummary(companyId: string) {
   });
   if (!company) return null;
 
-  const [referenceCount, sellerDeals, buyerDeals, requests] = await Promise.all([
+  const [referenceCount, collaborationCount, sellerDeals, buyerDeals, requests] = await Promise.all([
     prisma.companyReference.count({ where: { status: 'confirmed', OR: [{ fromCompanyId: companyId }, { toCompanyId: companyId }] } }),
+    // Bölüm C: iki tarafın da göstermeyi seçtiği (yayınlanmış) iş birlikleri; düz sayı, eşik yok.
+    publishedCount(companyId),
     prisma.deal.findMany({ where: { sellerCompanyId: companyId, status: 'teslim_edildi' }, include: { reviews: true } }),
     prisma.deal.findMany({ where: { buyerCompanyId: companyId, status: 'teslim_edildi' }, include: { reviews: true } }),
     // Yanıt ölçümü: en az 3 gün önce açılmış istekler (yeni isteğe henüz cevap verilmemiş olması normal).
@@ -61,6 +64,7 @@ export async function companyTrustSummary(companyId: string) {
     verification: { status: company.verification, level: company.verification === 'dogrulanmis' ? company.verificationLevel : '', verifiedAt: company.verifiedAt },
     memberSince: company.createdAt,
     confirmedReferenceCount: referenceCount,
+    verifiedCollaborationCount: collaborationCount,
     asSeller: {
       completedDeals: sellerDeals.length,
       // Eşik altında oran gösterilmez.
@@ -85,7 +89,7 @@ export async function companyTrustSummary(companyId: string) {
         : null,
     thresholds: { deals: MIN_DEALS_FOR_RATES, reviews: MIN_REVIEWS_FOR_AVERAGE, requests: MIN_REQUESTS_FOR_RESPONSE },
     method:
-      'Bileşenler platformdaki kayıtlardan hesaplanır: doğrulama (Takyon), karşılıklı onaylı referanslar, iki tarafın beyan ettiği teslimler, karşılıklı açılan değerlendirmeler ve tekliflere yanıt süresi. Tek bir puan üretilmez; hiçbir bileşen ücretle değiştirilemez. Yeterli veri yoksa oran ve ortalama gösterilmez.',
+      'Bileşenler platformdaki kayıtlardan hesaplanır: doğrulama (Takyon), karşılıklı onaylı referanslar, iki tarafın da göstermeyi seçtiği doğrulanmış iş birlikleri, iki tarafın beyan ettiği teslimler, karşılıklı açılan değerlendirmeler ve tekliflere yanıt süresi. Tek bir puan üretilmez; hiçbir bileşen ücretle değiştirilemez. Yeterli veri yoksa oran ve ortalama gösterilmez.',
   };
 }
 

@@ -74,7 +74,7 @@ Not: `right` içine düğme konmaz (iç içe düğme olmaz).
 
 ### `Badge`
 22px, BÜYÜK HARF `caption12`, her zaman ikon + metin.
-`kind`: `verified` · `pending` · `delivered` · `cancelled` · `new` · `info`.
+`kind`: `verified` · `pending` · `delivered` · `cancelled` · `new` · `info` · `documented` · `collaboration`.
 `label` ile metni değiştirebilirsiniz: `<Badge kind="info" label="Stokta" />`.
 
 ### `Chip` / `ChipRow`

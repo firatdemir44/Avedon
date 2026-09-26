@@ -9,6 +9,7 @@ import {
   productionSummaryLine,
 } from '../features/companies/production';
 import { ImageViewerModal } from './ImageViewerModal';
+import { CollaborationSection } from './CollaborationSection';
 import { Badge, Button, Card, Chip, ChipRow, EmptyState, SectionTitle } from '../ui';
 import { useTheme } from '../theme/ThemeContext';
 import { tr } from '../i18n';
@@ -21,16 +22,24 @@ interface Props {
   onEdit: () => void;
   /** Ziyaretçiye "Teklif iste" (Bölüm B, madde 7); sahibinde verilmez. */
   onRequestQuote?: () => void;
+  /** Sahibine: iş birlikleri seçim ekranı (Bölüm C). */
+  onManageCollaborations?: () => void;
 }
 
 // Firma sayfası "Üretim" sekmesi (docs/konfeksiyon-plani.md Bölüm A). Boş alanlar gizlenir.
-export function ProductionView({ companyId, companyType, data, isOwn, onEdit, onRequestQuote }: Props) {
+export function ProductionView({ companyId, companyType, data, isOwn, onEdit, onRequestQuote, onManageCollaborations }: Props) {
   const t = useTheme();
   const { production: p, references, options } = data;
   const atolye = companyType === 'fason_atolye';
 
+  // Bölüm C: yayınlanmış iş birlikleri ("Çalıştığı kumaş tedarikçileri"); üretim bilgisi boşken de görünür.
+  const collaborations = (
+    <CollaborationSection companyId={companyId} title={tr('Çalıştığı kumaş tedarikçileri')} onManage={isOwn ? onManageCollaborations : undefined} />
+  );
+
   if (isProductionEmpty(p, references.length)) {
     return (
+      <View style={{ gap: t.space[4] }}>
       <Card>
         <EmptyState
           icon="construct-outline"
@@ -44,6 +53,8 @@ export function ProductionView({ companyId, companyType, data, isOwn, onEdit, on
           onAction={isOwn ? onEdit : undefined}
         />
       </Card>
+      {collaborations}
+      </View>
     );
   }
 
@@ -144,6 +155,8 @@ export function ProductionView({ companyId, companyType, data, isOwn, onEdit, on
           <ReferenceGrid companyId={companyId} references={references} />
         </View>
       ) : null}
+
+      {collaborations}
 
       {isOwn ? <Button kind="secondary" icon="create-outline" label={tr('Üretimi düzenle')} onPress={onEdit} /> : null}
     </View>

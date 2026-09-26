@@ -83,6 +83,7 @@ const GROUP_OF: Record<BadgeKind, StatusGroup> = {
   cancelled: 'closed',
   // Talep durumlarında kullanılmaz; eşlem eksiksiz olsun diye.
   documented: 'done',
+  collaboration: 'done',
 };
 
 const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {

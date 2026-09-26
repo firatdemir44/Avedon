@@ -1424,3 +1424,45 @@ model ApparelQuoteAttachment {
 
   @@index([requestId, position])
 }
+
+// Doğrulanmış iş birliği (docs/konfeksiyon-plani.md Bölüm C). Numune ya da sipariş
+// "teslim edildi" olunca kendiliğinden doğar (kaynak başına tek kayıt). Yalnızca iki taraf da
+// adli/adsiz seçince yayınlanır; "gosterme" her an geri alma demektir. Gösterilen tek tarih yıl.
+// supplierCompanyId: kumaş tedarikçisi (ürünün sahibi / satıcı); apparelCompanyId: alıcı firma.
+// source: numune | siparis. Seçimler: bekliyor (= gösterme) | adli | adsiz | gosterme.
+model Collaboration {
+  id                String    @id @default(cuid())
+  supplierCompanyId String
+  apparelCompanyId  String
+  productId         String?
+  source            String
+  sourceId          String
+  year              Int
+  supplierChoice    String    @default("bekliyor")
+  apparelChoice     String    @default("bekliyor")
+  supplierChoiceAt  DateTime?
+  apparelChoiceAt   DateTime?
+  createdAt         DateTime  @default(now())
+  events            CollaborationEvent[]
+
+  @@unique([source, sourceId])
+  @@index([supplierCompanyId])
+  @@index([apparelCompanyId])
+  @@index([productId])
+}
+
+// Yalnızca eklenen denetim izi: her onay ve geri alma zaman damgalı (madde 9).
+// action: secim | geri_alma; fromChoice/toChoice seçim değerleri.
+model CollaborationEvent {
+  id              String        @id @default(cuid())
+  collaborationId String
+  collaboration   Collaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+  companyId       String
+  userId          String
+  action          String
+  fromChoice      String
+  toChoice        String
+  createdAt       DateTime      @default(now())
+
+  @@index([collaborationId, createdAt])
+}

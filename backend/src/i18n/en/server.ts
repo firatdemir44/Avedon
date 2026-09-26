@@ -3,6 +3,16 @@
 // (değeri gömülü) Türkçe cümleleri de eşleştirir.
 export const server: Record<string, string> = {
   // --- Bildirimler ---
+  'Bu iş birliğini profilinizde gösterelim mi?': 'Show this collaboration on your profile?',
+  '{company} ile {source} tamamlandı. Firma adıyla, adsız ya da hiç göstermeyi seçebilirsiniz.': '{source} with {company} is complete. You can show it with your company name, anonymously, or not at all.',
+  'sipariş': 'An order',
+  'numune çalışması': 'A sample project',
+  // --- Doğrulanmış iş birliği ---
+  'Takyon üzerinden doğrulandı': 'Verified via Takyon',
+  'Numune çalışması': 'Sample project',
+  'Bir kumaş tedarikçisi': 'A fabric supplier',
+  'Bir konfeksiyon firması': 'An apparel manufacturer',
+  'Bir firma': 'A company',
   'Yeni üretim teklif isteği: {group}': 'New production quote request: {group}',
   '{company} üretim teklif isteğinizi yanıtladı': '{company} replied to your production quote request',
   // --- Konfeksiyon araması ---

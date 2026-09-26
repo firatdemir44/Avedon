@@ -115,9 +115,11 @@ export function TrustSummaryCard({ trust }: { trust: CompanyTrust }) {
       <Card>
         <TrustRow label={tr('Doğrulama')} value={verificationText(trust.verification)} />
         {since ? <TrustRow label={tr('Platformda')} value={since} /> : null}
+        <TrustRow label={tr('Onaylı referans')} value={String(trust.confirmedReferenceCount)} />
+        {/* Bölüm C: iki tarafın da göstermeyi seçtiği, teslimle doğrulanmış iş birlikleri. */}
         <TrustRow
-          label={tr('Onaylı referans')}
-          value={String(trust.confirmedReferenceCount)}
+          label={tr('Doğrulanmış iş birliği')}
+          value={String(trust.verifiedCollaborationCount ?? 0)}
           last={seller.completedDeals === 0 && buyer.completedDeals === 0 && !trust.quoteResponse}
         />
 

@@ -5,6 +5,7 @@ import { prisma } from '../db';
 import { requireAuth } from '../middleware/auth';
 import { notify, notifyMany } from '../notifications';
 import { makeHandle } from './handle';
+import { ensureFromDealSafely } from '../collaborations';
 
 // Faz 3, Adım 4: sipariş kaydı ve karşılıklı değerlendirme. Kabul edilen tekliften doğar;
 // platform ödeme almaz, sevkiyat izlemez: yalnızca iki tarafın beyanı. Ödeme konusuna girilmez.
@@ -49,7 +50,10 @@ function roleOf(deal: { buyerId: string; sellerCompanyId: string }, user: NonNul
 // Alıcı süresinde yanıt vermediyse teslim onaylanmış sayılır (okuma anında tembelce uygulanır).
 async function settle(deal: DealRow): Promise<DealRow> {
   if (deal.status === 'teslim_bildirildi' && deal.sellerDeliveredAt && Date.now() - deal.updatedAt.getTime() > AUTO_CONFIRM_DAYS * DAY) {
-    return prisma.deal.update({ where: { id: deal.id }, data: { status: 'teslim_edildi', buyerConfirmedAt: new Date(deal.updatedAt.getTime() + AUTO_CONFIRM_DAYS * DAY) }, include: INCLUDE });
+    const settled = await prisma.deal.update({ where: { id: deal.id }, data: { status: 'teslim_edildi', buyerConfirmedAt: new Date(deal.updatedAt.getTime() + AUTO_CONFIRM_DAYS * DAY) }, include: INCLUDE });
+    // Kendiliğinden onay da teslimdir: doğrulanmış iş birliği kaydı (Bölüm C).
+    await ensureFromDealSafely(settled);
+    return settled;
   }
   return deal;
 }
@@ -183,6 +187,8 @@ dealsRouter.post(
     if (!loaded || loaded.role !== 'buyer') return res.status(404).json({ error: 'deal_not_found' });
     if (loaded.deal.status !== 'teslim_bildirildi') return res.status(409).json({ error: 'invalid_status', status: loaded.deal.status });
     const deal = await prisma.deal.update({ where: { id: loaded.deal.id }, data: { status: 'teslim_edildi', buyerConfirmedAt: new Date() }, include: INCLUDE });
+    // Teslim: doğrulanmış iş birliği kaydı (Bölüm C); iki firmaya "gösterelim mi?" sorulur.
+    await ensureFromDealSafely(deal);
     await notifyMany(await sellerUsers(deal.sellerCompanyId), {
       kind: 'deal_confirmed',
       title: '{code}: alıcı teslimi onayladı',

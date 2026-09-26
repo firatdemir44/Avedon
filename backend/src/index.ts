@@ -45,6 +45,8 @@ import { looksRouter } from './routes/looks';
 import { dppRouter } from './routes/dpp';
 import { dealsRouter } from './routes/deals';
 import { trustRouter } from './routes/trust';
+import { collaborationsRouter } from './routes/collaborations';
+import { backfillCollaborations } from './collaborations';
 import { priceIndexRouter } from './routes/priceIndex';
 import { searchRouter } from './routes/search';
 import { productDraftsRouter } from './routes/productDrafts';
@@ -163,6 +165,7 @@ app.use('/api/looks', looksRouter);
 app.use('/api/dpp', dppRouter);
 app.use('/api/deals', dealsRouter);
 app.use('/api/trust', trustRouter);
+app.use('/api/collaborations', collaborationsRouter);
 app.use('/api/price-index', priceIndexRouter);
 app.use('/api/search', searchRouter);
 app.use('/api/product-drafts', productDraftsRouter);
@@ -185,6 +188,10 @@ app.listen(port, () => {
   if (!isLlmMock() && getAnthropic()) backfillLooksInBackground();
   // Haftalık asistan raporu bildirimi (pazartesi 09:00 sonrası, firma başına bir kez).
   startDigestScheduler();
+  // Bölüm C: daha önce teslim edilmiş numune/siparişler için eksik iş birliği kayıtları (bildirimsiz).
+  void backfillCollaborations()
+    .then((r) => (r.samples || r.deals) && console.log('[collaborations] geriye dönük', r))
+    .catch((err) => console.error('[collaborations] geriye dönük doldurma', err));
   // Sektör gündemi: RSS kaynakları 2 saatte bir (ilk çekim açılıştan 2 dk sonra).
   startNewsScheduler();
   startFxScheduler();

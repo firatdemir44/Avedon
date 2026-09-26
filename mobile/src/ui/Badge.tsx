@@ -14,7 +14,8 @@ export type BadgeKind =
   | 'cancelled'
   | 'new'
   | 'info'
-  | 'documented';
+  | 'documented'
+  | 'collaboration';
 
 const KINDS: Record<BadgeKind, { bg: keyof ColorTokens; fg: keyof ColorTokens; icon: AnyIconName; label: string }> = {
   verified: { bg: 'successSoft', fg: 'success', icon: 'shield-checkmark-outline', label: 'DOĞRULANMIŞ' },
@@ -25,6 +26,8 @@ const KINDS: Record<BadgeKind, { bg: keyof ColorTokens; fg: keyof ColorTokens; i
   info: { bg: 'brandSoft', fg: 'brand', icon: 'info', label: 'STOKTA' },
   // Sertifikaya belge bağlı (Üretim sekmesi); doğrulama rozetinden ayrı renk.
   documented: { bg: 'brandSoft', fg: 'brand', icon: 'document-text-outline', label: 'BELGELİ' },
+  // Doğrulanmış iş birliği (Bölüm C); bağlantı ikonu, yeşil doğrulama rozetinden ayrı.
+  collaboration: { bg: 'brandSoft', fg: 'brand', icon: 'link-outline', label: 'İŞ BİRLİĞİ' },
 };
 
 export interface BadgeProps {

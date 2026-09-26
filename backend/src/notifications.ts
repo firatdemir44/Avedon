@@ -38,7 +38,9 @@ export type NotificationKind =
   | 'feed_moderation'
   | 'assistant_digest'
   | 'apparel_request_new'
-  | 'apparel_request_replied';
+  | 'apparel_request_replied'
+  // Doğrulanmış iş birliği (Bölüm C): "profilinizde gösterelim mi?" — data.collaborationId + companyId.
+  | 'collaboration_ask';
 
 export interface NotificationData {
   productId?: string;
@@ -57,6 +59,7 @@ export interface NotificationData {
   verificationRequestId?: string;
   tenderId?: string;
   apparelRequestId?: string;
+  collaborationId?: string;
 }
 
 export interface NotifyInput {
