@@ -13,14 +13,21 @@
 // değen ve yeterince büyük (≥ maske alanının %1,5'i) bileşenler kumaş dışı sayılır (doldurulur);
 // kumaşın içinde kalan ya da küçük farklı renkli bölgeler (baskı motifi) korunur ama kaynak olarak
 // kullanılmaz. Çok renkli kumaşta (blokların > %35'i ana kromadan uzak) bu iyileştirme kapalıdır.
+// Parlak kıymık temizliği: zigzag kesim arası beyaz zemin parçaları (maske sınırı/çerçeve yakınında,
+// kumaştan belirgin parlak, düşük kromalı) kumaş dışı sayılır ve doldurulur.
+// Kaynak seçimi keskinliğe bakar: adım 0 keskinlik haritasında yüzdelik altı bloklar aday olmaz,
+// kalanlar keskinlikle ağırlıklanır (bulanık bölgeden kopya alınmaz). Kopyalanan bloklara komşu
+// bilinen kumaşla eşleşen skaler parlaklık kazancı (doğrusal ışık) uygulanır: ışık eğimi boyunca
+// farklı yerden alınan kopyalar tonlama şeridi bırakmaz. Kazanç yalnız kopyalara; maske içi kumaş
+// yalnız global dönüşümlerle yönetilir.
 // Maske içindeki gerçek kumaş pikselleri BİT DÜZEYİNDE korunur; yalnız maske sınırından güvenlik payı
 // kadar içeride dar bir geçiş bandı harmanlanır. Yapılmadığı durumlar: maske güveni düşük, yarı saydam
 // kumaş, kumaş kadrajın %25'inden az, kaynak temiz kare küçük, dikiş hatası yüksek (desen raporu
 // kaynaktan büyük → döşeme deseni yanlış gösterir).
 
-import { boxSum, components, integral, largestSquare, morph, type Mask } from './goruntu';
+import { boxSum, components, gauss, integral, largestSquare, morph, percentile, plane, type Mask } from './goruntu';
 import { dokuPeriyodu } from './olcek';
-import { rgbToLab } from './renk';
+import { linearToSrgb, rgbToLab, srgbToLinear } from './renk';
 import { log, type Ctx } from './tip';
 
 export type DoldurmaParams = {
@@ -43,6 +50,12 @@ export type DoldurmaParams = {
   renkEsigi: number; // blok ort. (a,b) ana kumaştan bu kadar uzaksa kumaş dışı adayı
   cokRenkOrani: number; // maske bloklarının bu payı ana kromadan uzaksa "çok renkli": iyileştirme kapalı
   enAzCikarma: number; // çıkarılacak bileşen en az maske alanının bu oranı (küçük motifler kalır)
+  kiymikBant: number; // parlak kıymık araması: maske sınırından / çerçeveden bu kadar (güvenlik payı katı) içeride
+  kiymikDL: number; // maske pikseli çevresindeki kumaşın yerel L ortalamasından bu kadar parlaksa kıymık adayı
+  kiymikKroma: number; // kıymık adayının en çok kroması (beyaz zemin/kâğıt)
+  keskinlikYuzdelik: number; // kaynak blok keskinliği bu yüzdeliğin altındaysa aday olmaz
+  keskinlikAgirlik: number; // aday hatası × (1 + ağırlık × (1 − keskinlik/p75))
+  kazancSinir: [number, number]; // blok başına parlaklık kazancı (kopyalanan piksellere) bu aralıkta
 };
 
 export const DOLDURMA: DoldurmaParams = {
@@ -65,11 +78,116 @@ export const DOLDURMA: DoldurmaParams = {
   renkEsigi: 4.5,
   cokRenkOrani: 0.35,
   enAzCikarma: 0.015,
+  kiymikBant: 3,
+  kiymikDL: 8,
+  kiymikKroma: 14,
+  keskinlikYuzdelik: 0.7,
+  keskinlikAgirlik: 1.0,
+  kazancSinir: [0.7, 1.4],
 };
 
 export type DoldurmaSonuc = { uygulandi: boolean; out: Uint8Array; neden?: string };
 
-type Yerlesim = { gx: number; gy: number; dx: number; dy: number; sx: number; sy: number; hata: number; bilinen: number };
+type Yerlesim = { gx: number; gy: number; dx: number; dy: number; sx: number; sy: number; hata: number; bilinen: number; kazanc: number };
+
+/**
+ * Parlak kıymık temizliği (seçim işlemi): zigzag (pinking) kesim kenarının dişleri arasındaki beyaz
+ * zemin parçaları adım 1'in "kapa" morfolojisiyle maskeye sızabilir ve çerçeve kenarında aşındırma
+ * işlemez. Maske sınırına ya da çerçeveye yakın (bant), kumaş L medyanından belirgin parlak ve düşük
+ * kromalı pikseller kumaş dışı sayılır; kumaşın içindeki parlaklıklar (bant dışı) dokunulmaz kalır.
+ * Ardından yalnız en büyük bileşen kalır (kopan diş uçları kaynak olmaz).
+ */
+function parlakKiymik(ctx: Ctx, mask: Mask, pay: number, p: DoldurmaParams): { mask: Mask; oran: number } {
+  const { w, h } = mask;
+  const img = ctx.an.img.d;
+  const ham = ctx.seg?.ham;
+  const bant = Math.max(2, Math.round(pay * p.kiymikBant));
+  // Lab L ve kroma düzlemleri; kumaşın YEREL parlaklığı (maske üzerinde normalize Gauss, σ = bant):
+  // gölgedeki zigzag boşluğu global medyandan parlak olmayabilir ama çevresindeki kumaştan parlaktır.
+  const Ll = plane(w, h), Kr = plane(w, h), Lm = plane(w, h), M = plane(w, h);
+  for (let i = 0; i < w * h; i++) {
+    const [l, a, b] = rgbToLab(img[i * 3], img[i * 3 + 1], img[i * 3 + 2]);
+    Ll.d[i] = l; Kr.d[i] = Math.hypot(a, b);
+    if (mask.d[i]) { Lm.d[i] = l; M.d[i] = 1; }
+  }
+  const gL = gauss(Lm, bant), gM = gauss(M, bant);
+  const ic = morph(mask, bant, true); // sınırdan bant kadar içerisi
+  const out: Mask = { w, h, d: Uint8Array.from(mask.d) };
+  let cikan = 0;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      if (!mask.d[i]) continue;
+      const kenarda = !ic.d[i] || x < bant || y < bant || x >= w - bant || y >= h - bant;
+      if (!kenarda) continue;
+      const yerel = gM.d[i] > 1e-3 ? gL.d[i] / gM.d[i] : Ll.d[i];
+      if (Kr.d[i] > p.kiymikKroma) continue;
+      // Morfolojinin (kapa) eklediği piksel (ham kümeleme kumaş dememiş) hafif parlaksa bile; kümeleme
+      // kumaş demişse belirgin parlak olmalı.
+      const esik = ham && !ham.d[i] ? p.kiymikDL * 0.4 : p.kiymikDL;
+      if (Ll.d[i] - yerel >= esik) { out.d[i] = 0; cikan++; }
+    }
+  if (!cikan) return { mask, oran: 0 };
+  // Yalnız en büyük bileşen (kopan diş uçları, tek pikseller kalkar).
+  const cc = components(out);
+  let best = 0;
+  for (let c = 1; c < cc.areas.length; c++) if (cc.areas[c] > (cc.areas[best] ?? 0)) best = c;
+  let alan = 0;
+  for (let i = 0; i < w * h; i++) { out.d[i] = cc.labels[i] === best ? 1 : 0; alan += mask.d[i]; }
+  return { mask: out, oran: alan ? cikan / alan : 0 };
+}
+
+/**
+ * Parlaklık hedef alanı: bilinen (gerçek) kumaşın düşük frekanslı doğrusal parlaklığı, maske dışına
+ * en yakın kumaştan katman katman yayılarak uzatılır (kaymasız, yumuşak). Kopyalanan blokların
+ * kazancı bu alana göre verilir; komşu KOPYAYA oranlamak zincirleme hata biriktirir (yama yama görünüm).
+ * Ölçek: analiz / k. `deger(ax, ay)` çift doğrusal okur.
+ */
+function parlaklikHedefi(Ylin: Float32Array, known: Uint8Array, aw: number, ah: number, sigmaAn: number, k = 4): (ax: number, ay: number) => number {
+  const gw = Math.max(1, Math.floor(aw / k)), gh = Math.max(1, Math.floor(ah / k));
+  const S = plane(gw, gh), C = plane(gw, gh);
+  for (let y = 0; y < gh * k; y++)
+    for (let x = 0; x < gw * k; x++) {
+      const i = y * aw + x;
+      if (!known[i]) continue;
+      const j = Math.floor(y / k) * gw + Math.floor(x / k);
+      S.d[j] += Ylin[i]; C.d[j] += 1;
+    }
+  const gS = gauss(S, sigmaAn / k), gC = gauss(C, sigmaAn / k);
+  const T = plane(gw, gh);
+  const bil = new Uint8Array(gw * gh);
+  let bilinenSayi = 0;
+  for (let i = 0; i < gw * gh; i++) if (gC.d[i] > 0.05 * k * k) { T.d[i] = gS.d[i] / gC.d[i]; bil[i] = 1; bilinenSayi++; }
+  if (!bilinenSayi) { let s = 0, c = 0; for (let i = 0; i < gw * gh; i++) if (C.d[i]) { s += S.d[i] / C.d[i]; c++; } T.d.fill(c ? s / c : 0.2); bil.fill(1); }
+  // Dışa yayılım: bilinen komşusu olan bilinmeyen hücreler komşu ortalamasını alır (tur tur).
+  let degisti = true;
+  const yeni = new Float32Array(gw * gh), yeniB = new Uint8Array(gw * gh);
+  for (let tur = 0; tur < gw + gh && degisti; tur++) {
+    degisti = false;
+    yeniB.set(bil);
+    for (let y = 0; y < gh; y++)
+      for (let x = 0; x < gw; x++) {
+        const i = y * gw + x;
+        if (bil[i]) continue;
+        let s = 0, c = 0;
+        if (x > 0 && bil[i - 1]) { s += T.d[i - 1]; c++; }
+        if (x < gw - 1 && bil[i + 1]) { s += T.d[i + 1]; c++; }
+        if (y > 0 && bil[i - gw]) { s += T.d[i - gw]; c++; }
+        if (y < gh - 1 && bil[i + gw]) { s += T.d[i + gw]; c++; }
+        if (c) { yeni[i] = s / c; yeniB[i] = 1; degisti = true; }
+      }
+    for (let i = 0; i < gw * gh; i++) if (!bil[i] && yeniB[i]) T.d[i] = yeni[i];
+    bil.set(yeniB);
+  }
+  return (ax: number, ay: number) => {
+    const fx = ax / k - 0.5, fy = ay / k - 0.5;
+    const x0 = Math.max(0, Math.min(gw - 1, Math.floor(fx))), y0 = Math.max(0, Math.min(gh - 1, Math.floor(fy)));
+    const x1 = Math.min(gw - 1, x0 + 1), y1 = Math.min(gh - 1, y0 + 1);
+    const tx = Math.max(0, Math.min(1, fx - x0)), ty = Math.max(0, Math.min(1, fy - y0));
+    const a = T.d[y0 * gw + x0], b = T.d[y0 * gw + x1], c = T.d[y1 * gw + x0], d = T.d[y1 * gw + x1];
+    return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+  };
+}
 
 /** Maske iyileştirmesi: ana kumaş kromasından uzak, kumaş dışına/çerçeveye değen bloklar kumaş dışı. */
 function renkIyilestirme(ctx: Ctx, p: DoldurmaParams): { kumas: Mask; kaynakUygun: Mask; cikarilanOran: number; cokRenkli: boolean } {
@@ -187,11 +305,15 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
 
   // Maske iyileştirmesi (kart/etiket rengi kumaştan ayrılır).
   const iy = renkIyilestirme(ctx, p);
-  const mask = iy.kumas;
+  // Parlak kıymıklar (zigzag kesim arası beyaz zemin) maskeden ve kaynaktan çıkar.
+  const pk = parlakKiymik(ctx, iy.kumas, m, p);
+  const mask = pk.mask;
+  const kaynakUygun: Mask = { w: aw, h: ah, d: new Uint8Array(aw * ah) };
+  for (let i = 0; i < kaynakUygun.d.length; i++) kaynakUygun.d[i] = iy.kaynakUygun.d[i] && mask.d[i] ? 1 : 0;
   let maskAlan = 0;
   for (let i = 0; i < mask.d.length; i++) maskAlan += mask.d[i];
   const alanOrani = maskAlan / (aw * ah);
-  const iyOlcum = { renk_disi_cikarilan: +iy.cikarilanOran.toFixed(3), cok_renkli: iy.cokRenkli, kumas_alan_orani: +alanOrani.toFixed(3) };
+  const iyOlcum = { renk_disi_cikarilan: +iy.cikarilanOran.toFixed(3), parlak_kiymik_cikarilan: +pk.oran.toFixed(4), cok_renkli: iy.cokRenkli, kumas_alan_orani: +alanOrani.toFixed(3) };
 
   // Doldurulacak alan (analiz ölçeği): maske dışı. Geçiş ağırlığı W: maske içine m..2m derinlikte 0→1.
   // D = maske sınırına uzaklık (2m'ye kadar, art arda aşındırmayla).
@@ -214,7 +336,7 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
 
   // Kaynak bölgesi: (maske ∧ renk uygun) 2m aşındırılmış. En büyük temiz kare.
   const S: Mask = { w: aw, h: ah, d: new Uint8Array(aw * ah) };
-  for (let i = 0; i < S.d.length; i++) S.d[i] = er.d[i] && iy.kaynakUygun.d[i] ? 1 : 0;
+  for (let i = 0; i < S.d.length; i++) S.d[i] = er.d[i] && kaynakUygun.d[i] ? 1 : 0;
   const IS = integral(S.d, aw, ah);
   const sq = largestSquare(S);
   const sqKaynak = Math.floor(sq.side * o);
@@ -240,6 +362,24 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
   const bilinen = new Uint8Array(aw * ah);
   for (let i = 0; i < bilinen.length; i++) bilinen[i] = W[i] > 0 ? 1 : 0;
   const IW = integral(Float32Array.from(W, (v) => (v < 1 ? 1 : 0)), aw, ah); // doldurulacak piksel sayısı
+  // Parlaklık hedefi (planlama, ham analiz): gerçek kumaşın doğrusal parlaklık alanı dışa yayılmış;
+  // kaynak bloğun doğrusal parlaklık ortalaması integral görüntüden.
+  const LINa = new Float32Array(256);
+  for (let v = 0; v < 256; v++) LINa[v] = srgbToLinear(v);
+  const YlinAn = new Float32Array(aw * ah);
+  for (let i = 0; i < aw * ah; i++) YlinAn[i] = 0.2126 * LINa[img[i * 3]] + 0.7152 * LINa[img[i * 3 + 1]] + 0.0722 * LINa[img[i * 3 + 2]];
+  const hedefAn = parlaklikHedefi(YlinAn, Uint8Array.from(W, (v) => (v >= 1 ? 1 : 0)), aw, ah, B / o);
+  const IY = integral(YlinAn, aw, ah);
+  const [gLo, gHi] = p.kazancSinir;
+  // Doğrusal kazanç: hedef / kaynak blok ortalaması (sınırlı).
+  const kazancPlan = (dx: number, dy: number, sx: number, sy: number): number => {
+    const x0 = Math.floor(sx / o), y0 = Math.floor(sy / o), x1 = Math.min(aw, Math.ceil((sx + B) / o)), y1 = Math.min(ah, Math.ceil((sy + B) / o));
+    const n = (x1 - x0) * (y1 - y0);
+    if (n <= 0) return 1;
+    const kaynakOrt = boxSum(IY, aw, x0, y0, x1, y1) / n;
+    const hedef = hedefAn((dx + B / 2) / o, (dy + B / 2) / o);
+    return kaynakOrt > 1e-6 ? Math.max(gLo, Math.min(gHi, hedef / kaynakOrt)) : 1;
+  };
 
   // Doku varyansı (kaynak karede, analiz ölçeği; RGB ortalaması) — dikiş hatasını normalize etmek için.
   let vs = 0, vs2 = 0, vn = 0;
@@ -251,7 +391,7 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
   let seed = 12345;
   const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
   // Aday kaynak (kaynak px) temiz bölgede tamamen içeride mi?
-  const gecerli = (sx: number, sy: number) => {
+  const temiz = (sx: number, sy: number) => {
     if (sx < 0 || sy < 0 || sx + B > w || sy + B > h) return false;
     const x0 = Math.floor(sx / o), y0 = Math.floor(sy / o), x1 = Math.min(aw, Math.ceil((sx + B) / o)), y1 = Math.min(ah, Math.ceil((sy + B) / o));
     if (x1 - x0 < 1 || y1 - y0 < 1) return false;
@@ -260,6 +400,33 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
   // Kaynak sınırlayıcı kutusu (analiz px).
   let bx0 = aw, by0 = ah, bx1 = 0, by1 = 0;
   for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) if (S.d[y * aw + x]) { if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y; }
+  // Keskinlik (adım 0 blok haritası, analiz koordinatında blokAn px): kaynak bloğun ortalama ince
+  // ölçek enerjisi. Bulanık bölgeden (sığ alan derinliği, kadrajın uzak ucu) kopya alınmaz: temiz
+  // bölgedeki blokların keskinlik dağılımında yüzdelik altı adaylar elenir; kalanlar keskinliğe göre
+  // ağırlıklanır (aynı hatada daha net kaynak yeğlenir).
+  const kesHar = ctx.keskinlik;
+  const keskinlik = (sx: number, sy: number): number => {
+    if (!kesHar) return 1;
+    const km = kesHar.map, ba = kesHar.blokAn;
+    const x0 = Math.max(0, Math.min(km.w - 1, Math.floor(sx / o / ba))), x1 = Math.max(x0, Math.min(km.w - 1, Math.floor((sx + B - 1) / o / ba)));
+    const y0 = Math.max(0, Math.min(km.h - 1, Math.floor(sy / o / ba))), y1 = Math.max(y0, Math.min(km.h - 1, Math.floor((sy + B - 1) / o / ba)));
+    let s = 0, c = 0;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { s += km.d[y * km.w + x]; c++; }
+    return c ? s / c : 0;
+  };
+  let kesEsik = 0, kesP75 = 1;
+  if (kesHar) {
+    const ks: number[] = [];
+    const adimK = Math.max(8, Math.round(B / 2));
+    for (let sy = Math.round(by0 * o); sy + B <= h; sy += adimK) for (let sx = Math.round(bx0 * o); sx + B <= w; sx += adimK) if (temiz(sx, sy)) ks.push(keskinlik(sx, sy));
+    if (ks.length >= 4) {
+      const arr = Float32Array.from(ks);
+      kesEsik = percentile(arr, p.keskinlikYuzdelik);
+      kesP75 = Math.max(1e-6, percentile(arr, 0.75));
+    }
+  }
+  let keskinlikKosulu = true; // aday bulunamazsa gevşetilir
+  const gecerli = (sx: number, sy: number) => temiz(sx, sy) && (!keskinlikKosulu || keskinlik(sx, sy) >= kesEsik);
   const rastgeleAday = (): [number, number] | null => {
     for (let t = 0; t < 20; t++) {
       const sx = Math.round((bx0 + rnd() * Math.max(0, bx1 - bx0 - Ban)) * o), sy = Math.round((by0 + rnd() * Math.max(0, by1 - by0 - Ban)) * o);
@@ -279,10 +446,16 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
     return null;
   };
   const kisa = Math.min(w, h);
-  // Hata: hedef blok alanındaki bilinen analiz piksellerinde tuval ile kaynak farkı (kare, RGB ort.; 2'şer atlayarak).
-  const hata = (dx: number, dy: number, sx: number, sy: number): [number, number] => {
+  // Hata: hedef blok alanındaki bilinen analiz piksellerinde tuval ile kaynak farkı (kare, RGB ort.;
+  // 2'şer atlayarak). Kaynak, parlaklık hedefine skaler kazançla (doğrusal; sRGB'de ≈ g^(1/2.2))
+  // eşitlendikten sonra ölçülür: aday seçimi ışık eğimine değil dokuya göre olur ve kopyalanan blok
+  // çevresindeki gerçek kumaşın parlaklığını taşır (kazanç yalnız KOPYALANAN piksellere; maske içi
+  // kumaşa dokunmaz).
+  const hata = (dx: number, dy: number, sx: number, sy: number): [number, number, number] => {
     const ax0 = Math.ceil(dx / o), ay0 = Math.ceil(dy / o), ax1 = Math.min(aw, Math.floor((dx + B) / o)), ay1 = Math.min(ah, Math.floor((dy + B) / o));
     const ox = (sx - dx) / o, oy = (sy - dy) / o;
+    const g = kazancPlan(dx, dy, sx, sy);
+    const gs = g ** (1 / 2.2);
     let s = 0, n = 0;
     for (let y = ay0; y < ay1; y += 2) {
       const yy = Math.round(y + oy);
@@ -293,12 +466,12 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
         const xx = Math.round(x + ox);
         if (xx < 0 || xx >= aw) continue;
         const j = yy * aw + xx;
-        const d0 = tuval[i * 3] - img[j * 3], d1 = tuval[i * 3 + 1] - img[j * 3 + 1], d2 = tuval[i * 3 + 2] - img[j * 3 + 2];
+        const d0 = tuval[i * 3] - gs * img[j * 3], d1 = tuval[i * 3 + 1] - gs * img[j * 3 + 1], d2 = tuval[i * 3 + 2] - gs * img[j * 3 + 2];
         s += d0 * d0 + d1 * d1 + d2 * d2;
         n++;
       }
     }
-    return [n ? s / (3 * n) : 0, n];
+    return [n ? s / (3 * n) : 0, n, g];
   };
   const xs: number[] = [], ys: number[] = [];
   for (let x = 0; x + B < w; x += adim) xs.push(x);
@@ -343,20 +516,26 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
       devam(grid.get(`${gx},${gy - 1}`));
       devam(grid.get(`${gx},${gy + 1}`));
       for (let t = 0; t < p.adaySayisi; t++) { const a = t % 2 ? rastgeleAday() : yakinAday(dx, dy); if (a) adaylar.push(a); }
+      if (!adaylar.length && keskinlikKosulu) {
+        // Keskinlik eşiğini geçen aday yok (kaynak küçük): eşik gevşetilir, yalnız ağırlık kalır.
+        keskinlikKosulu = false;
+        for (let t = 0; t < p.adaySayisi; t++) { const a = t % 2 ? rastgeleAday() : yakinAday(dx, dy); if (a) adaylar.push(a); }
+      }
       if (!adaylar.length) adaylar.push(ilk);
-      let best = adaylar[0], bestE = Infinity, bestHam = 0, bestN = 0;
+      let best = adaylar[0], bestE = Infinity, bestHam = 0, bestN = 0, bestG = 1;
       for (const [sx, sy] of adaylar) {
-        const [e, n] = hata(dx, dy, sx, sy);
-        // Mesafe cezası: aynı hatada yakın kaynak yeğlenir.
+        const [e, n, g] = hata(dx, dy, sx, sy);
+        // Mesafe cezası: aynı hatada yakın kaynak yeğlenir. Keskinlik ağırlığı: aynı hatada net kaynak yeğlenir.
         const ceza = 1 + p.mesafeCezasi * (Math.hypot(sx - dx, sy - dy) / kisa);
-        const ec = (e + varyans * 0.01) * ceza;
-        if (ec < bestE) { bestE = ec; bestHam = e; bestN = n; best = [sx, sy]; }
+        const net = kesHar ? 1 + p.keskinlikAgirlik * (1 - Math.min(1, keskinlik(sx, sy) / kesP75)) : 1;
+        const ec = (e + varyans * 0.01) * ceza * net;
+        if (ec < bestE) { bestE = ec; bestHam = e; bestN = n; bestG = g; best = [sx, sy]; }
         if (n === 0) break; // bilinen piksel yok: ilk aday
       }
-      const y: Yerlesim = { gx, gy, dx, dy, sx: best[0], sy: best[1], hata: bestHam, bilinen: bestN };
+      const y: Yerlesim = { gx, gy, dx, dy, sx: best[0], sy: best[1], hata: bestHam, bilinen: bestN, kazanc: bestG };
       yerlesim.push(y);
       grid.set(`${gx},${gy}`, y);
-      // Planlama tuvalini güncelle: doldurulacak (W<0.5) analiz pikselleri kaynaktan kopyalanır, blok alanı bilinir.
+      // Planlama tuvalini güncelle: doldurulacak (W<0.5) analiz pikselleri kaynaktan (kazançla) kopyalanır, blok alanı bilinir.
       const ax0 = Math.ceil(dx / o), ay0 = Math.ceil(dy / o), ax1 = Math.min(aw, Math.floor((dx + B) / o)), ay1 = Math.min(ah, Math.floor((dy + B) / o));
       const ox = (best[0] - dx) / o, oy = (best[1] - dy) / o;
       for (let yy = ay0; yy < ay1; yy++) {
@@ -365,7 +544,7 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
           const i = yy * aw + xx;
           if (W[i] < 0.5) {
             const j = sy2 * aw + Math.max(0, Math.min(aw - 1, Math.round(xx + ox)));
-            tuval[i * 3] = img[j * 3]; tuval[i * 3 + 1] = img[j * 3 + 1]; tuval[i * 3 + 2] = img[j * 3 + 2];
+            for (let c = 0; c < 3; c++) tuval[i * 3 + c] = Math.max(0, Math.min(255, Math.round(bestG ** (1 / 2.2) * img[j * 3 + c])));
           }
           bilinen[i] = 1;
         }
@@ -413,6 +592,36 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
   }
   const lum = (d: Uint8Array, k: number) => 0.299 * d[k] + 0.587 * d[k + 1] + 0.114 * d[k + 2];
   const f = Math.max(3, Math.round(O * p.yumusatma)); // düz kumaşta parlaklık basamağını yayar; dokulu kumaşta kesim zaten hizalı
+  // Blok başına parlaklık kazancı (yalnız KOPYALANAN piksellere; doğrusal ışıkta skaler): işlenmiş
+  // karede gerçek kumaşın (W ≥ 1) parlaklık hedef alanı / kaynak bloğun doğrusal parlaklık ortalaması.
+  // Işık eğimi (doz sınırı nedeniyle tam düzleşmez) boyunca farklı yükseklikten alınan kopyalar
+  // çevresindeki gerçek kumaşın parlaklığına oturur; dikey/yatay tonlama şeridi ve yama görünümü kalmaz.
+  const LINv = LINa;
+  const YlinIsl = new Float32Array(aw * ah), sayIsl = new Float32Array(aw * ah);
+  for (let y = 0; y < h; y += 2) {
+    const ay = Math.min(ah - 1, Math.floor(y / o));
+    for (let x = 0; x < w; x += 2) {
+      const j = ay * aw + Math.min(aw - 1, Math.floor(x / o)), k = (y * w + x) * 3;
+      YlinIsl[j] += 0.2126 * LINv[isl[k]] + 0.7152 * LINv[isl[k + 1]] + 0.0722 * LINv[isl[k + 2]];
+      sayIsl[j] += 1;
+    }
+  }
+  for (let i = 0; i < aw * ah; i++) if (sayIsl[i]) YlinIsl[i] /= sayIsl[i];
+  const hedefIsl = parlaklikHedefi(YlinIsl, Uint8Array.from(W, (v) => (v >= 1 ? 1 : 0)), aw, ah, B / o);
+  const lut = new Uint8Array(256);
+  const blokKazanci = (dx: number, dy: number, sx: number, sy: number): number => {
+    let sk = 0, n = 0;
+    for (let v = 0; v < B; v += 4)
+      for (let u = 0; u < B; u += 4) {
+        const ks = ((sy + v) * w + sx + u) * 3;
+        sk += 0.2126 * LINv[isl[ks]] + 0.7152 * LINv[isl[ks + 1]] + 0.0722 * LINv[isl[ks + 2]];
+        n++;
+      }
+    if (!n || sk <= 1e-6) return 1;
+    const hedef = hedefIsl((dx + B / 2) / o, (dy + B / 2) / o);
+    return Math.max(gLo, Math.min(gHi, hedef / (sk / n)));
+  };
+  const lutKur = (g: number) => { for (let v = 0; v < 256; v++) lut[v] = Math.round(Math.max(0, Math.min(255, linearToSrgb(LINv[v] * g)))); };
   // Dikiş kesimi: şerit boyunca (N adım) O genişlikte en küçük maliyetli yol. kenar: 0 sol, 1 üst, 2 sağ, 3 alt.
   const maliyet = new Float32Array(B * O), E = new Float32Array(B * O);
   const kes = (dx: number, dy: number, sx: number, sy: number, kenar: number): Int16Array | null => {
@@ -425,8 +634,11 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
         const bv = kenar === 1 ? u : kenar === 3 ? B - 1 - u : v;
         const x = dx + bu, y = dy + bv;
         const i = y * w + x;
-        if (bilinenTam[i]) { var_ = true; maliyet[v * M + u] = (lum(out, i * 3) - lum(isl, ((sy + bv) * w + sx + bu) * 3)) ** 2; }
-        else maliyet[v * M + u] = 0;
+        if (bilinenTam[i]) {
+          var_ = true;
+          const ks = ((sy + bv) * w + sx + bu) * 3;
+          maliyet[v * M + u] = (lum(out, i * 3) - (0.299 * lut[isl[ks]] + 0.587 * lut[isl[ks + 1]] + 0.114 * lut[isl[ks + 2]])) ** 2;
+        } else maliyet[v * M + u] = 0;
       }
     if (!var_) return null;
     for (let u = 0; u < M; u++) E[u] = maliyet[u];
@@ -451,8 +663,13 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
     return yol;
   };
   const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  let kazancMin = Infinity, kazancMax = -Infinity;
   for (const y of yerlesim) {
     const { dx, dy, sx, sy } = y;
+    const g = blokKazanci(dx, dy, sx, sy);
+    if (g < kazancMin) kazancMin = g;
+    if (g > kazancMax) kazancMax = g;
+    lutKur(g);
     const yollar = [kes(dx, dy, sx, sy, 0), kes(dx, dy, sx, sy, 1), kes(dx, dy, sx, sy, 2), kes(dx, dy, sx, sy, 3)];
     for (let v = 0; v < B; v++) {
       const yy = dy + v;
@@ -469,8 +686,8 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
         }
         if (wgt <= 0) continue;
         const k = i * 3, ks = ((sy + v) * w + (sx + u)) * 3;
-        if (wgt >= 1) { out[k] = isl[ks]; out[k + 1] = isl[ks + 1]; out[k + 2] = isl[ks + 2]; }
-        else for (let c = 0; c < 3; c++) out[k + c] = Math.round(out[k + c] * (1 - wgt) + isl[ks + c] * wgt);
+        if (wgt >= 1) { out[k] = lut[isl[ks]]; out[k + 1] = lut[isl[ks + 1]]; out[k + 2] = lut[isl[ks + 2]]; }
+        else for (let c = 0; c < 3; c++) out[k + c] = Math.round(out[k + c] * (1 - wgt) + lut[isl[ks + c]] * wgt);
       }
     }
     for (let v = 0; v < B; v++) bilinenTam.fill(1, (dy + v) * w + dx, (dy + v) * w + dx + B);
@@ -492,8 +709,16 @@ export async function kenarDoldurma(ctx: Ctx, isl: Uint8Array, w: number, h: num
     adim: 'kenar_doldurma',
     risk: 'dikkat',
     durum: 'uygulandi',
-    not: `Kumaş dışı %${(oran * 100).toFixed(1)} alan, kumaşın kendi pikselleri 1:1 kopyalanarak dolduruldu (üretken işlem yok; ${B} px blok, ${O} px örtüşme, en küçük hatalı dikiş)`,
-    olcum: { ...olcumOrtak, doldurulan_oran: +oran.toFixed(4), sure_ms: Date.now() - t0 },
+    not: `Kumaş dışı %${(oran * 100).toFixed(1)} alan, kumaşın kendi pikselleri 1:1 kopyalanarak dolduruldu (üretken işlem yok; ${B} px blok, ${O} px örtüşme, en küçük hatalı dikiş; kopyalara blok başına parlaklık kazancı ${kazancMin.toFixed(2)}–${kazancMax.toFixed(2)})`,
+    olcum: {
+      ...olcumOrtak,
+      doldurulan_oran: +oran.toFixed(4),
+      kazanc_min: +kazancMin.toFixed(3),
+      kazanc_max: +kazancMax.toFixed(3),
+      keskinlik_esigi: +kesEsik.toFixed(1),
+      keskinlik_kosulu: keskinlikKosulu,
+      sure_ms: Date.now() - t0,
+    },
   });
   return { uygulandi: true, out };
 }

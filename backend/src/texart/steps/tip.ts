@@ -51,6 +51,8 @@ export type Segmentation = {
   kumasLab: [number, number, number][]; // kumaş renk kümeleri
   yariSaydam: boolean;
   sinir: Mask; // kumaş dışı (zemin/etiket) piksel maskesi, referans için
+  /** Morfoloji (kapa/aç, delik doldurma, aşındırma) ÖNCESİ ham küme+gölge büyütme maskesi: kapa'nın köprülediği dar boşlukları (zigzag kesim arası zemin) ayırt etmek için. */
+  ham: Mask;
 };
 
 export type Ctx = {

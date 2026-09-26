@@ -139,8 +139,11 @@ export async function runPipeline(input: Buffer, opts: PipelineOptions = {}): Pr
   if (opts.doldurma === false) log(ctx, { adim: 'kenar_doldurma', risk: 'dikkat', durum: 'atlandi', not: 'Seçenekle kapatıldı', olcum: { neden: 'kapali' } });
   else tamDolu = (await kenarDoldurma(ctx, tam.islenmis, tam.w, tam.h)).out;
   const tamIsl = await keskinlestir(tamDolu, tam.w, tam.h, doz / 2);
+  // JPEG: mozjpeg ama trellis KAPALI — trellis, komşu blokların içeriğine göre nicemleme seçer ve
+  // doldurmalı/doldurmasız çıktıda maske İÇİ pikselleri ±7'ye kadar farklılaştırır; kapalıyken
+  // maske içi pikseller iki çıktıda bit düzeyinde aynıdır (test: kenar doldurma).
   const katalog = await sharp(Buffer.from(tamIsl.buffer, tamIsl.byteOffset, tamIsl.byteLength), { raw: { width: tam.w, height: tam.h, channels: 3 } })
-    .jpeg({ quality: 90, mozjpeg: true })
+    .jpeg({ quality: 90, mozjpeg: true, trellisQuantisation: false })
     .toBuffer();
   const katalog_2x: Buffer | undefined = undefined;
   const yakin_plan = await sharp(Buffer.from(yakin.islenmis.buffer, yakin.islenmis.byteOffset, yakin.islenmis.byteLength), { raw: { width: yakin.w, height: yakin.h, channels: 3 } })

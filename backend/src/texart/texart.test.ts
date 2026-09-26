@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import sharp from 'sharp';
 import { runPipeline } from './pipeline';
+import { deltaE2000, rgbToLab } from './steps/renk';
 import { publicFilePath } from './store';
 
 // Sentetik "kumaş": taban rengi + rastgele ince doku (gerçek ilmek gibi ince ölçek enerjisi taşır).
@@ -178,20 +179,66 @@ test("texart kenar doldurma: kumaş kadrajın %25'inden azsa kaynak yetersiz, do
   assert.ok(r.uyarilar.includes('doldurma_yapilmadi:kumas_alani_kucuk'));
 });
 
-test('texart beyaz dengesi: renk kayması nötre doğru, doz sınırı içinde, tek global dönüşüm', async () => {
-  const img = await texture(1600, 1600, [168, 170, 156]).jpeg({ quality: 95 }).toBuffer();
+test('texart beyaz dengesi: soğuk (mavimsi) kayan nötr kumaş nötre doğru, doz sınırı içinde, tek global dönüşüm', async () => {
+  const img = await texture(1600, 1600, [160, 163, 172]).jpeg({ quality: 95 }).toBuffer();
   const r = await runPipeline(img);
   assert.equal(r.durum, 'tamam');
   if (r.durum !== 'tamam') return;
   const wb = r.islem_kaydi.find((e) => e.adim === 'beyaz_dengesi')!;
-  assert.equal(wb.durum, 'uygulandi');
-  const kb = wb.olcum!.kazanc_b as number;
-  assert.ok(kb > 1 && kb <= 1.12, 'mavi kazancı ' + kb);
+  assert.equal(wb.durum, 'uygulandi', JSON.stringify(wb));
+  assert.equal(wb.olcum!.referans, 'kumas');
+  const kr = wb.olcum!.kazanc_r as number, kb = wb.olcum!.kazanc_b as number;
+  assert.ok(kr > 1 && kr <= 1.12 && kb < 1, `kazançlar R ${kr} B ${kb}`);
   assert.ok((wb.doz ?? 0) <= 0.12);
   const { data, info } = await sharp(r.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
   const i = (800 * info.width + 800) * info.channels;
-  assert.ok(Math.abs(data[i] - data[i + 2]) < 8, 'R−B farkı azalmalı');
+  assert.ok(Math.abs(data[i] - data[i + 2]) < 8, 'R−B farkı azalmalı: ' + [data[i], data[i + 1], data[i + 2]]);
   assert.ok((r.olcumler.dE2000_yerel_std as number) < 2);
+});
+
+// Sentetik kumaşın kaynak ve çıktı merkezindeki ortalama Lab'ı.
+async function ortaLab(buf: Buffer, boyut: number) {
+  const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let y = boyut / 2 - 64; y < boyut / 2 + 64; y++)
+    for (let x = boyut / 2 - 64; x < boyut / 2 + 64; x++) { const k = (y * info.width + x) * info.channels; r += data[k]; g += data[k + 1]; b += data[k + 2]; n++; }
+  return rgbToLab(r / n, g / n, b / n);
+}
+
+test('texart beyaz dengesi: haki/bej gibi düşük kromalı ama sıcak tonlu kumaş griye çekilmez (referans yok → en fazla küçük doz)', async () => {
+  // Haki: L≈52, a≈0, b≈+6 (ton ≈ 90°, kroma ≈ 6) — gerçek fotoğraftaki haki pike ile aynı bölgede.
+  const img = await texture(1600, 1600, [128, 125, 112]).jpeg({ quality: 95 }).toBuffer();
+  const r = await runPipeline(img);
+  assert.equal(r.durum, 'tamam');
+  if (r.durum !== 'tamam') return;
+  const wb = r.islem_kaydi.find((e) => e.adim === 'beyaz_dengesi')!;
+  assert.notEqual(wb.olcum!.referans, 'kumas', 'sıcak tonlu kumaş nötr referans olmamalı: ' + JSON.stringify(wb));
+  assert.ok((wb.doz ?? 0) <= 0.03, 'doz ' + wb.doz);
+  const once = await ortaLab(img, 1600), sonra = await ortaLab(r.ciktilar.katalog, 1600);
+  const dE = deltaE2000(once, sonra);
+  const kromaOnce = Math.hypot(once[1], once[2]), kromaSonra = Math.hypot(sonra[1], sonra[2]);
+  assert.ok(dE <= 1.5, `haki kaydı ΔE ${dE.toFixed(2)}`);
+  assert.ok(kromaSonra >= kromaOnce * 0.75, `kroma korunmalı: ${kromaOnce.toFixed(1)} → ${kromaSonra.toFixed(1)}`);
+  assert.ok(sonra[2] > 3, 'sarı–zeytin ton (b*) kalmalı: ' + sonra[2].toFixed(1));
+});
+
+test('texart beyaz dengesi: kumaş dışı beyaz kâğıt/kart varsa nötr referans odur, kumaş rengi hesaba girmez', async () => {
+  // Sıcak ışık altında beyaz kart (sarımsı) + haki kumaş: kart referans alınır, mavi kazancı > 1.
+  const W = 1600, F = 1000;
+  const fabric = await texture(F, F, [128, 125, 112]).png().toBuffer();
+  const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 238, g: 232, b: 214 } } })
+    .composite([{ input: fabric, left: (W - F) / 2, top: (W - F) / 2 }])
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  const r = await runPipeline(img, { doldurma: false });
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  if (r.durum !== 'tamam') return;
+  const wb = r.islem_kaydi.find((e) => e.adim === 'beyaz_dengesi')!;
+  assert.equal(wb.durum, 'uygulandi', JSON.stringify(wb));
+  assert.equal(wb.olcum!.referans, 'beyaz_yuzey');
+  const kb = wb.olcum!.kazanc_b as number, kr = wb.olcum!.kazanc_r as number;
+  assert.ok(kb > 1.02 && kb <= 1.12 && kr < 1, `kazançlar R ${kr} B ${kb}`);
+  assert.ok((r.olcumler.beyaz_dengesi_dE as number) <= 3.05, 'beyaz yüzey referansında kumaş ΔE ≤ 3: ' + r.olcumler.beyaz_dengesi_dE);
 });
 
 test('texart: büyük kaynak da aynı boyutta kalır; yakın plan 1024 yerel piksel', async () => {
@@ -214,4 +261,32 @@ test('texart dosya adı beyaz listesi: yol dışına çıkılamaz', () => {
   assert.equal(publicFilePath('abcdefghij12', '../secret.json'), null);
   assert.equal(publicFilePath('../../etc', 'katalog.jpg'), null);
   assert.equal(publicFilePath('abcdefghij12', 'baska.jpg'), null);
+});
+
+test('texart kenar doldurma: zigzag (pinking) kesim kenarındaki beyaz boşluklar maskeye sızsa da doldurulur', async () => {
+  // Kumaş kadrajın altına kadar iner; alt kenar zigzag kesimli, dişlerin arası beyaz zemin. Üstte beyaz kart başlığı.
+  const W = 1600, UST = 320, T = 16, P = 32;
+  const fabric = await periodicFabric(W, W - UST, [50, 90, 170]).raw().toBuffer();
+  const d = Buffer.alloc(W * W * 3, 246);
+  for (let y = UST; y < W; y++)
+    for (let x = 0; x < W; x++) {
+      const dis = W - 1 - y; // alt kenara uzaklık
+      const tooth = T * Math.abs(((x % P) / (P / 2)) - 1); // 0..T üçgen dalga
+      if (dis < tooth) continue; // beyaz boşluk
+      const k = ((y - UST) * W + x) * 3;
+      d[(y * W + x) * 3] = fabric[k]; d[(y * W + x) * 3 + 1] = fabric[k + 1]; d[(y * W + x) * 3 + 2] = fabric[k + 2];
+    }
+  const img = await sharp(d, { raw: { width: W, height: W, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+  const r = await runPipeline(img);
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  if (r.durum !== 'tamam') return;
+  const kd = r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')!;
+  assert.equal(kd.durum, 'uygulandi', JSON.stringify(kd));
+  const { data } = await sharp(r.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  // Alt 12 satırda hiçbir piksel beyaz kalmamalı (kumaş mavi: R < 150).
+  let beyaz = 0;
+  for (let y = W - 12; y < W; y++) for (let x = 0; x < W; x++) if (data[(y * W + x) * 3] > 200 && data[(y * W + x) * 3 + 1] > 200) beyaz++;
+  assert.equal(beyaz, 0, 'alt kenarda beyaz piksel kaldı: ' + beyaz);
+  // Üst kart alanı da kumaşla dolu.
+  assert.ok(data[(20 * W + 800) * 3 + 2] > data[(20 * W + 800) * 3] + 40, 'üst alan kumaş olmalı');
 });

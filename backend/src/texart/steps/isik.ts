@@ -15,9 +15,10 @@ export type IsikParams = {
   enAzEgim: number; // alanın p95/p5 oranı bunun altındaysa düzeltme gereksiz
   kromaKoruma: [number, number]; // düşük frekanslı kroma std bu aralıkta dozu 1→0'a kısar
   kucultme: number; // alan bu çarpanla küçültülüp saklanır
+  kapsamaYumusatma: number; // maske kapsaması (gauss(m)) bunun altında kaldıkça kazanç 1'e yumuşak iner
 };
 
-export const ISIK: IsikParams = { sigmaOrani: 0.12, doz: 0.25, enAzEgim: 1.06, kromaKoruma: [3, 9], kucultme: 4 };
+export const ISIK: IsikParams = { sigmaOrani: 0.12, doz: 0.25, enAzEgim: 1.06, kromaKoruma: [3, 9], kucultme: 4, kapsamaYumusatma: 0.05 };
 
 export function isik(ctx: Ctx, p: IsikParams = ISIK) {
   const { L, img } = ctx.an;
@@ -71,13 +72,16 @@ export function isik(ctx: Ctx, p: IsikParams = ISIK) {
     log(ctx, { adim: 'isik_dengeleme', risk: 'dikkat', durum: 'atlandi', not: 'Kumaşta düşük frekanslı renk geçişi (degrade) var; parlaklık eğimi tasarım olabilir, dokunulmadı', olcum });
     return;
   }
-  // Kazanç alanı: g = clamp(med / field, 1−doz, 1+doz); kumaş dışı 1.
+  // Kazanç alanı: g = clamp(med / field, 1−doz, 1+doz). Alan SERT KENARSIZ olmalı: normalize
+  // konvolüsyonun maske kapsaması (gM) kumaştan uzaklaştıkça sıfıra iner; kazanç bu kapsamayla
+  // 1'e doğru YUMUŞAK harmanlanır (eşikle 1'e atlamak doldurulan bölgede tonlama şeridi yaratır).
   const gain = plane(gw, gh, 1);
   let uygulanan = 0;
   for (let i = 0; i < gw * gh; i++) {
     const f = field.d[i];
     if (f > 1) {
-      const g = Math.max(1 - doz, Math.min(1 + doz, med / f));
+      const t = Math.min(1, gM.d[i] / p.kapsamaYumusatma);
+      const g = 1 + t * (Math.max(1 - doz, Math.min(1 + doz, med / f)) - 1);
       gain.d[i] = g;
       if (Math.abs(g - 1) > uygulanan) uygulanan = Math.abs(g - 1);
     }

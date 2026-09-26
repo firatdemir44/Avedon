@@ -119,6 +119,7 @@ export function ayirma(ctx: Ctx, p: AyirmaParams = AYIRMA): Segmentation {
     }
   }
   // 4) Kapa (çizgi/motif gibi ince ayrımları köprüle) + aç (kıymık temizliği) → merkeze en yakın büyük bileşen → delik doldurma.
+  const ham: Mask = { w, h, d: Uint8Array.from(mask.d) };
   const r = Math.max(1, Math.round(Math.min(w, h) / 200));
   let m = morph(morph(mask, r, false), r, true);
   m = morph(morph(m, r, true), r, false);
@@ -156,7 +157,7 @@ export function ayirma(ctx: Ctx, p: AyirmaParams = AYIRMA): Segmentation {
   const butunluk = toplamKumas ? alan / toplamKumas : 0;
   const kadrajDolu = alanOrani >= p.doluEsigi;
   const guven = Math.round(100 * (kadrajDolu ? 0.85 : 0.5 * ayrimPuan + 0.3 * butunluk + 0.2 * Math.min(1, alanOrani / 0.5))) / 100;
-  const seg: Segmentation = { mask: m, guven, kadrajDolu, alanOrani, zemin, kumasLab, yariSaydam: false, sinir };
+  const seg: Segmentation = { mask: m, guven, kadrajDolu, alanOrani, zemin, kumasLab, yariSaydam: false, sinir, ham };
   log(ctx, {
     adim: 'ayirma',
     risk: 'guvenli',
