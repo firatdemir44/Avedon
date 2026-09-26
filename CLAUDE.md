@@ -1,4 +1,5 @@
 # Takyon Ai — çalışma düzeni
+n**Skill paketi (Fırat 2026-09-26):** Bu proje için önce `takyon-yol-haritasi` skill'ini oku; hangi aşamada olduğumuzu oradan öğren ve ilgili aşama skill'ini kullan (`.claude/skills/`).
 
 **TEK MAKİNE, TEK OTURUM (kullanıcı kararı, 2026-09-15):** Geliştirme yalnızca **iş PC'sinde** yapılır. İş PC'si sürekli açık kalır; kullanıcı evden ve telefondan bu makinedeki oturuma **Remote Control** ile bağlanır (Claude mobil uygulamasının Code sekmesi veya claude.ai/code). Gerekçe: 2026-09-14/15'te iki makinede çalışmak ayrı `.env`, ayrı veritabanı ve senkron kaymasıyla sürekli sorun çıkardı.
 

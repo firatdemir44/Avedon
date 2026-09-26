@@ -1,6 +1,7 @@
 # local tooling config
 deploy-guide.html
-.claude/
+.claude/*
+!.claude/skills/
 mobile/.claude/
 
 # dependencies
