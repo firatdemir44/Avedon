@@ -1,6 +1,6 @@
 # Mevcut Durum
 
-Son güncelleme: 2026-09-26 (ayrıntılı iş listesi: `docs/yapilacaklar.md`)
+Son güncelleme: 2026-09-26 (zaman planı: `docs/global-yol-haritasi.md`; iş listesi: `docs/yapilacaklar.md`)
 
 Aşama: 1 — Kapalı pilot (pilot firmalarla deneme sürüyor; Melide ilk pilot).
 Aşama 0 (tasarım uyumu) büyük ölçüde tamam; ekranlar DESIGN.md token'larıyla, telefonda kontrol edildi.
