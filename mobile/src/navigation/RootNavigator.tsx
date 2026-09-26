@@ -23,6 +23,7 @@ import { BuyerListScreen } from '../screens/export/BuyerListScreen';
 import { LeadsScreen } from '../screens/export/LeadsScreen';
 import { ClaimCompanyScreen } from '../screens/companies/ClaimCompanyScreen';
 import { EditCompanyScreen } from '../screens/company/EditCompanyScreen';
+import { ProductionEditScreen } from '../screens/company/ProductionEditScreen';
 import { CompanySetupScreen } from '../screens/company/CompanySetupScreen';
 import { AddProductScreen } from '../screens/company/AddProductScreen';
 import { PassportReviewScreen } from '../screens/company/PassportReviewScreen';
@@ -243,6 +244,7 @@ export function RootNavigator() {
             <Stack.Screen name="ExportLeads" component={LeadsScreen} />
             <Stack.Screen name="SampleSet" component={SampleSetScreen} />
             <Stack.Screen name="ClaimCompany" component={ClaimCompanyScreen} />
+            <Stack.Screen name="ProductionEdit" component={ProductionEditScreen} />
             <Stack.Screen
               name="EditCompany"
               component={EditCompanyScreen}

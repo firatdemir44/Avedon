@@ -71,7 +71,7 @@ export type RootStackParamList = {
   CompanyProfile:
     | {
         companyId?: string;
-        initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines';
+        initialTab?: 'about' | 'products' | 'feed' | 'people' | 'machines' | 'production';
         focus?: 'references';
         // Rehberden gelindiğinde sahipsiz bilgisi (sunucu yanıtında da var; yedek).
         claimed?: boolean;
@@ -88,6 +88,8 @@ export type RootStackParamList = {
   // Sahipsiz firmayı belgeyle sahiplenme başvurusu.
   ClaimCompany: { companyId: string; companyName: string };
   EditCompany: { companyId: string };
+  // Üretim kabiliyeti düzenleme (konfeksiyon / fason atölye).
+  ProductionEdit: { companyId: string };
   // Adım adım firma sayfası kurulumu (Aşama B). step verilmezse tamamlanmamış
   // ilk adımdan başlar; anahtarlar features/companies/completeness.ts içinde.
   CompanySetup: { step?: string } | undefined;

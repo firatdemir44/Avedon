@@ -58,11 +58,20 @@ export function Chip({ label, selected = false, onPress, icon, disabled, style }
 export interface ChipRowProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  wrap?: boolean;
 }
 
 /** Yatay kaydırılan çip satırı; satır kırmaz. */
-export function ChipRow({ children, style }: ChipRowProps) {
+export function ChipRow({ children, style, wrap }: ChipRowProps) {
   const t = useTheme();
+  // wrap: çok seçenekli formlarda satıra kaydırmak yerine alt satıra geçer (hepsi görünür).
+  if (wrap) {
+    return (
+      <View style={[{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: t.space[2], paddingVertical: t.space[1] }, style]}>
+        {children}
+      </View>
+    );
+  }
   return (
     <ScrollView
       horizontal

@@ -2,6 +2,12 @@
 
 Kurallar: DESIGN.md'ye uyulur; yeni bileşen/rozet önce DESIGN.md'ye eklenir. Her bölümden sonra özet + Fırat onayı. A ve B Opus ile; C'nin veri modeli Fable 5.1 ile (limit açılınca). Test bilgisayardaki test veritabanında, canlı veriye dokunulmaz. Stoğu biten ürüne bağlı iş birliği için özel kural yapılmaz (Fırat 2026-09-26).
 
+## Kararlar (Fırat 2026-09-26)
+- Firma türü ikiye ayrılır: **Konfeksiyon (kendi koleksiyonu)** ve **Fason atölye**; ikisinde de Üretim sekmesi. İkisini de yapan: konfeksiyon + çalışma şekli "ikisi".
+- İhtisas firma türüyle değil **ürün grubu** ile: genişletilmiş liste + firma 1-3 **ana uzmanlık** işaretler; arama ve kartta öne çıkar. Uzmanlığa özel makine alanları sonraya.
+- Atölyeye özel: yaptığı işlemler (kesim, dikim, overlok/reçme, ütü-paket, kalite kontrol), iş şekli (sadece dikim / kumaş dahil tam paket), makine parkı Makineler sekmesinden.
+- Aramada "Koleksiyon · Fason atölye · Hepsi" seçimi.
+
 ## Bölüm A — Üretim kabiliyeti (konfeksiyon firmaları)
 1. Firma türü "Konfeksiyon" olan firmada ilk sekme **Üretim**; **Ürünler** yalnızca ürün eklenmişse görünür. Makineler, Hakkında, Kişiler, Belgeler aynen kalır.
 2. Üretim sekmesi (firma sahibi düzenler, boş alan gizlenir): ürün grupları (çoklu + serbest metin), çalışma şekli (fason / kendi koleksiyonu / ikisi), aylık kapasite (istenirse ürün grubu bazında), minimum sipariş (model ve renk başına), termin (numune ve üretim günü), hizmetler, sertifikalar (kumaş pasaportundaki aynı liste; belge yüklenirse Belgeler'e bağlanır, rozet **BELGELİ**), ihracat pazarları (Dünyayı Keşfet ülke listesi), çalışan sayısı aralığı, referans işler galerisi (en çok 12 görsel; her görselde zorunlu "Bu görseli paylaşma iznim var"; müşteri adı isteğe bağlı, varsayılan gizli).

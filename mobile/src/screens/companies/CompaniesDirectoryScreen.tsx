@@ -39,6 +39,7 @@ const SHORT_LABELS: Record<string, string> = {
   iplik: 'İplikçiler',
   kumas_uretici: 'Kumaş üreticileri',
   konfeksiyon: 'Konfeksiyon',
+  fason_atolye: 'Fason atölye',
   boyahane: 'Boyahane',
   aksesuar: 'Aksesuar',
   baski: 'Baskı',

@@ -78,6 +78,8 @@ const GROUP_OF: Record<BadgeKind, StatusGroup> = {
   verified: 'done',
   delivered: 'done',
   cancelled: 'closed',
+  // Talep durumlarında kullanılmaz; eşlem eksiksiz olsun diye.
+  documented: 'done',
 };
 
 const SAMPLE_BADGE: Record<SampleRequestStatus, BadgeKind> = {

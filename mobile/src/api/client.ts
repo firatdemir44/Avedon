@@ -3588,3 +3588,100 @@ export function mergeDuplicateAccounts(keepUserId: string, removeUserId: string,
     body: JSON.stringify({ keepUserId, removeUserId }),
   });
 }
+
+// --- Üretim kabiliyeti (konfeksiyon / fason atölye; docs/konfeksiyon-plani.md Bölüm A) ---
+// Sunucu: backend/src/routes/production.ts. Seçenek etiketleri sunucudan dile göre gelir.
+
+export interface ProductionOption {
+  key: string;
+  label: string;
+}
+
+export interface ProductionCertificate {
+  key: string;
+  // Belgeler (certificate) galerisindeki fotoğrafın sırası; bağlı değilse null.
+  docPosition: number | null;
+  // docPosition mevcut bir belge fotoğrafını gösteriyor → BELGELİ rozeti.
+  documented?: boolean;
+}
+
+export interface CompanyProduction {
+  productGroups: string[];
+  mainGroups: string[];
+  groupsOther: string;
+  workMode: '' | 'fason' | 'koleksiyon' | 'ikisi';
+  monthlyCapacity: number | null;
+  capacityByGroup: Record<string, number>;
+  moqPerModel: number | null;
+  moqPerColor: number | null;
+  sampleLeadDays: number | null;
+  productionLeadDays: number | null;
+  services: string[];
+  operations: string[];
+  fabricMode: '' | 'sadece_dikim' | 'tam_paket' | 'ikisi';
+  certificates: ProductionCertificate[];
+  exportCountries: string[];
+  employeeRange: string;
+}
+
+export interface ProductionReferenceItem {
+  position: number;
+  caption: string;
+  // Ziyaretçiye yalnızca showClient ise dolu gelir; sahibi her zaman görür.
+  clientName: string;
+  showClient: boolean;
+}
+
+export interface ProductionOptions {
+  productGroups: ProductionOption[];
+  services: ProductionOption[];
+  operations: ProductionOption[];
+  workModes: ProductionOption[];
+  fabricModes: ProductionOption[];
+  employeeRanges: ProductionOption[];
+  certificates: ProductionOption[];
+  countries: { key: string; name: string }[];
+  maxMainGroups: number;
+  maxReferences: number;
+}
+
+export interface ProductionView {
+  production: CompanyProduction;
+  references: ProductionReferenceItem[];
+  options: ProductionOptions;
+}
+
+export function fetchProduction(companyId: string) {
+  return request<ProductionView>(`/companies/${companyId}/production`);
+}
+
+export function saveProduction(companyId: string, production: CompanyProduction) {
+  const certificates = production.certificates.map((c) => ({ key: c.key, docPosition: c.docPosition }));
+  return request<ProductionView>(`/companies/${companyId}/production`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...production, certificates }),
+  });
+}
+
+export interface NewProductionReference {
+  imageUrl: string;
+  caption: string;
+  clientName: string;
+  showClient: boolean;
+  permissionConfirmed: boolean;
+}
+
+export function addProductionReference(companyId: string, input: NewProductionReference) {
+  return request<ProductionView & { position: number }>(`/companies/${companyId}/production/references`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteProductionReference(companyId: string, position: number) {
+  return request<ProductionView>(`/companies/${companyId}/production/references/${position}`, { method: 'DELETE' });
+}
+
+export function fetchProductionReferenceImage(companyId: string, position: number) {
+  return request<{ imageUrl: string }>(`/companies/${companyId}/production/references/${position}/image`);
+}

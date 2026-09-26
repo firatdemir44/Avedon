@@ -102,7 +102,8 @@ export const STOCK_UNITS = ['m', 'kg'] as const;
 // hesap türü kişinin rolü, bu firmanın ne iş yaptığı.
 export const COMPANY_TYPES = [
   { key: 'kumas_uretici', label: 'Kumaş Üreticisi' },
-  { key: 'konfeksiyon', label: 'Konfeksiyon / Giyim Üreticisi' },
+  { key: 'konfeksiyon', label: 'Konfeksiyon (kendi koleksiyonu)' },
+  { key: 'fason_atolye', label: 'Fason Atölye' },
   { key: 'boyahane', label: 'Boyahane / Terbiye' },
   { key: 'iplik', label: 'İplik Üreticisi' },
   { key: 'aksesuar', label: 'Aksesuar' },

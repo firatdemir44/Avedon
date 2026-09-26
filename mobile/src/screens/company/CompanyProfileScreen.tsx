@@ -18,6 +18,8 @@ import {
   fetchCompanyFeed,
   fetchCompanyMachines,
   fetchCompanyQuestions,
+  fetchProduction,
+  type ProductionView as ProductionData,
   fetchProductDrafts,
   fetchCompanyReferences,
   fetchCompanyTrust,
@@ -52,6 +54,8 @@ import { confirmAction } from '../../features/confirm';
 import { haptics } from '../../features/haptics';
 import { markFeedStale } from '../../features/feed/feedRefresh';
 import { companyCompleteness } from '../../features/companies/completeness';
+import { hasProductionTab } from '../../features/companies/production';
+import { ProductionView } from '../../components/ProductionView';
 import { companyLogoKey, getCachedCompanyLogo, loadCompanyLogo } from '../../features/companies/companyLogoCache';
 import { getCachedProductImage, loadProductImage } from '../../features/products/productImageCache';
 import { PRODUCT_TYPES, TYPE_LABELS, USAGES, companyTypeLabel, type ProductType } from '../../features/products/catalog';
@@ -73,6 +77,7 @@ import {
   SectionTitle,
   Skeleton,
   SkeletonRow,
+  SkeletonText,
   StatBox,
 } from '../../ui';
 import type { Product } from '../../types';
@@ -83,10 +88,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CompanyProfile'>;
 // Şerit yatay kaydırılır, sekme adı kısaltılmaz. Eski initialTab: 'machines'
 // bağlantıları (kapasite araması, asistan) doğrudan Makineler sekmesini açar. "Firma akışı" şeritte yok ama initialTab: 'feed' ile
 // açılan eski bağlantılar kırılmasın diye içerik korunuyor.
-type CompanyTab = 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
+// Konfeksiyon / fason atölye (docs/konfeksiyon-plani.md Bölüm A): ilk sekme Üretim; Ürünler
+// yalnızca ürün eklenmişse görünür.
+type CompanyTab = 'production' | 'products' | 'about' | 'people' | 'docs' | 'machines' | 'feed';
 
-const tabs = (): { key: CompanyTab; label: string }[] => [
-  { key: 'products', label: tr('Ürünler') },
+const tabs = (production: boolean, productCount: number): { key: CompanyTab; label: string }[] => [
+  ...(production ? [{ key: 'production' as const, label: tr('Üretim') }] : []),
+  ...(!production || productCount > 0 ? [{ key: 'products' as const, label: tr('Ürünler') }] : []),
   { key: 'machines', label: tr('Makineler') },
   { key: 'about', label: tr('Hakkında') },
   { key: 'people', label: tr('Kişiler') },
@@ -235,10 +243,40 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     }, [unclaimed, user?.companyId])
   );
   // Sahipsiz firmada ürün/kişi sekmeleri yok.
-  const allTabs = tabs();
-  const visibleTabs = unclaimed ? allTabs.filter((item) => item.key !== 'products' && item.key !== 'people' && item.key !== 'machines') : allTabs;
+  const productionType = hasProductionTab(company?.companyType);
+  const allTabs = tabs(productionType, company?.products?.length ?? 0);
+  // Üretim sekmeli firmada, bağlantı başka sekme istemediyse ilk açılışta Üretim.
+  const [productionDefaulted, setProductionDefaulted] = useState(false);
   useEffect(() => {
-    if (unclaimed && (tab === 'products' || tab === 'people' || tab === 'machines')) setTab('about');
+    if (!company || productionDefaulted) return;
+    setProductionDefaulted(true);
+    if (productionType && !route.params?.initialTab && !unclaimed) setTab('production');
+  }, [company, productionDefaulted, productionType, route.params?.initialTab, unclaimed]);
+  // Gizlenen sekmede kalınmasın (ör. ürünsüz konfeksiyonda Ürünler).
+  useEffect(() => {
+    if (!company) return;
+    if (!allTabs.some((item) => item.key === tab) && tab !== 'feed') setTab(allTabs[0]?.key ?? 'about');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company, tab, productionType]);
+
+  // Üretim bilgisi: sekme ve (kendi firmasında) tamamlanma çubuğu için.
+  const [production, setProduction] = useState<ProductionData | null>(null);
+  const [productionFailed, setProductionFailed] = useState(false);
+  const loadProduction = useCallback(() => {
+    if (!viewedCompanyId || !productionType) return;
+    setProductionFailed(false);
+    fetchProduction(viewedCompanyId)
+      .then(setProduction)
+      .catch(() => setProductionFailed(true));
+  }, [viewedCompanyId, productionType]);
+  useFocusEffect(
+    useCallback(() => {
+      loadProduction();
+    }, [loadProduction])
+  );
+  const visibleTabs = unclaimed ? allTabs.filter((item) => item.key !== 'production' && item.key !== 'products' && item.key !== 'people' && item.key !== 'machines') : allTabs;
+  useEffect(() => {
+    if (unclaimed && (tab === 'production' || tab === 'products' || tab === 'people' || tab === 'machines')) setTab('about');
   }, [unclaimed, tab]);
 
   const loadReferences = useCallback(() => {
@@ -527,6 +565,8 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
         logoUpdatedAt: company.logoUpdatedAt,
         officePhotoCount: company.officePhotoCount,
         productCount: products.length,
+        production: production?.production ?? null,
+        productionReferenceCount: production?.references.length ?? 0,
       })
     : null;
 
@@ -575,7 +615,12 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
           <Button
             kind="secondary"
             label={tr('Tamamla')}
-            onPress={() => navigation.navigate('CompanySetup')}
+            // Kurulum adımları tamamsa eksik kalan üretim maddeleridir.
+            onPress={() =>
+              setup.firstIncomplete === null && setup.productionItems.some((i) => !i.done)
+                ? navigation.navigate('ProductionEdit', { companyId: company.id })
+                : navigation.navigate('CompanySetup')
+            }
             accessibilityLabel={tr('Firma sayfanız yüzde {percent} tamamlandı, tamamla', { percent: setup.percent })}
           />
         </View>
@@ -1453,6 +1498,24 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
       {actionRow}
       {unclaimed ? null : statsCard}
       {tabStrip}
+      {tab === 'production' ? (
+        production ? (
+          <ProductionView
+            companyId={company.id}
+            companyType={company.companyType ?? ''}
+            data={production}
+            isOwn={isOwnCompany}
+            onEdit={() => navigation.navigate('ProductionEdit', { companyId: company.id })}
+          />
+        ) : productionFailed ? (
+          <Card>
+            <Text style={[t.type.body14, { color: t.colors.danger }]}>{tr('Üretim bilgileri yüklenemedi.')}</Text>
+            <Button kind="secondary" label={tr('Tekrar dene')} onPress={loadProduction} style={{ marginTop: t.space[2] }} />
+          </Card>
+        ) : (
+          <SkeletonText lines={4} />
+        )
+      ) : null}
       {tab === 'about' ? aboutContent : null}
       {tab === 'docs' ? docsContent : null}
       {tab === 'machines' ? machinesContent : null}
@@ -1507,7 +1570,7 @@ export function CompanyProfileScreen({ navigation, route }: Props) {
     ) : null;
 
   const listEmpty =
-    tab === 'about' || tab === 'machines' || tab === 'docs' ? null : tab === 'products' ? (
+    tab === 'production' || tab === 'about' || tab === 'machines' || tab === 'docs' ? null : tab === 'products' ? (
       <Card>
         <EmptyState
           icon="sample"

@@ -75,6 +75,8 @@ model Company {
   referencesGiven        CompanyReference[] @relation("ReferenceFrom")
   referencesReceived     CompanyReference[] @relation("ReferenceTo")
   questions              CompanyQuestion[]
+  production             CompanyProduction?
+  productionReferences   ProductionReference[]
 
   @@index([companyType])
   @@index([normalizedName])
@@ -1334,4 +1336,51 @@ model TexartJob {
   @@index([status, createdAt])
   @@index([companyId, createdAt])
   @@index([productId])
+}
+
+// Konfeksiyon / fason atölye üretim kabiliyeti (docs/konfeksiyon-plani.md Bölüm A).
+// Liste alanları JSON metin; anahtarlar src/production.ts listelerinden.
+model CompanyProduction {
+  id                 String   @id @default(cuid())
+  companyId          String   @unique
+  company            Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  productGroups      String   @default("[]")
+  // En çok 3 ana uzmanlık; productGroups'un alt kümesi.
+  mainGroups         String   @default("[]")
+  groupsOther        String   @default("")
+  // '' | fason | koleksiyon | ikisi
+  workMode           String   @default("")
+  monthlyCapacity    Int?
+  // Ürün grubu bazında aylık kapasite: { grupAnahtarı: adet }
+  capacityByGroup    String   @default("{}")
+  moqPerModel        Int?
+  moqPerColor        Int?
+  sampleLeadDays     Int?
+  productionLeadDays Int?
+  services           String   @default("[]")
+  // Yalnız fason atölye: yaptığı işlemler
+  operations         String   @default("[]")
+  // '' | sadece_dikim | tam_paket | ikisi
+  fabricMode         String   @default("")
+  // [{ key, docPosition? }]: docPosition Belgeler galerisindeki (certificate) fotoğrafın sırası
+  certificates       String   @default("[]")
+  exportCountries    String   @default("[]")
+  employeeRange      String   @default("")
+  updatedAt          DateTime @updatedAt
+}
+
+// Referans işler galerisi (en çok 12). Paylaşma izni zorunlu; müşteri adı varsayılan gizli.
+model ProductionReference {
+  id                  String   @id @default(cuid())
+  companyId           String
+  company             Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  position            Int
+  imageUrl            String
+  caption             String   @default("")
+  clientName          String   @default("")
+  showClient          Boolean  @default(false)
+  permissionConfirmed Boolean
+  createdAt           DateTime @default(now())
+
+  @@unique([companyId, position])
 }
