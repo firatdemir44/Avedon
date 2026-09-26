@@ -13,7 +13,7 @@ import { ayirma } from './steps/ayirma';
 import { beyaz } from './steps/beyaz';
 import { cozunurluk } from './steps/cozunurluk';
 import { doku } from './steps/doku';
-import { kenarDoldurma } from './steps/doldurma';
+import { DOLDURMA, kenarDoldurma, type DoldurmaParams } from './steps/doldurma';
 import { duzBolgeLog, enIyiPencere, kirisikHaritasi } from './steps/duzBolge';
 import { largestSquare } from './steps/goruntu';
 import { isik } from './steps/isik';
@@ -56,7 +56,12 @@ function yenidenCekim(ctx: Ctx, kod: string): PipelineResult {
   return { durum: 'yeniden_cekim', neden: kod, mesaj, uyarilar: ctx.uyarilar, islem_kaydi: ctx.log, olcumler: ctx.olcumler };
 }
 
-export type PipelineOptions = { /** Adım 10 kenar doldurma (varsayılan açık; test/karşılaştırma için kapatılabilir). */ doldurma?: boolean };
+export type PipelineOptions = {
+  /** Adım 10 kenar doldurma (varsayılan açık; test/karşılaştırma için kapatılabilir). */
+  doldurma?: boolean;
+  /** Adım 10 parametrelerinin üstüne yazma (yalnız test/kalibrasyon). */
+  doldurmaParams?: Partial<DoldurmaParams>;
+};
 
 export async function runPipeline(input: Buffer, opts: PipelineOptions = {}): Promise<PipelineResult> {
   const t0 = Date.now();
@@ -137,7 +142,7 @@ export async function runPipeline(input: Buffer, opts: PipelineOptions = {}): Pr
   // kaynağının ışık/renk düzeltmesini taşır, maske içi pikseller doldurmasız render ile birebir aynıdır.
   let tamDolu = tam.islenmis;
   if (opts.doldurma === false) log(ctx, { adim: 'kenar_doldurma', risk: 'dikkat', durum: 'atlandi', not: 'Seçenekle kapatıldı', olcum: { neden: 'kapali' } });
-  else tamDolu = (await kenarDoldurma(ctx, tam.islenmis, tam.w, tam.h)).out;
+  else tamDolu = (await kenarDoldurma(ctx, tam.islenmis, tam.w, tam.h, { ...DOLDURMA, ...opts.doldurmaParams })).out;
   const tamIsl = await keskinlestir(tamDolu, tam.w, tam.h, doz / 2);
   // JPEG: mozjpeg ama trellis KAPALI — trellis, komşu blokların içeriğine göre nicemleme seçer ve
   // doldurmalı/doldurmasız çıktıda maske İÇİ pikselleri ±7'ye kadar farklılaştırır; kapalıyken

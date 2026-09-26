@@ -290,3 +290,90 @@ test('texart kenar doldurma: zigzag (pinking) kesim kenarındaki beyaz boşlukla
   // Üst kart alanı da kumaşla dolu.
   assert.ok(data[(20 * W + 800) * 3 + 2] > data[(20 * W + 800) * 3] + 40, 'üst alan kumaş olmalı');
 });
+
+// ---- Ek belirginlik kapısı (Fırat 2026-09-26, seçenek A) ----
+import { DOLDURMA, ekKapisi, ekOlcumu } from './steps/doldurma';
+import { gauss, plane } from './steps/goruntu';
+
+/** Sentetik sahne: periyodik kumaş, üst `ust` satır "dolgu", geri kalanı gerçek; dolgu satırları `donustur` ile üretilir. */
+function ekSahnesi(W: number, ust: number, donustur: (L: Float32Array, w: number, h: number) => Float32Array) {
+  const raw = periodicFabricRaw(W, W, 150, 24, 22);
+  const L = new Float32Array(W * W);
+  for (let i = 0; i < W * W; i++) L[i] = raw[i];
+  const L2 = donustur(L, W, W);
+  const out = new Uint8Array(W * W * 3);
+  const Wtum = new Float32Array(W * W), dikis = new Uint8Array(W * W);
+  const gecis = 12;
+  for (let y = 0; y < W; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      const wgt = y < ust ? 0 : y < ust + gecis ? (y - ust) / gecis : 1;
+      Wtum[i] = wgt;
+      if (wgt > 0 && wgt < 1) dikis[i] = 1;
+      const v = Math.max(0, Math.min(255, Math.round(wgt >= 1 ? L[i] : wgt <= 0 ? L2[i] : L[i] * wgt + L2[i] * (1 - wgt))));
+      out[i * 3] = out[i * 3 + 1] = out[i * 3 + 2] = v;
+    }
+  // Blok yerleşimi: 192 px blok, 65 px örtüşme; dolgu bandını kaplayan ızgara.
+  const B = 192, O = 65, adim = B - O;
+  const bloklar: { gx: number; gy: number; dx: number; dy: number }[] = [];
+  for (let gy = 0, dy = 0; dy < ust; gy++, dy += adim) for (let gx = 0, dx = 0; dx + B <= W; gx++, dx += adim) bloklar.push({ gx, gy, dx, dy });
+  return { out, Wtum, dikis, B, O, bloklar };
+}
+
+function periodicFabricRaw(w: number, h: number, base: number, periyot: number, amp: number, seed = 5) {
+  const d = new Float32Array(w * h);
+  let s = seed;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d[y * w + x] = base + amp * (Math.sin((2 * Math.PI * x) / periyot) + 0.6 * Math.sin((2 * Math.PI * y) / periyot)) + (rnd() - 0.5) * 8;
+  return d;
+}
+
+test('texart ek belirginlik kapısı: aynı doku geçer; bulanık dolgu (keskinlik basamağı) ve blok blok kontrastı değişen dolgu (yama) reddedilir', () => {
+  const W = 1200, UST = 480;
+  // 1) Temiz: dolgu = aynı doku (kopya) → geçer.
+  const temiz = ekSahnesi(W, UST, (L) => L);
+  const e1 = ekOlcumu(temiz.out, W, W, temiz.Wtum, temiz.dikis, temiz.B, temiz.O, temiz.bloklar, 24, [24, 24]);
+  assert.deepEqual(ekKapisi(e1), [], JSON.stringify(e1));
+  assert.ok(e1.sinir_keskinlik < 1.05 && e1.yama_doku_orani < 1.05, JSON.stringify(e1));
+  // 2) Bulanık dolgu: dolgu satırları σ=2 Gauss ile yumuşatılmış (kenardaki net kumaşa bulanık kopya) → keskinlik.
+  const bulanik = ekSahnesi(W, UST, (L, w, h) => gauss({ w, h, d: L }, 2).d);
+  const e2 = ekOlcumu(bulanik.out, W, W, bulanik.Wtum, bulanik.dikis, bulanik.B, bulanik.O, bulanik.bloklar, 24, [24, 24]);
+  assert.ok(ekKapisi(e2).includes('keskinlik'), JSON.stringify(e2));
+  assert.ok(e2.sinir_keskinlik > DOLDURMA.ekKeskinlikEsigi, JSON.stringify(e2));
+  // 3) Yama: her ikinci blokta doku kontrastı ×2 (ışık eğimi yok, ton aynı) → yama_doku.
+  const yama = ekSahnesi(W, UST, (L, w, h) => {
+    const g = gauss({ w, h, d: L }, 6).d, o = new Float32Array(L.length);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; const k = (Math.floor(x / 127) + Math.floor(y / 127)) % 2 ? 2 : 1; o[i] = g[i] + (L[i] - g[i]) * k; }
+    return o;
+  });
+  const e3 = ekOlcumu(yama.out, W, W, yama.Wtum, yama.dikis, yama.B, yama.O, yama.bloklar, 24, [24, 24]);
+  assert.ok(ekKapisi(e3).includes('yama_doku'), JSON.stringify(e3));
+  assert.ok(e3.blok_cifti > 0);
+  void plane;
+});
+
+test('texart kenar doldurma: ek belirginlik kapısı reddederse orijinal kare olduğu gibi döner (doldurmasız render ile birebir), uyarı ve ölçümler kayıtta', async () => {
+  const W = 1600, F = 960;
+  const fabric = await periodicFabric(F, F, [50, 90, 170]).png().toBuffer();
+  const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 246, g: 246, b: 242 } } })
+    .composite([{ input: fabric, left: (W - F) / 2, top: (W - F) / 2 }])
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  // Eşik −1: her dolgu "yama" sayılır → ret yolu uçtan uca.
+  const [r, r0] = await Promise.all([runPipeline(img, { doldurmaParams: { ekYamaDokuEsigi: -1 } }), runPipeline(img, { doldurma: false })]);
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  assert.equal(r0.durum, 'tamam');
+  if (r.durum !== 'tamam' || r0.durum !== 'tamam') return;
+  const kd = r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')!;
+  assert.equal(kd.durum, 'atlandi', JSON.stringify(kd));
+  assert.equal(kd.olcum!.neden, 'ek_belirgin');
+  assert.equal(kd.olcum!.ek_asan, 'yama_doku');
+  for (const k of ['ek_sinir_keskinlik', 'ek_yama_doku_orani', 'ek_ton_farki', 'ek_dikis_orani', 'ek_faz_orani']) assert.equal(typeof kd.olcum![k], 'number', k);
+  assert.ok(r.uyarilar.includes('doldurma_yapilmadi:ek_belirgin'));
+  assert.ok(!r.uyarilar.includes('kenar_kumasla_tamamlandi'));
+  assert.equal(r.olcumler.doldurulan_oran, 0);
+  const a = await sharp(r.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  const b = await sharp(r0.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  assert.equal(a.info.width, W);
+  assert.equal(Buffer.compare(a.data, b.data), 0, 'reddedilen dolgu: çıktı doldurmasız render ile birebir aynı olmalı');
+});
