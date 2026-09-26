@@ -11,9 +11,9 @@ hiçbir davranışı bozulmaz.
 
 ## Katman 1 — Dil altyapısı
 
-- Bütün arayüz metinleri tek çeviri dosyasına çıkarılır (`locales/tr.json`,
-  `locales/en.json`); kodda sabit metin kalmaz. Bunu tek seferde ve tamamen yap;
-  yarım i18n en pahalı hata.
+- Dil altyapısı KURULU ve TR+EN TAMAM (2026-09): mobilde `mobile/src/i18n` (Türkçe metin anahtar,
+  `tr()`), sunucuda `backend/src/i18n` + `X-Lang`. Yeni dil = yeni sözlük dosyaları; ayrı
+  `locales/*.json` yapısı KURULMAZ.
 - Tekstil terimleri için ayrı sözlük: `locales/glossary.md`. Fırat Türkçe terimi
   ve karşılığını onaylar (örn. örme = knitting, fason = contract manufacturing,
   numune = sample, gramaj = GSM, termin = lead time, fire = waste/loss).
@@ -26,8 +26,8 @@ hiçbir davranışı bozulmaz.
 ## Katman 2 — Birim ve para
 
 - Her fiyat alanı para birimi taşır; TL varsayılan, USD/EUR/EGP seçilebilir.
-  Uygulama kur çevirmez; firma hangi para biriminde girdiyse o gösterilir
-  (yanıltıcı kur tahmini yerine şeffaflık).
+  Fiyat, firmanın girdiği para biriminde gösterilir. TCMB günlük satış kuru yalnızca
+  bilgi amaçlı ve kaynağıyla gösterilir (mevcut özellik); kur tahmini yapılmaz.
 - Birimler: gramaj g/m² (GSM), en cm ve inç, ağırlık kg ve lb, MOQ metre/kg/adet.
   Dönüşüm formülleri `tekstil-hesaplar` skill'inde.
 - İplik numaraları uluslararası: Ne, Nm, tex, denier — dönüşüm tablosu hazır.
@@ -55,7 +55,7 @@ Her pazar için `global/pazar-<ülke>.md` dosyası: yerel rakipler, fiyat beklen
 
 ## Pazar açılış kontrol listesi
 
-- [ ] EN arayüz %100, sözlük onaylı, 2 ana dil konuşan tekstilciyle test
+- [x] EN arayüz tamam (2026-09) · [ ] sözlük onaylı, 2 ana dil konuşan tekstilciyle test
 - [ ] Fiyatlandırma o pazarın para biriminde
 - [ ] Ödeme yöntemi çalışıyor (kart + havale)
 - [ ] GDPR/yerel hukuk listesi avukat onaylı

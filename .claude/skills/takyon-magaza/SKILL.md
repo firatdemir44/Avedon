@@ -5,15 +5,15 @@ description: Takyon Ai web uygulamasını iOS ve Android mağaza uygulamasına t
 
 # Takyon Ai Mağaza Uygulaması
 
-Mevcut ürün 375px için tasarlanmış, tarayıcıda açılıp ana ekrana eklenen bir web
-uygulamasıdır. Mağaza aşamasında amaç tasarımı ve akışları yeniden yazmak değil,
-aynı deneyimi mağazadan indirilebilir hale getirmek ve push bildirim kazanmaktır.
+Mevcut ürün ZATEN Expo (React Native, SDK 57) ile yazılmıştır (`mobile/`); bugün web (PWA) olarak
+yayınlanıyor. Mağaza aşamasında taşıma/yeniden yazma YOK: aynı kod tabanından EAS Build ile
+iOS/Android derlemesi alınır; yalnızca web'e özel parçaların (ses kaydı, rehberden seçim, web push,
+tarayıcı konuşması) telefona özgü karşılıkları yazılır.
 
 ## Strateji kararı (verildi, tekrar sorma)
 
-- Expo (React Native) kullanılır. Expo Router ile mevcut ekran yapısı birebir taşınır.
-- Tasarım sistemi (DESIGN.md, tokens.css) React Native token dosyasına çevrilir;
-  renk ve boşluk değerleri değişmez.
+- Kod tabanı aynı kalır (`mobile/`, React Navigation); ekranlar ve tasarım token'ları
+  (`mobile/src/theme/tokens.ts`) zaten React Native'de.
 - İlk mağaza sürümü web ile aynı özellik setine sahip olur; yeni özellik eklenmez.
 - Backend değişmez; uygulama aynı API'yi kullanır.
 
@@ -29,13 +29,13 @@ skill budur:
 Plugin Expo, EAS Build ve mağaza gönderimi bilgisini getirir. Bu skill ise
 Takyon'a özgü sıralamayı ve kontrol listesini verir; ikisi birlikte çalışır.
 
-## Taşıma sırası
+## Mağaza hazırlık sırası
 
-1. Expo projesi oluştur, tokens'ı çevir, tipografiyi (IBM Plex) yükle.
-2. Ekranları öncelik sırasıyla taşı: giriş/doğrulama → ana sayfa → arama →
+1. EAS proje ayarı (app.json kimlikleri, simgeler, açılış ekranı), web'e özel özelliklerin telefon karşılıkları.
+2. Ekranları öncelik sırasıyla telefonda doğrula: giriş/doğrulama → ana sayfa → arama →
    firma sayfası (makine parkuru sekmesi) → numune isteği → hesaplayıcılar →
    yapay zekâ danışman → profil.
-3. Her ekranı taşıdıktan sonra web sürümüyle yan yana ekran görüntüsü al, farkı
+3. Her ekranı doğruladıktan sonra web sürümüyle yan yana ekran görüntüsü al, farkı
    sıfırla.
 4. Push bildirim: yalnızca 3 olay — numune isteği geldi, mesaj geldi, iş birliği
    onaylandı. Başka bildirim yok; 35–60 yaş kullanıcı bildirimi kapatır.
@@ -45,7 +45,7 @@ Takyon'a özgü sıralamayı ve kontrol listesini verir; ikisi birlikte çalış
 
 ## Mağazaya gönderim kontrol listesi
 
-- Apple Developer ve Google Play Console hesapları Melide/Takyon adına açıldı.
+- Apple Developer ve Google Play Console hesapları Takyon Ai Sanayi ve Ticaret A.Ş. adına (daha önce açılmış hesaplar varsa erişim ve üyelik kontrol edilir).
 - Uygulama adı "Takyon Ai"; marka tescil durumu avukatla teyit edildi.
 - Gizlilik politikası URL'si yayında (KVKK metniyle uyumlu).
 - Mağaza ekran görüntüleri: 5 adet, gerçek tekstil verisiyle, Türkçe.

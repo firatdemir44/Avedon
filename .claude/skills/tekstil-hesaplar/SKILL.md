@@ -14,8 +14,9 @@ verim tahmin etmez.** Kullanıcı girer, uygulama hesaplar, formülü gösterir.
 - `references/standart-donusumler.md`: uluslararası standart formüller (iplik numarası
   dönüşümleri, birim çevirileri). Değişmez, doğrudan kullanılır.
 - `references/melide-formuller.md`: Fırat'ın sağladığı işletme formülleri ve varsayılan
-  fire aralıkları. **Boş alanlar Fırat doldurmadan hesaplayıcı yayına alınmaz.**
-  Boş alan görürsen tahmin etme; Fırat'a hangi alanın eksik olduğunu tek cümleyle sor.
+  fire aralıkları. Hesaplayıcılar CANLIDA ve standart formüllerle, tüm değerler kullanıcı
+  girdisiyle çalışır. Bu dosyadaki boş alanlar yalnızca "varsayılan öneri" (ör. tipik fire)
+  içindir: Fırat doldurana kadar varsayılan öneri GÖSTERİLMEZ; tahmin etme.
 
 ## Her hesaplayıcı ekranı için kurallar
 

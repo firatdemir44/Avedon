@@ -19,20 +19,20 @@ Amaç: herkese açılmak; güvenlik ve ticari zemin. Skill: takyon-guvenlik-kapi
 - Güvenlik raporu PASS (kimlik doğrulama, firma verisi izolasyonu, fotoğraf yükleme,
   bağımlılıklar, KVKK aydınlatma metni).
 - İsim (Takyon Ai) ve fiyatlandırma kararı; referans rakip fiyatı 2.500 TL/kişi/yıl.
-- Konfeksiyon firmaları için üretim kabiliyeti profili (aşama 1 özelliği) ve
-  kumaş ↔ konfeksiyon "doğrulanmış iş birliği" bağları (aşama 2 özelliği) canlı.
-- Firma asistanı (her firmaya bir yapay zekâ asistanı) ilk sürümü.
+- ✓ Konfeksiyon üretim kabiliyeti profili, konfeksiyon araması ve kumaş ↔ konfeksiyon
+  "doğrulanmış iş birliği" bağları canlı (2026-09-26, erken tamamlandı).
+- ✓ Firma asistanı canlı (uygulama, WhatsApp, doğal ses).
 - Çıkış: ödeme alınabiliyor, ilk ödeyen 10 firma.
 
 ## Aşama 3 — Mağaza uygulaması (6–8 hafta)
 Amaç: telefon ana ekranından store'a. Skill: takyon-magaza.
-- Web uygulaması Expo (React Native) ile sarılır; mevcut ekran mantığı korunur.
+- Kod zaten Expo: EAS ile mağaza derlemesi; web'e özel özelliklerin telefon karşılıkları.
 - Push bildirim (numune isteği geldi, mesaj geldi).
 - Çıkış: App Store ve Google Play'de yayında, çökme oranı < %1.
 
 ## Aşama 4 — Global (3–6 ay)
 Amaç: ilk dış pazar. Skill: takyon-global.
-- Dil altyapısı: TR + EN tam; sonra hedef pazar dili.
+- ✓ Dil altyapısı: TR + EN tam (2026-09); sonra hedef pazar dili.
 - Para birimi ve birim (gramaj g/m², en cm/inç, MOQ, termin gün).
 - GDPR: aydınlatma, veri işleme sözleşmesi, silme hakkı, AB dışı veri aktarımı.
 - Hedef pazar sırası önerisi: Mısır (Egypt Cady ilişkisi hazır zemin), ardından
