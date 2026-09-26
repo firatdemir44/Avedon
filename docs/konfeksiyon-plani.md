@@ -1,6 +1,6 @@
 # Konfeksiyon kabiliyeti ve doğrulanmış iş birliği — plan (onay bekliyor, 2026-09-26)
 
-Kurallar: DESIGN.md'ye uyulur; yeni bileşen/rozet önce DESIGN.md'ye eklenir. Her bölümden sonra özet + Fırat onayı. A ve B Opus ile; C'nin veri modeli Fable 5.1 ile (limit açılınca). Test bilgisayardaki test veritabanında, canlı veriye dokunulmaz.
+Kurallar: DESIGN.md'ye uyulur; yeni bileşen/rozet önce DESIGN.md'ye eklenir. Her bölümden sonra özet + Fırat onayı. A ve B Opus ile; C'nin veri modeli Fable 5.1 ile (limit açılınca). Test bilgisayardaki test veritabanında, canlı veriye dokunulmaz. Stoğu biten ürüne bağlı iş birliği için özel kural yapılmaz (Fırat 2026-09-26).
 
 ## Bölüm A — Üretim kabiliyeti (konfeksiyon firmaları)
 1. Firma türü "Konfeksiyon" olan firmada ilk sekme **Üretim**; **Ürünler** yalnızca ürün eklenmişse görünür. Makineler, Hakkında, Kişiler, Belgeler aynen kalır.
@@ -9,7 +9,7 @@ Kurallar: DESIGN.md'ye uyulur; yeni bileşen/rozet önce DESIGN.md'ye eklenir. H
 
 ## Bölüm B — Konfeksiyon araması
 4. Aramaya "Konfeksiyon" kategorisi; süzgeç: ürün grubu, en az kapasite, en fazla MOQ, en fazla termin, sertifika, hizmet, il.
-5. Serbest metinden süzgeç çıkarma — **plandan çıkarıldı** (Fırat 2026-09-26: "5'i hiç yapma").
+5. Serbest metinden süzgeç çıkarma: "tayt aylık 50 bin oeko-tex" → ürün grubu=tayt, kapasite≥50.000, sertifika=OEKO-TEX; çıkarılan süzgeçler çip olarak görünür, kullanıcı silebilir (makine aramasındaki çözümleyicinin yöntemiyle).
 6. Sonuç kartı: firma + doğrulanmış rozeti, ürün grupları, mono-14 "Kapasite 50.000/ay · MOQ 500 · Termin 30 gün", sertifika rozetleri.
 7. Konfeksiyona "Teklif iste" formu: ürün grubu, adet, hedef termin, kumaş (katalogdan seç / kumaşı ben sağlarım / firma önersin), teknik föy veya görsel, not. Yeni talep türü; mevcut açık talep yapısına yakın kurulur. Katalogdan kumaş seçilirse talep o kumaşa bağlanır.
 8. Ek: asistana "konfeksiyon ara" becerisi.
