@@ -13,6 +13,7 @@ import { ayirma } from './steps/ayirma';
 import { beyaz } from './steps/beyaz';
 import { cozunurluk } from './steps/cozunurluk';
 import { doku } from './steps/doku';
+import { kenarDoldurma } from './steps/doldurma';
 import { duzBolgeLog, enIyiPencere, kirisikHaritasi } from './steps/duzBolge';
 import { largestSquare } from './steps/goruntu';
 import { isik } from './steps/isik';
@@ -55,7 +56,9 @@ function yenidenCekim(ctx: Ctx, kod: string): PipelineResult {
   return { durum: 'yeniden_cekim', neden: kod, mesaj, uyarilar: ctx.uyarilar, islem_kaydi: ctx.log, olcumler: ctx.olcumler };
 }
 
-export async function runPipeline(input: Buffer): Promise<PipelineResult> {
+export type PipelineOptions = { /** Adım 10 kenar doldurma (varsayılan açık; test/karşılaştırma için kapatılabilir). */ doldurma?: boolean };
+
+export async function runPipeline(input: Buffer, opts: PipelineOptions = {}): Promise<PipelineResult> {
   const t0 = Date.now();
   const { an, format } = await loadAnalysis(input);
   const ctx: Ctx = { log: [], uyarilar: [], olcumler: {}, an, H: IDENTITY };
@@ -129,7 +132,13 @@ export async function runPipeline(input: Buffer): Promise<PipelineResult> {
   // yalnız ölçüm (sadakat, renk çipi) içindir.
   void tuval;
   const tam = await renderTamKare(ctx, { isik: true, wb: true });
-  const tamIsl = await keskinlestir(tam.islenmis, tam.w, tam.h, doz / 2);
+  // 10) Kenar doldurma (Fırat 2026-09-26): kumaş dışı alanlar kumaşın kendi pikselleri kopyalanarak
+  // tamamlanır (üretken işlem yok); global dönüşümlerden SONRA, keskinleştirmeden ÖNCE — böylece kopya
+  // kaynağının ışık/renk düzeltmesini taşır, maske içi pikseller doldurmasız render ile birebir aynıdır.
+  let tamDolu = tam.islenmis;
+  if (opts.doldurma === false) log(ctx, { adim: 'kenar_doldurma', risk: 'dikkat', durum: 'atlandi', not: 'Seçenekle kapatıldı', olcum: { neden: 'kapali' } });
+  else tamDolu = (await kenarDoldurma(ctx, tam.islenmis, tam.w, tam.h)).out;
+  const tamIsl = await keskinlestir(tamDolu, tam.w, tam.h, doz / 2);
   const katalog = await sharp(Buffer.from(tamIsl.buffer, tamIsl.byteOffset, tamIsl.byteLength), { raw: { width: tam.w, height: tam.h, channels: 3 } })
     .jpeg({ quality: 90, mozjpeg: true })
     .toBuffer();

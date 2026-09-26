@@ -3,8 +3,9 @@
 // (yerel tabanın ≥ tepeOrani katı) varsa doku periyodu budur. Katalog kırpımının kenarı, çıktıda
 // periyot ≈ hedefPeriyot px görünecek şekilde seçilir; ancak varsayılan (kumaşı dolduran) kırpımın
 // [enKucukOran, 1] katı aralığına ve 2× büyütme sınırına sıkıştırılır. Tepe yoksa standart kırpım.
+// Periyot ölçümü (dokuPeriyodu) adım 10 (kenar doldurma) tarafından da kullanılır.
 
-import { luma, plane, powerSpectrum } from './goruntu';
+import { luma, powerSpectrum } from './goruntu';
 import { applyH, log, type Ctx } from './tip';
 
 export type OlcekParams = {
@@ -22,23 +23,15 @@ export const OLCEK: OlcekParams = { n: 256, minPeriyot: 4, maxPeriyot: 64, tepeO
 
 export type OlcekSonuc = { side: number; kaynak: 'fft' | 'standart'; periyot: number | null };
 
-/** Rektifiye penceresinin merkezinden kaynakta n×n kırpım alıp periyot ölçer; yeni kırpım kenarını (analiz px) döner. */
-export async function olcek(ctx: Ctx, varsayilan: { x: number; y: number; side: number }, p: OlcekParams = OLCEK): Promise<OlcekSonuc> {
+/** Kaynakta (ax, ay) analiz koordinatı çevresinden n×n kırpım alıp radyal güç spektrumunda doku periyodunu ölçer (px, kaynak ölçeği). */
+export async function dokuPeriyodu(ctx: Ctx, ax: number, ay: number, p: OlcekParams = OLCEK): Promise<{ periyot: number | null; tepe: number }> {
   const { an } = ctx;
-  const [ax, ay] = applyH(ctx.H, varsayilan.x + varsayilan.side / 2, varsayilan.y + varsayilan.side / 2);
-  const sx = Math.round(ax * an.olcek), sy = Math.round(ay * an.olcek);
   const n = p.n;
+  if (an.kaynak.w < n || an.kaynak.h < n) return { periyot: null, tepe: 0 };
+  const sx = Math.round(ax * an.olcek), sy = Math.round(ay * an.olcek);
   const left = Math.max(0, Math.min(an.kaynak.w - n, sx - n / 2)), top = Math.max(0, Math.min(an.kaynak.h - n, sy - n / 2));
-  const kaynakKenar = varsayilan.side * an.olcek;
-  const standart = (not: string, periyot: number | null, ek: Record<string, number | string | boolean | null> = {}) => {
-    ctx.olcumler.olcek_kaynagi = 'standart';
-    log(ctx, { adim: 'olcek', risk: 'dikkat', durum: 'atlandi', not, olcum: { periyot_px: periyot, ...ek } });
-    return { side: varsayilan.side, kaynak: 'standart' as const, periyot };
-  };
-  if (an.kaynak.w < n || an.kaynak.h < n) return standart('Kaynak FFT penceresinden küçük; standart kırpım', null);
   const reg = await an.oku(left, top, n, n);
-  const L = luma(reg);
-  const P = powerSpectrum(L);
+  const P = powerSpectrum(luma(reg));
   // Radyal profil.
   const rmax = n / 2;
   const prof = new Float64Array(rmax), cnt = new Float64Array(rmax);
@@ -60,10 +53,25 @@ export async function olcek(ctx: Ctx, varsayilan: { x: number; y: number; side: 
     const ratio = prof[r] / taban;
     if (ratio > bestRatio) { bestRatio = ratio; best = r; }
   }
-  const periyot = best > 0 ? +(n / best).toFixed(1) : null;
-  if (best < 0 || bestRatio < p.tepeOrani) return standart('Belirgin doku periyodu yok (düz/dokusuz ya da düzensiz); standart kırpım', periyot, { tepe_orani: +bestRatio.toFixed(1) });
+  const periyot = best > 0 && bestRatio >= p.tepeOrani ? +(n / best).toFixed(1) : null;
+  return { periyot, tepe: bestRatio };
+}
+
+/** Rektifiye penceresinin merkezinden kaynakta n×n kırpım alıp periyot ölçer; yeni kırpım kenarını (analiz px) döner. */
+export async function olcek(ctx: Ctx, varsayilan: { x: number; y: number; side: number }, p: OlcekParams = OLCEK): Promise<OlcekSonuc> {
+  const { an } = ctx;
+  const [ax, ay] = applyH(ctx.H, varsayilan.x + varsayilan.side / 2, varsayilan.y + varsayilan.side / 2);
+  const kaynakKenar = varsayilan.side * an.olcek;
+  const standart = (not: string, periyot: number | null, ek: Record<string, number | string | boolean | null> = {}) => {
+    ctx.olcumler.olcek_kaynagi = 'standart';
+    log(ctx, { adim: 'olcek', risk: 'dikkat', durum: 'atlandi', not, olcum: { periyot_px: periyot, ...ek } });
+    return { side: varsayilan.side, kaynak: 'standart' as const, periyot };
+  };
+  if (an.kaynak.w < p.n || an.kaynak.h < p.n) return standart('Kaynak FFT penceresinden küçük; standart kırpım', null);
+  const { periyot, tepe: bestRatio } = await dokuPeriyodu(ctx, ax, ay, p);
+  if (periyot === null) return standart('Belirgin doku periyodu yok (düz/dokusuz ya da düzensiz); standart kırpım', null, { tepe_orani: +bestRatio.toFixed(1) });
   // Hedef: periyot çıktıda hedefPeriyot px → kaynak kırpım kenarı = periyot × icerik / hedef.
-  let kaynakYeni = (periyot! * p.icerik) / p.hedefPeriyot;
+  let kaynakYeni = (periyot * p.icerik) / p.hedefPeriyot;
   const alt = Math.max(p.enAzKaynak, kaynakKenar * p.enKucukOran), ust = kaynakKenar;
   const sikistirildi = kaynakYeni < alt || kaynakYeni > ust;
   kaynakYeni = Math.max(alt, Math.min(ust, kaynakYeni));

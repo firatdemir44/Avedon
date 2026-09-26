@@ -43,14 +43,14 @@ test('texart kalite kapısı: bulanık fotoğraf yeniden çekim ister', async ()
   assert.match(r.mesaj, /bulanık/);
 });
 
-test('texart: kumaş dışındaki zemin de dahil kadraj aynen kalır; ölçüm kumaşın içinden', async () => {
+test('texart: kadraj aynen kalır; doldurma kapalıyken zemin korunur, ölçüm kumaşın içinden', async () => {
   const W = 1800;
   const fabric = await texture(1000, 1000, [40, 60, 160]).png().toBuffer();
   const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 245, g: 245, b: 240 } } })
     .composite([{ input: fabric, left: 400, top: 400 }])
     .jpeg({ quality: 95 })
     .toBuffer();
-  const r = await runPipeline(img);
+  const r = await runPipeline(img, { doldurma: false });
   assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
   if (r.durum !== 'tamam') return;
   const alan = r.islem_kaydi.find((e) => e.adim === 'ayirma')!.olcum!.alan_orani as number;
@@ -63,6 +63,119 @@ test('texart: kumaş dışındaki zemin de dahil kadraj aynen kalır; ölçüm k
   const mid = px(900, 900);
   assert.ok(mid[2] > mid[0] + 40, 'orta kumaş mavisi: ' + mid);
   assert.ok(['lacivert', 'indigo', 'gece mavisi'].includes(r.renkler[0].ad), r.renkler[0].ad);
+  assert.equal(r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')?.durum, 'atlandi');
+  assert.ok(!r.uyarilar.includes('kenar_kumasla_tamamlandi'));
+});
+
+// Periyodik sentetik kumaş: iki yönde sinüs çizgi + hafif rastgele doku (örgü tekrarı gibi).
+function periodicFabric(w: number, h: number, base: [number, number, number], periyot = 24, amp = 22, seed = 3) {
+  const d = Buffer.alloc(w * h * 3);
+  let s = seed;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const v = amp * (Math.sin((2 * Math.PI * x) / periyot) + 0.6 * Math.sin((2 * Math.PI * y) / periyot)) + (rnd() - 0.5) * 8;
+      for (let c = 0; c < 3; c++) d[(y * w + x) * 3 + c] = Math.max(0, Math.min(255, Math.round(base[c] + v)));
+    }
+  return sharp(d, { raw: { width: w, height: h, channels: 3 } });
+}
+
+test('texart kenar doldurma: beyaz zemindeki kumaş kadrajı kendi dokusuyla tamamlar; maske içi piksel doldurmasız render ile birebir aynı', async () => {
+  const W = 1600, F = 960; // kumaş kadrajın %60'ı (alan %36)
+  const fabric = await periodicFabric(F, F, [50, 90, 170]).png().toBuffer();
+  const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 246, g: 246, b: 242 } } })
+    .composite([{ input: fabric, left: (W - F) / 2, top: (W - F) / 2 }])
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  const [r, r0] = await Promise.all([runPipeline(img), runPipeline(img, { doldurma: false })]);
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  assert.equal(r0.durum, 'tamam');
+  if (r.durum !== 'tamam' || r0.durum !== 'tamam') return;
+  const kd = r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')!;
+  assert.equal(kd.durum, 'uygulandi', JSON.stringify(kd));
+  assert.equal(kd.risk, 'dikkat');
+  assert.ok(r.uyarilar.includes('kenar_kumasla_tamamlandi'));
+  const oran = r.olcumler.doldurulan_oran as number;
+  assert.ok(oran > 0.55 && oran < 0.75, 'doldurulan oran ' + oran);
+  assert.ok(typeof kd.olcum!.blok_px === 'number' && typeof kd.olcum!.dikis_hatasi_rms === 'number' && typeof kd.olcum!.kaynak_kenar === 'number');
+  const a = await sharp(r.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  const b = await sharp(r0.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  assert.equal(a.info.width, W);
+  assert.equal(a.info.height, W);
+  const px = (buf: Buffer, x: number, y: number) => [buf[(y * W + x) * 3], buf[(y * W + x) * 3 + 1], buf[(y * W + x) * 3 + 2]];
+  // Dört köşe artık kumaş renginde (mavi baskın), beyaz değil.
+  for (const [x, y] of [[24, 24], [W - 25, 24], [24, W - 25], [W - 25, W - 25]] as const) {
+    const c = px(a.data, x, y);
+    assert.ok(c[2] > c[0] + 40 && c[0] < 150, `köşe (${x},${y}) kumaş olmalı: ${c}`);
+    const c0 = px(b.data, x, y);
+    assert.ok(c0[0] > 215, `doldurmasız köşe zemin: ${c0}`);
+  }
+  // Kumaşın içi (merkez 128×128) doldurmasız render ile birebir aynı.
+  let fark = 0;
+  for (let y = W / 2 - 64; y < W / 2 + 64; y++)
+    for (let x = W / 2 - 64; x < W / 2 + 64; x++) for (let c = 0; c < 3; c++) fark = Math.max(fark, Math.abs(a.data[(y * W + x) * 3 + c] - b.data[(y * W + x) * 3 + c]));
+  assert.equal(fark, 0, 'maske içi piksel değişmemeli (en büyük fark ' + fark + ')');
+  // Sadakat ölçümleri yalnız gerçek kumaş kırpımından: iki çalıştırmada aynı.
+  assert.equal(r.olcumler.doku_ssim, r0.olcumler.doku_ssim);
+  assert.equal(r.olcumler.dE2000_ort, r0.olcumler.dE2000_ort);
+  // Doldurulan bölgede doku periyodu korunur: yatay sinüsün periyodu (24 px) köşede de görülür.
+  const y0 = 40;
+  const prof: number[] = [];
+  for (let x = 0; x < 240; x++) prof.push(px(a.data, x, y0)[1]);
+  const ort = prof.reduce((t, v) => t + v, 0) / prof.length;
+  let bestLag = 0, bestCorr = -Infinity;
+  for (let lag = 12; lag <= 40; lag++) {
+    let t = 0;
+    for (let x = 0; x + lag < prof.length; x++) t += (prof[x] - ort) * (prof[x + lag] - ort);
+    if (t > bestCorr) { bestCorr = t; bestLag = lag; }
+  }
+  assert.ok(Math.abs(bestLag - 24) <= 1, 'doldurulan bölgede periyot ' + bestLag);
+});
+
+test('texart kenar doldurma: yarı saydam (file/tül) kumaşta doldurma yapılmaz, uyarı eklenir', async () => {
+  // Kumaş: 4 px periyotlu koyu ızgara; ızgara aralarından beyaz zemin görünür (file gibi).
+  const W = 1800, F = 1200;
+  const d = Buffer.alloc(F * F * 3);
+  for (let y = 0; y < F; y++)
+    for (let x = 0; x < F; x++) {
+      const iplik = x % 4 < 2 || y % 4 < 2;
+      const c: [number, number, number] = iplik ? [0, 0, 40] : [246, 246, 242];
+      for (let k = 0; k < 3; k++) d[(y * F + x) * 3 + k] = c[k];
+    }
+  const fabric = await sharp(d, { raw: { width: F, height: F, channels: 3 } }).png().toBuffer();
+  const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 246, g: 246, b: 242 } } })
+    .composite([{ input: fabric, left: (W - F) / 2, top: (W - F) / 2 }])
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  const r = await runPipeline(img);
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  if (r.durum !== 'tamam') return;
+  assert.ok(r.uyarilar.includes('yari_saydam_zemin_korundu'), r.uyarilar.join(','));
+  const kd = r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')!;
+  assert.equal(kd.durum, 'atlandi');
+  assert.equal(kd.olcum!.neden, 'yari_saydam');
+  assert.ok(r.uyarilar.includes('doldurma_yapilmadi:yari_saydam'));
+  assert.ok(!r.uyarilar.includes('kenar_kumasla_tamamlandi'));
+  assert.equal(r.olcumler.doldurulan_oran, 0);
+  const { data, info } = await sharp(r.ciktilar.katalog).raw().toBuffer({ resolveWithObject: true });
+  assert.equal(info.width, W);
+  assert.ok(data[(20 * W + 20) * 3] > 215, 'köşe zemin kalmalı');
+});
+
+test("texart kenar doldurma: kumaş kadrajın %25'inden azsa kaynak yetersiz, doldurma yok", async () => {
+  const W = 2000, F = 900; // alan %20
+  const fabric = await texture(F, F, [150, 60, 70]).png().toBuffer();
+  const img = await sharp({ create: { width: W, height: W, channels: 3, background: { r: 246, g: 246, b: 242 } } })
+    .composite([{ input: fabric, left: (W - F) / 2, top: (W - F) / 2 }])
+    .jpeg({ quality: 95 })
+    .toBuffer();
+  const r = await runPipeline(img);
+  assert.equal(r.durum, 'tamam', JSON.stringify(r.islem_kaydi));
+  if (r.durum !== 'tamam') return;
+  const kd = r.islem_kaydi.find((e) => e.adim === 'kenar_doldurma')!;
+  assert.equal(kd.durum, 'atlandi', JSON.stringify(kd));
+  assert.equal(kd.olcum!.neden, 'kumas_alani_kucuk');
+  assert.ok(r.uyarilar.includes('doldurma_yapilmadi:kumas_alani_kucuk'));
 });
 
 test('texart beyaz dengesi: renk kayması nötre doğru, doz sınırı içinde, tek global dönüşüm', async () => {
