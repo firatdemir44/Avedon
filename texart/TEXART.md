@@ -1,4 +1,5 @@
 > **Ad notu (Fırat 2026-09-25):** "Texflow" ve "Texart" adlarından vazgeçildi; tek marka **Takyon Ai**. Aşağıdaki "Texart" bu bileşenin iç çalışma adıdır, arayüzde gösterilmez.
+n> **Karar (Fırat 2026-09-26):** Katalog görseli yükleyicinin fotoğrafıyla AYNI kadraj ve piksel boyutunda kalır; kırpma, döndürme/perspektif, yakınlaştırma ve ölçek normalizasyonu (§3 adım 2, 7, 9 kompozisyon kırpımı) yapılmaz — boyut dışına çıkılırsa sorumluluk platforma kalır. Yalnız global ışık, beyaz dengesi ve hafif keskinlik. Yakın plan yerel piksellerden kırpım olarak ayrıca üretilir.
 
 # TEXART.md — Takyon Texart proje tanımı (Claude Code bunu her oturumda okur)
 

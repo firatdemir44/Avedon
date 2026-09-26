@@ -118,3 +118,28 @@ export async function keskinlestir(d: Uint8Array, w: number, h: number, doz: num
     .raw()
     .toBuffer()) as unknown as Uint8Array;
 }
+
+/**
+ * Tam kare (Fırat 2026-09-26: "orijinal boyutunu bozmadan düzenleme"): yükleyicinin verdiği kadraj ve
+ * piksel boyutu aynen korunur; kırpma, döndürme, yakınlaştırma yok. Yalnız global ışık ve beyaz dengesi.
+ */
+export async function renderTamKare(ctx: Ctx, ops: { isik: boolean; wb: boolean }): Promise<RenderSonuc> {
+  const { an } = ctx;
+  const o = an.olcek;
+  const reg = await an.oku(0, 0, an.kaynak.w, an.kaynak.h, 1);
+  const ham = reg.d as Uint8Array;
+  const isl = new Uint8Array(ham.length);
+  const gains = ctx.wb && ops.wb ? ctx.wb : [1, 1, 1];
+  const alan = ops.isik ? ctx.isikAlani : null;
+  for (let v = 0; v < reg.h; v++) {
+    const ay = (v + 0.5) / o;
+    for (let u = 0; u < reg.w; u++) {
+      const k = (v * reg.w + u) * 3;
+      const gain = alan ? isikKazanci(alan, (u + 0.5) / o, ay) : 1;
+      isl[k] = toSrgb(LIN[ham[k]] * gain * gains[0]);
+      isl[k + 1] = toSrgb(LIN[ham[k + 1]] * gain * gains[1]);
+      isl[k + 2] = toSrgb(LIN[ham[k + 2]] * gain * gains[2]);
+    }
+  }
+  return { w: reg.w, h: reg.h, ham, islenmis: isl };
+}

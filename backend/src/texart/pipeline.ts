@@ -21,7 +21,7 @@ import { KOMPOZISYON, kompozisyon, tuval, yariSaydamTespiti } from './steps/komp
 import { olcek } from './steps/olcek';
 import { sadakat } from './steps/olcumler';
 import { perspektif } from './steps/perspektif';
-import { keskinlestir, renderKirpim } from './steps/render';
+import { keskinlestir, renderKirpim, renderTamKare } from './steps/render';
 import { cipGorseli, renkler, type ColorChip } from './steps/renkCipi';
 import { IDENTITY, YENIDEN_CEKIM_MESAJ, log, type Ctx, type LogEntry, type Risk } from './steps/tip';
 
@@ -71,8 +71,10 @@ export async function runPipeline(input: Buffer): Promise<PipelineResult> {
   const k1 = kaliteAlan(ctx);
   if (k1) return yenidenCekim(ctx, k1);
 
-  // 2) Açı / perspektif
-  perspektif(ctx);
+  // 2) Açı / perspektif — KAPALI (Fırat 2026-09-26): orijinal kadraj ve boyut korunur; geometri değişmez.
+  void perspektif;
+  ctx.rmask = ctx.seg.mask;
+  log(ctx, { adim: 'perspektif', risk: 'guvenli', durum: 'atlandi', not: 'Orijinal kadraj korunur (döndürme/düzeltme yok)' });
 
   // 3) Işık dengeleme, 4) Beyaz dengesi (yalnız karar; uygulama render'da)
   isik(ctx);
@@ -86,7 +88,10 @@ export async function runPipeline(input: Buffer): Promise<PipelineResult> {
   duzBolgeLog(ctx, har, pencere, 'kumaşı dolduran kare');
 
   // 7) Ölçek normalizasyonu (deneysel) — kenar küçülürse pencere yeniden seçilir
-  const ol = await olcek(ctx, pencere);
+  // 7) Ölçek normalizasyonu — KAPALI (Fırat 2026-09-26): görüntü gerçek ölçeğinden büyütülmez/yakınlaştırılmaz.
+  void olcek;
+  log(ctx, { adim: 'olcek', risk: 'dikkat', durum: 'atlandi', not: 'Gerçek ölçek korunur; yakınlaştırma yok' });
+  const ol = { side: pencere.side };
   if (ol.side < pencere.side) {
     const yeni = enIyiPencere(ctx, har, ol.side);
     if (yeni) {
@@ -119,13 +124,16 @@ export async function runPipeline(input: Buffer): Promise<PipelineResult> {
   const doz = ctx.keskinlik_doz ?? 0;
   const kat = await renderKirpim(ctx, ctx.kirpim, CATALOG_CONTENT, { isik: true, wb: true });
   const katIsl = await keskinlestir(kat.islenmis, kat.w, kat.h, doz);
-  const katalog = await tuval(katIsl, kat.w, CATALOG_SIZE);
-  let katalog_2x: Buffer | undefined;
-  if (ctx.cozunurluk?.ikiKat) {
-    const kat2 = await renderKirpim(ctx, ctx.kirpim, CATALOG_CONTENT * 2, { isik: true, wb: true });
-    const isl2 = await keskinlestir(kat2.islenmis, kat2.w, kat2.h, doz / 2);
-    katalog_2x = await tuval(isl2, kat2.w, CATALOG_SIZE * 2);
-  }
+  // Katalog görseli: yükleyicinin fotoğrafı AYNI kadraj ve piksel boyutunda; yalnız global ışık/renk ve
+  // hafif keskinlik (Fırat 2026-09-26: boyut dışına çıkılırsa sorumluluk bize kalır). Yukarıdaki kırpım
+  // yalnız ölçüm (sadakat, renk çipi) içindir.
+  void tuval;
+  const tam = await renderTamKare(ctx, { isik: true, wb: true });
+  const tamIsl = await keskinlestir(tam.islenmis, tam.w, tam.h, doz / 2);
+  const katalog = await sharp(Buffer.from(tamIsl.buffer, tamIsl.byteOffset, tamIsl.byteLength), { raw: { width: tam.w, height: tam.h, channels: 3 } })
+    .jpeg({ quality: 90, mozjpeg: true })
+    .toBuffer();
+  const katalog_2x: Buffer | undefined = undefined;
   const yakin_plan = await sharp(Buffer.from(yakin.islenmis.buffer, yakin.islenmis.byteOffset, yakin.islenmis.byteLength), { raw: { width: yakin.w, height: yakin.h, channels: 3 } })
     .jpeg({ quality: 92, mozjpeg: true })
     .toBuffer();
